@@ -133,7 +133,23 @@ export function EnterpriseLibraryPage() {
           />
           <main className="ed-asset-workspace">
             <div className="ed-bulk-toolbar"><strong>{selectedIds.length} selected</strong><button type="button" onClick={() => announceLibraryAction("Bulk download stays backend-gated. Open a record to request an approved copy.")}><Download size={15} />Download</button><button type="button" onClick={() => announceLibraryAction("Collection edits are not written back in beta. Use Package Builder for portal-local refs.")}><Folder size={15} />Add to collection</button><button type="button" onClick={() => announceLibraryAction("Share links are disabled until identity and access policy are connected.")}><Share2 size={15} />Share</button><button type="button" onClick={() => announceLibraryAction("Bulk more actions are disabled until backend policy actions are connected.")}><MoreHorizontal size={15} />More</button><button type="button" onClick={() => setSelectedIds(assets.map((asset) => asset.id))}>Select visible</button></div>
-            {assets.length ? <div className="ed-grid">{assets.map((asset) => <AssetCard asset={asset} selected={selectedIds.includes(asset.id)} onSelect={() => toggleAsset(asset)} key={asset.id} />)}</div> : <section className="ed-empty-state"><Search size={24} /><h2>No {sourceNoun(search.source)} records match this search</h2><p>Try a broader ministry, category, channel, or rights term.</p><ActionButton onClick={() => setQuery("")}>Clear search</ActionButton></section>}
+            {assets.length ? <div className="ed-grid">{assets.map((asset) => <AssetCard asset={asset} selected={selectedIds.includes(asset.id)} onSelect={() => toggleAsset(asset)} key={asset.id} />)}</div> : (
+              <section className="ed-empty-state ed-empty-search">
+                <span className="ed-empty-icon"><Search size={24} /></span>
+                <p className="ed-empty-eyebrow">{sourceNoun(search.source)} discovery</p>
+                <h2>No {sourceNoun(search.source)} records match this search</h2>
+                <p>Try a broader ministry, category, channel, or rights term. Saved views and common filters stay available for a fast reset.</p>
+                <div className="ed-empty-actions">
+                  <ActionButton tone="primary" onClick={clearAll}>Reset library</ActionButton>
+                  <ActionButton onClick={() => setQuery("")}>Clear search</ActionButton>
+                </div>
+                <div className="ed-empty-suggestions" aria-label="Suggested searches">
+                  {["Sabbath", "Teaching", "No people", "Approved Public"].map((term) => (
+                    <button type="button" key={term} onClick={() => setQuery(term)}>{term}</button>
+                  ))}
+                </div>
+              </section>
+            )}
             {pagination ? <div className="ed-bulk-toolbar" aria-label="Library pagination"><strong>Showing {pagination.rangeStart.toLocaleString()}-{pagination.rangeEnd.toLocaleString()} of {search.data?.total.toLocaleString()}</strong><button type="button" disabled={!pagination.hasPrevious} onClick={() => setOffset(pagination.previousOffset)}>Previous</button><button type="button" disabled={!pagination.hasNext} onClick={() => setOffset(pagination.nextOffset)}>Next</button></div> : null}
           </main>
           <InspectorDrawer asset={selected} source={search.source} live={search.live} />

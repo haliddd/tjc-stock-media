@@ -174,7 +174,21 @@ export function RightsVerdictCard({ asset, source }: { asset?: StockMediaAsset; 
 export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAsset; source?: MediaSourceStatus | null; live?: boolean }) {
   const [tab, setTab] = useState(inspectorDrawerTabs[0]);
   const [message, setMessage] = useState("");
-  if (!asset) return <aside className="ed-inspector ed-panel"><h2>Select an asset</h2><p>{sourceNoun(source)} search returned no visible assets.</p></aside>;
+  if (!asset) {
+    return (
+      <aside className="ed-inspector ed-panel ed-inspector-empty">
+        <span className="ed-empty-eyebrow">Context rail</span>
+        <h2>No asset selected</h2>
+        <p>{sourceNoun(source)} search returned no visible assets. Use this rail to keep the next safe action obvious.</p>
+        <div className="ed-empty-intel">
+          <span><strong>1</strong><small>Reset filters</small></span>
+          <span><strong>2</strong><small>Try saved views</small></span>
+          <span><strong>3</strong><small>Request review</small></span>
+        </div>
+        <SourcePill source={source} live={live} />
+      </aside>
+    );
+  }
   const tabRows = inspectorMetadataRows({ asset, tab, source });
   return (
     <aside className="ed-inspector ed-panel">
