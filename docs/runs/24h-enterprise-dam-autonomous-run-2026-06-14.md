@@ -60,6 +60,31 @@ Rejected alternatives:
   human architecture decisions.
 - Public portal/share/CDN features: explicitly out of v1 scope.
 
+## Research-Backed Enterprise DAM Gap Map
+
+1. Search must be trust-aware discovery: aliases, intent presets, safe suggested
+   filters, ranking explanation, zero-result recovery, and no private inventory
+   leakage through facets.
+2. Metadata/taxonomy must separate controlled fields, freeform notes, suggested
+   tags, and system diagnostics. Tags and AI suggestions never approve.
+3. Review operations must turn workflow state into next action, evidence
+   requirements, disabled approval reasons, and sensitive ministry review lanes.
+4. Rights/lifecycle must make expired rights, consent, review, channel approval,
+   stale derivatives, and withdrawn/takedown states hard delivery blockers.
+5. Upload/intake must read as submit-for-review only. Missing source, consent,
+   or sensitivity creates blocker debt, never approval.
+6. Admin analytics must be an operations cockpit: review backlog, metadata gaps,
+   consent gaps, source custody gaps, duplicate candidates, feedback health,
+   audit coverage, storage honesty, and unavailable states.
+7. Collections, packages, distribution sets, and Brand Hub remain curation and
+   readiness tools, not permission boundaries.
+8. Smart rules are deterministic dry-run suggestions only. They route and flag;
+   they never mark Portal Ready, enable downloads, or write ResourceSpace.
+9. Premium UX means comprehension, accessibility, no overflow, focus/ARIA
+   hygiene where practical, status not color-only, and calm blocked states.
+10. Production hardening evidence can add checklists/scripts, but no env,
+    infra, hosted mutation, billing, deploy, or ResourceSpace production change.
+
 ## Worker Lanes
 
 | Lane | Branch | Purpose | Status |
@@ -144,7 +169,45 @@ Recommended order:
 
 ## Integration Simulation
 
-Pending Phase 4.
+In progress in `/private/tmp/tjc-24h-integration-20260614` on
+`integration/simulate-24h-enterprise-dam-pr-train-2026-06-14`.
+
+Merge results:
+
+| Item | Result | Notes |
+|---|---|---|
+| #6 docs/runbooks/report | merged | Fast-forward; broad accumulated branch history, no conflict. |
+| #7 security throttling | merged | No conflict. |
+| #8 feedback durability | merged | No conflict. |
+| #9 truth/photo-only | merged | No conflict. |
+| #11 redaction crawler | merged | No conflict; merged after #9. |
+| #10 media delivery | merged | No conflict; merged after #9/#11. |
+| #12 taxonomy foundation | merged | No conflict. |
+| #13 smart-rules dry run | merged | No conflict. |
+| #14 ResourceSpace readiness | merged | One narrow `Makefile` conflict; kept both `portal-redaction-crawler` and `photo-only-resourcespace-readiness`. |
+| Premium UI branch | merged | One docs conflict in `docs/premium-enterprise-ui-backlog.md`; kept newer premium backlog with completed/remaining split and safety rules. |
+
+Simulation static validation:
+
+| Command | Result | Notes |
+|---|---|---|
+| `git diff --check` | pass | After all merges. |
+| `npm --prefix frontend run typecheck` | pass | After all merges. |
+| `npm --prefix frontend test` | pass | 7 files, 61 tests. |
+| `npm --prefix frontend run build` | pass | Next production build passed. |
+| guard scripts | pass | private source, public env, identity, payload, audit, storage, hygiene. |
+| `make launch-readiness` | pass with 3 warnings | Temp worktree lacks `.env`, `.runtime/audit-log`, `.runtime/backups`. |
+
+Simulation local smokes on `http://localhost:4890`:
+
+| Smoke | Result | Current classification |
+|---|---|---|
+| `portal-api-smoke` | fail | `unsafe-thumbnail-reviewer` expected 200, got 403. Needs classification: stricter preview safety vs stale smoke expectation. |
+| `portal-download-ticket-smoke` | fail | No reviewer-visible downloadable asset found. Needs fixture/role classification. |
+| `portal-package-smoke` | fail | Contributor save expected 200, got 403. Needs beta/session/role config classification. |
+| `portal-saved-search-smoke` | fail | Empty save expected 400, got 403. Needs beta/session/role config classification. |
+| `portal-feedback-smoke` | fail | Feedback submit expected 200, got 500. Needs durable/local store classification. |
+| `portal-writeback-guard-smoke` | fail | Reviewer access expected 200, got 403. Needs beta/session/role config classification. |
 
 ## Worker Status
 
@@ -183,3 +246,4 @@ Baseline rerun completed on 2026-06-13 09:29 EDT for this
 | 2026-06-13 09:26 EDT | Verified repo, branch, remotes, dirty state, and prior worker launch. Remote push/PR blocked by `origin`/`haliddd` ambiguity. | preflight, git verification | push/PR blocked until remote target resolved | baseline checks and PR inventory |
 | 2026-06-13 09:29 EDT | Baseline checks passed. | diff check, typecheck, tests, build, guards, launch-readiness | known `.env` placeholder warning only | PR/branch inventory |
 | 2026-06-13 09:36 EDT | PR #6-#14 inventory completed. #11 and #13 are stacked; all Hali0321 PRs report mergeable. | `gh pr list`, `gh pr view`, branch diff inventory | push/PR blocked by remote ambiguity; raw GitHub diff API too large for broad branches | local integration simulation |
+| 2026-06-13 09:48 EDT | Research addendum integrated. Local merge simulation merged PR train plus premium UI with two narrow conflicts resolved. Static validation/build passed; local smokes failed and need classification. | local merges, diff, typecheck, tests, build, guards, launch-readiness, local smokes | push/PR blocked; smoke failures unresolved | classify smokes and steer workers |
