@@ -7,7 +7,7 @@ import { updateResourceReviewStatus } from "@/lib/media-source/resourcespace-api
 import { canReview } from "@/lib/permissions";
 import { normalizeAssetId, normalizeDisplayTextField, readJsonObject } from "@/lib/request-validation";
 import { missingReviewEvidence, normalizeReviewChecklist, queuePendingReviewDecision } from "@/lib/review-decision";
-import { missingDomainReviewEvidence } from "@/lib/review-evidence";
+import { missingDomainReviewEvidence, reviewActionDisabledReason, reviewDomainMissingLabels } from "@/lib/review-evidence";
 import { recordUsageEvent } from "@/lib/usage-analytics";
 import { isReviewActionBackend, reviewActions, type ReviewActionBackend } from "@/lib/workflow-policy";
 import type { NextRequest } from "next/server";
@@ -69,8 +69,10 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
   const note = normalizeDisplayTextField(body.notes, "", 1200);
   const missingEvidence = missingReviewEvidence(body.action, checklist, note);
   const missingDomainEvidence = missingDomainReviewEvidence(asset, body.action, checklist, note);
+  const missingDomainLabels = reviewDomainMissingLabels(asset, body.action, checklist, note);
   const missingAllEvidence = Array.from(new Set([...missingEvidence, ...missingDomainEvidence]));
   if (missingAllEvidence.length) {
+    const disabledReason = reviewActionDisabledReason({ asset, action: body.action, checklist, note });
     const resourceSpaceId = assetResourceRef(asset);
     appendAuditEvent({
       type: "review_evidence_incomplete",
@@ -82,7 +84,16 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
       summary: "Review decision blocked by missing evidence.",
       details: { action: body.action, missingEvidence: missingAllEvidence }
     });
-    return { status: 400, body: { error: "Review evidence is incomplete.", missingEvidence: missingAllEvidence, ...envelope } };
+    return {
+      status: 400,
+      body: {
+        error: "Review evidence is incomplete.",
+        disabledReason,
+        missingEvidence: missingAllEvidence,
+        missingEvidenceLabels: Array.from(new Set([...missingEvidence, ...missingDomainLabels])),
+        ...envelope
+      }
+    };
   }
 
   const requestedStatus = action?.targetStatus || asset.status;

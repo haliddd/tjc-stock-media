@@ -266,7 +266,8 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
       .map((record) => record.resourceId)
   );
   const hasPendingReviewWrite = (asset: StockMediaAsset) => pendingWriteResourceIds.has(assetResourceRef(asset));
-  const matchesQueue = (asset: StockMediaAsset, id: ReviewQueueId) => assetMatchesReviewQueue(asset, id, duplicateGroupCounts) || (id === "pending" && hasPendingReviewWrite(asset));
+  const matchesQueue = (asset: StockMediaAsset, id: ReviewQueueId) =>
+    assetMatchesReviewQueue(asset, id, duplicateGroupCounts) || ((id === "pending" || id === "pending-write") && hasPendingReviewWrite(asset));
   const reviewable = canReview
     ? assets
         .filter((asset) => hasPendingReviewWrite(asset) || reviewQueues.some((queue) => assetMatchesReviewQueue(asset, queue.id, duplicateGroupCounts)))
@@ -281,6 +282,7 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
     source: status,
     governance: {
       pendingReview: reviewable.filter((asset) => matchesQueue(asset, "pending")).length,
+      pendingWrites: reviewable.filter((asset) => matchesQueue(asset, "pending-write")).length,
       childrenYouth: reviewCounts.childrenYouth,
       missingSource: reviewCounts.missingSource,
       rightsReview: reviewCounts.rightsReview,
@@ -290,7 +292,10 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
       aiEnrichment: reviewable.filter((asset) => assetMatchesReviewQueue(asset, "ai-enrichment", duplicateGroupCounts)).length,
       taxonomyDrift: reviewable.filter((asset) => assetMatchesReviewQueue(asset, "taxonomy-drift", duplicateGroupCounts)).length,
       renditionGaps: reviewable.filter(assetHasRenditionGap).length,
+      derivativeGaps: reviewable.filter((asset) => matchesQueue(asset, "derivative-gap")).length,
       staleApprovals: reviewable.filter((asset) => assetMatchesReviewQueue(asset, "stale-approvals", duplicateGroupCounts)).length,
+      staleReview: reviewable.filter((asset) => matchesQueue(asset, "stale-review")).length,
+      riskTriage: reviewable.filter((asset) => matchesQueue(asset, "risk")).length,
       missingRequiredFields: reviewable.filter((asset) => missingReviewFields(asset).length > 0).length
     },
     queues: reviewQueues.map((queue) => ({

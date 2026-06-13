@@ -70,6 +70,23 @@ These checks block portal reuse and public review actions. They do not write
 ResourceSpace approval by themselves, and they do not turn pending portal writes
 into authoritative ResourceSpace truth.
 
+Review workbench grouping now treats enterprise governance work as first-class
+lanes:
+
+| Lane | Purpose |
+|---|---|
+| Risk triage | Children/youth, sacrament, worship/private context, music/teaching, testimony/private moments, or other sensitive ministry signals. |
+| Missing evidence | Approval-critical source, rights, people/minors, usage, reviewer note, consent, or metadata evidence gaps. |
+| Stale review | Expired lifecycle evidence, due re-review, embargo/withdrawal/takedown, or older approval that needs recheck. |
+| Derivative gap | Missing approved copy, preview/detail derivative, dimensions, or download-ready rendition evidence. |
+| Pending write | Portal decision queued; ResourceSpace remains unchanged until sync succeeds or media-team follow-up completes. |
+
+Public approval remains locked while any sensitive ministry evidence lane has a
+required blocker. Disabled action reasons must name the missing evidence in
+plain reviewer language, such as `Consent/release record missing`,
+`Music/teaching rights basis missing`, or `Lifecycle/re-review evidence
+expired`.
+
 ## Search And Saved-View Boundaries
 
 Search, filters, saved views, collections, package sections, and discovery

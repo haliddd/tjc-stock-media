@@ -11,8 +11,8 @@ import { buildPackageGovernance } from "@/lib/package-governance";
 import { packageStorageReadiness } from "@/lib/package-store";
 import { canSeeAsset } from "@/lib/permissions";
 import { approvedCopyAccessBoundary, buildOriginalAccessRequestDecision, buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
-import { emptyReviewChecklist } from "@/lib/review-decision-presenter";
-import { missingDomainReviewEvidence } from "@/lib/review-evidence";
+import { buildReviewEvidenceDecision, emptyReviewChecklist, reviewActionDisabledReason } from "@/lib/review-decision-presenter";
+import { missingDomainReviewEvidence, sensitiveMinistryEvidenceModel } from "@/lib/review-evidence";
 import {
   buildReviewDecisionLanes,
   buildReviewDecisionRequirements,
@@ -21,6 +21,7 @@ import {
   missingReviewActionEvidence,
   reviewNextCheckLabel
 } from "@/lib/review-workbench";
+import { assetMatchesReviewQueue, reviewGovernanceGroupsForAsset } from "@/lib/workflow-policy";
 import { assetForRolePayload, sourceForRole } from "@/lib/source-redaction";
 import type { DamPackage, IntegrationReadinessItem, StockMediaAsset } from "@/lib/types";
 
@@ -98,6 +99,37 @@ describe("review workbench model", () => {
     expect(requirements.missingLabels).toContain("Review note missing");
     expect(missing).toContain("proofLinkAttached");
     expect(missing).toContain("reviewNote");
+  });
+
+  it("groups review records by enterprise governance work lanes", () => {
+    const risky = asset({
+      status: "Needs Review",
+      usageScope: "Do Not Publish",
+      peopleRisk: "Possible minors",
+      sensitivityClass: "youth-sensitive",
+      consentStatus: "Unknown",
+      usageGuidance: "Review before sharing",
+      imageUrls: { small: "/s.jpg", card: "/c.jpg", collection: "/g.jpg", detail: "/d.jpg" },
+      reviewedDate: "2025-01-01",
+      approvalRecheckDate: "2025-06-01",
+      pendingReviewWrite: {
+        id: "pending-1",
+        resourceId: "1001",
+        requestedStatus: "Approved Public",
+        createdAt: "2026-06-13T00:00:00.000Z",
+        updatedAt: "2026-06-13T00:00:00.000Z",
+        syncState: "queued"
+      }
+    });
+
+    const groups = reviewGovernanceGroupsForAsset(risky, true).filter((group) => group.active).map((group) => group.id);
+
+    expect(groups).toEqual(expect.arrayContaining(["risk", "missing-evidence", "stale-review", "derivative-gap", "pending-write"]));
+    expect(assetMatchesReviewQueue(risky, "risk")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "missing-evidence")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "stale-review")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "derivative-gap")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "pending-write")).toBe(true);
   });
 });
 
@@ -305,6 +337,45 @@ describe("Phase 2 TJC domain governance gates", () => {
       "pastoralSensitivityNote"
     ]));
     expect(buildPortalReuseDecision(risky, "Viewer").reuse.state).not.toBe("portal-ready");
+  });
+
+  it("surfaces sensitive ministry evidence locks and clear disabled reasons for public approval", () => {
+    const sensitive = asset({
+      peopleRisk: "Possible minors",
+      sensitivityClass: "testimony-sensitive",
+      sensitiveContext: "Worship testimony after prayer with youth present",
+      hymnNumberOrTitle: "Hymn 469",
+      rightsBasis: "unknown",
+      approvedChannels: [],
+      requiredNotice: undefined,
+      consentStatus: "Unknown",
+      consentReleaseRecordId: undefined,
+      domainReviewer: undefined,
+      testimonyTheme: "healing",
+      rightsNotes: "Review before sharing."
+    });
+
+    const evidence = sensitiveMinistryEvidenceModel(sensitive, "Approve Public", completeChecklist, "short");
+    const decision = buildReviewEvidenceDecision("Approve Public", completeChecklist, "short", sensitive);
+    const disabledReason = reviewActionDisabledReason({ asset: sensitive, action: "Approve Public", checklist: completeChecklist, note: "short" });
+
+    expect(evidence.filter((item) => item.active).map((item) => item.id)).toEqual(expect.arrayContaining([
+      "children-youth",
+      "worship",
+      "music-teaching",
+      "testimony-private"
+    ]));
+    expect(decision.ready).toBe(false);
+    expect(decision.missingFields).toEqual(expect.arrayContaining([
+      "consentReleaseRecord",
+      "domainReviewer:RE/minors",
+      "musicRightsBasis",
+      "domainReviewer:music-rights",
+      "domainReviewer:pastoral-sensitivity",
+      "pastoralSensitivityNote"
+    ]));
+    expect(disabledReason).toMatch(/Consent\/release record missing/);
+    expect(disabledReason).toMatch(/Music\/teaching rights basis missing/);
   });
 
   it("keeps AI and smart suggestions as non-final review debt", () => {

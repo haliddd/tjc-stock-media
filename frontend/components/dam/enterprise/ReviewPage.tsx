@@ -9,11 +9,11 @@ import { useDownloadGate, useReviewQueue } from "@/components/dam/useDamApi";
 import { assetRecordRef, assetType, displayTitle, formatBytes } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus, type EnterpriseStatus } from "@/lib/enterprise-status";
 import { presentReviewContext } from "@/lib/portal-context-presenters";
-import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewChecklistItems, reviewDecisionMissingLabels, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
+import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
 import { buildReviewQueueMetrics, buildReviewSignals, buildSelectedReviewGuidance, checklistActionLabel, reviewEvidenceGroups, reviewMetadataCompleteness, reviewWaitingDays, reviewWorkbenchTabs, type PendingReviewDecisionSummary } from "@/lib/review-workbench";
 import { routeWithRole } from "@/lib/role-routes";
 import type { ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
-import { normalizeReviewQueueId, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
+import { normalizeReviewQueueId, reviewGovernanceGroupsForAsset, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
 import { cn } from "@/lib/ui";
 import { ActionButton, AssetThumb, ErrorCard, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
 
@@ -27,11 +27,12 @@ const evidenceRequiredBeforeCompletion = new Set<keyof ReviewEvidenceChecklist>(
 function reviewChipLabels(asset: StockMediaAsset) {
   const flags = reviewRiskFlags(asset);
   const chips = new Set<string>();
+  reviewGovernanceGroupsForAsset(asset, Boolean(asset.pendingReviewWrite)).filter((group) => group.active).forEach((group) => chips.add(group.label));
   if (assetEnterpriseStatus(asset) === "Needs Review") chips.add("Needs review");
   if (flags.includes("Rights unclear")) chips.add("Rights missing");
   if (flags.includes("People/minors status unresolved")) chips.add("People unresolved");
   if (flags.some((flag) => /source/i.test(flag))) chips.add("Source missing");
-  return [...chips].slice(0, 3);
+  return [...chips].slice(0, 4);
 }
 
 export function EnterpriseReviewPage() {
@@ -147,6 +148,11 @@ export function EnterpriseReviewPage() {
   }) : null;
   const detailRows = reviewPresentation?.detailRows || [];
   const evidenceTableRows = reviewPresentation?.evidenceTableRows || [];
+  const governanceGroups = selectedGuidance.governanceGroups || [];
+  const sensitiveEvidence = selectedGuidance.sensitiveMinistryEvidence || [];
+  const publicDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Approve Public", checklist, note: comment }) : "";
+  const requestInfoDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Request More Info", checklist, note: comment }) : "";
+  const restrictDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Do Not Use", checklist, note: comment }) : "";
   const selectQueue = (nextQueue: ReviewQueueId) => {
     setQueueId(nextQueue);
     setCurrentPage(1);
@@ -164,9 +170,9 @@ export function EnterpriseReviewPage() {
   };
   const decide = async (nextStatus: EnterpriseStatus, action: "Approve Public" | "Request More Info" | "Do Not Use") => {
     if (!selectedAsset) return;
-    const missing = reviewDecisionMissingLabels(action, checklist, comment);
-    if (missing.length) {
-      setDecisionMessage(`Review blocked. Missing evidence: ${missing.join(", ")}.`);
+    const disabledReason = reviewActionDisabledReason({ asset: selectedAsset, action, checklist, note: comment });
+    if (disabledReason) {
+      setDecisionMessage(`Review blocked. ${disabledReason}.`);
       return;
     }
     const response = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role, id: selectedAsset.id, action, notes: comment || `Reviewer decision for ${displayTitle(selectedAsset)}. Pending ResourceSpace sync required.`, checklist, reviewerName: "Alex Kim" }) });
@@ -368,6 +374,14 @@ export function EnterpriseReviewPage() {
                 <span><small>Policy</small><strong>{selectedAsset.downloadPolicy || "not-downloadable"}</strong></span>
                 <span><small>Next required action</small><strong>{topBlocker}</strong></span>
               </section>
+              <section className="ed-review-governance-groups" aria-label="Review queue governance groups">
+                {governanceGroups.map((group) => (
+                  <span className={group.active ? "is-active" : ""} key={group.id} title={group.detail}>
+                    <strong>{group.label}</strong>
+                    <small>{group.active ? group.detail : "clear"}</small>
+                  </span>
+                ))}
+              </section>
               <nav className="ed-tabs is-large" role="tablist" aria-label="Review workbench sections">{reviewWorkbenchTabs.map((tab) => <button className={activeWorkbenchTab === tab ? "is-active" : ""} type="button" role="tab" aria-selected={activeWorkbenchTab === tab} key={tab} onClick={() => setActiveWorkbenchTab(tab)}>{tab}</button>)}</nav>
               <section className="ed-card ed-metadata-card"><dl className="ed-metadata is-two">{detailRows.map(([l, v]) => <div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section>
               <div className="ed-review-cards">
@@ -397,6 +411,15 @@ export function EnterpriseReviewPage() {
                   ))}
                 </div>
                 {selectedGuidance.approveMissingLabels.length ? <p className="ed-review-missing"><AlertTriangle size={16} />Approval blocked until required evidence is complete.<span>Missing: {selectedGuidance.approveMissingLabels.slice(0, 3).join(", ")}.</span></p> : <p className="ed-inline-success">Evidence packet can be queued for approval review.</p>}
+                <div className="ed-sensitive-evidence" aria-label="Sensitive ministry evidence model">
+                  <h4>Sensitive ministry evidence</h4>
+                  {sensitiveEvidence.map((item) => (
+                    <p className={cn(item.active && "is-active", item.blocked && "is-blocked")} key={item.id}>
+                      <span><strong>{item.label}</strong><small>{item.owner} · {item.detail}</small></span>
+                      <em>{item.blocked ? item.missingEvidence.slice(0, 2).join(", ") : item.active ? "evidence required" : "not signaled"}</em>
+                    </p>
+                  ))}
+                </div>
                 {decisionMessage ? <p className="ed-inline-success">{decisionMessage}</p> : null}
                 <div className="ed-evidence-checks">
                   {reviewEvidenceGroups.map((group) => (
@@ -423,10 +446,11 @@ export function EnterpriseReviewPage() {
                   <ActionButton icon={FileText} onClick={() => queuePortalNote("Submission package review requested")}>View details</ActionButton>
                 </div>
                 <nav className="ed-review-decision-actions" aria-label="Review decision actions">
-                  <button type="button" onClick={() => decide("Approved", "Approve Public")}>Queue public decision</button>
-                  <button type="button" onClick={() => decide("Needs Review", "Request More Info")}>Request evidence</button>
-                  <button type="button" onClick={() => decide("Restricted", "Do Not Use")}>Restrict use</button>
+                  <button type="button" disabled={Boolean(publicDisabledReason)} title={publicDisabledReason || "Evidence complete for public decision."} onClick={() => decide("Approved", "Approve Public")}>Queue public decision</button>
+                  <button type="button" disabled={Boolean(requestInfoDisabledReason)} title={requestInfoDisabledReason || "Evidence complete for request decision."} onClick={() => decide("Needs Review", "Request More Info")}>Request evidence</button>
+                  <button type="button" disabled={Boolean(restrictDisabledReason)} title={restrictDisabledReason || "Evidence complete for restriction decision."} onClick={() => decide("Restricted", "Do Not Use")}>Restrict use</button>
                 </nav>
+                <p className="ed-action-disabled-reason">{publicDisabledReason || "Public approval evidence checks are complete; ResourceSpace still remains final truth."}</p>
               </section>
             </aside>
           </>

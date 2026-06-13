@@ -2,6 +2,7 @@ import type { StockMediaAsset } from "@/lib/types";
 import {
   assetHasChildrenYouthRisk,
   assetHasHymnMusicRisk,
+  assetHasRenditionGap,
   assetHasSacramentRisk,
   assetHasTaxonomyDrift,
   assetHasTestimonyRisk,
@@ -39,6 +40,11 @@ export const reviewActions = [
 export type ReviewActionBackend = (typeof reviewActions)[number]["backend"];
 
 export const reviewQueues = [
+  { id: "risk", label: "Risk triage", description: "Children/youth, sacrament, worship, music/teaching, testimony/private, or other sensitive ministry evidence." },
+  { id: "missing-evidence", label: "Missing evidence", description: "Approval-critical metadata, reviewer notes, rights, people, source, or usage evidence gaps." },
+  { id: "stale-review", label: "Stale review", description: "Approved or lifecycle-sensitive records due for re-review." },
+  { id: "derivative-gap", label: "Derivative gap", description: "Approved-copy, preview, dimensions, or rendition readiness gaps." },
+  { id: "pending-write", label: "Pending write", description: "Portal decision queued; ResourceSpace remains unchanged until sync/follow-up succeeds." },
   { id: "pending", label: "Missing copyright evidence", description: "Evidence packet incomplete or needs reviewer decision." },
   { id: "children-youth", label: "People/minors status unresolved", description: "Contains, may contain, or has not ruled out people/youth." },
   { id: "missing-source", label: "Source access restricted", description: "Source, album, photographer, or custody path missing." },
@@ -71,6 +77,16 @@ export function assetMatchesReviewQueue(asset: StockMediaAsset, queueId: ReviewQ
   const largeMedia = asset.mediaType === "video" || asset.mediaType === "audio" || (asset.fileSizeBytes || 0) > LARGE_MEDIA_BYTES;
 
   switch (queueId) {
+    case "risk":
+      return reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "risk" && group.active);
+    case "missing-evidence":
+      return reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "missing-evidence" && group.active);
+    case "stale-review":
+      return reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "stale-review" && group.active);
+    case "derivative-gap":
+      return reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "derivative-gap" && group.active);
+    case "pending-write":
+      return Boolean(asset.pendingReviewWrite);
     case "pending":
       return assetNeedsReview(asset);
     case "children-youth":
@@ -108,11 +124,69 @@ function meaningfulMetadataValue(value?: string) {
   return Boolean(value && !/^(unknown|not exported|not applicable|none|n\/a)$/i.test(value.trim()));
 }
 
+function assetHasWorshipOrPrivateSignal(asset: StockMediaAsset) {
+  const text = [
+    asset.sensitiveContext,
+    asset.doctrineSacramentTheme,
+    asset.testimonyTheme,
+    asset.eventName,
+    ...(asset.tags || []),
+    ...(asset.tjcTerms || []),
+    ...(asset.usageTerms || [])
+  ].filter(Boolean).join(" ");
+  return /worship|service|prayer|altar|private|pastoral|counseling|grief|illness/i.test(text);
+}
+
+function assetHasTeachingSignal(asset: StockMediaAsset) {
+  const text = [
+    asset.sermonTitle,
+    asset.publicationTitle,
+    asset.doctrineSacramentTheme,
+    asset.sensitiveContext,
+    ...(asset.tags || []),
+    ...(asset.tjcTerms || []),
+    ...(asset.usageTerms || [])
+  ].filter(Boolean).join(" ");
+  return /sermon|teaching|lesson|doctrine|bible study|religious education|publication/i.test(text);
+}
+
+export type ReviewGovernanceGroupId = "risk" | "missing-evidence" | "stale-review" | "derivative-gap" | "pending-write";
+
+export type ReviewGovernanceGroup = {
+  id: ReviewGovernanceGroupId;
+  label: string;
+  active: boolean;
+  detail: string;
+};
+
+export function reviewGovernanceGroupsForAsset(asset: StockMediaAsset, hasPendingWrite = Boolean(asset.pendingReviewWrite)): ReviewGovernanceGroup[] {
+  const riskSignals = [
+    assetHasChildrenYouthRisk(asset) && "children/youth",
+    assetHasSacramentRisk(asset) && "sacrament",
+    assetHasWorshipOrPrivateSignal(asset) && "worship/private",
+    (assetHasHymnMusicRisk(asset) || assetHasTeachingSignal(asset)) && "music/teaching",
+    assetHasTestimonyRisk(asset) && "testimony/private moments"
+  ].filter(Boolean);
+  const missing = missingReviewFields(asset);
+  const stale = assetNeedsStaleApprovalReview(asset);
+  const derivativeGap = assetHasRenditionGap(asset);
+
+  return [
+    { id: "risk", label: "Risk", active: riskSignals.length > 0, detail: riskSignals.length ? riskSignals.join(", ") : "No elevated sensitive-ministry signal" },
+    { id: "missing-evidence", label: "Missing evidence", active: missing.length > 0, detail: missing.length ? missing.join(", ") : "Required exported fields present" },
+    { id: "stale-review", label: "Stale review", active: stale, detail: stale ? "Approval, expiry, embargo, withdrawal, or recheck date needs reviewer attention" : "Lifecycle dates current" },
+    { id: "derivative-gap", label: "Derivative gap", active: derivativeGap, detail: derivativeGap ? "Approved copy, preview derivative, or dimensions missing" : "Derivative evidence present" },
+    { id: "pending-write", label: "Pending write", active: hasPendingWrite, detail: hasPendingWrite ? "Portal decision queued; ResourceSpace truth still pending" : "No pending ResourceSpace write" }
+  ];
+}
+
 export function reviewRiskFlags(asset: StockMediaAsset, duplicateGroupCounts?: Map<string, number>) {
   const flags: string[] = [];
   if (assetHasChildrenYouthRisk(asset)) flags.push("Children/youth");
   if (assetHasSacramentRisk(asset)) flags.push("Doctrine/sacrament review");
+  if (assetHasWorshipOrPrivateSignal(asset)) flags.push("Worship/private context review");
   if (assetHasHymnMusicRisk(asset)) flags.push("Music/hymn rights review");
+  if (assetHasTeachingSignal(asset)) flags.push("Teaching/doctrine review");
   if (assetHasTestimonyRisk(asset)) flags.push("Testimony/pastoral sensitivity review");
   if (asset.peopleRisk === "Adults visible") flags.push("People visible");
   if (!asset.peopleRisk || asset.peopleRisk === "Unknown") flags.push("People/minors status unresolved");
@@ -124,6 +198,7 @@ export function reviewRiskFlags(asset: StockMediaAsset, duplicateGroupCounts?: M
   if (assetNeedsAiEnrichment(asset)) flags.push("Metadata enrichment");
   if (assetHasTaxonomyDrift(asset)) flags.push("Taxonomy drift");
   if (assetNeedsStaleApprovalReview(asset)) flags.push("Stale approval");
+  if (assetHasRenditionGap(asset)) flags.push("Derivative gap");
   if (assetHasUnresolvedAiSuggestionDebt(asset)) flags.push("AI/smart suggestion review");
   if (asset.mediaType === "video" || asset.mediaType === "audio" || (asset.fileSizeBytes || 0) > LARGE_MEDIA_BYTES) flags.push("Large media");
   routeAssetForReview(asset).forEach((reason) => flags.push(reason.label));
