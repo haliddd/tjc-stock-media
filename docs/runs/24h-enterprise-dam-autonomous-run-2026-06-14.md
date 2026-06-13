@@ -133,9 +133,23 @@ Pending next poll.
 
 ## Baseline Checks
 
-Pending rerun for this 2026-06-14-labeled ledger. Prior orchestrator baseline on
-2026-06-13 passed static/build/guard/launch-readiness with one existing `.env`
-placeholder warning.
+Baseline rerun completed on 2026-06-13 09:29 EDT for this
+2026-06-14-labeled ledger.
+
+| Command | Result | Notes |
+|---|---|---|
+| `git diff --check` | pass | No whitespace errors. |
+| `npm --prefix frontend run typecheck` | pass | `tsc --noEmit`. |
+| `npm --prefix frontend test` | pass | 3 files, 41 tests passed. |
+| `npm --prefix frontend run build` | pass | Next.js production build passed. |
+| `node scripts/private-source-guard.mjs` | pass | Private source guard passed. |
+| `node scripts/public-env-guard.mjs` | pass | Public env guard passed. |
+| `node scripts/api-identity-guard.mjs` | pass | API identity guard passed for 19 routes. |
+| `node scripts/api-payload-guard.mjs` | pass | API payload guard passed. |
+| `node scripts/api-audit-guard.mjs` | pass | API audit guard passed. |
+| `node scripts/storage-honesty-guard.mjs` | pass | Storage honesty guard passed. |
+| `node scripts/git-hygiene-guard.mjs` | pass | Git hygiene guard passed. |
+| `make launch-readiness` | pass with warning | failures=0, warnings=1; warning is known `.env` placeholder values. |
 
 ## Reports To Produce
 
@@ -148,3 +162,4 @@ placeholder warning.
 | Time | Summary | Checks | Blockers | Next |
 |---|---|---|---|---|
 | 2026-06-13 09:26 EDT | Verified repo, branch, remotes, dirty state, and prior worker launch. Remote push/PR blocked by `origin`/`haliddd` ambiguity. | preflight, git verification | push/PR blocked until remote target resolved | baseline checks and PR inventory |
+| 2026-06-13 09:29 EDT | Baseline checks passed. | diff check, typecheck, tests, build, guards, launch-readiness | known `.env` placeholder warning only | PR/branch inventory |
