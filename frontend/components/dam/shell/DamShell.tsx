@@ -67,7 +67,7 @@ function BetaAccessBanner() {
       <span>Role personas are for QA testing only.</span>
       <span>Not production SSO.</span>
       <span>Do not upload sensitive production media yet.</span>
-      <span>Source system connection pending; previews and metadata are beta fixtures where noted.</span>
+      <span>Hosted ResourceSpace media storage is pending; metadata may be beta fixtures where noted.</span>
       <button type="button" onClick={logout} disabled={loggingOut}>Log out</button>
     </section>
   );

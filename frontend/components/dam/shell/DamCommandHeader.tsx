@@ -11,14 +11,12 @@ const FIRST_LEVEL_PATHS = new Set([
   "/upload",
   "/insights",
   "/admin",
-  "/guide",
-  "/brand-hub"
+  "/guide"
 ]);
 
 const ROOT_LABELS: Record<string, string> = {
   admin: "Admin",
   assets: "Library",
-  "brand-hub": "Brand Hub",
   collections: "Collections",
   guide: "Help",
   insights: "Insights",

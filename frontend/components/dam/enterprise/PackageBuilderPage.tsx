@@ -32,7 +32,7 @@ import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
 import { routeWithRole } from "@/lib/role-routes";
 import { matchesCatalogFilter } from "@/lib/catalog-language";
 import { cn } from "@/lib/ui";
-import { ActionButton, AssetThumb, ErrorCard, LoadingCard } from "./EnterpriseShared";
+import { ActionButton, AssetThumb, DistributionReadinessCard, ErrorCard, LoadingCard } from "./EnterpriseShared";
 
 export function EnterprisePackageBuilderPage() {
   const router = useRouter();
@@ -47,7 +47,7 @@ export function EnterprisePackageBuilderPage() {
   const [sourceCollectionChecked, setSourceCollectionChecked] = useState(false);
   const [packageFilters, setPackageFilters] = useState<string[]>([]);
   const [packageFacetQuery, setPackageFacetQuery] = useState("");
-  const [draft, setDraft] = useState(() => createPackageDraft("Media Set Draft"));
+  const [draft, setDraft] = useState(() => createPackageDraft("Distribution Set Draft"));
   const [packageMessage, setPackageMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const search = useAssetsSearch({
@@ -121,7 +121,7 @@ export function EnterprisePackageBuilderPage() {
     ? governance.reason
     : "Readiness unlocks after each required section has at least one approved reference.";
   const previewDisabledReason = governance.canPreview ? undefined : "Available after approved references are selected.";
-  const shareDisabledReason = governance.canShare ? undefined : "Disabled in beta until identity/share policy is configured.";
+  const shareDisabledReason = governance.canShare ? undefined : "Disabled in beta until identity and internal access policy are configured.";
   const publishDisabledReason = governance.canPublish ? undefined : governance.totalRefs ? readinessReason : "Available after approved references are selected.";
   const saveDisabledReason = canSaveDraft ? undefined : "Save draft requires Contributor, Reviewer, or DAM Admin role.";
   const availableAssetsForTargetSection = (sectionId: string) => availableAssetsForSection({ draft, sectionId, assets: sourceAssets, approvedOnly, statusOf: packageAssetStatus });
@@ -153,7 +153,7 @@ export function EnterprisePackageBuilderPage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Package draft save failed.");
       if (payload.package?.id) setDraft((current) => ({ ...current, id: payload.package.id, updatedAt: payload.package.updatedAt }));
-      setPackageMessage(`Draft saved to ${payload.storageMode || "local-json"} with ${payload.package?.governance?.totalRefs ?? governance.totalRefs} ${refLabel}.`);
+      setPackageMessage(`Distribution set draft saved to ${payload.storageMode || "local-json"} with ${payload.package?.governance?.totalRefs ?? governance.totalRefs} ${refLabel}.`);
     } catch (error) {
       setPackageMessage(error instanceof Error ? error.message : "Package draft save failed.");
     } finally {
@@ -170,7 +170,7 @@ export function EnterprisePackageBuilderPage() {
   };
 
   const queuePublish = () => {
-    setPackageMessage(opsView ? "Readiness review can be queued locally. ResourceSpace originals stay canonical and are not copied." : "Readiness review can be queued locally. Original files stay protected and are not copied.");
+    setPackageMessage(opsView ? "Readiness review can be queued locally. DAM source files stay canonical and are not copied." : "Readiness review can be queued locally. Source files stay protected and are not copied.");
   };
 
   const sectionLabel = (title: string) => title.replace(/^\d+\.\s*/, "");
@@ -205,7 +205,7 @@ export function EnterprisePackageBuilderPage() {
   const populatedSections = sections.filter((section) => section.resourceSpaceAssetIds.length > 0).length;
   const lastSavedLabel = draft.updatedAt ? `Last saved ${new Date(draft.updatedAt).toLocaleString()}` : "Not saved yet";
   const ownerLabel = opsView ? "DAM Operations" : "Media team";
-  const packageTitle = visibleDraftTitle.replace(/ResourceSpace Toolkit Draft/gi, "Media Set Draft").replace(/Toolkit Draft/gi, "Media Set Draft");
+  const packageTitle = visibleDraftTitle.replace(/ResourceSpace Toolkit Draft/gi, "Distribution Set Draft").replace(/Toolkit Draft/gi, "Distribution Set Draft").replace(/Media Set Draft/gi, "Distribution Set Draft");
   const dataSourceSummary = sourceLabel(search.source)
     .replace(/ResourceSpace export/gi, "ResourceSpace records")
     .replace(/\bexport\b/gi, "records");
@@ -217,7 +217,7 @@ export function EnterprisePackageBuilderPage() {
     ["Required", "Yes"],
     ["Minimum references", "1"],
     ["Allowed media", "Approved previews only"],
-    ["Originals", "Protected"]
+    ["Source files", "Protected"]
   ];
   const readinessRows = [
     {
@@ -228,12 +228,12 @@ export function EnterprisePackageBuilderPage() {
     {
       label: "Access scope",
       status: governance.canShare ? "ready" : "blocked",
-      detail: governance.canShare ? "Internal access scope passes without public-link creation." : "Access scope remains locked until approved references and share policy pass."
+      detail: governance.canShare ? "Internal access scope passes without public-link creation." : "Access scope remains locked until approved references and internal policy pass."
     },
     {
       label: "Readiness review",
       status: governance.canPublish ? "ready" : governance.totalRefs ? "review" : "blocked",
-      detail: governance.canPublish ? "Readiness checks pass while originals stay protected." : readinessReason
+      detail: governance.canPublish ? "Readiness checks pass while source files stay protected." : readinessReason
     }
   ];
 
@@ -241,20 +241,20 @@ export function EnterprisePackageBuilderPage() {
     <div className="enterprise-page enterprise-package-builder">
       <header className="ed-package-builder-header">
         <div className="ed-package-title-block">
-          <span className="ed-package-builder-kicker">Package Builder</span>
-          <h1>{packageTitle || "ResourceSpace Toolkit Draft"}</h1>
+          <span className="ed-package-builder-kicker">Distribution set draft</span>
+          <h1>{packageTitle || "Distribution Set Draft"}</h1>
           <p>
             <span>{draft.status === "draft" ? "Draft" : draft.status}</span>
             <span>{ownerLabel}</span>
             <span>{lastSavedLabel}</span>
             <span>Reference-only internal beta</span>
-            {opsView ? <span>ResourceSpace Toolkit Draft</span> : null}
+            {opsView ? <span>DAM source references</span> : null}
           </p>
         </div>
         <div className="ed-package-builder-actions" aria-label="Package builder actions">
           <ActionButton tone="primary" icon={Plus} ariaLabel="Add approved references to package draft" onClick={handlePrimaryPackageAction}>Add approved references</ActionButton>
           <ActionButton icon={UploadCloud} ariaLabel="Save package draft" disabled={saving || !canSaveDraft} disabledReason={saving ? "Saving draft now." : saveDisabledReason} onClick={saveDraft}>{saving ? "Saving..." : "Save draft"}</ActionButton>
-          <ActionButton icon={MoreHorizontal} ariaLabel="Additional package actions" disabled disabledReason="Reference-only beta: no ZIP, public link, original-file access, external share, or writeback will be created.">More actions</ActionButton>
+          <ActionButton icon={MoreHorizontal} ariaLabel="Additional package actions" disabled disabledReason="Reference-only beta: no ZIP, public link, source-file access, external share, or writeback will be created.">More actions</ActionButton>
         </div>
       </header>
 
@@ -295,7 +295,7 @@ export function EnterprisePackageBuilderPage() {
           <aside className="ed-package-left-rail" aria-label="Package outline">
             <section className="ed-panel ed-package-outline" aria-labelledby="package-outline-title">
               <div className="ed-panel-title">
-                <h2 id="package-outline-title">Package outline</h2>
+                <h2 id="package-outline-title">Set outline</h2>
                 <span>{sections.length.toLocaleString()} sections</span>
               </div>
               <div className="ed-package-outline-list" role="tablist" aria-label="Package sections">
@@ -314,11 +314,11 @@ export function EnterprisePackageBuilderPage() {
                   );
                 })}
               </div>
-              <p className="ed-package-outline-helper">Sections define where approved references appear in the internal media set.</p>
+              <p className="ed-package-outline-helper">Sections organize a governed draft. They do not grant item-level clearance.</p>
               <details className="ed-package-taxonomy">
-                <summary>Browse ResourceSpace assets</summary>
-                <header>
-                    <span>Browse ResourceSpace assets</span>
+                  <summary>Browse DAM records</summary>
+                  <header>
+                    <span>Browse DAM records</span>
                   {packageFilters.length ? <button type="button" onClick={() => setPackageFilters([])}>Clear</button> : <em>{assets.length.toLocaleString()}</em>}
                 </header>
                 <label className="ed-taxonomy-search">
@@ -381,7 +381,7 @@ export function EnterprisePackageBuilderPage() {
                     <header>
                       <div>
                         <h3 id="selected-references-title">Selected references</h3>
-                        <p>Governed records assigned to {activeSectionTitle}. Originals stay private.</p>
+                        <p>Governed records assigned to {activeSectionTitle}. Source files stay private.</p>
                       </div>
                       <span>{activeGovernance.assets.length.toLocaleString()} selected</span>
                     </header>
@@ -399,7 +399,7 @@ export function EnterprisePackageBuilderPage() {
                             </div>
                           </div>
                           <div className="ed-package-reference-actions">
-                            <button type="button" disabled={!item.canPreview} title={item.canPreview ? undefined : "Preview waits for approved, role-safe media references."} onClick={() => setPackageMessage(`${displayTitle(item.asset)} preview check stays role-safe. No originals exposed.`)}>Preview</button>
+                            <button type="button" disabled={!item.canPreview} title={item.canPreview ? undefined : "Preview waits for approved, role-safe media references."} onClick={() => setPackageMessage(`${displayTitle(item.asset)} preview check stays role-safe. No source files exposed.`)}>Preview</button>
                             <button type="button" onClick={() => setDraft((current) => removePackageAssetRef(current, activeResolvedSection.id, item.asset))}>Remove</button>
                           </div>
                         </article>
@@ -411,7 +411,7 @@ export function EnterprisePackageBuilderPage() {
                     <FileText size={28} aria-hidden="true" />
                     <div>
                       <strong>No governed references selected for {activeSectionTitle}</strong>
-                      <span>Add approved preview references that have cleared rights and usage review. Original files remain private and are never copied into this draft.</span>
+                      <span>Add approved preview references that have cleared rights and usage review. Source files remain private and are never copied into this draft.</span>
                       <button type="button" disabled={!activeAvailableAssets[0]} title={!activeAvailableAssets[0] ? `No approved ${sourceScopeLabel} reference is available for this section.` : undefined} onClick={() => addFirstAvailableAsset(activeResolvedSection.id)}>Add references to {activeSectionTitle}</button>
                     </div>
                   </div>
@@ -445,6 +445,14 @@ export function EnterprisePackageBuilderPage() {
           </main>
 
           <aside className="ed-panel ed-package-details" aria-label="Readiness and governance inspector">
+            <DistributionReadinessCard
+              state={governance.canPublish ? "Approved" : governance.totalRefs ? "Needs Review" : "Draft"}
+              selectedCount={governance.totalRefs}
+              readyCount={governance.portalReadyRefs}
+              blockerCount={governance.blockedRefs}
+              detail={governance.canPublish ? "Every selected item is Portal Ready for approved derivatives." : "Item-level blockers must clear before any delivery handoff."}
+              blockers={governance.blockerSummary.map((item) => `${item.label}: ${item.count}`)}
+            />
             <details open>
               <summary>Readiness</summary>
               <div className="ed-command-readiness">
@@ -464,25 +472,25 @@ export function EnterprisePackageBuilderPage() {
                 <ActionButton tone="primary" icon={Lock} ariaLabel="Review package readiness gate" disabled={publishBlocked} disabledReason={publishDisabledReason} onClick={queuePublish}>Review readiness</ActionButton>
               </div>
               <p className="ed-action-helper">{readinessUnlockCopy}</p>
-              <p className="ed-action-helper">Reference-only beta: no ZIP, public link, original-file access, external share, or ResourceSpace writeback is created.</p>
+              <p className="ed-action-helper">Distribution set draft only: no ZIP, public link, source-file access, external share, or ResourceSpace writeback is created.</p>
             </details>
             <details>
               <summary>Access scope</summary>
-              <p className="ed-action-helper">Internal reference set only. No public link, ZIP package, original copying, or external share is created in beta.</p>
+              <p className="ed-action-helper">Internal distribution draft only. No public link, ZIP package, source-file copying, or external share is created in beta.</p>
               <label className="ed-toggle">Portal Ready only <input type="checkbox" checked={approvedOnly} onChange={(event) => setApprovedOnly(event.target.checked)} /></label>
             </details>
             <details open>
               <summary>Governance guarantees</summary>
               <p className="ed-checkline"><CheckCircle2 size={16} />References retained only</p>
               {opsView ? <p className="ed-checkline"><CheckCircle2 size={16} />DAM record refs retained</p> : null}
-              <p className="ed-checkline"><CheckCircle2 size={16} />Original copying disabled</p>
-              <p className="ed-checkline"><CheckCircle2 size={16} />Original files remain private</p>
+              <p className="ed-checkline"><CheckCircle2 size={16} />Source-file copying disabled</p>
+              <p className="ed-checkline"><CheckCircle2 size={16} />Source files remain private</p>
               <p className="ed-checkline"><ShieldCheck size={16} />No ResourceSpace writeback from this draft</p>
               <p className="ed-governance-note">{governance.auditMessage}</p>
             </details>
             <details open>
-              <summary>Package summary</summary>
-              <div className="ed-summary-grid">{[[String(sections.length), "Sections"], [String(governance.totalRefs), "References"], [String(governance.portalReadyRefs), "Portal Ready"], [String(governance.blockedRefs), "Blockers"], ["0", "File copies"], ["References only", "Original copying disabled"], ["Protected", "Original files"]].map(([v, l]) => <span key={l}><strong>{v}</strong><small>{l}</small></span>)}</div>
+              <summary>Distribution summary</summary>
+              <div className="ed-summary-grid">{[[String(sections.length), "Sections"], [String(governance.totalRefs), "References"], [String(governance.portalReadyRefs), "Portal Ready"], [String(governance.blockedRefs), "Blockers"], ["0", "File copies"], ["References only", "Source-file copying disabled"], ["Protected", "Source files"]].map(([v, l]) => <span key={l}><strong>{v}</strong><small>{l}</small></span>)}</div>
               <p className="ed-governance-note">Data source: {dataSourceSummary}</p>
             </details>
           </aside>

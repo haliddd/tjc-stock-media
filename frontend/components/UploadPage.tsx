@@ -29,9 +29,9 @@ const requiredHint = <span className="text-xs font-black text-[#7a5a19]">Require
 const intakeTypes = [
   { id: "event-photo", label: "Event photos", detail: "Event, people visibility, source, and use case.", icon: UploadCloud },
   { id: "youth", label: "Youth/children", detail: "Consent and visibility evidence required.", icon: Users },
-  { id: "sermon", label: "Sermon/teaching", detail: "Speaker, context, and usage scope.", icon: FileText },
+  { id: "sermon", label: "Sermon/teaching photos", detail: "Speaker, context, and usage scope for review.", icon: FileText },
   { id: "graphics", label: "Graphics/flyers", detail: "Design rights, fonts, and channel fit.", icon: FileCheck2 },
-  { id: "music", label: "Hymn/music", detail: "Recording and copyright basis.", icon: ShieldCheck },
+  { id: "music", label: "Hymn/music context", detail: "Future audio/video route; beta only flags related photos or graphics.", icon: ShieldCheck },
   { id: "source-link", label: "Source link only", detail: "Media-team link or shared source for reviewer intake.", icon: LinkIcon }
 ] as const;
 
@@ -279,6 +279,7 @@ export function UploadPage() {
         <dl className="send-command-ledger" aria-label="Send media safety summary">
           {[
             ["Intake", "Review packet"],
+            ["Media scope", "Photo beta"],
             ["Default", uploadDefaultState.status],
             ["Publish", "Never from Send"],
             ["Truth", "DAM review"]
@@ -295,6 +296,7 @@ export function UploadPage() {
         signals={[
           { label: "Send behavior", value: "Never publishes", tone: "blocked" },
           { label: "Reviewer packet", value: "Source, people, rights", tone: "info" },
+          { label: "Hosted beta", value: "Photos only", tone: "info" },
           { label: "Default state", value: uploadDefaultState.status, tone: "review" },
           { label: "Safe outcome", value: "Approval creates usable copy", tone: "approved" }
         ]}
@@ -354,7 +356,7 @@ export function UploadPage() {
             <select className={inputClass} name="sourceClass" defaultValue="" required>
               <option value="" disabled>Choose one</option>
               <option>Church photographer / TJC-created</option>
-              <option>Existing media archive master</option>
+              <option>Existing media archive record</option>
               <option>Existing media library record</option>
               <option>Online/free source</option>
               <option>Third-party stock/license</option>
@@ -429,6 +431,35 @@ export function UploadPage() {
             <span className="flex items-center justify-between gap-2">Consent/restrictions {requiredHint}</span>
             <textarea className="min-h-28 rounded-[12px] border border-[#d8e1da] bg-white p-3 text-sm font-semibold text-tjc-ink placeholder:text-[#68756d]" name="notes" placeholder="Known permissions, consent, internal-only limits, or restrictions..." rows={4} required />
           </label>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className={labelClass}>
+              <span className="flex items-center justify-between gap-2">Doctrine/sacrament sensitivity {requiredHint}</span>
+              <select className={inputClass} name="doctrineSacramentSensitive" defaultValue="" required>
+                <option value="" disabled>Choose one</option>
+                <option>No</option>
+                <option>Yes</option>
+                <option>Unknown - reviewer must check</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              <span className="flex items-center justify-between gap-2">Testimony/pastoral sensitivity {requiredHint}</span>
+              <select className={inputClass} name="testimonyPastoralSensitive" defaultValue="" required>
+                <option value="" disabled>Choose one</option>
+                <option>No</option>
+                <option>Yes</option>
+                <option>Unknown - reviewer must check</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              <span className="flex items-center justify-between gap-2">Hymn/music present {requiredHint}</span>
+              <select className={inputClass} name="hymnMusicPresent" defaultValue="" required>
+                <option value="" disabled>Choose one</option>
+                <option>No</option>
+                <option>Yes - future rights route</option>
+                <option>Unknown - reviewer must check</option>
+              </select>
+            </label>
+          </div>
         </section>
 
         <section data-send-step="3" className={cn("dam-packet-panel grid gap-4 rounded-[14px] border border-[#e5e7eb] bg-white p-4", step !== 3 && "hidden")}>

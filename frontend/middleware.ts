@@ -16,9 +16,16 @@ function isPublicPath(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  if (pathname === "/brand-hub" || pathname.startsWith("/brand-hub/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/guide";
+    url.searchParams.set("section", "policies");
+    url.hash = "policies";
+    return NextResponse.redirect(url);
+  }
   if (!betaAuthEnabled()) return NextResponse.next();
 
-  const { pathname, search } = request.nextUrl;
   if (isPublicPath(pathname)) return NextResponse.next();
   if (pathname === "/beta-login" || pathname.startsWith("/api/beta-auth/")) {
     return NextResponse.next();

@@ -105,7 +105,7 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
           <span>Last check</span>
           <strong>Current session</strong>
         </div>
-        {canAdmin(role) ? <Link href={routeWithRole("/admin#launch-gate", role)} role="menuitem">Open source details</Link> : <span className="dam-source-status-note">Admin-only source diagnostics hidden for this persona.</span>}
+        {canAdmin(role) ? <Link href={routeWithRole("/admin#launch-gate", role)} role="menuitem">Open source details</Link> : <span className="dam-source-status-note">Admin-only source details hidden for this persona.</span>}
       </div>
     </details>
   );

@@ -726,6 +726,9 @@ expect_code 400 noncanonical-upload-tags \
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=qa-only' \
   -F 'intakeNotes=QA invalid taxonomy intake.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -744,6 +747,9 @@ expect_json_status 400 noncanonical-upload-tags-payload-safe "$normal_user_paylo
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=qa-only' \
   -F 'intakeNotes=QA invalid taxonomy intake.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -772,6 +778,9 @@ if (text.includes("../private") || /source path|master drive|checksum|[a-f0-9]{3
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=source path, master drive, checksum' \
   -F 'intakeNotes=QA unsafe tag intake.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -804,6 +813,9 @@ if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnost
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA no-file intake with source link only.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -832,6 +844,9 @@ if (/javascript:|source path|master drive|checksum|\.\.\/private/i.test(text)) {
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA unsafe source link intake.' \
   -F 'sourceLink=javascript:alert(1)' \
@@ -860,6 +875,9 @@ if (text.includes("../private") || /source path|master drive|checksum/i.test(tex
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA unsafe display fields.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -888,6 +906,9 @@ if (/[a-f0-9]{32,}/i.test(text)) {
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA checksum-shaped display fields.' \
   -F 'sourceLink=https://drive.google.com/example' \

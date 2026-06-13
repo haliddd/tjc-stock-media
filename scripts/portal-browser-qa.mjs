@@ -323,7 +323,7 @@ async function waitForAppReady(page, routePath, role) {
   if (pathname === "/review" && (role === "Reviewer" || role === "DAM Admin")) {
     await page.waitForFunction(() => !/Loading ResourceSpace review queue/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
     await page.locator(".ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 })
-      .catch(() => page.getByText("Review Evidence").first().waitFor({ state: "visible", timeout: 30000 }));
+      .catch(() => page.getByText(/Evidence and next action|Review Evidence/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {}));
   }
 }
 
@@ -378,10 +378,16 @@ async function fillUploadRightsStep(page) {
   await page.getByLabel("Usage rights").selectOption("TJC-owned / permission confirmed");
   await page.getByLabel("Suggested approval direction").selectOption("Likely internal ministry use only");
   await page.getByLabel("Consent/restrictions").fill("No consent restrictions; no people visible.");
+  await page.getByLabel("Doctrine/sacrament sensitivity").selectOption("No");
+  await page.getByLabel("Testimony/pastoral sensitivity").selectOption("No");
+  await page.getByLabel("Hymn/music present").selectOption("No");
 }
 
 async function clickUploadNext(page) {
-  await page.locator('[aria-label="Send actions"]').getByRole("button", { name: /^Next$/ }).click();
+  const scopedNext = page.locator('[aria-label="Send actions"]').getByRole("button", { name: /^Next$/ });
+  const next = await scopedNext.count() ? scopedNext.first() : page.getByRole("button", { name: /^Next$/ }).last();
+  await next.scrollIntoViewIfNeeded().catch(() => {});
+  await next.click();
 }
 
 async function advanceUploadToFiles(page, prefix = "Browser QA") {
@@ -403,7 +409,7 @@ async function fillReviewEvidence(page, note) {
 async function inspectPage(page, expected) {
   return page.evaluate((expectedPage) => {
     const doc = document.documentElement;
-    const visibleText = document.body.textContent || "";
+    const visibleText = document.body.innerText || document.body.textContent || "";
     const visibleImages = [...document.images].filter((img) => {
       const rect = img.getBoundingClientRect();
       return rect.width > 20 && rect.height > 20 && rect.bottom > 0 && rect.top < window.innerHeight;
@@ -658,11 +664,11 @@ browser = await launchBrowser();
   } else {
     await findSearchInput.fill("Bible");
     await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
-    await waitForVisibleText(page, "Can I use this?");
+    await waitForVisibleText(page, "Clearance status");
     if ((await findSearchInput.inputValue()) !== "Bible") failures.push("search interaction: search input did not retain query");
     if ((await page.getByText(/Bible/i).count()) < 1) failures.push("search interaction: search query did not surface Bible results");
   }
-  for (const text of ["Library", "Can I use this?", "Download"]) {
+  for (const text of ["Library", "Clearance status", "Download"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`library ResourceSpace shell: missing ${text}`);
   }
   if ((await page.getByLabel("Quick filters").count()) < 1) failures.push("library ResourceSpace shell: quick filters missing");
@@ -676,28 +682,28 @@ browser = await launchBrowser();
   const { page, context } = await newRolePage("Viewer", 390, 900);
   await gotoAndSettle(page, base);
   if ((await page.getByRole("heading", { name: /^(Library|Asset Library)$/ }).count()) < 1) failures.push("library mobile: library heading missing");
-  if ((await page.locator(".ed-grid .ed-asset-card").count()) < 1) failures.push("library mobile: asset cards missing");
+  if ((await page.locator(".ed-mobile-card-list article, .ed-desktop-table tbody tr").count()) < 1) failures.push("library mobile: asset rows missing");
   await closeContext(context);
 }
 
 {
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/brand-hub`);
-  for (const text of ["MVP 2024", "Worship God", "Follow Christ", "Love People", "Bring Hope", "Logo usage", "Allowed channels"]) {
-    if ((await page.getByText(text).count()) < 1) failures.push(`brand hub ResourceSpace shell: missing ${text}`);
+  for (const text of ["Policy Center", "Usage policy", "Rights & consent", "Public use rules", "Metadata standards"]) {
+    if ((await page.getByText(text).count()) < 1) failures.push(`brand hub policy redirect shell: missing ${text}`);
   }
-  if ((await page.locator(".ed-logo-grid img").count()) < 4) failures.push("brand hub ResourceSpace shell: TJC logo assets missing");
+  if (!/section=policies/.test(page.url())) failures.push("brand hub policy redirect shell: /brand-hub did not land on policy guidance");
   await closeContext(context);
 }
 
 {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/packages`);
-  for (const text of ["ResourceSpace Toolkit Draft", "Package outline", "Browse ResourceSpace assets", "DAM record refs retained", "References retained only", "Original copying disabled", "No ResourceSpace writeback from this draft"]) {
+  for (const text of ["Distribution set draft", "Set outline", "Browse DAM records", "References retained only", "Source-file copying disabled", "No ResourceSpace writeback from this draft"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`package builder ResourceSpace refs shell: missing ${text}`);
   }
-  const packageSummary = await page.locator(".ed-summary-grid").innerText().catch(() => "");
-  if (!/0\s+File copies/i.test(packageSummary.replace(/\s+/g, " "))) failures.push("package builder ResourceSpace refs shell: refs-only summary missing zero file copies");
+  const packageSummaries = await page.locator(".ed-summary-grid").allInnerTexts().catch(() => []);
+  if (!packageSummaries.some((summary) => /0\s+File copies/i.test(summary.replace(/\s+/g, " ")))) failures.push("package builder ResourceSpace refs shell: refs-only summary missing zero file copies");
   await closeContext(context);
 }
 
@@ -721,7 +727,7 @@ browser = await launchBrowser();
   if ((await page.getByText(new RegExp(escapeRegExp(qaAsset.detail.title), "i")).count()) < 1) {
     failures.push(`asset detail ResourceSpace shell: missing fixture title ${qaAsset.detail.title}`);
   }
-  for (const text of ["Can I use this?", "Rights & Restrictions"]) {
+  for (const text of ["Clearance status", "Evidence summary"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`asset detail ResourceSpace shell: missing ${text}`);
   }
   if ((await page.getByText("Download approved copy").count()) < 1 && (await page.getByText("Request DAM review").count()) < 1) {
@@ -737,7 +743,7 @@ browser = await launchBrowser();
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/review?queue=pending`);
   await waitForAppReady(page, "/review?queue=pending", "Reviewer");
-  for (const text of ["Review Queue", "Review Evidence", "Metadata completeness", "Risk signals", "Save progress", "Next asset", "Request info", "Owner/license evidence missing", "Rights checks require evidence before approval can proceed"]) {
+  for (const text of ["Review Queue", "Evidence and next action", "Metadata completeness", "Risk signals", "Save progress", "Next asset", "Request evidence", "Rights checks require evidence before approval can proceed"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`review ResourceSpace shell: missing ${text}`);
   }
   if ((await page.getByLabel("Review decision actions").count()) < 1) failures.push("review ResourceSpace shell: decision actions footer missing");
@@ -749,7 +755,7 @@ browser = await launchBrowser();
 
 {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
-  await gotoAndSettle(page, `${base}/upload`);
+  await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Browser QA");
   if ((await page.getByText("Drop files here or browse").count()) < 1) failures.push("upload file dropzone: drop/browse affordance missing");
   await page.getByText("Drop files here or browse").evaluate((node) => {
@@ -784,7 +790,7 @@ browser = await launchBrowser();
 
 {
   const { page, context } = await newRolePage("Contributor", 320, 900);
-  await gotoAndSettle(page, `${base}/upload`);
+  await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Mobile file preview QA");
   await page.getByLabel("Files").setInputFiles([{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }]);
   if ((await page.getByLabel("Selected file preview").getByText("qa-mobile-photo-with-a-long-name.png").count()) < 1) failures.push("upload mobile file preview: selected file missing");
@@ -795,7 +801,7 @@ browser = await launchBrowser();
 
 {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
-  await gotoAndSettle(page, `${base}/upload`);
+  await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   if ((await page.getByText("What are you sending?").count()) < 1) failures.push("upload desktop wizard: template-first prompt missing");
   if ((await page.getByText(/Send never publishes/).count()) < 1) failures.push("upload desktop wizard: never-publishes safety copy missing");
   if ((await page.locator('[data-component="UploadBottomActionBar"]').count()) > 0) failures.push("upload desktop rail: detached bottom submit bar still present");
@@ -877,7 +883,7 @@ browser = await launchBrowser();
 {
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, `${base}${qaAsset.detail.path}`);
-  if ((await page.locator(".ed-verdict-card").getByText("Can I use this?").count()) < 1) failures.push("asset detail one-verdict: primary verdict card missing");
+  if ((await page.locator(".ed-verdict-card").getByText("Clearance status").count()) < 1) failures.push("asset detail one-verdict: primary verdict card missing");
   if ((await page.getByText("Download approved copy").count()) < 1 && (await page.getByText("Request DAM review").count()) < 1) failures.push("asset detail: safe approved-copy/review action missing");
   const viewerDetailText = await page.locator("body").innerText();
   if (/Reviewer\/Admin source truth|Raw ResourceSpace status|Source\/original path|Pending write status/i.test(viewerDetailText)) failures.push("asset detail: viewer sees operations truth");
@@ -952,7 +958,7 @@ await captureProof("review-datatable-inspector.png", "Reviewer", 1440, 1000, "/r
 });
 
 await captureProof("media-preview-panel-image.png", "DAM Admin", 1440, 1000, qaAsset.detail.path, async (page) => {
-  await page.getByText("Can I use this?").first().scrollIntoViewIfNeeded();
+  await page.getByText("Clearance status").first().scrollIntoViewIfNeeded();
 });
 
 await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/guide", async (page) => {

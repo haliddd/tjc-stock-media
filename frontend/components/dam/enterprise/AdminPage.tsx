@@ -622,6 +622,103 @@ function AuditTable({ readiness, onViewAll }: { readiness?: DamReadinessResult |
   );
 }
 
+function AdminOperationalReadinessModules({
+  readiness,
+  onSelectModule
+}: {
+  readiness?: DamReadinessResult | null;
+  onSelectModule: SelectAdminModule;
+}) {
+  const metrics = readiness?.metrics;
+  const modules = [
+    {
+      label: "Needs Review",
+      value: metrics?.needsReview || 0,
+      detail: "Review workload before any broader reuse.",
+      action: "Open review workflow",
+      nav: "review-workflows"
+    },
+    {
+      label: "Blocked by Consent",
+      value: metrics?.childrenYouth || 0,
+      detail: "People/minors and consent-sensitive records.",
+      action: "Open rights policies",
+      nav: "rights-policies"
+    },
+    {
+      label: "Rights Expiring / Recheck Needed",
+      value: metrics?.staleApprovals || 0,
+      detail: "Lifecycle/recheck blockers stay ahead of usage metrics.",
+      action: "Open rights policies",
+      nav: "rights-policies"
+    },
+    {
+      label: "Metadata Gaps",
+      value: (metrics?.taxonomyDrift || 0) + (metrics?.aiEnrichment || 0),
+      detail: "Required fields, taxonomy drift, and suggestions needing human decision.",
+      action: "Open metadata fields",
+      nav: "metadata-schemas"
+    },
+    {
+      label: "Source Custody Gaps",
+      value: metrics?.missingSource || 0,
+      detail: "Source/provenance needs confirmation; no private paths exposed here.",
+      action: "Open storage",
+      nav: "storage-retention"
+    },
+    {
+      label: "Duplicate Links",
+      value: metrics?.duplicateCandidates || 0,
+      detail: "Canonical/source membership decisions; never auto-delete source appearances.",
+      action: "Open taxonomy",
+      nav: "taxonomy"
+    },
+    {
+      label: "Distribution Blockers",
+      value: (readiness?.actionBacklog || []).filter((item) => /package|share|distribution/i.test(`${item.id} ${item.label} ${item.action}`)).reduce((sum, item) => sum + item.count, 0),
+      detail: "Distribution set drafts remain blocked by item-level clearance.",
+      action: "Open review workflow",
+      nav: "review-workflows"
+    },
+    {
+      label: "Feedback Inbox",
+      value: "Open",
+      detail: "Open triage inbox; counts load inside module from feedback storage.",
+      action: "Open feedback",
+      nav: "feedback-inbox"
+    },
+    {
+      label: "Import Audit Coverage",
+      value: readiness?.auditLog.count || 0,
+      detail: "Actor-backed audit evidence, not production readiness by itself.",
+      action: "Open audit logs",
+      nav: "audit-logs"
+    }
+  ];
+
+  return (
+    <section className="ed-card ed-admin-module" aria-label="Operational readiness modules">
+      <header className="ed-card-head">
+        <div>
+          <h3>Operational readiness modules</h3>
+          <p>Blockers, gaps, and worklists outrank usage metrics. Missing data is not counted as success.</p>
+        </div>
+        <StatusBadge status="Read-only" />
+      </header>
+      <div className="ed-module-grid">
+        {modules.map((item) => (
+          <section className="ed-card ed-module-card" key={item.label}>
+            <h3>{item.label}</h3>
+            <strong>{typeof item.value === "number" ? item.value.toLocaleString() : item.value}</strong>
+            <p>{item.detail}</p>
+            <button className="ed-link-button" type="button" onClick={() => onSelectModule(item.nav)}>{item.action}</button>
+          </section>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function OverviewModule({ readiness, onSelectModule }: { readiness?: DamReadinessResult | null; onSelectModule: SelectAdminModule }) {
   return (
     <>
@@ -631,6 +728,7 @@ function OverviewModule({ readiness, onSelectModule }: { readiness?: DamReadines
       </section>
       <section className="ed-admin-section" aria-labelledby="governance-policies-section">
         <header><div><span className="ed-section-eyebrow">Governance policies</span><h3 id="governance-policies-section" tabIndex={-1}>Access boundaries and custody</h3></div><p>Source truth, policy counts, and role boundaries stay visible without enabling writeback.</p></header>
+        <AdminOperationalReadinessModules readiness={readiness} onSelectModule={onSelectModule} />
         <CustodyMapPanel readiness={readiness} />
         <div className="ed-kpi-grid is-four"><KpiCard label="Records" value={(readiness?.assetCount || 0).toLocaleString()} delta="ResourceSpace-backed" icon={Database} /><KpiCard label="Readiness" value={`${readiness?.score || 0}/100`} delta="policy score" icon={Shield} /><KpiCard label="Needs Review" value={(readiness?.metrics.needsReview || 0).toLocaleString()} delta="queue count" icon={FileText} /><KpiCard label="Audit Events" value={(readiness?.auditLog.count || 0).toLocaleString()} delta="portal log" icon={Box} /></div>
         <div className="ed-module-grid">{(readiness?.actionBacklog || []).slice(0, 6).map((item) => <section className="ed-card ed-module-card" key={item.id}><AdminStatusBadge tone={item.severity === "critical" || item.severity === "high" ? "Critical" : item.severity === "medium" ? "Warning" : "Info"} label={item.severity} /><h3>{item.label}</h3><p>{item.action}</p><small>{item.count.toLocaleString()} · {item.owner}</small></section>)}</div>

@@ -2,7 +2,6 @@
 
 import {
   Archive,
-  BadgeCheck,
   BarChart3,
   ClipboardList,
   FileCheck2,
@@ -38,12 +37,11 @@ export type DamShellNavItem = {
 export const damShellNavItems: DamShellNavItem[] = [
   { label: "Library", href: "/", icon: Library, group: "Media", description: "Browse approved and source-tracked media." },
   { label: "Collections", href: "/collections", icon: Grid3X3, group: "Media", description: "Open curated ministry collections." },
-  { label: "Brand Hub", href: "/brand-hub", icon: BadgeCheck, group: "Media", description: "Open governed identity and ministry kits." },
   { label: "Distribution Sets", href: "/packages", icon: PackageCheck, group: "Media", description: "Build governed sets of approved media." },
   { label: "Upload / Intake", href: "/upload", icon: UploadCloud, roles: ["Contributor", "Reviewer", "DAM Admin"], group: "Workflow", badge: "5", description: "Submit source, rights, people, and usage context." },
   { label: "Review Queue", href: "/review?queue=pending", icon: ShieldAlert, roles: ["Reviewer", "DAM Admin"], group: "Workflow", badge: "12", description: "Validate assets before broad use." },
   { label: "Requests", href: "/guide#request-review", icon: MessageSquareText, group: "Workflow", badge: "4", description: "Request review, source access, rights help, or takedown support." },
-  { label: "Rights & Consent", href: "/insights?panel=rights-usage", icon: ShieldCheck, roles: ["Reviewer", "DAM Admin"], group: "Governance", badge: "3", description: "Review rights evidence, consent, and use scope." },
+  { label: "Rights & Consent", href: "/review?queue=rights-review", icon: ShieldCheck, roles: ["Reviewer", "DAM Admin"], group: "Governance", badge: "3", description: "Review rights evidence, consent, and use scope." },
   { label: "Metadata Health", href: "/insights?panel=metadata", icon: ListChecks, roles: ["Reviewer", "DAM Admin"], group: "Governance", badge: "7", description: "Inspect metadata quality and missing fields." },
   { label: "Policy Center", href: "/guide?section=policies#policies", icon: ScrollText, roles: ["Reviewer", "DAM Admin"], group: "Governance", description: "Open policy-safe DAM guidance." },
   { label: "Audit Log", href: "/admin#audit-logs", icon: FileCheck2, roles: ["DAM Admin"], group: "Governance", description: "Review audit activity and evidence trails." },
@@ -71,7 +69,6 @@ export const damShellQuickActions: DamShellNavItem[] = [
 export const damShellWorkspaceCopy: Record<string, { title: string; subtitle: string }> = {
   "/": { title: "Library", subtitle: "Browse approved and source-tracked media for ministry use." },
   "/collections": { title: "Collections", subtitle: "Open curated sets with reuse decisions intact." },
-  "/brand-hub": { title: "Brand Hub", subtitle: "Open governed identity, ministry kits, and public-use guidance." },
   "/review": { title: "Review Queue", subtitle: "Validate assets before they become broadly available." },
   "/packages": { title: "Distribution Sets", subtitle: "Build governed media sets without moving source files." },
   "/upload": { title: "Upload / Intake", subtitle: "Submit source, rights, people, and usage context for review." },
@@ -83,9 +80,6 @@ export const damShellWorkspaceCopy: Record<string, { title: string; subtitle: st
 export function workspaceCopyForPath(pathname: string, search = "") {
   const params = new URLSearchParams(search);
   if (pathname === "/review" && params.get("queue") === "rights-review") {
-    return { title: "Rights & Consent", subtitle: "Review rights evidence, use scope, consent, and gated-copy decisions." };
-  }
-  if (pathname === "/insights" && params.get("panel") === "rights-usage") {
     return { title: "Rights & Consent", subtitle: "Review rights evidence, use scope, consent, and gated-copy decisions." };
   }
   if (pathname === "/insights" && params.get("panel") === "metadata") {

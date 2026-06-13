@@ -124,7 +124,7 @@ const blockerCategoryLabels: Record<PackageBlockerCategory, string> = {
   "required-notice": "Required notice missing",
   "sensitivity-domain-review": "Sensitivity/domain review",
   "missing-source": "Source/provenance missing",
-  "original-master-restricted": "Original/master excluded",
+  "original-master-restricted": "Source file excluded",
   "review-required": "Review required"
 };
 
@@ -211,7 +211,7 @@ export function buildPackageActionDecisions(input: {
       allowed: input.canShare && input.missingRefs === 0,
       status: input.canShare && input.missingRefs === 0 ? "preview" : "blocked",
       reason: input.canShare && input.missingRefs === 0
-        ? "Share decision can be prepared, but no durable public share link is created here."
+        ? "Internal access decision can be prepared, but no durable public link is created here."
         : input.reason,
       originalMasterIncluded: false,
       requiresApprovedCopyGate: true,
@@ -289,7 +289,7 @@ function sectionReadinessSummary(section: {
   internalOnlyRefs: number;
   reviewRequiredRefs: number;
 }) {
-  if (!section.totalRefs) return "No refs selected. Section will stay out of package output.";
+  if (!section.totalRefs) return "No refs selected. Section will stay out of distribution draft output.";
   if (section.missingRefs.length) return `${section.missingRefs.length} ref${section.missingRefs.length === 1 ? "" : "s"} no longer resolves.`;
   if (section.reviewRequiredRefs) return `${section.reviewRequiredRefs} ref${section.reviewRequiredRefs === 1 ? "" : "s"} need rights review before publish.`;
   if (section.internalOnlyRefs) return `${section.internalOnlyRefs} internal-only ref${section.internalOnlyRefs === 1 ? "" : "s"} block public publish.`;
@@ -361,8 +361,8 @@ export function buildPackageGovernance(draft: DamPackage, resolvedSections: Reso
       : internalOnlyRefs
         ? "Publish blocked because some refs are Internal ready only."
         : reviewRequiredRefs
-          ? "Publish blocked until every ref is Portal Ready."
-          : "Every ref is Portal Ready for package publishing.";
+          ? "Readiness blocked until every ref is Portal Ready."
+          : "Every ref is Portal Ready for distribution readiness review.";
   const blockerSummary = packageBlockerSummary(sections);
   const actions = buildPackageActionDecisions({ hasRefs, canPreview, canShare, canPublish, missingRefs, blockedRefs, reason });
 
@@ -386,9 +386,9 @@ export function buildPackageGovernance(draft: DamPackage, resolvedSections: Reso
     blockerSummary,
     actions,
     commandCenter: [
-      command("Preview package", canPreview, canPreview ? `All ${refNoun} can render a role-safe preview.` : `Preview waits for resolvable ${refNoun} and role-safe previews.`, !canPreview && hasRefs),
-      command("Prepare share packet", canShare, canShare ? "Share stays policy-scoped; no public link is created here." : `Share waits for Portal Ready ${refNoun} or internal-ready ${refNoun} allowed for this role.`, !canShare && hasRefs),
-      command("Queue publish review", canPublish, canPublish ? (canSeeOpsCopy ? "All refs are Portal Ready; ResourceSpace originals stay canonical." : "All references are Portal Ready; original files stay protected.") : reason, !canPublish && hasRefs)
+      command("Preview distribution set", canPreview, canPreview ? `All ${refNoun} can render a role-safe preview.` : `Preview waits for resolvable ${refNoun} and role-safe previews.`, !canPreview && hasRefs),
+      command("Prepare internal access packet", canShare, canShare ? "Access stays policy-scoped; no public link is created here." : `Access waits for Portal Ready ${refNoun} or internal-ready ${refNoun} allowed for this role.`, !canShare && hasRefs),
+      command("Queue readiness review", canPublish, canPublish ? (canSeeOpsCopy ? "All refs are Portal Ready; DAM source files stay canonical." : "All references are Portal Ready; source files stay protected.") : reason, !canPublish && hasRefs)
     ],
     sections
   };
