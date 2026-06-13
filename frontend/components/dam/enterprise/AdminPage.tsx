@@ -574,7 +574,7 @@ function FeedbackInboxModule() {
                 <label>Admin notes<textarea value={item.notes || ""} onChange={(event) => setFeedback((current) => current.map((row) => row.id === item.id ? { ...row, notes: event.target.value } : row))} onBlur={(event) => void updateFeedback(item.id, { notes: event.target.value })} placeholder="Triage note for next agent..." /></label>
               </footer>
             </article>
-          )) : <section className="ed-empty-state"><MessageSquareWarning size={24} /><h2>No feedback in this filter</h2><p>Share role invite links with teammates, then reports appear here.</p></section>}
+          )) : <section className="ed-empty-state is-quiet"><MessageSquareWarning size={24} /><h2>No feedback in this filter</h2><p>Share role invite links with teammates, then reports appear here.</p></section>}
         </div>
       )}
     </section>

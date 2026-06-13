@@ -43,7 +43,7 @@ export function EnterpriseReviewPage() {
   const review = useReviewQueue(role, queueId);
   const rawQueue = review.data?.assets || [];
   const pendingWritesByAssetId = review.data?.pendingWrites || {};
-  const [pageSize, setPageSize] = useState(8);
+  const [pageSize, setPageSize] = useState(12);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
   const [selectedId, setSelectedId] = useState<string | null>(null);

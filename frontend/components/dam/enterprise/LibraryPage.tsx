@@ -302,7 +302,7 @@ export function EnterpriseLibraryPage() {
   const [filters, setFilters] = useState<string[]>([]);
   const [sort, setSort] = useState<CatalogSort>("Newest");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  const [limit, setLimit] = useState(15);
+  const [limit, setLimit] = useState(30);
   const [offset, setOffset] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -539,7 +539,7 @@ export function EnterpriseLibraryPage() {
                 key={asset.id}
               />
             ))}</div> : (
-              <section className="ed-empty-state">
+              <section className="ed-empty-state is-quiet">
                 <Search size={24} />
                 <h2>{noResultHelp?.title || `No ${sourceNoun(search.source)} records match this search`}</h2>
                 <p>{noResultHelp?.guidance || "Try a broader ministry, category, channel, or rights term."}</p>

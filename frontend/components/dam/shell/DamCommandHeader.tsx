@@ -69,7 +69,7 @@ export function DamCommandHeader() {
 
   return (
     <header className="dam-command-header sticky top-0 z-30 border-b border-[#d8e2dc] bg-[#fbfdfb]/95 px-3 backdrop-blur md:px-5">
-      <div className="mx-auto flex h-full w-full max-w-[1760px] items-center">
+      <div className="dam-command-header-inner">
         {nestedBreadcrumb ? (
           <nav className="dam-nested-breadcrumb" aria-label="Breadcrumb">
             <ol>

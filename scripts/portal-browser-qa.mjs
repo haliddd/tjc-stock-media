@@ -514,6 +514,37 @@ async function inspectPageAfterSettledNavigation(page, expected) {
   }
 }
 
+async function inspectPremiumPolish(page) {
+  return page.evaluate(() => {
+    const visible = (el) => {
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 8 && rect.height > 8 && style.visibility !== "hidden" && style.display !== "none" && Number(style.opacity) > 0.05;
+    };
+    const unfinishedSelects = [...document.querySelectorAll("main select, #main-content select")]
+      .filter(visible)
+      .filter((el) => {
+        const style = window.getComputedStyle(el);
+        const radius = Number.parseFloat(style.borderRadius || "0");
+        const paddingRight = Number.parseFloat(style.paddingRight || "0");
+        const hasArrowAsset = style.backgroundImage && style.backgroundImage !== "none";
+        return radius < 6 || !hasArrowAsset || paddingRight < 24 || el.scrollWidth > el.clientWidth + 2;
+      })
+      .map((el) => (el.getAttribute("aria-label") || el.closest("label")?.textContent || el.textContent || "select").trim().replace(/\s+/g, " ").slice(0, 80))
+      .slice(0, 8);
+    const overflowingBadges = [...document.querySelectorAll(".ed-badge, .ed-admin-status, .ed-review-row-meta em")]
+      .filter(visible)
+      .filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 2)
+      .map((el) => (el.textContent || "badge").trim().replace(/\s+/g, " ").slice(0, 80))
+      .slice(0, 8);
+    return {
+      unfinishedSelects,
+      overflowingBadges,
+      quietEmptyStates: document.querySelectorAll(".ed-empty-state.is-quiet").length
+    };
+  });
+}
+
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -610,10 +641,13 @@ for (const width of qaViewports) {
         await withTimeout(`ready ${item.label} ${width}`, 40000, () => waitForAppReady(page, item.path, item.role));
         await withTimeout(`images ${item.label} ${width}`, 5000, () => waitForVisibleImages(page));
         const state = await withTimeout(`inspect ${item.label} ${width}`, 10000, () => inspectPageAfterSettledNavigation(page, item));
+        const polish = await withTimeout(`premium polish ${item.label} ${width}`, 5000, () => inspectPremiumPolish(page));
         if (!response || response.status() >= 500) failures.push(`${item.label} ${width}: HTTP ${response?.status()}`);
         if (state.overflowX) failures.push(`${item.label} ${width}: horizontal overflow ${state.scrollWidth}/${state.clientWidth}`);
         if (state.clippedControls.length) failures.push(`${item.label} ${width}: clipped controls ${JSON.stringify(state.clippedControls)}`);
         if (state.headerOverlaps.length) failures.push(`${item.label} ${width}: header controls overlap ${JSON.stringify(state.headerOverlaps)}`);
+        if (polish.unfinishedSelects.length) failures.push(`${item.label} ${width}: unfinished native selects ${JSON.stringify(polish.unfinishedSelects)}`);
+        if (polish.overflowingBadges.length) failures.push(`${item.label} ${width}: badge text overflow ${JSON.stringify(polish.overflowingBadges)}`);
         if (width <= 767 && state.fixedMobileNavs.length) failures.push(`${item.label} ${width}: fixed mobile nav can cover content ${JSON.stringify(state.fixedMobileNavs)}`);
         if (state.missingTabControls.length) failures.push(`${item.label} ${width}: tab aria-controls missing targets ${state.missingTabControls.join(", ")}`);
         if (state.brokenImages.length) warnings.push(`${item.label} ${width}: broken images ${state.brokenImages.join(", ")}`);
@@ -985,8 +1019,13 @@ await captureProof("review-hold-confirm-dialog.png", "Reviewer", 1440, 1000, "/r
   await page.getByLabel("Review decision actions").scrollIntoViewIfNeeded();
 });
 
-await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, "/?q=zzzzzz-no-visible-media-proof", async (page) => {
+await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, "/", async (page) => {
+  await page.getByLabel("Search media library").first().fill("zzzzzz-no-visible-media-proof");
+  await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
+  await page.getByText(/No .* records match this search|No matching assets/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   await page.locator("#main-content").scrollIntoViewIfNeeded();
+  const polish = await inspectPremiumPolish(page);
+  if (polish.quietEmptyStates < 1) failures.push("state-system-empty-error-loading.png: compact empty state class missing");
 });
 
 const report = {
