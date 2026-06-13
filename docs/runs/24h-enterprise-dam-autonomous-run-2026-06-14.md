@@ -121,7 +121,26 @@ Integrated code:
 
 ## PR Inventory
 
-Pending Phase 3.
+Completed in `docs/merge-train-status-2026-06-14.md`.
+
+Summary:
+- `Hali0321/tjc-stock-media` PRs #6-#14 are open and mergeable.
+- `haliddd/tjc-stock-media` has only older merged PRs in current inventory.
+- #11 is stacked on #9.
+- #13 is stacked on #12.
+- Push/PR mutation remains blocked until a human confirms remote target.
+
+Recommended order:
+1. #6 docs/runbooks/report.
+2. #7 security throttling.
+3. #8 feedback durability.
+4. #9 truth/photo-only.
+5. #11 redaction crawler after #9.
+6. #10 media delivery after #9/#11 conflict review.
+7. #12 taxonomy foundation.
+8. #13 smart-rules dry run after #12.
+9. #14 ResourceSpace readiness.
+10. Premium UI after safety branches settle.
 
 ## Integration Simulation
 
@@ -163,3 +182,4 @@ Baseline rerun completed on 2026-06-13 09:29 EDT for this
 |---|---|---|---|---|
 | 2026-06-13 09:26 EDT | Verified repo, branch, remotes, dirty state, and prior worker launch. Remote push/PR blocked by `origin`/`haliddd` ambiguity. | preflight, git verification | push/PR blocked until remote target resolved | baseline checks and PR inventory |
 | 2026-06-13 09:29 EDT | Baseline checks passed. | diff check, typecheck, tests, build, guards, launch-readiness | known `.env` placeholder warning only | PR/branch inventory |
+| 2026-06-13 09:36 EDT | PR #6-#14 inventory completed. #11 and #13 are stacked; all Hali0321 PRs report mergeable. | `gh pr list`, `gh pr view`, branch diff inventory | push/PR blocked by remote ambiguity; raw GitHub diff API too large for broad branches | local integration simulation |
