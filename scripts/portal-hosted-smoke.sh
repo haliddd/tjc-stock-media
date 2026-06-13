@@ -155,7 +155,7 @@ expect_code_role() {
   local url
   url="$(page_url "$role" "$path")"
   read_role_curl_args "$role"
-  expect_code "$expected" "$label" "${role_args[@]}" "$@" "$url"
+  expect_code "$expected" "$label" ${role_args[@]+"${role_args[@]}"} "$@" "$url"
 }
 
 expect_json_status_role() {
@@ -168,7 +168,7 @@ expect_json_status_role() {
   local url
   url="$(role_url "$role" "$path")"
   read_role_curl_args "$role"
-  expect_json_status "$expected" "$label" "$script" "${role_args[@]}" "$@" "$url"
+  expect_json_status "$expected" "$label" "$script" ${role_args[@]+"${role_args[@]}"} "$@" "$url"
 }
 
 select_json_value_role() {
@@ -180,7 +180,7 @@ select_json_value_role() {
   local url
   url="$(role_url "$role" "$path")"
   read_role_curl_args "$role"
-  select_json_value "$label" "$script" "${role_args[@]}" "$@" "$url"
+  select_json_value "$label" "$script" ${role_args[@]+"${role_args[@]}"} "$@" "$url"
 }
 
 AUTH_MODE="query"
@@ -206,7 +206,12 @@ if (data.ok !== true || !data.role) {
   done
   echo "PASS: hosted smoke using beta-session persona cookies"
 else
-  echo "PASS: hosted smoke using query/local trusted-header fallback; beta auth session endpoint status $BETA_SESSION_CODE"
+  if [ "$local_runtime_probe" != "1" ]; then
+    echo "FAIL: hosted beta auth is not enabled at $BASE_URL; production smoke requires beta-session persona cookies"
+    cat "$BETA_SESSION_PROBE"
+    exit 1
+  fi
+  echo "PASS: local smoke using query/local trusted-header fallback; beta auth session endpoint status $BETA_SESSION_CODE"
 fi
 
 blocked_asset_id_script='

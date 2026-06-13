@@ -314,6 +314,17 @@ export function betaFeedbackDisabledError(): BetaFeedbackRouteError {
   return { body: { error: "Beta feedback capture is disabled." }, status: 503 };
 }
 
+export function betaFeedbackStorageUnavailableError(): BetaFeedbackRouteError | null {
+  if (process.env.VERCEL !== "1" || hasVercelKvConfig()) return null;
+  return {
+    body: {
+      error: "Beta feedback durable storage is not configured.",
+      missing: ["KV_REST_API_URL", "KV_REST_API_TOKEN"]
+    },
+    status: 503
+  };
+}
+
 function betaFeedbackAdminDeniedCopy(area: BetaFeedbackAdminArea) {
   return {
     inbox: {

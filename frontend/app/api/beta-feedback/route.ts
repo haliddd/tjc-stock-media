@@ -5,6 +5,7 @@ import {
   betaFeedbackAdminDeniedAuditEvent,
   betaFeedbackAdminDeniedError,
   betaFeedbackDisabledError,
+  betaFeedbackStorageUnavailableError,
   betaFeedbackSubmissionValidationError,
   betaFeedbackSubmittedAuditEvent,
   buildBetaFeedbackInboxResponse,
@@ -26,6 +27,10 @@ export async function GET(request: NextRequest) {
     appendAuditEvent(betaFeedbackAdminDeniedAuditEvent("inbox", identity.role, identity.id));
     return NextResponse.json(denied.body, { status: denied.status });
   }
+  const storageUnavailable = betaFeedbackStorageUnavailableError();
+  if (storageUnavailable) {
+    return NextResponse.json(storageUnavailable.body, { status: storageUnavailable.status });
+  }
   const feedback = await listBetaFeedback();
   return NextResponse.json(buildBetaFeedbackInboxResponse(feedback));
 }
@@ -34,6 +39,10 @@ export async function POST(request: NextRequest) {
   if (!betaFeedbackEnabled()) {
     const disabled = betaFeedbackDisabledError();
     return NextResponse.json(disabled.body, { status: disabled.status });
+  }
+  const storageUnavailable = betaFeedbackStorageUnavailableError();
+  if (storageUnavailable) {
+    return NextResponse.json(storageUnavailable.body, { status: storageUnavailable.status });
   }
   const { fields, file } = await readBetaFeedbackRequestInput(request);
   const submission = normalizeBetaFeedbackSubmission(fields, request.headers.get("user-agent"));
