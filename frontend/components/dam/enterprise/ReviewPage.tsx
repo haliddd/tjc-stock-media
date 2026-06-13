@@ -254,7 +254,7 @@ export function EnterpriseReviewPage() {
           </label>
           <div className="ed-review-taxonomy" aria-label="Review taxonomy rail and evidence signals">
             <section>
-              <header><span>Global saved views</span><em>{(review.data?.queues || []).length.toLocaleString()}</em></header>
+              <header><span>Review queues</span><em>{(review.data?.queues || []).length.toLocaleString()}</em></header>
               <div>
                 {(review.data?.queues || []).map((tab) => (
                   <button className={cn(queueId === tab.id && "is-active")} type="button" key={tab.id} aria-current={queueId === tab.id ? "true" : undefined} onClick={() => selectQueue(normalizeReviewQueueId(tab.id))}>
@@ -373,14 +373,14 @@ export function EnterpriseReviewPage() {
               <div className="ed-review-cards">
                 <section className="ed-card ed-score-card"><h3>Metadata completeness</h3><div className="ed-score-ring">{metadataCompleteness.percent}%</div><p>{metadataCompleteness.label} required</p><button type="button" onClick={() => setActiveWorkbenchTab("Details")}>View details</button></section>
                 <section className="ed-card"><h3>Risk signals</h3>{selectedGuidance.riskFlags.length ? selectedGuidance.riskFlags.slice(0, 3).map((row, index) => <p className="ed-checkline" key={`${row}-${index}`}><ShieldAlert size={16} />{row}</p>) : <p className="ed-review-muted">No elevated signal exported.</p>}{selectedGuidance.riskFlags.length > 3 ? <button type="button" onClick={() => setActiveWorkbenchTab("Rights")}>View all signals ({selectedGuidance.riskFlags.length})</button> : null}</section>
-                <section className="ed-card"><h3>Review policy</h3><p>ResourceSpace remains final approval truth.</p><button type="button" onClick={() => queuePortalNote("Review policy opened")}>View policy</button><button type="button" onClick={requestGatedDownload}>Open gated copy</button></section>
+                <section className="ed-card"><h3>Review policy</h3><p>Workflow state creates next action. ResourceSpace remains final approval truth; portal queueing is not live sync unless verified.</p><button type="button" onClick={() => queuePortalNote("Review policy opened")}>View policy</button><button type="button" onClick={requestGatedDownload}>Check download gate</button></section>
               </div>
             </main>
             <aside className="ed-review-rail">
               <section className="ed-card ed-review-evidence-panel">
                 <header className="ed-evidence-head">
                   <div>
-                    <h3>Review Evidence</h3>
+                    <h3>Evidence and next action</h3>
                     <p>{selectedStatus}</p>
                   </div>
                   <strong>{evidenceCompletion.completed}/{evidenceCompletion.total}</strong>
@@ -423,8 +423,8 @@ export function EnterpriseReviewPage() {
                   <ActionButton icon={FileText} onClick={() => queuePortalNote("Submission package review requested")}>View details</ActionButton>
                 </div>
                 <nav className="ed-review-decision-actions" aria-label="Review decision actions">
-                  <button type="button" onClick={() => decide("Approved", "Approve Public")}>Approve public</button>
-                  <button type="button" onClick={() => decide("Needs Review", "Request More Info")}>Request info</button>
+                  <button type="button" onClick={() => decide("Approved", "Approve Public")}>Queue public decision</button>
+                  <button type="button" onClick={() => decide("Needs Review", "Request More Info")}>Request evidence</button>
                   <button type="button" onClick={() => decide("Restricted", "Do Not Use")}>Restrict use</button>
                 </nav>
               </section>

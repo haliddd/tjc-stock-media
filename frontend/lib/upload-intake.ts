@@ -24,6 +24,9 @@ export type UploadIntakePacket = {
   usageRights: string;
   approvalSuggestion: string;
   consentRestrictions: string;
+  doctrineSacramentSensitive: string;
+  testimonyPastoralSensitive: string;
+  hymnMusicPresent: string;
   suggestedTags: string;
   intakeNotes: string;
   missingRequired: string[];
@@ -67,6 +70,9 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
   const usageRights = normalizePublicTextField(form.get("usageRights"), "Unknown - needs review", 80);
   const approvalSuggestion = normalizePublicTextField(form.get("approvalSuggestion"), "Reviewer decides", 80);
   const consentRestrictions = normalizePublicTextField(form.get("notes"), "", 600);
+  const doctrineSacramentSensitive = normalizePublicTextField(form.get("doctrineSacramentSensitive"), "", 80);
+  const testimonyPastoralSensitive = normalizePublicTextField(form.get("testimonyPastoralSensitive"), "", 80);
+  const hymnMusicPresent = normalizePublicTextField(form.get("hymnMusicPresent"), "", 80);
   const suggestedTags = normalizePublicTextField(form.get("tags"), "", 300);
   const intakeNotes = normalizePublicTextField(form.get("intakeNotes"), "", 600);
   const missingRequired = [
@@ -79,6 +85,9 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     minorsVisible === "Unknown" && "children/youth visible",
     /unknown|needs review/i.test(usageRights) && "usage rights",
     !consentRestrictions && "consent/restrictions",
+    !doctrineSacramentSensitive && "doctrine/sacrament sensitivity",
+    !testimonyPastoralSensitive && "testimony/pastoral sensitivity",
+    !hymnMusicPresent && "hymn/music presence",
     !approvalSuggestion && "suggested approval direction",
     !suggestedTags && "suggested tags",
     !intakeNotes && "intake notes"
@@ -97,7 +106,10 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     peopleVisible,
     minorsVisible,
     usageRights,
-    consentRestrictions
+    consentRestrictions,
+    doctrineSacramentSensitive,
+    testimonyPastoralSensitive,
+    hymnMusicPresent
   });
   const reviewWarnings = [
     !source && "Source/photographer missing",
@@ -105,6 +117,9 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     minorsVisible === "Unknown" && "Children/youth visibility unknown",
     minorsVisible === "Yes" && "Children/youth visible",
     /unknown|needs review/i.test(usageRights) && "Usage rights unclear",
+    /yes|unknown/i.test(doctrineSacramentSensitive) && "Doctrine/sacrament sensitivity needs reviewer routing",
+    /yes|unknown/i.test(testimonyPastoralSensitive) && "Testimony/pastoral sensitivity needs restricted review",
+    /yes|unknown/i.test(hymnMusicPresent) && "Hymn/music context needs future rights route",
     /church-wide|public/i.test(approvalSuggestion) && (!/permission confirmed|tjc-owned/i.test(usageRights) || peopleVisible === "Unknown" || minorsVisible !== "No") && "Public approval suggestion conflicts with rights/people fields",
     ...smartRoutingReasons.map((reason) => reason.label)
   ].filter((warning): warning is string => Boolean(warning));
@@ -128,6 +143,9 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     usageRights,
     approvalSuggestion,
     consentRestrictions,
+    doctrineSacramentSensitive,
+    testimonyPastoralSensitive,
+    hymnMusicPresent,
     suggestedTags,
     intakeNotes,
     missingRequired,
