@@ -6,19 +6,22 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  CheckCircle2,
   Cloud,
   Database,
   Download,
+  FileText,
   Filter,
   Folder,
   HardDrive,
+  Info,
   Lock,
   MoreHorizontal,
   Plus,
   Search,
-  Share2,
   ShieldCheck,
   Star,
+  Tags,
   type LucideIcon
 } from "lucide-react";
 import {
@@ -28,7 +31,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@/components/ui/sheet";
-import type { DamReadinessResult, MediaSourceStatus, StockMediaAsset } from "@/lib/types";
+import type { DamReadinessResult, DemoRole, MediaSourceStatus, ReuseBlocker, StockMediaAsset } from "@/lib/types";
 import { useDemoRole } from "@/components/RoleProvider";
 import { custodyMapRows, custodyMapStatus } from "@/lib/admin-control";
 import { inspectorDrawerTabs } from "@/lib/asset-record-workbench";
@@ -43,6 +46,351 @@ import { cn } from "@/lib/ui";
 
 export function StatusBadge({ status }: { status: EnterpriseStatus }) {
   return <span className={cn("ed-badge", statusToneClass(status))}>{status}</span>;
+}
+
+function primaryBlockerLabel(blockers: ReuseBlocker[] = []) {
+  return blockers[0]?.label || "No blocker";
+}
+
+function blockerEvidenceHint(blocker: ReuseBlocker) {
+  if (blocker.code === "blocked-rights") return "Rights, consent, approved channel, or required notice evidence.";
+  if (blocker.code === "blocked-people-minors") return "People visibility, youth/minors, and consent evidence.";
+  if (blocker.code === "blocked-source") return "Source custody and record provenance confirmation.";
+  if (blocker.code === "blocked-derivative") return "Approved derivative/copy before download or distribution.";
+  if (blocker.code === "blocked-reviewer-date") return "Reviewer, review date, or lifecycle recheck.";
+  if (blocker.code === "blocked-sensitive") return "Doctrine, sacrament, hymn/music, testimony, or pastoral review.";
+  if (blocker.code === "blocked-archive") return "Archive/reference-only decision.";
+  if (blocker.code === "blocked-do-not-use") return "Restriction or withdrawal decision.";
+  return "Reviewer decision and evidence.";
+}
+
+function roleCanActOnReview(role: DemoRole) {
+  return role === "Reviewer" || role === "DAM Admin";
+}
+
+export function BlockedReasonList({
+  blockers,
+  limit = 4
+}: {
+  blockers?: ReuseBlocker[];
+  limit?: number;
+}) {
+  const visibleBlockers = (blockers || []).slice(0, limit);
+  if (!visibleBlockers.length) {
+    return <p className="ed-inline-success"><CheckCircle2 size={16} aria-hidden="true" />No active reuse blocker in this role-safe view.</p>;
+  }
+  return (
+    <div className="ed-decision-reasons" aria-label="Reuse blockers">
+      {visibleBlockers.map((blocker) => (
+        <span key={blocker.code} title={blockerEvidenceHint(blocker)}>{blocker.label}</span>
+      ))}
+    </div>
+  );
+}
+
+export function NextActionPanel({
+  title,
+  detail,
+  action,
+  onAction,
+  disabled = false,
+  disabledReason
+}: {
+  title: string;
+  detail: string;
+  action?: string;
+  onAction?: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
+  return (
+    <section className="ed-card">
+      <header className="ed-card-head">
+        <div>
+          <h3>Next required action</h3>
+          <p>{title}</p>
+        </div>
+        <Info size={18} aria-hidden="true" />
+      </header>
+      <p className="ed-action-helper">{detail}</p>
+      {action ? <ActionButton onClick={onAction} disabled={disabled} disabledReason={disabledReason}>{action}</ActionButton> : null}
+    </section>
+  );
+}
+
+export function ClearanceStatusPanel({
+  asset,
+  source,
+  onRequestReview,
+  compact = false
+}: {
+  asset?: StockMediaAsset;
+  source?: MediaSourceStatus | null;
+  onRequestReview?: () => void;
+  compact?: boolean;
+}) {
+  const { role } = useDemoRole();
+  const presentation = asset ? presentAssetDetailContext(asset, role, source) : null;
+  const approved = Boolean(presentation?.approved);
+  const status: EnterpriseStatus = presentation?.status || "Not configured";
+  const blockers = presentation?.packet.viewerVerdict.blockers || [];
+  const primaryBlocker = primaryBlockerLabel(blockers);
+  const actionLabel = approved ? "View use guidance" : roleCanActOnReview(role) ? "Open review action" : "Request DAM review";
+
+  return (
+    <section className={cn("ed-card ed-verdict-card", approved ? "is-approved" : "is-blocked", compact && "is-compact")}>
+      <div className="ed-decision-header">
+        <h3>Clearance status</h3>
+        <StatusBadge status={status} />
+      </div>
+      <div className="ed-verdict-body">
+        <span aria-hidden="true">{approved ? <Check size={24} /> : <Lock size={22} />}</span>
+        <div className="ed-verdict-summary">
+          <strong>{presentation?.canUseTitle || "Review required before use"}</strong>
+          <small>{presentation?.canUseSummary || `Review required before using this ${sourceNoun(source)} record.`}</small>
+          <p>{presentation?.canUseReason || "Usage rights are not fully provided."}</p>
+        </div>
+      </div>
+      {!approved ? (
+        <p className="ed-action-helper"><strong>Primary blocker:</strong> {primaryBlocker}. Evidence required before download or distribution.</p>
+      ) : null}
+      <BlockedReasonList blockers={blockers} />
+      {approved ? (
+        <Link className="ed-action is-primary" href={routeWithRole("/guide", role)}>View use guidance</Link>
+      ) : onRequestReview ? (
+        <button className="ed-action" type="button" onClick={onRequestReview}>{actionLabel}</button>
+      ) : asset ? (
+        <Link className="ed-action" href={routeWithRole(`/assets/${asset.id}`, role)}>{actionLabel}</Link>
+      ) : (
+        <Link className="ed-action" href={routeWithRole("/guide", role)}>View use guidance</Link>
+      )}
+    </section>
+  );
+}
+
+export function MetadataGroup({
+  title,
+  description,
+  rows,
+  empty = "Not provided in current role-safe view."
+}: {
+  title: string;
+  description?: string;
+  rows: Array<[string, string | number | undefined | null]>;
+  empty?: string;
+}) {
+  const visibleRows = rows.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
+  return (
+    <section className="ed-card">
+      <header className="ed-card-head">
+        <div>
+          <h3>{title}</h3>
+          {description ? <p>{description}</p> : null}
+        </div>
+      </header>
+      {visibleRows.length ? (
+        <dl className="ed-metadata">
+          {visibleRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl>
+      ) : <p className="ed-empty-copy">{empty}</p>}
+    </section>
+  );
+}
+
+export function SuggestedTagGroup({
+  approved = [],
+  suggested = [],
+  role,
+  onDecision
+}: {
+  approved?: string[];
+  suggested?: string[];
+  role: DemoRole;
+  onDecision?: (tag: string, decision: "accept" | "reject" | "ignore") => void;
+}) {
+  const canDecide = roleCanActOnReview(role) && Boolean(onDecision);
+  return (
+    <section className="ed-card">
+      <header className="ed-card-head">
+        <div>
+          <h3>Discovery tags</h3>
+          <p>Tags help search. They do not clear rights, consent, channel, or reuse.</p>
+        </div>
+        <Tags size={18} aria-hidden="true" />
+      </header>
+      {approved.length ? <div className="ed-card-tags" aria-label="Approved discovery tags">{approved.map((tag) => <span key={tag}>{tag}</span>)}</div> : <p className="ed-empty-copy">No approved discovery tags in this record.</p>}
+      {suggested.length ? (
+        <div className="ed-table-mini" aria-label="Suggested tags">
+          {suggested.map((tag) => (
+            <p key={tag}>
+              <strong>{tag}</strong>
+              <span>Suggested only</span>
+              {canDecide ? (
+                <span>
+                  <button type="button" onClick={() => onDecision?.(tag, "accept")}>Accept</button>
+                  <button type="button" onClick={() => onDecision?.(tag, "reject")}>Reject</button>
+                  <button type="button" onClick={() => onDecision?.(tag, "ignore")}>Ignore</button>
+                </span>
+              ) : null}
+            </p>
+          ))}
+        </div>
+      ) : <p className="ed-action-helper">No pending suggestions. AI/helper suggestions stay separate from approved metadata.</p>}
+    </section>
+  );
+}
+
+export function EvidenceChecklistSummary({
+  rows
+}: {
+  rows: Array<{ label: string; value: string; ok?: boolean; detail?: string }>;
+}) {
+  return (
+    <section className="ed-card">
+      <header className="ed-card-head">
+        <div>
+          <h3>Evidence summary</h3>
+          <p>Evidence first, then operational follow-up.</p>
+        </div>
+        <FileText size={18} aria-hidden="true" />
+      </header>
+      <div className="ed-table-mini">
+        {rows.map((row) => (
+          <p className={row.ok ? "is-clear" : "is-blocked"} key={row.label}>
+            <strong>{row.label}</strong>
+            <span>{row.value}</span>
+            {row.detail ? <small>{row.detail}</small> : null}
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function RoleSafeActionBar({
+  asset,
+  role,
+  onRequestReview,
+  onDownloadApprovedCopy,
+  onMessage
+}: {
+  asset: StockMediaAsset;
+  role: DemoRole;
+  onRequestReview?: () => void;
+  onDownloadApprovedCopy?: () => void;
+  onMessage?: (message: string) => void;
+}) {
+  const presentation = presentAssetDetailContext(asset, role);
+  const packet = presentation.packet;
+  return (
+    <section className="ed-card">
+      <header className="ed-card-head">
+        <div>
+          <h3>Role-safe actions</h3>
+          <p>{role} actions stay derivative-only and review-gated.</p>
+        </div>
+      </header>
+      <div className="ed-inspector-actions">
+        <ActionButton
+          tone={packet.access.downloadApprovedCopy.allowed ? "primary" : "secondary"}
+          icon={Download}
+          disabled={!packet.access.downloadApprovedCopy.allowed}
+          disabledReason={packet.access.downloadApprovedCopy.reason || "Clearance must pass before download."}
+          onClick={onDownloadApprovedCopy}
+        >
+          Download approved copy
+        </ActionButton>
+        <ActionButton icon={FileText} onClick={onRequestReview}>
+          {presentation.requestReviewLabel}
+        </ActionButton>
+        <ActionButton
+          icon={Folder}
+          disabled
+          disabledReason="Use Distribution Sets for governed drafts. No collection membership grants permission."
+          onClick={() => onMessage?.("Use Distribution Sets for governed drafts.")}
+        >
+          Add to distribution set
+        </ActionButton>
+      </div>
+      <p className="ed-action-helper">No public links, CDN/embed, portal shortcuts, or source-file delivery in v1 beta.</p>
+    </section>
+  );
+}
+
+export function AdminDiagnosticCard({
+  role,
+  title = "Admin diagnostics",
+  rows
+}: {
+  role: DemoRole;
+  title?: string;
+  rows: Array<[string, string | number | undefined | null]>;
+}) {
+  if (role !== "DAM Admin") return null;
+  return <MetadataGroup title={title} description="Admin-only source, lifecycle, and audit diagnostics." rows={rows} />;
+}
+
+export function ReadinessSummary({
+  title,
+  status,
+  rows,
+  detail
+}: {
+  title: string;
+  status: EnterpriseStatus;
+  rows: Array<[string, string | number]>;
+  detail?: string;
+}) {
+  return (
+    <section className="ed-card">
+      <header className="ed-card-head">
+        <div>
+          <h3>{title}</h3>
+          {detail ? <p>{detail}</p> : null}
+        </div>
+        <StatusBadge status={status} />
+      </header>
+      <div className="ed-summary-grid">
+        {rows.map(([value, label]) => <span key={`${label}-${value}`}><strong>{value}</strong><small>{label}</small></span>)}
+      </div>
+    </section>
+  );
+}
+
+export function DistributionReadinessCard({
+  state,
+  selectedCount,
+  blockerCount,
+  readyCount,
+  detail,
+  blockers = []
+}: {
+  state: EnterpriseStatus;
+  selectedCount: number;
+  blockerCount: number;
+  readyCount: number;
+  detail: string;
+  blockers?: string[];
+}) {
+  return (
+    <section className="ed-card">
+      <header className="ed-card-head">
+        <div>
+          <h3>Distribution set readiness</h3>
+          <p>{detail}</p>
+        </div>
+        <StatusBadge status={state} />
+      </header>
+      <div className="ed-summary-grid">
+        <span><strong>{selectedCount.toLocaleString()}</strong><small>selected</small></span>
+        <span><strong>{readyCount.toLocaleString()}</strong><small>item-ready</small></span>
+        <span><strong>{blockerCount.toLocaleString()}</strong><small>blockers</small></span>
+        <span><strong>0</strong><small>source files</small></span>
+      </div>
+      {blockers.length ? <div className="ed-decision-reasons">{blockers.slice(0, 4).map((blocker) => <span key={blocker}>{blocker}</span>)}</div> : null}
+      <p className="ed-action-helper">One blocked item blocks the set. Collections and distribution sets are curation, not permission.</p>
+    </section>
+  );
 }
 
 export function IconButton({ label, children, onClick }: { label: string; children: ReactNode; onClick?: () => void }) {
@@ -276,10 +624,15 @@ export function AssetCard({
   const recordLabel = recordIdLabel();
   const recordRef = assetRecordRef(asset);
   const cardContext = presentAssetCardContext(asset, role);
-  const tagChips = cardContext.tagLabels.length
-    ? cardContext.tagLabels
-    : Array.from(new Set([asset.collection, asset.usageScope, asset.mediaType]))
+  const tagChips = Array.from(new Set([
+    asset.eventName,
+    asset.collection,
+    asset.mediaType === "photo" ? "Photo" : `${assetType(asset)} future-review`,
+    ...(asset.tjcTerms || []),
+    ...(asset.tags || [])
+  ]))
       .filter((tag) => tag && !/^(not provided|unknown|media library)$/i.test(tag))
+      .filter((tag) => tag !== cardContext.approvalLabel)
       .slice(0, 3);
   return (
     <article className={cn("ed-asset-card", selected && "is-selected")}>
@@ -314,7 +667,7 @@ export function AssetCard({
       ) : null}
       <div className="ed-card-footer">
         <StatusBadge status={assetEnterpriseStatus(asset)} />
-        <span className="ed-card-date">{cardContext.sourceLabel} · {assetDate(asset)}</span>
+        <span className="ed-card-date">{cardContext.approvalLabel} · {cardContext.sourceLabel} · {assetDate(asset)}</span>
         <button className="ed-card-hover-action" type="button" onClick={onQuickLook || onSelect}>Quick look</button>
       </div>
     </article>
@@ -380,14 +733,14 @@ export function PremiumTaxonomyRail({
   ];
   const visibleTags = tagOptions.filter((option) => option.label.toLowerCase().includes(tagQuery.trim().toLowerCase()));
   const wiredFilterGroups: Array<{ label: string; open?: boolean; options: Array<{ label: string; filter: string }> }> = [
-    { label: "Rights & Usage", open: true, options: [
-      { label: "Ready to use", filter: "portal ready" },
-      { label: "Approved public", filter: "approved public" },
-      { label: "Approved internal", filter: "approved internal" },
-      { label: "Needs review", filter: "needs review" },
-      { label: "Do not publish", filter: "archive only" }
+    { label: "Clearance status", open: true, options: [
+      { label: "Portal Ready", filter: "portal ready" },
+      { label: "Public approval record", filter: "approved public" },
+      { label: "Internal approval record", filter: "approved internal" },
+      { label: "Needs Review", filter: "needs review" },
+      { label: "Archive / Do Not Publish", filter: "archive only" }
     ] },
-    { label: "Review risk", options: [
+    { label: "Review state", options: [
       { label: "Rights review", filter: "rights review" },
       { label: "Missing source", filter: "missing source" },
       { label: "Stale approval", filter: "stale approval" },
@@ -401,21 +754,18 @@ export function PremiumTaxonomyRail({
       { label: "Minors confirmed", filter: "possible minors" },
       { label: "Sensitive context", filter: "children/youth" }
     ] },
-    { label: "File Type", open: true, options: [
-      { label: "Photo", filter: "photo" },
-      { label: "Video", filter: "video" },
-      { label: "Audio", filter: "audio" },
-      { label: "Graphic", filter: "graphic" },
-      { label: "Document", filter: "document" }
+    { label: "Media type", open: true, options: [
+      { label: "Photo beta", filter: "photo" },
+      { label: "Graphic/document review", filter: "graphic" }
     ] },
     { label: "Orientation", options: [
       { label: "Landscape", filter: "landscape" },
       { label: "Portrait", filter: "portrait" },
       { label: "Square", filter: "square" }
     ] },
-    { label: "Source", options: [
-      { label: "ResourceSpace", filter: "resourcespace" },
-      { label: "Google Photos export", filter: "lm photos" },
+    { label: "Source custody", options: [
+      { label: "DAM record", filter: "resourcespace" },
+      { label: "LM Photos import", filter: "lm photos" },
       { label: "Manual upload", filter: "photographer" }
     ] },
     { label: "Metadata Completeness", options: [
@@ -424,8 +774,10 @@ export function PremiumTaxonomyRail({
     ] }
   ];
   const visualOnlyGroups: Array<{ label: string; options: string[] }> = [
-    { label: "Dimensions", options: ["Web hero ready", "High resolution", "Derivative ready"] },
-    { label: "Date", options: ["Recently imported", "Reviewed this year", "Needs re-review date"] }
+    { label: "Derivative readiness", options: ["Approved copy ready", "Derivative missing", "Channel derivative pending"] },
+    { label: "Approved channel", options: ["Website", "Social", "Projection", "Print", "Livestream future"] },
+    { label: "Ministry / event", options: ["Sabbath", "Religious Education", "Evangelical Service", "Retreat"] },
+    { label: "Date", options: ["Recently imported", "Reviewed this year", "Needs recheck date"] }
   ];
   const optionRow = ({ label, filter }: { label: string; filter: string }) => {
     const checked = activeFilters.includes(filter);
@@ -439,11 +791,11 @@ export function PremiumTaxonomyRail({
     );
   };
   return (
-    <aside className="ed-panel ed-facet-panel ed-smart-filter-rail" aria-label="Premium taxonomy rail">
+    <aside className="ed-panel ed-facet-panel ed-smart-filter-rail" aria-label="Governed facet rail">
       <header className="ed-filter-rail-head">
         <div>
-          <span>Premium Taxonomy Rail</span>
-          <strong>DAM discovery</strong>
+          <span>Governed facets</span>
+          <strong>Find evidence, not permission</strong>
         </div>
         {activeFilters.length ? <button type="button" onClick={onClearFilters}>Clear all</button> : null}
       </header>
@@ -462,12 +814,13 @@ export function PremiumTaxonomyRail({
         </div>
       </details>
       <details open className="ed-filter-section">
-        <summary><span>Tags</span><ChevronDown size={14} /></summary>
+        <summary><span>Discovery tags</span><ChevronDown size={14} /></summary>
         <label className="ed-taxonomy-search">
           <Search size={14} aria-hidden="true" />
           <span className="sr-only">Search tags</span>
           <input value={tagQuery} onChange={(event) => setTagQuery(event.target.value)} placeholder="Search tags..." />
         </label>
+        <p className="ed-action-helper">Tags support discovery only; rights and clearance live in status/evidence fields.</p>
         <div className="ed-filter-options">
           {visibleTags.length ? visibleTags.map(optionRow) : <p className="ed-filter-disabled">No matching tags.</p>}
         </div>
@@ -495,37 +848,7 @@ export function PremiumTaxonomyRail({
 export const SavedViewPanel = PremiumTaxonomyRail;
 
 export function RightsVerdictCard({ asset, source, onRequestReview }: { asset?: StockMediaAsset; source?: MediaSourceStatus | null; onRequestReview?: () => void }) {
-  const { role } = useDemoRole();
-  const presentation = asset ? presentAssetDetailContext(asset, role, source) : null;
-  const approved = Boolean(presentation?.approved);
-  const status: EnterpriseStatus = presentation?.status || "Not configured";
-  const blockers = presentation?.packet.viewerVerdict.blockers?.slice(0, 3) || [];
-  return (
-    <section className={cn("ed-card ed-verdict-card", approved ? "is-approved" : "is-blocked")}>
-      <div className="ed-decision-header">
-        <h3>Can I use this?</h3>
-        <StatusBadge status={status} />
-      </div>
-      <div className="ed-verdict-body">
-        <span aria-hidden="true">{approved ? <Check size={24} /> : <Lock size={22} />}</span>
-        <div className="ed-verdict-summary">
-          <strong>{presentation?.canUseTitle || "Review required before use"}</strong>
-          <small>{presentation?.canUseSummary || `Review required before using this ${sourceNoun(source)} record.`}</small>
-          <p>{presentation?.canUseReason || "Usage rights are not fully provided."}</p>
-        </div>
-      </div>
-      {blockers.length ? <div className="ed-decision-reasons" aria-label="Decision reasons">{blockers.map((blocker) => <span key={blocker.code}>{blocker.label}</span>)}</div> : null}
-      {approved ? (
-        <Link className="ed-action is-primary" href={routeWithRole("/guide", role)}>View Usage Guidelines</Link>
-      ) : onRequestReview ? (
-        <button className="ed-action" type="button" onClick={onRequestReview}>Request DAM review</button>
-      ) : asset ? (
-        <Link className="ed-action" href={routeWithRole(`/assets/${asset.id}`, role)}>Open full record</Link>
-      ) : (
-        <Link className="ed-action" href={routeWithRole("/guide", role)}>View Usage Guidelines</Link>
-      )}
-    </section>
-  );
+  return <ClearanceStatusPanel asset={asset} source={source} onRequestReview={onRequestReview} />;
 }
 
 export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAsset; source?: MediaSourceStatus | null; live?: boolean }) {
@@ -556,11 +879,10 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
       </dl>
       {message ? <p className="ed-inline-success">{message}</p> : null}
       <div className="ed-inspector-actions">
-        <ActionButton tone="dark" icon={Download} disabled disabledReason="Open the full record to run the backend download gate. Original/source files remain restricted.">Download</ActionButton>
-        <ActionButton icon={Folder} disabled disabledReason="Use Package Builder for governed references. This panel does not copy originals.">Add to package</ActionButton>
-        <ActionButton icon={Share2} disabled disabledReason="Public links are not available in internal beta.">Share asset</ActionButton>
+        <ActionButton tone="dark" icon={Download} disabled disabledReason="Open the full record to run the backend download gate. Source files remain restricted.">Download</ActionButton>
+        <ActionButton icon={Folder} disabled disabledReason="Use Distribution Sets for governed references. This panel does not copy source files.">Add to distribution set</ActionButton>
       </div>
-      <p className="ed-action-helper">Open full record for backend download-ticket checks. Package and share actions stay disabled here; no ZIP, public link, or original copy is created.</p>
+      <p className="ed-action-helper">Open full record for backend download-ticket checks. Distribution actions stay gated; no ZIP, public link, or source-file copy is created.</p>
     </aside>
   );
 }
@@ -598,7 +920,7 @@ export function AssetQuickLookDrawer({
         <SheetHeader className="border-b border-[#d8e2dc] px-5 py-4">
           <SheetTitle ref={titleRef} tabIndex={-1} className="text-base font-black text-tjc-ink">Asset quick look</SheetTitle>
           <SheetDescription className="text-sm font-semibold text-tjc-muted">
-            Preview role-safe media, reuse state, and source evidence before opening full record.
+            Preview role-safe media, reuse state, and clearance evidence before opening full record.
           </SheetDescription>
         </SheetHeader>
         <div className="ed-quicklook-body">
@@ -636,9 +958,9 @@ export function AssetQuickLookDrawer({
         <div className="ed-quicklook-actions">
           <Link className="ed-action is-dark" href={routeWithRole(`/assets/${asset.id}`, role)}>Open full record</Link>
           <ActionButton icon={Download} disabled disabledReason={canUseAsset ? "Use full record download gate before any approved-copy download." : "Needs review before download is available."}>Download</ActionButton>
-          <ActionButton icon={Folder} disabled disabledReason={canUseAsset ? "Use Package Builder for governed references." : "Resolve rights review before adding this asset to a package."}>Add to package</ActionButton>
+          <ActionButton icon={Folder} disabled disabledReason={canUseAsset ? "Use Distribution Sets for governed references." : "Resolve rights review before adding this asset to a distribution set."}>Add to distribution set</ActionButton>
         </div>
-        <p className="ed-action-helper px-5 pb-5">Quick look is read-only. Original/source files remain restricted; no package copy, ZIP, or public link is created here.</p>
+        <p className="ed-action-helper px-5 pb-5">Quick look is read-only. Source files remain restricted; no distribution copy, ZIP, or public link is created here.</p>
       </SheetContent>
     </Sheet>
   );
