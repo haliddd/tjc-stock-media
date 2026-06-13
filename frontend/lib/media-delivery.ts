@@ -143,7 +143,7 @@ export function thumbnailPlaceholderResponse(label: string): ThumbnailImageRespo
 
 export function readThumbnailDerivativeDelivery(id: string, variant: ImageVariant): ThumbnailDerivativeDelivery {
   const filePath = findFilestoreDerivative(id, variant);
-  if (!filePath) return { status: "missing-derivative", placeholderLabel: "Preview pending" };
+  if (!filePath) return { status: "missing-derivative", placeholderLabel: "Media not hosted" };
   const image = readDeliveredImage(filePath);
   if (!image) return { status: "unavailable-derivative", placeholderLabel: "Preview unavailable" };
   return { status: "ready", image };

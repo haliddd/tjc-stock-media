@@ -22,11 +22,13 @@ import {
   SheetHeader,
   SheetTitle
 } from "@/components/ui/sheet";
-import type { CatalogSort, StockMediaAsset } from "@/lib/types";
-import { sourceNoun } from "@/lib/enterprise-display";
+import type { CatalogSort, DemoRole, StockMediaAsset } from "@/lib/types";
+import { assetRecordRef, assetType, displayTitle, formatBytes, sourceNoun } from "@/lib/enterprise-display";
+import { assetEnterpriseStatus } from "@/lib/enterprise-status";
 import { canReview } from "@/lib/permissions";
+import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
 import { routeWithRole } from "@/lib/role-routes";
-import { ActionButton, AssetCard, AssetQuickLookDrawer, DamSegmentedNav, DamToolbar, ErrorCard, InspectorDrawer, LoadingCard, PageHeader, SavedViewPanel, SourcePill } from "./EnterpriseShared";
+import { ActionButton, AssetCard, AssetQuickLookDrawer, AssetThumb, DamSegmentedNav, DamToolbar, ErrorCard, InspectorDrawer, LoadingCard, PageHeader, SavedViewPanel, SourcePill, StatusBadge } from "./EnterpriseShared";
 
 const PAGE_SIZE_OPTIONS = [15, 30, 60, 120];
 
@@ -220,6 +222,77 @@ function LibraryPaginationControls({
   );
 }
 
+function LibraryResultList({
+  assets,
+  role,
+  selectedIds,
+  onSelect,
+  onQuickLook
+}: {
+  assets: StockMediaAsset[];
+  role: DemoRole;
+  selectedIds: string[];
+  onSelect: (asset: StockMediaAsset) => void;
+  onQuickLook: (asset: StockMediaAsset) => void;
+}) {
+  return (
+    <>
+      <div className="ed-mobile-card-list" aria-label="Library results">
+        {assets.map((asset) => {
+          const packet = buildPortalReuseDecision(asset, role);
+          return (
+            <article key={asset.id}>
+              <header>
+                <strong>{displayTitle(asset)}</strong>
+                <StatusBadge status={assetEnterpriseStatus(asset)} />
+              </header>
+              <p>{packet.reuse.label} · {asset.usageScope || "Usage scope pending"} · {assetType(asset)}</p>
+              <span>{assetRecordRef(asset)} · {formatBytes(asset.fileSizeBytes)}</span>
+              <button type="button" onClick={() => onQuickLook(asset)}>Quick look</button>
+            </article>
+          );
+        })}
+      </div>
+      <table className="ed-table ed-desktop-table" aria-label="Library results">
+        <thead>
+          <tr>
+            <th>Media</th>
+            <th>Clearance status</th>
+            <th>Usage / people</th>
+            <th>Type</th>
+            <th>Reference</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assets.map((asset) => {
+            const packet = buildPortalReuseDecision(asset, role);
+            const primaryBlocker = packet.reuse.blockers[0]?.label || "None";
+            return (
+              <tr key={asset.id} className={selectedIds.includes(asset.id) ? "is-active" : undefined}>
+                <td>
+                  <div className="ed-row-media">
+                    <AssetThumb asset={asset} />
+                    <span><strong>{displayTitle(asset)}</strong><small>{formatBytes(asset.fileSizeBytes)}</small></span>
+                  </div>
+                </td>
+                <td><StatusBadge status={assetEnterpriseStatus(asset)} /> <small>{packet.reuse.label}</small></td>
+                <td>{asset.usageScope || "Pending"}<br /><small>{asset.peopleRisk || "People/minors unknown"}</small></td>
+                <td>{assetType(asset)}</td>
+                <td>{assetRecordRef(asset)}<br /><small>{primaryBlocker === "None" ? "Evidence clear in current role view" : primaryBlocker}</small></td>
+                <td>
+                  <button type="button" onClick={() => onQuickLook(asset)}>Quick look</button>
+                  <button type="button" onClick={() => onSelect(asset)}>{selectedIds.includes(asset.id) ? "Selected" : "Select"}</button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
 export function EnterpriseLibraryPage() {
   const { role } = useDemoRole();
   const [query, setQuery] = useState("");
@@ -227,6 +300,7 @@ export function EnterpriseLibraryPage() {
   const [collection, setCollection] = useState("");
   const [filters, setFilters] = useState<string[]>([]);
   const [sort, setSort] = useState<CatalogSort>("Newest");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [limit, setLimit] = useState(15);
   const [offset, setOffset] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -341,10 +415,10 @@ export function EnterpriseLibraryPage() {
     <div className="enterprise-page enterprise-library">
       <PageHeader
         title="Library"
-        subtitle="Browse role-safe media for ministry use. Source/original files remain restricted."
+        subtitle="Browse role-safe media for ministry use. Source files remain restricted."
       />
       {libraryMessage ? <p className="ed-inline-success">{libraryMessage}</p> : null}
-      <section className="ed-approved-banner"><CheckCircle2 size={24} /><div><strong>{search.live ? `Showing ${sourceNoun(search.source)}-backed records` : `${sourceNoun(search.source)} disconnected or read-only`}</strong><span>{search.source?.detail || "Source system connection pending where noted. Previews and metadata are beta fixtures. Original/source files remain restricted."}</span></div><SourcePill source={search.source} live={search.live} /></section>
+      <section className="ed-approved-banner"><CheckCircle2 size={24} /><div><strong>{search.live ? `Showing ${sourceNoun(search.source)}-backed records` : `${sourceNoun(search.source)} disconnected or read-only`}</strong><span>{search.source?.detail || "Source system connection pending where noted. Previews and metadata are beta fixtures. Source files remain restricted."}</span></div><SourcePill source={search.source} live={search.live} /></section>
       <DamSegmentedNav
         label="Library workspace views"
         activeId="assets"
@@ -358,15 +432,16 @@ export function EnterpriseLibraryPage() {
       <DamToolbar
         label="Library asset toolbar"
         searchValue={query}
-        searchPlaceholder={canReview(role) ? "Search ResourceSpace title, filename, collection, ID..." : "Search title, collection, ministry, tag..."}
+        searchPlaceholder={canReview(role) ? "Search DAM title, reference, collection, ministry, tag..." : "Search title, ministry, event, tag..."}
         onSearchChange={setQuery}
         onClearSearch={() => setQuery("")}
         onOpenFilters={() => setFiltersOpen(true)}
         filterCount={activeFilterCount}
         selectedCount={selectedIds.length}
-        sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className="is-active" aria-label="Grid view"><Grid3X3 size={15} aria-hidden="true" /></button><button type="button" aria-label="List view" disabled title="List view is not enabled for this beta."><List size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
-        quickFilters={[{ id: "approved public", label: "Approved" }, { id: "portal ready", label: "Public use" }, { id: "no people", label: "No people" }, { id: "landscape", label: "Landscape" }, { id: "photo", label: "Photo" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
+        sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className={viewMode === "list" ? "is-active" : ""} aria-label="List view" onClick={() => setViewMode("list")}><List size={15} aria-hidden="true" /></button><button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-label="Grid view" onClick={() => setViewMode("grid")}><Grid3X3 size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
+        quickFilters={[{ id: "portal ready", label: "Portal Ready" }, { id: "needs review", label: "Needs Review" }, { id: "rights review", label: "Rights Review" }, { id: "people unknown", label: "People/Minors" }, { id: "photo", label: "Photo beta" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
       />
+      <p className="ed-action-helper">Collection, package, saved view, tag, and metric context never grants reuse permission. Each result shows one clearance status from item-level evidence.</p>
       <AppliedFilterBar
         query={query}
         viewLabel={savedViewLabel}
@@ -398,7 +473,9 @@ export function EnterpriseLibraryPage() {
         <div className="ed-library-grid">
           <div className="ed-desktop-filter-rail">{filterPanel}</div>
           <main className="ed-asset-workspace">
-            {assets.length ? <div className="ed-grid">{assets.map((asset) => (
+            {assets.length && viewMode === "list" ? (
+              <LibraryResultList assets={assets} role={role} selectedIds={selectedIds} onSelect={toggleAsset} onQuickLook={openQuickLook} />
+            ) : assets.length ? <div className="ed-grid">{assets.map((asset) => (
               <AssetCard
                 asset={asset}
                 selected={selectedIds.includes(asset.id)}

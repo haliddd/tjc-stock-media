@@ -55,8 +55,8 @@ function safeSourceLabel(source?: MediaSourceStatus | null) {
 }
 
 function cardApprovalLabel(state: ReuseState) {
-  if (state === "portal-ready") return "Public approved";
-  if (state === "internal-ready") return "Internal approved";
+  if (state === "portal-ready") return "Portal Ready";
+  if (state === "internal-ready") return "Internal Ready";
   if (state === "blocked-archive") return "Archive only";
   if (state === "blocked-do-not-use") return "Restricted";
   return "Needs review";

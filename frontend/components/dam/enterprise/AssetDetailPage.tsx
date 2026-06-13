@@ -2,21 +2,17 @@
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Download, FileText, Lock, PackageCheck, Share2, Star } from "lucide-react";
+import { ChevronDown, Download, FileText, Lock, PackageCheck, Star } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAssetDetail, useDownloadGate, useReviewRequest } from "@/components/dam/useDamApi";
-import { assetHasRenditionGap } from "@/lib/asset-governance";
+import { assetHasRenditionGap, assetMetadataHealth } from "@/lib/asset-governance";
 import { assetDetailTabs, isActivityTab } from "@/lib/asset-record-workbench";
 import { assetRecordRef, assetType, displayTitle } from "@/lib/enterprise-display";
 import { assetDetailMetadataRows, assetKeywordText } from "@/lib/enterprise-metadata";
 import { presentAssetDetailContext } from "@/lib/portal-context-presenters";
 import { routeWithRole } from "@/lib/role-routes";
 import { cn } from "@/lib/ui";
-import { ActionButton, AssetThumb, ErrorCard, LoadingCard, RightsVerdictCard, SourcePill } from "./EnterpriseShared";
-
-function confidenceLabel(value: string) {
-  return value.replace(/_/g, " ");
-}
+import { ActionButton, AdminDiagnosticCard, AssetThumb, BlockedReasonList, ClearanceStatusPanel, EvidenceChecklistSummary, ErrorCard, LoadingCard, MetadataGroup, NextActionPanel, RoleSafeActionBar, SuggestedTagGroup } from "./EnterpriseShared";
 
 const LOW_RES_LONG_EDGE = 1600;
 const LOW_RES_SHORT_EDGE = 900;
@@ -55,6 +51,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   const presentation = presentAssetDetailContext(asset, role, detail.source);
   const reusePacket = presentation.packet;
   const approved = presentation.approved;
+  const canViewReviewerNotes = role === "Reviewer" || role === "DAM Admin";
   const actionLabel = assetActionPending ? "Queueing review..." : presentation.requestReviewLabel;
   const parsedDimensions = parseDimensions(asset.imageDimensions);
   const lowResolutionPreview = asset.mediaType === "photo" && isLowResolution(parsedDimensions);
@@ -70,11 +67,27 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
           : "Role-safe derivative";
   const summaryFacts = presentation.summaryFacts;
   const hasVersionData = Boolean(asset.originalFilename || asset.duplicateRole || asset.duplicateGroup);
+  const metadataHealth = assetMetadataHealth(asset);
+  const approvedChannels = asset.approvedChannels?.length ? asset.approvedChannels.join(", ") : "No approved channel recorded";
+  const evidenceRows = [
+    { label: "Source", value: reusePacket.metadataConfidence.source, ok: reusePacket.metadataConfidence.source === "verified", detail: "Custody/provenance evidence" },
+    { label: "Rights", value: reusePacket.metadataConfidence.rights, ok: reusePacket.metadataConfidence.rights === "approved", detail: "Rights, consent, and approved channel" },
+    { label: "People/minors", value: reusePacket.metadataConfidence.peopleMinors, ok: reusePacket.metadataConfidence.peopleMinors === "reviewed", detail: "Visibility and consent posture" },
+    { label: "Review", value: reusePacket.metadataConfidence.review, ok: reusePacket.metadataConfidence.review === "complete", detail: "Reviewer/date evidence" }
+  ];
+  const suggestedTagValues = [
+    ...(asset.suggestedTags || []),
+    ...(asset.aiVisibleTagSuggestions || []),
+    ...(asset.aiTjcTermSuggestions || [])
+  ];
   const activityItems = [
     asset.reviewedDate ? `Reviewed ${asset.reviewedDate} by ${asset.reviewer || "review team"}` : "",
-    asset.pendingReviewWrite ? "Pending sync to ResourceSpace" : "",
+    asset.pendingReviewWrite ? (canViewReviewerNotes ? "Pending review sync to DAM source" : "Pending review sync") : "",
     downloadMessage
   ].filter(Boolean);
+  const roleSafeReviewNote = canViewReviewerNotes
+    ? asset.rightsNotes || "No reviewer note exported."
+    : "Reviewer notes are restricted. No contributor-visible note exported in this beta view.";
   const requestReview = async () => {
     if (assetActionPending) return;
     setAssetActionPending(true);
@@ -88,7 +101,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
       return;
     }
     const queueReference = result.pendingWriteId || result.pendingWrite?.id;
-    setAssetActionMessage(`${result.message || "Review request queued for reviewer follow-up."}${queueReference ? ` Queue id: ${queueReference}.` : ""}`);
+    setAssetActionMessage(`${result.message || "Review request queued for reviewer follow-up."}${queueReference && canViewReviewerNotes ? ` Queue id: ${queueReference}.` : ""}`);
     detail.refresh();
   };
   const requestApprovedDownload = async () => {
@@ -124,11 +137,10 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                 <ActionButton onClick={() => setActionsOpen((open) => !open)}>More actions <ChevronDown size={14} /></ActionButton>
                 {actionsOpen ? (
                   <div className="ed-more-actions-menu ed-detail-actions-menu" role="menu">
-                    {approved ? <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}><Download size={15} />Download approved copy<span>Runs backend gate and audit before delivery.</span></button> : null}
+                    {approved ? <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}><Download size={15} />Download approved copy<span>Runs backend gate and audit before derivative delivery.</span></button> : null}
                     <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Favorite saved for this beta session."); setActionsOpen(false); }}><Star size={15} />Favorite<span>Save this record for this beta session.</span></button>
                     <button type="button" role="menuitem" onClick={() => { setTab("Activity"); setActionsOpen(false); }}><FileText size={15} />View activity<span>Open exported activity and review notes.</span></button>
-                    <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Share links wait for identity and access policy. No public link was created."); setActionsOpen(false); }}><Share2 size={15} />Share options<span>Policy-backed links are not connected yet.</span></button>
-                    <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Use Package Builder to add media references without copying originals."); setActionsOpen(false); }}><PackageCheck size={15} />Add to package<span>Collect reference without moving source files.</span></button>
+                    <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Use Distribution Sets to add governed references without copying source files."); setActionsOpen(false); }}><PackageCheck size={15} />Add to distribution set<span>Collect reference without moving source files.</span></button>
                   </div>
                 ) : null}
               </div>
@@ -147,23 +159,54 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
           <nav className="ed-tabs is-large" aria-label="Asset record tabs">{assetDetailTabs.map((item) => <button className={cn(tab === item && "is-active")} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</nav>
           <section className="ed-card ed-metadata-card">
             {tab === "Metadata" ? <dl className="ed-metadata is-two">{metadataRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
-            {tab === "Keywords" ? <div className="ed-chip-row">{assetKeywordText(asset) !== "Not provided" ? [...(asset.tags || []), ...(asset.tjcTerms || [])].map((keyword) => <span key={keyword}>{keyword}</span>) : <p>Not provided in the current data source.</p>}</div> : null}
-            {tab === "AI Insights" ? <div className="ed-two-col"><p>AI suggestions are not live. Approved metadata remains review truth.</p><p>Human review controls usage, people visibility, rights, and reuse scope.</p></div> : null}
-            {tab === "Comments" ? <div className="ed-comment-stack"><p className="ed-comment"><strong>Review note</strong> {asset.rightsNotes || "No reviewer note exported."}</p><input className="ed-input" aria-label="Add asset comment" placeholder="Add a local follow-up note..." /></div> : null}
-            {isActivityTab(tab) ? <div className="ed-table-mini">{[asset.reviewedDate ? `Reviewed ${asset.reviewedDate} by ${asset.reviewer || "review team"}` : "Review activity not provided", asset.pendingReviewWrite ? "Pending sync to ResourceSpace" : "No pending write", downloadMessage || "No download gate action this session"].map((item) => <p key={item}>{item}</p>)}</div> : null}
+            {tab === "Keywords" ? <div className="ed-chip-row">{assetKeywordText(asset) !== "Not provided" ? [...(asset.tags || []), ...(asset.tjcTerms || [])].map((keyword) => <span key={keyword}>{keyword}</span>) : <p>Not provided in the current data source.</p>}<p className="ed-action-helper">Keywords are discovery metadata only. They do not change clearance, download, or distribution state.</p></div> : null}
+            {tab === "Suggested tags" ? <SuggestedTagGroup approved={[...(asset.tags || []), ...(asset.tjcTerms || [])]} suggested={suggestedTagValues} role={role} onDecision={(tag, decision) => setAssetActionMessage(`Suggested tag "${tag}" marked ${decision} locally for this beta view. No clearance or ResourceSpace writeback changed.`)} /> : null}
+            {tab === "Comments" ? <div className="ed-comment-stack"><p className="ed-comment"><strong>{canViewReviewerNotes ? "Reviewer note" : "Visible note"}</strong> {roleSafeReviewNote}</p><input className="ed-input" aria-label="Add asset comment" placeholder="Add a local follow-up note..." /></div> : null}
+            {isActivityTab(tab) ? <div className="ed-table-mini">{[asset.reviewedDate ? `Reviewed ${asset.reviewedDate} by ${asset.reviewer || "review team"}` : "Review activity not provided", asset.pendingReviewWrite ? (canViewReviewerNotes ? "Pending review sync to DAM source" : "Pending review sync") : "No pending write", downloadMessage || "No download gate action this session"].map((item) => <p key={item}>{item}</p>)}</div> : null}
           </section>
           <section className="ed-card"><header className="ed-card-head"><h3>Related Media</h3><span>{related.length} results</span></header><div className="ed-related-strip">{related.length ? related.slice(0, 5).map((item) => <AssetThumb asset={item} key={item.id} />) : <p>No related media records found.</p>}</div></section>
         </main>
         <aside className="ed-detail-rail">
-          <RightsVerdictCard asset={asset} source={detail.source} onRequestReview={() => { void requestReview(); }} />
-          <section className="ed-card"><h3>Rights & Restrictions</h3><dl className="ed-metadata">{presentation.rightsRows.map(([l, v]) => <div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section>
-          <section className="ed-card"><h3>Source & File Facts</h3><SourcePill source={detail.source} live={detail.live} /><dl className="ed-metadata">{presentation.sourceRows.map(([l, v]) => <div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl>{canOpenResourceSpace && detail.data?.resourceSpaceUrl ? <a href={detail.data.resourceSpaceUrl}>Open in ResourceSpace ↗</a> : null}</section>
-          <section className="ed-card"><h3>Review Confidence</h3><dl className="ed-metadata">{presentation.confidenceRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{confidenceLabel(String(value))}</dd></div>)}</dl></section>
-          {hasVersionData ? <section className="ed-card"><header className="ed-card-head"><h3>Versions</h3></header><dl className="ed-metadata">{[
+          <ClearanceStatusPanel asset={asset} source={detail.source} onRequestReview={() => { void requestReview(); }} />
+          <NextActionPanel
+            title={approved ? "Use approved derivative within recorded scope." : presentation.primaryActionLabel}
+            detail={approved ? "Download still runs backend audit and approved-copy gate. Source files stay restricted." : `${reusePacket.viewerVerdict.reason} Primary blocker: ${reusePacket.reuse.blockers[0]?.label || "review evidence"}.`}
+            action={approved ? "Download approved copy" : "Request DAM review"}
+            onAction={approved ? requestApprovedDownload : requestReview}
+            disabled={assetActionPending}
+            disabledReason="Review request is already queueing."
+          />
+          <MetadataGroup title="Approved channels and scope" description="Channel permission is separate from tags, collections, and package membership." rows={[
+            ["Usage scope", asset.usageScope],
+            ["Approved channels", approvedChannels],
+            ["Required notice", asset.requiredNotice || "Not recorded"],
+            ["Reuse tier", asset.reuseTier || "Not recorded"]
+          ]} />
+          {!approved ? <MetadataGroup title="Primary blocker" rows={[
+            ["Blocker", reusePacket.reuse.blockers[0]?.label || "Review evidence needed"],
+            ["Evidence needed", reusePacket.viewerVerdict.reason],
+            ["Reviewer role", reusePacket.reuse.blockers.some((blocker) => blocker.code === "blocked-sensitive") ? "Domain reviewer / DAM reviewer" : "Reviewer or DAM Admin"]
+          ]} /> : null}
+          <EvidenceChecklistSummary rows={evidenceRows} />
+          <MetadataGroup title="Metadata completeness" rows={[
+            ["State", metadataHealth.state],
+            ["Score", `${metadataHealth.score}%`],
+            ["Gaps", metadataHealth.missing.length ? metadataHealth.missing.join(", ") : "None in current role-safe view"]
+          ]} />
+          <RoleSafeActionBar asset={asset} role={role} onRequestReview={() => { void requestReview(); }} onDownloadApprovedCopy={requestApprovedDownload} onMessage={setAssetActionMessage} />
+          <BlockedReasonList blockers={reusePacket.reuse.blockers} />
+          <AdminDiagnosticCard role={role} rows={[
+            ["Source mode", detail.source?.label || "Not loaded"],
+            ["Live source", detail.live ? "Yes" : "No"],
+            ["Record source", detail.source?.adapter || "unknown"],
+            ["ResourceSpace admin link", canOpenResourceSpace && detail.data?.resourceSpaceUrl ? "Available" : "Unavailable"],
+            ["Pending write", asset.pendingReviewWrite?.syncState || "None"]
+          ]} />
+          {hasVersionData ? <AdminDiagnosticCard role={role} title="Version diagnostics" rows={[
             ["Original file", asset.originalFilename || "Not provided"],
             ["Duplicate role", asset.duplicateRole || "Not provided"],
             ["Duplicate group", asset.duplicateGroup || "Not provided"]
-          ].map(([l, v]) => <div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section> : null}
+          ]} /> : null}
           <section className="ed-card"><header className="ed-card-head"><h3>Recent Activity</h3></header>{activityItems.length ? <div className="ed-table-mini">{activityItems.map((item) => <p key={item}>{item}</p>)}</div> : <p className="ed-empty-copy">No review activity provided.</p>}</section>
         </aside>
       </div>
