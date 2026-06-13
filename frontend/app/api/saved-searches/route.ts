@@ -17,6 +17,7 @@ import {
   saveSavedSearchDraft
 } from "@/lib/saved-search-store";
 import { requestIdentity } from "@/lib/request-identity";
+import { isRuntimeWriteBlockedError, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(criteriaError.body, { status: criteriaError.status });
   }
 
-  const record = await saveSavedSearchDraft(draft, identity);
+  let record: Awaited<ReturnType<typeof saveSavedSearchDraft>>;
+  try {
+    record = await saveSavedSearchDraft(draft, identity);
+  } catch (error) {
+    if (isRuntimeWriteBlockedError(error)) {
+      const blocked = runtimeWriteBlockedRouteError("saved-searches", error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    throw error;
+  }
 
   appendAuditEvent(savedSearchSavedAuditEvent(record, identity.role, identity.id));
 

@@ -12,6 +12,7 @@ import {
 import { canAdmin } from "@/lib/permissions";
 import { requestIdentity } from "@/lib/request-identity";
 import { normalizeFeedbackId } from "@/lib/request-validation";
+import { isRuntimeWriteBlockedError, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json(validationError.body, { status: validationError.status });
   }
 
-  const record = await patchBetaFeedback(id, input.patch);
+  let record: Awaited<ReturnType<typeof patchBetaFeedback>>;
+  try {
+    record = await patchBetaFeedback(id, input.patch);
+  } catch (error) {
+    if (isRuntimeWriteBlockedError(error)) {
+      const blocked = runtimeWriteBlockedRouteError("beta-feedback", error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    throw error;
+  }
   if (!record) return NextResponse.json({ error: "Feedback record not found." }, { status: 404 });
 
   appendAuditEvent(betaFeedbackTriagedAuditEvent(record, identity.role, identity.id));

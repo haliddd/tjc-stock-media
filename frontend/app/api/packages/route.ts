@@ -18,6 +18,7 @@ import {
 } from "@/lib/package-store";
 import { canContribute, canReview } from "@/lib/permissions";
 import { requestIdentity } from "@/lib/request-identity";
+import { isRuntimeWriteBlockedError, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,16 @@ export async function POST(request: NextRequest) {
   const { assets } = await getMediaSourceSession(identity.role);
   const sections = resolvePackageSections(draft, assets);
   const governance = buildPackageGovernance(draft, sections, identity.role);
-  const record = await savePackageDraftSubmission(draft, identity, governance);
+  let record: Awaited<ReturnType<typeof savePackageDraftSubmission>>;
+  try {
+    record = await savePackageDraftSubmission(draft, identity, governance);
+  } catch (error) {
+    if (isRuntimeWriteBlockedError(error)) {
+      const blocked = runtimeWriteBlockedRouteError("package-drafts", error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    throw error;
+  }
 
   appendAuditEvent(packageDraftSavedAuditEvent(record, governance, identity.role, identity.id));
 

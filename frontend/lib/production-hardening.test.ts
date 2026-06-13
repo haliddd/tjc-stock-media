@@ -4,6 +4,7 @@ import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
+import { isRuntimeWriteBlockedError, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 import { taxonomyGovernanceForRole } from "@/lib/taxonomy";
 import type { StockMediaAsset } from "@/lib/types";
 
@@ -84,6 +85,30 @@ describe("production identity guard", () => {
     expect(identity.role).toBe("DAM Admin");
     expect(identity.email).toBe("reviewer@example.org");
     expect(identity.sourceSystem).toBe("sso");
+  });
+});
+
+describe("production runtime write guard", () => {
+  it("turns blocked runtime writes into explicit 503 route errors", () => {
+    const error = new Error("Durable runtime store required for production beta-feedback writes.");
+    const response = runtimeWriteBlockedRouteError("beta-feedback", error);
+
+    expect(isRuntimeWriteBlockedError(error)).toBe(true);
+    expect(response).toEqual({
+      status: 503,
+      body: {
+        error: "Durable runtime store is required for this production write.",
+        reasonCode: "runtime-store-required",
+        category: "beta-feedback",
+        detail: "Durable runtime store required for production beta-feedback writes."
+      }
+    });
+  });
+
+  it("does not classify unrelated runtime errors as durable-store blockers", () => {
+    const error = new Error("Unexpected write failure");
+
+    expect(isRuntimeWriteBlockedError(error)).toBe(false);
   });
 });
 

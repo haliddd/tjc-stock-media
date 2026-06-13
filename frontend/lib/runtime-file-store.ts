@@ -48,6 +48,23 @@ export function assertRuntimeWriteAllowed(category: RuntimeStateCategory) {
   }
 }
 
+export function isRuntimeWriteBlockedError(error: unknown): error is Error {
+  return error instanceof Error && /^Durable runtime store required for production .+ writes\.$/.test(error.message);
+}
+
+export function runtimeWriteBlockedRouteError(category: RuntimeStateCategory, error: unknown) {
+  const detail = isRuntimeWriteBlockedError(error) ? error.message : "Runtime store write failed.";
+  return {
+    status: 503 as const,
+    body: {
+      error: "Durable runtime store is required for this production write.",
+      reasonCode: "runtime-store-required",
+      category,
+      detail
+    }
+  };
+}
+
 export function ensureRuntimeDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true });
 }

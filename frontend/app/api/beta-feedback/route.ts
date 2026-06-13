@@ -17,6 +17,7 @@ import {
 } from "@/lib/beta-feedback";
 import { canAdmin } from "@/lib/permissions";
 import { requestIdentity } from "@/lib/request-identity";
+import { isRuntimeWriteBlockedError, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(validationError.body, { status: validationError.status });
   }
   const identity = requestIdentity(request, submission.rawRole);
-  const record = await createBetaFeedbackFromSubmission(submission, identity, file);
+  let record: Awaited<ReturnType<typeof createBetaFeedbackFromSubmission>>;
+  try {
+    record = await createBetaFeedbackFromSubmission(submission, identity, file);
+  } catch (error) {
+    if (isRuntimeWriteBlockedError(error)) {
+      const blocked = runtimeWriteBlockedRouteError("beta-feedback", error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    throw error;
+  }
 
   appendAuditEvent(betaFeedbackSubmittedAuditEvent(record, identity.role, identity.id));
 
