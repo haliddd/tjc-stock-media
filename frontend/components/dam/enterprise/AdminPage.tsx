@@ -6,9 +6,11 @@ import { AlertTriangle, Bell, Box, Check, CheckCircle2, ClipboardCheck, Database
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAdminReadiness } from "@/components/dam/useDamApi";
 import { adminNavItems, adminNavLabel, integrationReadinessColumns, integrationState, policySummaryRows, systemHealthRows } from "@/lib/admin-control";
+import { enterpriseMetadataSchemaRows, metadataSchemaHealthSummary } from "@/lib/enterprise-metadata";
 import type { EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaSourceIsLive } from "@/lib/media-source/truth";
 import { routeWithRole } from "@/lib/role-routes";
+import { taxonomyGovernanceTerms, taxonomyHealthSummary } from "@/lib/taxonomy";
 import type { BetaFeedbackRecord, BetaFeedbackSeverity, BetaFeedbackStatus, BetaReadinessFact, DamReadinessResult, IntegrationReadinessItem } from "@/lib/types";
 import { ActionButton, CustodyMapPanel, ErrorCard, KpiCard, LoadingCard, PageHeader, SourcePill, StatusBadge } from "./EnterpriseShared";
 
@@ -745,6 +747,119 @@ function OverviewModule({ readiness, onSelectModule }: { readiness?: DamReadines
   );
 }
 
+function MetadataSchemaConsole({ readiness }: { readiness?: DamReadinessResult | null }) {
+  const health = metadataSchemaHealthSummary();
+  const coverageByKey = new Map((readiness?.fieldMappings || []).map((row) => [row.key, row]));
+
+  return (
+    <section className="ed-card ed-admin-module">
+      <header className="ed-card-head">
+        <div>
+          <h3>Metadata Fields</h3>
+          <p>Admin-only field governance. ResourceSpace remains metadata truth; Shared Drive remains master custody.</p>
+        </div>
+        <StatusBadge status="Read-only" />
+      </header>
+      <div className="ed-admin-stat-grid">
+        <article><strong>{health.total}</strong><span>governed fields</span><small>{health.required} required</small></article>
+        <article><strong>{health.controlled}</strong><span>controlled fields</span><small>select lists, not free text</small></article>
+        <article><strong>{health.privateInternals}</strong><span>private internals</span><small>DAM Admin only</small></article>
+      </div>
+      <table className="ed-table">
+        <thead>
+          <tr>
+            <th>Field key</th>
+            <th>Controlled values</th>
+            <th>Required</th>
+            <th>Role visibility</th>
+            <th>Clearance effect</th>
+            <th>Intake</th>
+            <th>Source binding</th>
+          </tr>
+        </thead>
+        <tbody>
+          {enterpriseMetadataSchemaRows.map((row) => {
+            const coverage = coverageByKey.get(row.key);
+            return (
+              <tr key={row.key}>
+                <td><strong>{row.key}</strong><br /><small>{row.label}</small></td>
+                <td>{row.controlledValues.length ? row.controlledValues.join(", ") : "Free text / derived"}</td>
+                <td>{row.required ? "Required" : "Optional"}</td>
+                <td>{row.roleVisibility.join(", ")}</td>
+                <td>{row.clearanceEffect}</td>
+                <td>{row.intakeRequirement}</td>
+                <td><small>{row.sourceTruth}</small><br />{row.resourceSpaceField}<br /><StatusBadge status={coverage && coverage.coverage >= 90 ? "Operational" : row.required ? "Degraded" : "Read-only"} /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="ed-mobile-card-list" aria-label="Metadata field owner notes">
+        {enterpriseMetadataSchemaRows.filter((row) => row.privateSourceInternal || row.required).slice(0, 8).map((row) => (
+          <article key={`note-${row.key}`}>
+            <header><strong>{row.label}</strong><AdminStatusBadge tone={row.privateSourceInternal ? "Disabled" : "Info"} label={row.privateSourceInternal ? "Admin only" : "Governed"} /></header>
+            <p>{row.ownerNotes}</p>
+            <span>{row.resourceSpaceField}</span>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TaxonomyGovernanceConsole({ readiness }: { readiness?: DamReadinessResult | null }) {
+  const health = taxonomyHealthSummary();
+  const vocabulary = readiness?.vocabulary || [];
+
+  return (
+    <section className="ed-card ed-admin-module">
+      <header className="ed-card-head">
+        <div>
+          <h3>Taxonomy</h3>
+          <p>Canonical vocabulary, alias cleanup, forbidden language, and sensitive ministry mappings for reviewer-owned metadata.</p>
+        </div>
+        <StatusBadge status={readiness?.metrics.taxonomyDrift ? "Degraded" : "Operational"} />
+      </header>
+      <div className="ed-admin-stat-grid">
+        <article><strong>{health.canonicalLabels.length}</strong><span>canonical labels</span><small>{health.aliasCount} aliases</small></article>
+        <article><strong>{health.deprecatedTerms.length}</strong><span>deprecated terms</span><small>cleanup candidates</small></article>
+        <article><strong>{health.forbiddenTerms.length}</strong><span>forbidden terms</span><small>reviewer-owned policy</small></article>
+      </div>
+      <table className="ed-table">
+        <thead>
+          <tr>
+            <th>Canonical label</th>
+            <th>Aliases</th>
+            <th>Deprecated</th>
+            <th>Forbidden</th>
+            <th>Sensitive / ministry mapping</th>
+            <th>Owner notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {taxonomyGovernanceTerms.map((term) => (
+            <tr key={term.canonical}>
+              <td><strong>{term.canonical}</strong></td>
+              <td>{term.aliases.join(", ")}</td>
+              <td>{term.deprecatedTerms.join(", ")}</td>
+              <td>{term.forbiddenTerms.join(", ")}</td>
+              <td><small>{term.ministryMapping}</small><br />{term.sensitiveMapping || "public-safe when evidence supports it"}</td>
+              <td>{term.ownerNotes}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <section className="ed-card">
+        <header className="ed-card-head"><div><h3>Observed vocabulary</h3><p>Current ResourceSpace-backed terms remain evidence, not automatic policy changes.</p></div><StatusBadge status="Read-only" /></header>
+        <table className="ed-table">
+          <thead><tr><th>Term</th><th>Count</th><th>Kind</th></tr></thead>
+          <tbody>{vocabulary.slice(0, 12).map((row) => <tr key={`${row.kind}-${row.term}`}><td>{row.term}</td><td>{row.count.toLocaleString()}</td><td>{row.kind}</td></tr>)}</tbody>
+        </table>
+      </section>
+    </section>
+  );
+}
+
 function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNav: string; readiness?: DamReadinessResult | null; onSelectModule: SelectAdminModule }) {
   const metrics = readiness?.metrics;
   const integrations = readiness?.integrationReadiness || [];
@@ -774,16 +889,10 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNa
     </section>
   );
   if (activeNav === "taxonomy") return (
-    <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Taxonomy</h3><p>Vocabulary drift and search terms from current ResourceSpace-backed catalog.</p></div><StatusBadge status={metrics?.taxonomyDrift ? "Degraded" : "Operational"} /></header>
-      <table className="ed-table"><thead><tr><th>Term</th><th>Count</th><th>Kind</th></tr></thead><tbody>{(readiness?.vocabulary || []).slice(0, 14).map((row) => <tr key={`${row.kind}-${row.term}`}><td>{row.term}</td><td>{row.count.toLocaleString()}</td><td>{row.kind}</td></tr>)}</tbody></table>
-    </section>
+    <TaxonomyGovernanceConsole readiness={readiness} />
   );
   if (activeNav === "metadata-schemas") return (
-    <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Metadata Fields</h3><p>Field mapping truth. Live writeback remains blocked until ResourceSpace refs are configured.</p></div><StatusBadge status="Read-only" /></header>
-      <table className="ed-table"><thead><tr><th>Field</th><th>ResourceSpace field</th><th>Coverage</th><th>Missing</th></tr></thead><tbody>{(readiness?.fieldMappings || []).map((row) => <tr key={row.key}><td>{row.label}</td><td>{row.resourceSpaceField}</td><td><StatusBadge status={row.coverage >= 90 ? "Operational" : row.required ? "Degraded" : "Read-only"} /> {row.coverage}%</td><td>{row.missing.toLocaleString()}</td></tr>)}</tbody></table>
-    </section>
+    <MetadataSchemaConsole readiness={readiness} />
   );
   if (activeNav === "rights-policies") return (
     <section className="ed-card ed-admin-module">

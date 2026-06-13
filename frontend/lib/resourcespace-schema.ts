@@ -15,6 +15,121 @@ import type {
 
 export type ResourceSpaceRecord = Record<string, string | number | null | undefined>;
 
+export type ResourceSpaceGovernanceFieldFact = {
+  key: string;
+  resourceSpaceField: string;
+  fieldType: "text" | "date" | "single-select" | "multi-select" | "boolean" | "derived";
+  truthBoundary: "ResourceSpace" | "Google Shared Drive" | "Portal derived";
+  readiness: "mapped" | "beta-field-map" | "requires-final-field-ref";
+  privateSourceInternal?: boolean;
+  notes: string;
+};
+
+export const resourceSpaceGovernanceFieldFacts: ResourceSpaceGovernanceFieldFact[] = [
+  {
+    key: "asset_id",
+    resourceSpaceField: "resource_id / ref",
+    fieldType: "derived",
+    truthBoundary: "ResourceSpace",
+    readiness: "mapped",
+    notes: "Stable DAM record reference used for audit, pending writes, and lookup."
+  },
+  {
+    key: "publish_status",
+    resourceSpaceField: "publish_status",
+    fieldType: "single-select",
+    truthBoundary: "ResourceSpace",
+    readiness: "beta-field-map",
+    notes: "Raw DAM approval state. Portal reuse still requires evidence gates."
+  },
+  {
+    key: "usage_scope",
+    resourceSpaceField: "usage_scope",
+    fieldType: "single-select",
+    truthBoundary: "ResourceSpace",
+    readiness: "beta-field-map",
+    notes: "Defines public, internal, archive, and do-not-use distribution scope."
+  },
+  {
+    key: "rights_basis",
+    resourceSpaceField: "rights_basis",
+    fieldType: "single-select",
+    truthBoundary: "ResourceSpace",
+    readiness: "requires-final-field-ref",
+    notes: "Required before public clearance; supports music, contributor, and ownership review."
+  },
+  {
+    key: "approved_channels",
+    resourceSpaceField: "approved_channels",
+    fieldType: "multi-select",
+    truthBoundary: "ResourceSpace",
+    readiness: "requires-final-field-ref",
+    notes: "Channel list used by package and download policy. Not permission truth alone."
+  },
+  {
+    key: "people_visible",
+    resourceSpaceField: "people_visible / minors_visible",
+    fieldType: "single-select",
+    truthBoundary: "ResourceSpace",
+    readiness: "beta-field-map",
+    notes: "People and youth risk drive consent and reviewer routing."
+  },
+  {
+    key: "sensitivity_class",
+    resourceSpaceField: "sensitivity_class",
+    fieldType: "single-select",
+    truthBoundary: "ResourceSpace",
+    readiness: "requires-final-field-ref",
+    notes: "Separates public-safe media from worship, sacrament, youth, testimony, and governance contexts."
+  },
+  {
+    key: "reviewed_by",
+    resourceSpaceField: "reviewed_by",
+    fieldType: "text",
+    truthBoundary: "ResourceSpace",
+    readiness: "beta-field-map",
+    notes: "Human reviewer identity required for approval evidence."
+  },
+  {
+    key: "reviewed_date",
+    resourceSpaceField: "reviewed_date",
+    fieldType: "date",
+    truthBoundary: "ResourceSpace",
+    readiness: "beta-field-map",
+    notes: "Review freshness, re-review, and audit readiness depend on this date."
+  },
+  {
+    key: "approved_use_copy",
+    resourceSpaceField: "approved_derivative_url / preview derivative",
+    fieldType: "derived",
+    truthBoundary: "Portal derived",
+    readiness: "requires-final-field-ref",
+    notes: "Download gates require approved derivative evidence, not master-original access."
+  },
+  {
+    key: "master_custody_status",
+    resourceSpaceField: "master_custody_path_status",
+    fieldType: "single-select",
+    truthBoundary: "Google Shared Drive",
+    readiness: "requires-final-field-ref",
+    privateSourceInternal: true,
+    notes: "Confirms master-original custody without exposing source paths to normal roles."
+  },
+  {
+    key: "source_path",
+    resourceSpaceField: "source_path / master_drive_path / checksum_sha256",
+    fieldType: "text",
+    truthBoundary: "Google Shared Drive",
+    readiness: "requires-final-field-ref",
+    privateSourceInternal: true,
+    notes: "Admin-only provenance and dedupe internals. Never shown to Viewer or Contributor."
+  }
+];
+
+export function resourceSpaceGovernanceFactForKey(key: string) {
+  return resourceSpaceGovernanceFieldFacts.find((field) => field.key === key);
+}
+
 const mediaExtensions = {
   video: ["mp4", "mov", "m4v"],
   audio: ["mp3", "wav", "m4a", "aac", "flac"],

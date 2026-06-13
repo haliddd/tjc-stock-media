@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
+import { taxonomyGovernanceForRole } from "@/lib/taxonomy";
 import type { StockMediaAsset } from "@/lib/types";
 
 const originalEnv = { ...process.env };
@@ -143,5 +145,30 @@ describe("metadata schema contract", () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.missing).toEqual(expect.arrayContaining(["rights_status", "reviewed_by", "reviewed_date", "people_visible", "approved_use_copy"]));
+  });
+
+  it.each(["Viewer", "Contributor"] as const)("does not expose private schema or source internals to %s", (role) => {
+    const schema = enterpriseMetadataSchemaForRole(role);
+    const serialized = JSON.stringify(schema).toLowerCase();
+
+    expect(schema.some((row) => row.key === "source_path" || row.key === "master_custody_status")).toBe(false);
+    expect(serialized).not.toContain("source_path");
+    expect(serialized).not.toContain("master_drive_path");
+    expect(serialized).not.toContain("checksum_sha256");
+    expect(serialized).not.toContain("ownernotes");
+    expect(schema.every((row) => row.resourceSpaceField === "Restricted")).toBe(true);
+  });
+
+  it.each(["Viewer", "Contributor"] as const)("does not expose private taxonomy cleanup internals to %s", (role) => {
+    const taxonomy = taxonomyGovernanceForRole(role);
+    const serialized = JSON.stringify(taxonomy).toLowerCase();
+
+    expect(taxonomy.health.forbiddenTerms).toHaveLength(0);
+    expect(taxonomy.health.deprecatedTerms).toHaveLength(0);
+    expect(taxonomy.health.ownerNotes).toHaveLength(0);
+    expect(taxonomy.health.sensitiveMinistryMappings).toHaveLength(0);
+    expect(serialized).not.toContain("master available");
+    expect(serialized).not.toContain("rights guaranteed");
+    expect(serialized).not.toContain("reviewer-owned policy");
   });
 });
