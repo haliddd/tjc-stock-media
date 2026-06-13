@@ -9,8 +9,13 @@ import type { DemoRole } from "@/lib/types";
 
 export type UsageEventType =
   | "search"
+  | "search_query"
+  | "search_zero_result"
+  | "filter_click"
   | "asset_view"
+  | "asset_open"
   | "download_gate"
+  | "blocked_download_intent"
   | "review_action"
   | "brand_kit_view"
   | "package_action";
@@ -49,7 +54,19 @@ type UsageDatabase = {
 
 type DatabaseSyncConstructor = new (file: string) => UsageDatabase;
 
-const usageEventTypes: UsageEventType[] = ["search", "asset_view", "download_gate", "review_action", "brand_kit_view", "package_action"];
+const usageEventTypes: UsageEventType[] = [
+  "search",
+  "search_query",
+  "search_zero_result",
+  "filter_click",
+  "asset_view",
+  "asset_open",
+  "download_gate",
+  "blocked_download_intent",
+  "review_action",
+  "brand_kit_view",
+  "package_action"
+];
 
 let db: UsageDatabase | null = null;
 let sqliteUnavailable = false;
@@ -138,6 +155,10 @@ function usageActorLabel(role: DemoRole) {
   return role === "DAM Admin" ? "DAM Admin" : role === "Reviewer" ? "Reviewer" : role === "Contributor" ? "Contributor" : "Viewer";
 }
 
+function safeActor(value: unknown, role: DemoRole) {
+  return normalizePersistedDisplayText(value, 160) || usageActorLabel(role);
+}
+
 function usageAnalyticsStorageMode() {
   return usageAnalyticsDbPath() ? "configured-sqlite" : "local-sqlite";
 }
@@ -156,7 +177,7 @@ export function recordUsageEvent(event: UsageEventInput) {
       new Date().toISOString(),
       safeType(event.type),
       normalizeRoleWithFallback(event.role),
-      usageActorLabel(normalizeRoleWithFallback(event.role)),
+      safeActor(event.actor, normalizeRoleWithFallback(event.role)),
       event.assetId ? safeAssetId(event.assetId) || null : null,
       event.resourceSpaceId ? safeResourceSpaceId(event.resourceSpaceId) || null : null,
       event.route ? safeRoute(event.route) || null : null,
@@ -169,21 +190,23 @@ export function recordUsageEvent(event: UsageEventInput) {
   }
 }
 
-function metricRows(type: UsageEventType, column: "query" | "asset_id", limit = 5): UsageMetricRow[] {
+function metricRows(types: UsageEventType | UsageEventType[], column: "query" | "asset_id", limit = 5): UsageMetricRow[] {
   if (!usageAnalyticsEnabled()) return [];
   try {
     const connection = database();
     if (!connection) return [];
+    const requestedTypes = Array.isArray(types) ? types : [types];
+    const placeholders = requestedTypes.map(() => "?").join(", ");
     const rows = connection
       .prepare(`
         SELECT ${column} AS label, COUNT(*) AS value
         FROM usage_events
-        WHERE type = ? AND ${column} IS NOT NULL AND ${column} <> ''
+        WHERE type IN (${placeholders}) AND ${column} IS NOT NULL AND ${column} <> ''
         GROUP BY ${column}
         ORDER BY value DESC, label ASC
         LIMIT ?
       `)
-      .all(type, limit) as Array<{ label?: string; value?: number }>;
+      .all(...requestedTypes, limit) as Array<{ label?: string; value?: number }>;
     return rows
       .filter((row): row is { label: string; value: number } => Boolean(row.label))
       .map((row) => ({
@@ -247,8 +270,8 @@ export function usageAnalyticsDiagnostics() {
       enabled: true,
       storageMode: usageAnalyticsStorageMode(),
       totalEvents: safeNonNegativeInt(total.count),
-      topSearches: metricRows("search", "query"),
-      topAssets: metricRows("asset_view", "asset_id"),
+      topSearches: metricRows(["search_query", "search"], "query"),
+      topAssets: metricRows(["asset_open", "asset_view"], "asset_id"),
       dailyEvents: dailyEventRows()
     };
   } catch {

@@ -428,6 +428,7 @@ export function matchesCatalogFilter(asset: StockMediaAsset, filter: string) {
   if (value === "sacrament sensitive" || value === "doctrine review") return asset.sensitivityClass === "sacrament-sensitive" || reviewRiskFlags(asset).includes("Doctrine/sacrament review");
   if (value === "youth sensitive" || value === "minors consent") return asset.sensitivityClass === "youth-sensitive" || assetHasChildrenYouthRisk(asset);
   if (value === "testimony sensitive" || value === "pastoral review") return asset.sensitivityClass === "testimony-sensitive" || reviewRiskFlags(asset).includes("Testimony/pastoral sensitivity review");
+  if (value === "music rights" || value === "teaching rights") return reviewRiskFlags(asset).includes("Music/hymn rights review") || assetHasFieldValue(asset, "music-rights");
   if (value === "internal governance") return asset.sensitivityClass === "internal-governance";
   if (value === "archive restricted") return asset.sensitivityClass === "archive-restricted";
   if (value === "consent confirmed") return /confirmed|not applicable|documented exception/i.test(`${asset.consentStatus || ""} ${asset.rightsNotes || ""}`);

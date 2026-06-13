@@ -630,12 +630,27 @@ export type SearchResult = {
     rawQuery: string;
     matchedView?: string;
     matchedCollection?: string;
+    matchedDiscoveryIntent?: string;
     confidence: "exact" | "synonym" | "none";
   };
   discovery: {
     mode: "browse" | "smart-query" | "saved-view" | "collection";
     summary: string;
     expandedTerms: string[];
+    matchedIntent?: {
+      id: string;
+      label: string;
+      query: string;
+      description: string;
+      safetyNote: string;
+    };
+    intentPresets: Array<{
+      id: string;
+      label: string;
+      query: string;
+      description: string;
+      suggestedFilters: string[];
+    }>;
     suggestedFilters: Array<{
       label: string;
       filter: string;
@@ -658,6 +673,11 @@ export type SearchResult = {
       }>;
     };
     scoreHint: string;
+    rankingExplanation: Array<{
+      label: string;
+      detail: string;
+    }>;
+    safetyNote: string;
   };
   zeroResultInsights: ZeroResultInsight[];
   operationalInsights: OperationalInsight[];

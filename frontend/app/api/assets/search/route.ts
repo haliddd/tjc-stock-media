@@ -59,10 +59,31 @@ export async function GET(request: NextRequest) {
     };
   }
   session.recordUsage({
-    type: "search",
+    type: "search_query",
     route: "/api/assets/search",
-    query: input.query || input.view || input.collection || "default",
-    metadata: { rendered: result.pagination.rangeEnd - result.pagination.rangeStart + (result.pagination.rangeStart ? 1 : 0), total: result.total }
+    query: input.query || input.intent || input.view || input.collection || "default",
+    metadata: {
+      rendered: result.pagination.rangeEnd - result.pagination.rangeStart + (result.pagination.rangeStart ? 1 : 0),
+      total: result.total,
+      filterCount: input.filters.length,
+      intent: input.intent || result.appliedIntent?.matchedDiscoveryIntent || null
+    }
   });
+  input.filters.forEach((filter) => {
+    session.recordUsage({
+      type: "filter_click",
+      route: "/api/assets/search",
+      query: input.query || input.intent || input.view || input.collection || "default",
+      metadata: { filter, total: result.total }
+    });
+  });
+  if (result.total === 0) {
+    session.recordUsage({
+      type: "search_zero_result",
+      route: "/api/assets/search",
+      query: input.query || input.intent || input.view || input.collection || "default",
+      metadata: { filterCount: input.filters.length, intent: input.intent || result.appliedIntent?.matchedDiscoveryIntent || null }
+    });
+  }
   return NextResponse.json(searchResultForRole(session, result));
 }

@@ -296,6 +296,7 @@ function LibraryResultList({
 export function EnterpriseLibraryPage() {
   const { role } = useDemoRole();
   const [query, setQuery] = useState("");
+  const [intent, setIntent] = useState("");
   const [view, setView] = useState("");
   const [collection, setCollection] = useState("");
   const [filters, setFilters] = useState<string[]>([]);
@@ -308,7 +309,7 @@ export function EnterpriseLibraryPage() {
   const [quickLookId, setQuickLookId] = useState<string | null>(null);
   const [libraryMessage, setLibraryMessage] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const search = useAssetsSearch({ role, query, filters, view: view || undefined, collection: collection || undefined, sort, limit, offset });
+  const search = useAssetsSearch({ role, query, filters, view: view || undefined, collection: collection || undefined, intent: intent || undefined, sort, limit, offset });
   const assets = search.data?.assets || [];
   const discovery = search.data?.discovery;
   const noResultHelp = discovery?.noResultHelp;
@@ -334,7 +335,7 @@ export function EnterpriseLibraryPage() {
     setOffset(0);
     setSelectedId(null);
     setSelectedIds([]);
-  }, [query, filters, view, collection, sort, role]);
+  }, [query, intent, filters, view, collection, sort, role]);
   const selected = assets.find((asset) => asset.id === selectedId) || assets[0];
   const quickLookAsset = assets.find((asset) => asset.id === quickLookId) || null;
   const pagination = search.data?.pagination;
@@ -348,6 +349,10 @@ export function EnterpriseLibraryPage() {
     setQuickLookId(asset.id);
   };
   const announceLibraryAction = (message: string) => setLibraryMessage(message);
+  const updateSearchQuery = (value: string) => {
+    setQuery(value);
+    setIntent("");
+  };
   const saveCurrentSearch = async () => {
     if (!query && !view && !collection && !filters.length) {
       announceLibraryAction("Choose a query, saved view, collection, or filter before saving this search.");
@@ -375,8 +380,15 @@ export function EnterpriseLibraryPage() {
   const toggleFilter = (filter: string) => {
     setFilters((current) => current.includes(filter) ? current.filter((item) => item !== filter) : [...current, filter]);
   };
+  const runIntentPreset = (preset: NonNullable<typeof discovery>["intentPresets"][number]) => {
+    setIntent(preset.id);
+    setQuery(preset.query);
+    setView("");
+    setCollection("");
+  };
   const runSuggestedQuery = (term: string) => {
     setQuery(term);
+    setIntent("");
     setView("");
     setCollection("");
   };
@@ -384,10 +396,12 @@ export function EnterpriseLibraryPage() {
     setView(id);
     setCollection("");
     setQuery("");
+    setIntent("");
     setFilters([]);
   };
   const clearAll = () => {
     setQuery("");
+    setIntent("");
     setView("");
     setCollection("");
     setFilters([]);
@@ -403,8 +417,8 @@ export function EnterpriseLibraryPage() {
       activeCollection={collection}
       activeFilters={filters}
       filterCounts={filterCounts}
-      onViewSelect={(id) => { setView(id); setCollection(""); setQuery(""); setFilters([]); setFiltersOpen(false); }}
-      onCollectionSelect={(id) => { setCollection(collection === id ? "" : id); setView(""); setQuery(""); setFiltersOpen(false); }}
+      onViewSelect={(id) => { setView(id); setCollection(""); setQuery(""); setIntent(""); setFilters([]); setFiltersOpen(false); }}
+      onCollectionSelect={(id) => { setCollection(collection === id ? "" : id); setView(""); setQuery(""); setIntent(""); setFiltersOpen(false); }}
       onSavedViewsExpand={() => announceLibraryAction("Saved views are listed from the current DAM catalog. Use Save this search to keep the current query where storage is configured.")}
       onFacetSelect={(label) => announceLibraryAction(`${label} requires ResourceSpace field mapping before it can filter results.`)}
       onFilterToggle={toggleFilter}
@@ -433,8 +447,8 @@ export function EnterpriseLibraryPage() {
         label="Library asset toolbar"
         searchValue={query}
         searchPlaceholder={canReview(role) ? "Search DAM title, reference, collection, ministry, tag..." : "Search title, ministry, event, tag..."}
-        onSearchChange={setQuery}
-        onClearSearch={() => setQuery("")}
+        onSearchChange={updateSearchQuery}
+        onClearSearch={() => { setQuery(""); setIntent(""); }}
         onOpenFilters={() => setFiltersOpen(true)}
         filterCount={activeFilterCount}
         selectedCount={selectedIds.length}
@@ -442,13 +456,54 @@ export function EnterpriseLibraryPage() {
         quickFilters={[{ id: "portal ready", label: "Portal Ready" }, { id: "needs review", label: "Needs Review" }, { id: "rights review", label: "Rights Review" }, { id: "people unknown", label: "People/Minors" }, { id: "photo", label: "Photo beta" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
       />
       <p className="ed-action-helper">Collection, package, saved view, tag, and metric context never grants reuse permission. Each result shows one clearance status from item-level evidence.</p>
+      {discovery ? (
+        <section className="ed-smart-discovery" aria-label="Smart discovery packet">
+          <div>
+            <span>Intent presets</span>
+            <strong>{discovery.matchedIntent?.label || "Browse"}</strong>
+            <small>{discovery.matchedIntent?.description || discovery.summary}</small>
+          </div>
+          <nav aria-label="Query intent presets">
+            {discovery.intentPresets.map((preset) => (
+              <button
+                type="button"
+                key={preset.id}
+                className={intent === preset.id || discovery.matchedIntent?.id === preset.id ? "is-active" : undefined}
+                onClick={() => runIntentPreset(preset)}
+                title={preset.description}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </nav>
+          {discovery.expandedTerms.length ? (
+            <p><strong>Expanded terms</strong> {discovery.expandedTerms.slice(0, 8).join(", ")}</p>
+          ) : null}
+          {discovery.suggestedFilters.length ? (
+            <nav aria-label="Suggested discovery filters">
+              {discovery.suggestedFilters.map((item) => (
+                <button
+                  type="button"
+                  key={item.filter}
+                  className={filters.includes(item.filter) ? "is-active" : undefined}
+                  onClick={() => toggleFilter(item.filter)}
+                >
+                  {item.label} <span>{item.count.toLocaleString()}</span>
+                </button>
+              ))}
+            </nav>
+          ) : null}
+          <p><strong>Ranking</strong> {discovery.rankingExplanation.map((item) => item.label).join(" -> ")}. {discovery.scoreHint}</p>
+          <p>{discovery.safetyNote}</p>
+        </section>
+      ) : null}
       <AppliedFilterBar
         query={query}
         viewLabel={savedViewLabel}
         collectionLabel={collectionLabel}
         filters={filters}
         resultCount={search.data?.total}
-        onClearQuery={() => setQuery("")}
+        onClearQuery={() => { setQuery(""); setIntent(""); }}
         onClearView={() => setView("")}
         onClearCollection={() => setCollection("")}
         onRemoveFilter={toggleFilter}

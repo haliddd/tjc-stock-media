@@ -1,5 +1,6 @@
 import { isKnownCollectionId, isKnownSavedViewId } from "@/lib/catalog";
 import { normalizeCatalogSort } from "@/lib/catalog-language";
+import { isKnownDiscoveryIntent } from "@/lib/catalog-discovery";
 import { normalizeBoundedIntField, normalizePublicTextField, normalizeTextField } from "@/lib/request-validation";
 
 export type CatalogSearchRequestInput = {
@@ -7,6 +8,7 @@ export type CatalogSearchRequestInput = {
   filters: string[];
   view?: string;
   collection?: string;
+  intent?: string;
   sort?: string;
   limit: number;
   offset: number;
@@ -34,10 +36,12 @@ export function readCatalogSearchRequest(params: Pick<URLSearchParams, "get" | "
     .slice(0, 40);
   const view = normalizeTextField(params.get("view"), "", 80) || undefined;
   const collection = normalizeTextField(params.get("collection"), "", 80) || undefined;
+  const intent = normalizeTextField(params.get("intent"), "", 40) || undefined;
   const sort = normalizeTextField(params.get("sort"), "", 40) || undefined;
 
   if (view && !isKnownSavedViewId(view)) return { error: { message: "Unknown saved view.", status: 400 } };
   if (collection && !isKnownCollectionId(collection)) return { error: { message: "Unknown collection.", status: 400 } };
+  if (intent && !isKnownDiscoveryIntent(intent)) return { error: { message: "Unknown discovery intent.", status: 400 } };
   if (sort && normalizeCatalogSort(sort) !== sort) return { error: { message: "Unknown sort option.", status: 400 } };
 
   return {
@@ -46,6 +50,7 @@ export function readCatalogSearchRequest(params: Pick<URLSearchParams, "get" | "
       filters,
       view,
       collection,
+      intent,
       sort,
       limit: normalizeLimit(params.get("limit")),
       offset: normalizeOffset(params.get("offset"))

@@ -157,6 +157,7 @@ export function useAssetsSearch({
   filters = [],
   view,
   collection,
+  intent,
   sort,
   limit = 24,
   offset = 0
@@ -166,6 +167,7 @@ export function useAssetsSearch({
   filters?: string[];
   view?: string;
   collection?: string;
+  intent?: string;
   sort?: string;
   limit?: number;
   offset?: number;
@@ -177,6 +179,7 @@ export function useAssetsSearch({
   if (query) params.set("q", query);
   if (view) params.set("view", view);
   if (collection) params.set("collection", collection);
+  if (intent) params.set("intent", intent);
   if (sort) params.set("sort", sort);
   filters.forEach((filter) => params.append("filter", filter));
   return useJsonApi<SearchResult & { sourceStatus?: MediaSourceStatus; sourceKind?: ApiSourceKind; live?: boolean }>(`/api/assets/search?${params.toString()}`, role);

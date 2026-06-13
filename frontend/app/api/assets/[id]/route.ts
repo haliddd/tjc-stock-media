@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
   const resourceSpaceId = assetResourceRef(asset);
   session.recordUsage({
-    type: "asset_view",
+    type: "asset_open",
     assetId: asset.id,
     resourceSpaceId,
     route: `/api/assets/${asset.id}`

@@ -24,7 +24,7 @@ import {
   buildZeroResultInsights
 } from "@/lib/catalog-summaries";
 import { assetResourceRef } from "@/lib/asset-refs";
-import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery } from "@/lib/catalog-discovery";
+import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery, resolveDiscoveryQuery } from "@/lib/catalog-discovery";
 import { getActiveMediaSource } from "@/lib/media-source";
 import { listPendingReviewWrites } from "@/lib/pending-review-writes";
 import { safeBoundedInt } from "@/lib/persisted-record-safety";
@@ -149,6 +149,7 @@ export async function searchAssets({
   filters,
   view,
   collection,
+  intent: requestedIntent,
   sort,
   limit = 72,
   offset = 0
@@ -158,6 +159,7 @@ export async function searchAssets({
   filters: string[];
   view?: string;
   collection?: string;
+  intent?: string;
   sort?: string;
   limit?: number;
   offset?: number;
@@ -166,11 +168,13 @@ export async function searchAssets({
   const safeLimit = safeBoundedInt(limit, { min: 1, max: 120, fallback: 72 });
   const safeOffset = safeBoundedInt(offset, { min: 0, max: Number.MAX_SAFE_INTEGER, fallback: 0 });
   const roleVisible = assets.filter((asset) => decideAccess(role, "viewAsset", asset).allowed);
-  const intent = !view && !collection ? matchSearchIntent(query) : undefined;
+  const discoveryQuery = !view && !collection ? resolveDiscoveryQuery(query, requestedIntent) : { query, matchedIntent: undefined };
+  const queryForIntent = discoveryQuery.query;
+  const intent = !view && !collection ? matchSearchIntent(queryForIntent) : undefined;
   const selectedViewId = normalizeSavedViewId(view) || intent?.matchedView;
   const selectedView = savedViewDefinitions.find((item) => item.id === selectedViewId);
   const selectedCollection = collectionDefinitions.find((item) => item.id === collection);
-  const effectiveQuery = intent?.matchedView ? "" : query;
+  const effectiveQuery = intent?.matchedView ? "" : queryForIntent;
   const visible = roleVisible
     .filter((asset) => (selectedView ? selectedView.match(asset) : true))
     .filter((asset) => collectionMatches(asset, collection))
@@ -211,16 +215,18 @@ export async function searchAssets({
     },
     metadataHealth: buildMetadataHealth(roleVisible),
     appliedIntent:
-      intent || selectedCollection
+      intent || selectedCollection || discoveryQuery.matchedIntent
         ? {
             rawQuery: query,
             matchedView: selectedViewId,
             matchedCollection: selectedCollection?.id,
+            matchedDiscoveryIntent: discoveryQuery.matchedIntent?.id,
             confidence: intent?.confidence || (selectedCollection ? "exact" : "none")
           }
         : undefined,
     discovery: buildCatalogDiscovery({
       query: effectiveQuery,
+      intent: discoveryQuery.matchedIntent?.id || requestedIntent,
       view: selectedViewId,
       collection,
       filters,

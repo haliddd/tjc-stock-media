@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { auditAccountabilityArea, auditEventForRolePayload, auditStorageReadiness, originalAccessAuditEvent, packageDecisionAuditEvent, renditionRequestAuditEvent, type AuditEventRecord } from "@/lib/audit-log";
 import { buildBetaReadiness } from "@/lib/beta-readiness-facts";
-import { buildDiscoveryQuery, matchesDiscoveryQuery } from "@/lib/catalog-discovery";
+import { buildCatalogDiscovery, buildDiscoveryQuery, matchesDiscoveryQuery, queryIntentPresets } from "@/lib/catalog-discovery";
 import { intentDefinitions, matchesCatalogFilter, savedViewDefinitions } from "@/lib/catalog-language";
 import { derivativeIndexDiagnostics, governedRenditionPolicyForVariant, originalMasterRenditionPolicy, thumbnailVariantCanSatisfyApprovedCopy } from "@/lib/derivative-index";
 import { auditCoverageMetrics, buildGovernanceMetrics, usageHealthMetrics } from "@/lib/dam-governance-metrics";
@@ -425,6 +425,74 @@ describe("package governance and discovery", () => {
 
     expect(discovery.expandedTerms).toEqual(expect.arrayContaining(["bible", "worship"]));
     expect(matchesDiscoveryQuery(asset(), "sermon slides")).toBe(true);
+  });
+
+  it("exposes trust-aware query presets as discovery hints only", () => {
+    const presetIds = queryIntentPresets.map((preset) => preset.id);
+    expect(presetIds).toEqual(expect.arrayContaining([
+      "website-hero",
+      "slide-background",
+      "newsletter",
+      "social",
+      "no-people",
+      "youth-review",
+      "worship",
+      "music",
+      "internal-only"
+    ]));
+
+    const blockedSocial = asset({
+      id: "blocked-social",
+      approvedChannels: ["social"],
+      rightsBasis: undefined,
+      rightsStatus: "Unknown",
+      consentStatus: "Unknown",
+      reviewer: undefined,
+      reviewedDate: undefined,
+      tags: ["social", "event"],
+      tjcTerms: ["social media"]
+    });
+    const packet = buildCatalogDiscovery({
+      query: "social",
+      intent: "social",
+      filters: [],
+      matchedAssets: [blockedSocial],
+      availableAssets: [blockedSocial],
+      totalVisible: 1
+    });
+
+    expect(packet.matchedIntent?.id).toBe("social");
+    expect(packet.intentPresets.find((preset) => preset.id === "social")?.suggestedFilters).toEqual(expect.arrayContaining(["portal ready", "social channel"]));
+    expect(matchesCatalogFilter(blockedSocial, "social channel")).toBe(true);
+    expect(matchesCatalogFilter(blockedSocial, "public safe")).toBe(false);
+    expect(buildPortalReuseDecision(blockedSocial, "Viewer").viewerVerdict.canDownload).toBe(false);
+    expect(packet.safetyNote).toMatch(/never grants|still pass|permission/i);
+  });
+
+  it("keeps youth review discovery separate from viewer permission truth", () => {
+    const youth = asset({
+      id: "youth-review",
+      status: "Needs Review",
+      usageScope: "Do Not Publish",
+      peopleRisk: "Possible minors",
+      consentStatus: "Needs review",
+      rightsStatus: "Unknown",
+      tags: ["youth", "students"]
+    });
+    const packet = buildCatalogDiscovery({
+      query: "youth review",
+      intent: "youth-review",
+      filters: [],
+      matchedAssets: [youth],
+      availableAssets: [youth],
+      totalVisible: 1
+    });
+
+    expect(packet.matchedIntent?.id).toBe("youth-review");
+    expect(matchesDiscoveryQuery(youth, "youth review")).toBe(true);
+    expect(matchesCatalogFilter(youth, "children/youth")).toBe(true);
+    expect(canSeeAsset("Viewer", youth)).toBe(false);
+    expect(buildPortalReuseDecision(youth, "Viewer").viewerVerdict.canDownload).toBe(false);
   });
 });
 

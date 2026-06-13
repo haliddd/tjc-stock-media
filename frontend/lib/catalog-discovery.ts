@@ -8,7 +8,127 @@ type TermGroup = {
   terms: string[];
 };
 
+export type QueryIntentId =
+  | "website-hero"
+  | "slide-background"
+  | "newsletter"
+  | "social"
+  | "no-people"
+  | "youth-review"
+  | "worship"
+  | "music"
+  | "internal-only";
+
+export type QueryIntentPreset = {
+  id: QueryIntentId;
+  label: string;
+  query: string;
+  description: string;
+  terms: string[];
+  expansions: string[];
+  suggestedFilters: string[];
+  safetyNote: string;
+};
+
+export const queryIntentPresets: QueryIntentPreset[] = [
+  {
+    id: "website-hero",
+    label: "Website hero",
+    query: "website hero",
+    description: "Wide, low-risk images for web headers.",
+    terms: ["website hero", "hero", "banner", "header", "homepage"],
+    expansions: ["website", "landscape", "wide", "background", "no people", "portal ready"],
+    suggestedFilters: ["portal ready", "website channel", "landscape", "no people"],
+    safetyNote: "Hero intent prefers portal-ready and no-people signals, but item evidence still controls download."
+  },
+  {
+    id: "slide-background",
+    label: "Slide background",
+    query: "slide background",
+    description: "Quiet images and graphics for sermons, talks, and decks.",
+    terms: ["slide background", "slide", "slides", "sermon slides", "presentation", "deck"],
+    expansions: ["teaching", "study", "bible", "worship", "stage", "graphic", "landscape"],
+    suggestedFilters: ["portal ready", "projection channel", "landscape", "graphic", "no people"],
+    safetyNote: "Slide intent does not imply projection rights; approved channels remain source evidence."
+  },
+  {
+    id: "newsletter",
+    label: "Newsletter",
+    query: "newsletter",
+    description: "Approved images for email and bulletin updates.",
+    terms: ["newsletter", "email", "bulletin"],
+    expansions: ["event", "fellowship", "welcome", "bible", "flower", "church life"],
+    suggestedFilters: ["portal ready", "public safe", "photo", "no people"],
+    safetyNote: "Newsletter suggestions are discovery hints, not public-use approval."
+  },
+  {
+    id: "social",
+    label: "Social",
+    query: "social",
+    description: "Social-post candidates with public-safe channel checks.",
+    terms: ["social", "instagram", "facebook", "post"],
+    expansions: ["square", "event", "fellowship", "approved public", "public safe"],
+    suggestedFilters: ["portal ready", "social channel", "square", "public safe"],
+    safetyNote: "Social intent must still pass public-safe policy and channel evidence."
+  },
+  {
+    id: "no-people",
+    label: "No people",
+    query: "no people",
+    description: "Lower-risk details, objects, textures, and room photos.",
+    terms: ["no people", "empty", "texture", "detail", "object"],
+    expansions: ["flower", "plant", "water", "stage", "background"],
+    suggestedFilters: ["no people", "portal ready", "photo", "landscape"],
+    safetyNote: "No-people intent relies on exported people metadata; reviewers still own visibility truth."
+  },
+  {
+    id: "youth-review",
+    label: "Youth review",
+    query: "youth review",
+    description: "Children/youth candidates for reviewer triage.",
+    terms: ["youth review", "youth", "children", "kids", "minor", "minors", "students"],
+    expansions: ["people", "possible minors", "children/youth", "consent review", "needs review"],
+    suggestedFilters: ["children/youth", "consent review", "needs review", "youth sensitive"],
+    safetyNote: "Youth intent routes to review; it never clears consent, public use, or downloads."
+  },
+  {
+    id: "worship",
+    label: "Worship",
+    query: "worship",
+    description: "Worship, Sabbath service, sanctuary, and ministry moments.",
+    terms: ["worship", "sabbath", "service", "sanctuary", "prayer"],
+    expansions: ["bible", "sermon", "stage", "church", "ministry"],
+    suggestedFilters: ["portal ready", "worship", "projection channel", "sacrament sensitive"],
+    safetyNote: "Worship context may be sensitive; ranking does not override pastoral or sacrament review."
+  },
+  {
+    id: "music",
+    label: "Music",
+    query: "music",
+    description: "Hymn, choir, music, and livestream-rights review candidates.",
+    terms: ["music", "hymn", "choir", "praise", "livestream", "audio"],
+    expansions: ["music rights", "hymn permission", "worship", "teaching rights", "review"],
+    suggestedFilters: ["music rights", "hymn permission", "rights basis review", "livestream channel"],
+    safetyNote: "Music intent is rights-sensitive; it never grants hymn, livestream, or teaching clearance."
+  },
+  {
+    id: "internal-only",
+    label: "Internal-only",
+    query: "internal ministry",
+    description: "Internal ministry and member-visible candidates.",
+    terms: ["internal-only", "internal only", "internal", "member", "team"],
+    expansions: ["approved internal", "internal ministry", "member visibility", "limited share"],
+    suggestedFilters: ["approved internal", "internal ministry", "internal visibility", "limited share channel"],
+    safetyNote: "Internal-only discovery does not permit external sharing."
+  }
+];
+
 const deterministicSearchGroups: Array<{ terms: string[]; expansions: string[]; filters?: string[] }> = [
+  ...queryIntentPresets.map((preset) => ({
+    terms: preset.terms,
+    expansions: preset.expansions,
+    filters: preset.suggestedFilters
+  })),
   { terms: ["hero", "banner", "header"], expansions: ["website", "landscape", "wide", "background"], filters: ["landscape", "portal ready"] },
   { terms: ["sermon", "slide", "slides", "presentation", "deck"], expansions: ["teaching", "study", "bible", "worship", "stage"], filters: ["graphic", "landscape"] },
   { terms: ["youth", "children", "kids", "minor", "minors", "students"], expansions: ["people", "possible minors", "children/youth"], filters: ["children/youth", "needs review"] },
@@ -29,6 +149,33 @@ function tokenize(query: string) {
   return unique(query.replace(/[^\w\s/-]+/g, " ").split(/\s+/));
 }
 
+function normalizeQuery(value: string) {
+  return value.trim().toLowerCase().replace(/[^\w\s/-]+/g, " ").replace(/\s+/g, " ");
+}
+
+export function discoveryIntentById(id?: string | null) {
+  return queryIntentPresets.find((preset) => preset.id === id);
+}
+
+export function isKnownDiscoveryIntent(id?: string | null): id is QueryIntentId {
+  return Boolean(discoveryIntentById(id));
+}
+
+export function matchDiscoveryIntent(query: string, intentId?: string) {
+  const requested = discoveryIntentById(intentId);
+  if (requested) return requested;
+  const normalized = normalizeQuery(query);
+  if (!normalized) return undefined;
+  return queryIntentPresets.find((preset) => preset.terms.some((term) => normalizeQuery(term) === normalized));
+}
+
+export function resolveDiscoveryQuery(query: string, intentId?: string) {
+  const matchedIntent = matchDiscoveryIntent(query, intentId);
+  if (query.trim()) return { query, matchedIntent };
+  if (matchedIntent) return { query: matchedIntent.query, matchedIntent };
+  return { query, matchedIntent };
+}
+
 function synonymGroups() {
   return [
     ...deterministicSearchGroups,
@@ -42,7 +189,7 @@ function synonymGroups() {
 
 export function buildDiscoveryQuery(query: string) {
   const tokens = tokenize(query);
-  const normalized = query.trim().toLowerCase().replace(/[^\w\s/-]+/g, " ").replace(/\s+/g, " ");
+  const normalized = normalizeQuery(query);
   const groupsForQuery = synonymGroups();
   const phraseMatches = groupsForQuery
     .flatMap((group) => group.terms)
@@ -117,12 +264,16 @@ function uniqueSuggestedFilters(filters: SearchResult["discovery"]["suggestedFil
 
 function suggestedFilters(assets: StockMediaAsset[], activeFilters: string[] = [], query = ""): SearchResult["discovery"]["suggestedFilters"] {
   const discovery = buildDiscoveryQuery(query);
+  const matchedIntent = matchDiscoveryIntent(query);
   const queryFilters = unique(
-    discovery.groups.flatMap((group) =>
-      synonymGroups()
-        .filter((synonymGroup) => group.terms.some((term) => synonymGroup.terms.includes(term) || synonymGroup.expansions.includes(term)))
-        .flatMap((synonymGroup) => synonymGroup.filters || [])
-    )
+    [
+      ...(matchedIntent?.suggestedFilters || []),
+      ...discovery.groups.flatMap((group) =>
+        synonymGroups()
+          .filter((synonymGroup) => group.terms.some((term) => synonymGroup.terms.includes(term) || synonymGroup.expansions.includes(term)))
+          .flatMap((synonymGroup) => synonymGroup.filters || [])
+      )
+    ]
   );
   const candidates: SearchResult["discovery"]["suggestedFilters"] = [
     { label: "Portal ready", filter: "portal ready", count: filterCount(assets, "portal ready", activeFilters), kind: "policy" },
@@ -139,6 +290,10 @@ function suggestedFilters(assets: StockMediaAsset[], activeFilters: string[] = [
     { label: "Needs review", filter: "needs review", count: filterCount(assets, "needs review", activeFilters), kind: "workflow" },
     { label: "Rendition gaps", filter: "rendition gap", count: filterCount(assets, "rendition gap", activeFilters), kind: "workflow" },
     { label: "Lifecycle review", filter: "lifecycle review", count: filterCount(assets, "lifecycle review", activeFilters), kind: "workflow" },
+    { label: "Music rights", filter: "music rights", count: filterCount(assets, "music rights", activeFilters), kind: "workflow" },
+    { label: "Internal ministry", filter: "internal ministry", count: filterCount(assets, "internal ministry", activeFilters), kind: "policy" },
+    { label: "Projection channel", filter: "projection channel", count: filterCount(assets, "projection channel", activeFilters), kind: "policy" },
+    { label: "Social channel", filter: "social channel", count: filterCount(assets, "social channel", activeFilters), kind: "policy" },
     ...queryFilters.map((filter) => ({ label: filter.replace(/\b\w/g, (letter) => letter.toUpperCase()), filter, count: filterCount(assets, filter, activeFilters), kind: "ministry" as const }))
   ];
   return uniqueSuggestedFilters(candidates)
@@ -184,6 +339,7 @@ function noResultHelp({
 
 export function buildCatalogDiscovery({
   query,
+  intent,
   view,
   collection,
   filters = [],
@@ -192,6 +348,7 @@ export function buildCatalogDiscovery({
   totalVisible
 }: {
   query: string;
+  intent?: string;
   view?: string;
   collection?: string;
   filters?: string[];
@@ -200,6 +357,7 @@ export function buildCatalogDiscovery({
   totalVisible: number;
 }): SearchResult["discovery"] {
   const discovery = buildDiscoveryQuery(query);
+  const matchedIntent = matchDiscoveryIntent(query, intent);
   const filterUniverse = matchedAssets.length ? matchedAssets : (availableAssets || matchedAssets);
   const mode = collection ? "collection" : view ? "saved-view" : query.trim() ? "smart-query" : "browse";
   const noun = matchedAssets.length === 1 ? "asset" : "assets";
@@ -216,10 +374,33 @@ export function buildCatalogDiscovery({
     mode,
     summary,
     expandedTerms: discovery.expandedTerms,
+    matchedIntent: matchedIntent
+      ? {
+          id: matchedIntent.id,
+          label: matchedIntent.label,
+          query: matchedIntent.query,
+          description: matchedIntent.description,
+          safetyNote: matchedIntent.safetyNote
+        }
+      : undefined,
+    intentPresets: queryIntentPresets.map((preset) => ({
+      id: preset.id,
+      label: preset.label,
+      query: preset.query,
+      description: preset.description,
+      suggestedFilters: preset.suggestedFilters
+    })),
     suggestedFilters: suggestedFilters(filterUniverse, filters, query),
     noResultHelp: matchedAssets.length ? undefined : noResultHelp({ query, filters, availableAssets: availableAssets || matchedAssets }),
     scoreHint: query.trim()
       ? "Results are ranked by title, metadata, synonym match, portal readiness, and derivative availability."
-      : "Default order balances approval state, curation signals, and visual diversity."
+      : "Default order balances approval state, curation signals, and visual diversity.",
+    rankingExplanation: [
+      { label: "Text match", detail: "Title and approved metadata matches rank first." },
+      { label: "Intent expansion", detail: "Deterministic ministry synonyms widen recall without embeddings." },
+      { label: "Trust readiness", detail: "Portal-ready and approved assets get rank boosts, but not permission changes." },
+      { label: "Derivative signal", detail: "Assets with role-safe previews rank slightly higher for browsing." }
+    ],
+    safetyNote: matchedIntent?.safetyNote || "Discovery suggestions are search hints only. Item-level rights, people, review, and download gates remain permission truth."
   };
 }

@@ -23,6 +23,16 @@ import { normalizeAssetId } from "@/lib/request-validation";
 export const dynamic = "force-dynamic";
 
 function roleOverrideDeniedResponse(session: ReturnType<typeof createDamRouteSession>, assetId: string) {
+  session.recordUsage({
+    type: "blocked_download_intent",
+    assetId,
+    route: `/api/download/${assetId}`,
+    metadata: {
+      reasonCode: session.roleOverride.reasonCode || "client-role-disabled",
+      overrideSource: session.roleOverride.source,
+      requestedRole: session.roleOverride.requestedRole
+    }
+  });
   try {
     appendRequiredAuditEvent({
       type: "denied_download",
@@ -206,6 +216,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (!input.termsAccepted) {
     const termsRejectedAt = new Date().toISOString();
+    session.recordUsage({
+      type: "blocked_download_intent",
+      assetId: asset.id,
+      resourceSpaceId,
+      route: `/api/download/${asset.id}`,
+      metadata: { reasonCode: "terms-not-accepted", usageChannel: input.usageChannel, variant: input.variant }
+    });
     try {
       appendRequiredAuditEvent({
         type: "download_gate_checked",
@@ -239,6 +256,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   if (!access.allowed || !canDownloadApprovedCopy(role, asset)) {
+    session.recordUsage({
+      type: "blocked_download_intent",
+      assetId: asset.id,
+      resourceSpaceId,
+      route: `/api/download/${asset.id}`,
+      metadata: { reasonCode: "policy-denied", usageChannel: input.usageChannel, variant: input.variant }
+    });
     try {
       appendRequiredAuditEvent({
         type: "denied_download",
@@ -273,6 +297,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   if (!derivativeAvailable) {
+    session.recordUsage({
+      type: "blocked_download_intent",
+      assetId: asset.id,
+      resourceSpaceId,
+      route: `/api/download/${asset.id}`,
+      metadata: { reasonCode: "approved-derivative-missing", usageChannel: input.usageChannel, variant: input.variant }
+    });
     try {
       appendRequiredAuditEvent({
         type: "download_gate_checked",
