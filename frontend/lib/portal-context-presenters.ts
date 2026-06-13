@@ -206,12 +206,12 @@ export function presentBrandKitContext(governance?: BrandKitGovernance, role: De
     } as const;
   }
 
-  if (governance.canDownloadKit) {
+  if (governance.deliveryReady) {
     return {
-      nextTitle: "Kit ready for download gate",
-      nextDetail: "Every mapped asset is Portal Ready. Source records remain canonical in the DAM.",
-      nextAction: "Prepare kit packet",
-      tone: "ready"
+      nextTitle: "Kit readiness packet ready",
+      nextDetail: "Every mapped asset is Portal Ready. Live ZIP/share delivery remains disabled in beta.",
+      nextAction: "View packet",
+      tone: "review"
     } as const;
   }
 

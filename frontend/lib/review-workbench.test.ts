@@ -3,7 +3,8 @@ import { auditAccountabilityArea, auditEventForRolePayload, auditStorageReadines
 import { buildBetaReadiness } from "@/lib/beta-readiness-facts";
 import { buildCatalogDiscovery, buildDiscoveryQuery, matchesDiscoveryQuery, queryIntentPresets } from "@/lib/catalog-discovery";
 import { intentDefinitions, matchesCatalogFilter, savedViewDefinitions } from "@/lib/catalog-language";
-import { derivativeIndexDiagnostics, governedRenditionPolicyForVariant, originalMasterRenditionPolicy, thumbnailVariantCanSatisfyApprovedCopy } from "@/lib/derivative-index";
+import { buildBrandKitGovernance } from "@/lib/brand-kit-governance";
+import { buildDeliveryReadinessManifest, derivativeIndexDiagnostics, governedRenditionPolicyForVariant, originalMasterRenditionPolicy, thumbnailVariantCanSatisfyApprovedCopy } from "@/lib/derivative-index";
 import { auditCoverageMetrics, buildGovernanceMetrics, usageHealthMetrics } from "@/lib/dam-governance-metrics";
 import { fileRequiresAdminIntake, intakeDefaultsToNeedsReview, routeAssetForReview, routeUploadIntakeForReview } from "@/lib/intake-routing";
 import { resolvePackageSections } from "@/lib/package-drafts";
@@ -572,6 +573,68 @@ describe("Phase 6 rights-aware packages and collections", () => {
     expect(rawApproved.status).toBe("Approved Public");
     expect(governance.portalReadyRefs).toBe(0);
     expect(governance.actions.find((item) => item.action === "export-approved-copy-package")?.allowed).toBe(false);
+  });
+
+  it("publishes a derivative readiness manifest while keeping originals request-only", () => {
+    const ready = asset();
+    const manifest = buildDeliveryReadinessManifest(ready, "public-web");
+    const byId = Object.fromEntries(manifest.items.map((item) => [item.id, item]));
+
+    expect(manifest).toMatchObject({
+      assetId: ready.id,
+      chosenUse: "public-web",
+      portalReadyForChosenUse: true,
+      originalMasterIncluded: false,
+      storageTruth: "local-export-readiness-only"
+    });
+    expect(byId.thumbnail).toMatchObject({ status: "ready", routeBoundary: "thumbnail-preview", downloadGrade: false });
+    expect(byId.preview).toMatchObject({ status: "ready", routeBoundary: "thumbnail-preview", downloadGrade: false });
+    expect(byId["approved-web-copy"]).toMatchObject({ status: "ready", routeBoundary: "approved-copy-gate", downloadGrade: true });
+    expect(byId["approved-print-copy"]).toMatchObject({ status: "blocked", routeBoundary: "approved-copy-gate", downloadGrade: true });
+    expect(byId["original-restricted"]).toMatchObject({ status: "request-only", routeBoundary: "original-access-request" });
+  });
+
+  it("blocks package share, publish, and download when chosen-use derivative is not ready", () => {
+    const webReady = asset({ id: "web-ready", resourceSpaceId: "6001" });
+    const draft: DamPackage = {
+      id: "pkg-print",
+      title: "Print Package",
+      status: "draft",
+      sections: [{ id: "main", title: "Main", resourceSpaceAssetIds: ["6001"] }]
+    };
+    const governance = buildPackageGovernance(draft, resolvePackageSections(draft, [webReady]), "DAM Admin", "public-print");
+
+    expect(governance.chosenUse).toBe("public-print");
+    expect(governance.canShare).toBe(false);
+    expect(governance.canPublish).toBe(false);
+    expect(governance.canDownloadPackage).toBe(false);
+    expect(governance.blockedRefs).toBe(1);
+    expect(governance.reason).toMatch(/approved derivative for public print/i);
+    expect(governance.sections[0]?.assets[0]?.deliveryManifest.originalMasterIncluded).toBe(false);
+    expect(governance.sections[0]?.assets[0]?.deliveryManifest.items.find((item) => item.id === "original-restricted")?.status).toBe("request-only");
+  });
+
+  it("keeps brand readiness packet role-safe while disabling beta ZIP and share delivery", () => {
+    const ready = asset({ id: "brand-ready", resourceSpaceId: "7001" });
+    const governance = buildBrandKitGovernance({
+      configured: true,
+      assets: [ready],
+      role: "Reviewer",
+      missingSectionMappings: 0,
+      warnings: []
+    });
+
+    expect(governance.deliveryReady).toBe(true);
+    expect(governance.canShare).toBe(false);
+    expect(governance.canDownloadKit).toBe(false);
+    expect(governance.betaDeliveryDisabled).toBe(true);
+    expect(governance.readinessPacket).toMatchObject({
+      originalMasterIncluded: false,
+      shareCreatesPublicLink: false,
+      downloadCreatesZip: false,
+      deliveryMode: "disabled-beta-packet"
+    });
+    expect(JSON.stringify(governance.readinessPacket)).not.toMatch(/sourcePath|masterDrivePath|checksumSha256|originalFilename/i);
   });
 
   it("redacts Viewer package payloads and package audit read models", () => {

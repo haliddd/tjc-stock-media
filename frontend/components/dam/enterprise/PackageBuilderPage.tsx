@@ -236,6 +236,13 @@ export function EnterprisePackageBuilderPage() {
       detail: governance.canPublish ? "Readiness checks pass while source files stay protected." : readinessReason
     }
   ];
+  const manifestRows = activeGovernance?.assets.flatMap((item) => item.deliveryManifest.items.map((manifest) => ({
+    assetRef: item.ref,
+    id: `${item.ref}-${manifest.id}`,
+    label: manifest.label,
+    status: manifest.status,
+    detail: manifest.detail
+  }))).slice(0, 12) || [];
 
   return (
     <div className="enterprise-page enterprise-package-builder">
@@ -402,6 +409,14 @@ export function EnterprisePackageBuilderPage() {
                             <button type="button" disabled={!item.canPreview} title={item.canPreview ? undefined : "Preview waits for approved, role-safe media references."} onClick={() => setPackageMessage(`${displayTitle(item.asset)} preview check stays role-safe. No source files exposed.`)}>Preview</button>
                             <button type="button" onClick={() => setDraft((current) => removePackageAssetRef(current, activeResolvedSection.id, item.asset))}>Remove</button>
                           </div>
+                          <div className="ed-delivery-manifest" aria-label={`Delivery readiness manifest for ${displayTitle(item.asset)}`}>
+                            {item.deliveryManifest.items.map((manifest) => (
+                              <span className={`is-${manifest.status}`} key={manifest.id}>
+                                <strong>{manifest.label}</strong>
+                                <small>{manifest.status === "ready" ? "Ready" : manifest.status === "request-only" ? "Request only" : "Blocked"}</small>
+                              </span>
+                            ))}
+                          </div>
                         </article>
                       ))}
                     </div>
@@ -455,6 +470,7 @@ export function EnterprisePackageBuilderPage() {
             />
             <details open>
               <summary>Readiness</summary>
+              <p className="ed-action-helper">Chosen use: {governance.chosenUse.replace("-", " ")}. Share, publish, and package download stay blocked unless every item is Portal Ready for this use.</p>
               <div className="ed-command-readiness">
                 {readinessRows.map((item) => (
                   <p className={`ed-readiness-row is-${item.status}`} key={item.label}>
@@ -463,6 +479,19 @@ export function EnterprisePackageBuilderPage() {
                   </p>
                 ))}
               </div>
+            </details>
+            <details open>
+              <summary>Derivative manifest</summary>
+              {manifestRows.length ? (
+                <div className="ed-command-readiness">
+                  {manifestRows.map((item) => (
+                    <p className={`ed-readiness-row is-${item.status === "ready" ? "ready" : item.status === "request-only" ? "review" : "blocked"}`} key={item.id}>
+                      <strong>{item.label}</strong>
+                      <span>{item.assetRef}: {item.detail}</span>
+                    </p>
+                  ))}
+                </div>
+              ) : <p className="ed-action-helper">Add references to view thumbnail, preview, approved web copy, approved print copy, and original restriction readiness.</p>}
             </details>
             <details open>
               <summary>Safe actions</summary>

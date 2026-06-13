@@ -9469,6 +9469,51 @@ body:has(.dam-packet-workbench) .beta-report-button {
   background: #f4f7f5;
 }
 
+.enterprise-package-builder .ed-delivery-manifest {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.enterprise-package-builder .ed-delivery-manifest span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid #dce4de;
+  border-left: 3px solid #9aa8a1;
+  border-radius: 7px;
+  background: #fbfcfb;
+  padding: 6px 7px;
+}
+
+.enterprise-package-builder .ed-delivery-manifest span.is-ready {
+  border-left-color: #0f6b4f;
+}
+
+.enterprise-package-builder .ed-delivery-manifest span.is-request-only {
+  border-left-color: #a98744;
+}
+
+.enterprise-package-builder .ed-delivery-manifest strong {
+  overflow: hidden;
+  color: #10221b;
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.enterprise-package-builder .ed-delivery-manifest small {
+  color: #52645d;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 .enterprise-package-builder .ed-package-details {
   display: grid;
   gap: 0;
@@ -9738,6 +9783,11 @@ body:has(.dam-packet-workbench) .beta-report-button {
   .enterprise-package-builder .ed-active-section-summary,
   .enterprise-package-builder .ed-package-reference-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .enterprise-package-builder .ed-delivery-manifest {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .enterprise-package-builder .ed-package-outline-list {

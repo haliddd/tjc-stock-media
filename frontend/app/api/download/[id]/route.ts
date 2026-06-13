@@ -4,6 +4,7 @@ import { decideAccess } from "@/lib/access-decisions";
 import { assetResourceRef } from "@/lib/asset-refs";
 import { getAssetRecordById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
+import { buildDeliveryReadinessManifest } from "@/lib/derivative-index";
 import { consumeDownloadTicket, mintDownloadTicket } from "@/lib/download-tickets";
 import {
   approvedCopyDownloadedAuditEvent,
@@ -205,6 +206,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const access = decideAccess(role, "downloadApprovedCopy", asset);
   const resourceSpaceId = assetResourceRef(asset);
+  const deliveryManifest = buildDeliveryReadinessManifest(asset, "public-web");
   session.recordUsage({
     type: "download_gate",
     assetId: asset.id,
@@ -249,6 +251,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         allowed: false,
         requiredAction: "accept-usage-terms",
         reason: "Accept the approved-copy usage terms before download.",
+        deliveryManifest,
         ...envelope
       },
       { status: 403 }
@@ -290,6 +293,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         reason: access.reason || "This asset is not approved for this role.",
         label: access.label || "Download blocked",
         reasonCodes: access.reasonCodes || [],
+        deliveryManifest,
         ...envelope
       },
       { status: 403 }
@@ -327,6 +331,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         allowed: false,
         requiredAction: "generate-approved-derivative",
         reason: "Approved derivative is not available yet. Source/master access remains restricted.",
+        deliveryManifest,
         ...envelope
       },
       { status: 404 }
@@ -380,6 +385,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     downloadUrl: `/api/download/${encodeURIComponent(asset.id)}?variant=${encodeURIComponent(input.variant)}&ticket=${encodeURIComponent(ticket.ticket)}${roleParam}`,
     auditId: audit.id,
     ticketExpiresAt: ticket.expiresAt,
+    deliveryManifest,
     ...envelope,
     message: "Approved copy is available through backend gate. Private originals and S3 paths are not exposed."
   });
