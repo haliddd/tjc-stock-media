@@ -239,6 +239,62 @@ Baseline rerun completed on 2026-06-13 09:29 EDT for this
 - `docs/enterprise-dam-v1-acceptance-scorecard-2026-06-14.md`
 - `docs/24h-enterprise-dam-autonomous-run-report-2026-06-15.md`
 
+## Final Integrated Worker Results
+
+| Lane | Commit | Result | Evidence |
+|---|---|---|---|
+| Metadata / taxonomy | `abe4e2d` | Integrated | Admin schema/taxonomy governance; focused checks passed in worker. |
+| Review / rights workflow | `3af838c` | Integrated | Review evidence workflow tests passed in worker. |
+| Trust-aware discovery | `12724d8` | Integrated | Search API smoke and focused tests passed in worker. |
+| Delivery / package governance | `a3ec17c`, `edbdf78` | Integrated | Delivery/package governance checks passed; client safety fix added. |
+| Premium UX / browser QA | `45db383` | Integrated | Focused worker proof 10 checks / 0 failures; full browser QA upload interaction remains separate blocker. |
+| Production hardening | `c40fda5` | Integrated | Production runtime writes fail closed with explicit 503 instead of raw 500. |
+
+## Final Validation Snapshot
+
+Final branch: `codex/24h-enterprise-dam-orchestrator`
+
+Passing checks:
+- `git diff --check`
+- `npm --prefix frontend run typecheck`
+- `npm --prefix frontend test` - 54/54
+- `npm --prefix frontend run build`
+- `node scripts/private-source-guard.mjs`
+- `node scripts/public-env-guard.mjs`
+- `node scripts/api-identity-guard.mjs`
+- `node scripts/api-payload-guard.mjs`
+- `node scripts/api-audit-guard.mjs`
+- `node scripts/storage-honesty-guard.mjs`
+- `node scripts/git-hygiene-guard.mjs`
+- `make launch-readiness` - failures=0, warnings=1
+- `BASE_URL=http://localhost:4892 make portal-api-smoke`
+- `BASE_URL=http://localhost:4892 make portal-sso-smoke`
+- `BASE_URL=http://localhost:4893 make portal-package-smoke`
+- `BASE_URL=http://localhost:4893 make portal-saved-search-smoke`
+- `BASE_URL=http://localhost:4893 make portal-feedback-smoke`
+- `BASE_URL=http://localhost:4893 make portal-writeback-guard-smoke`
+
+Known warning:
+- `.env` still contains placeholder values.
+
+Classified smoke gaps:
+- Production no-durable `portal-download-ticket-smoke` fails closed with
+  `503 audit-required`; durable audit/runtime store is required before delivery
+  proof can be called production-green.
+- `portal-delivery-smoke` has no portal-ready fixture under current trust rules.
+- Full `portal-browser-qa` reaches the full viewport matrix but aborts in an
+  Upload interaction outside the UX worker lane; focused UX proof is green.
+
+## Final Recommendation
+
+TJC Stock Media is closer to a premium internal enterprise DAM workbench, but it
+is not production-ready. Continue only tiny named beta rehearsal while safety
+boundaries hold. Hold broader beta until durable storage, SSO/origin protection,
+hosted ResourceSpace proof, writeback proof, derivative delivery, rights review,
+backup/restore, and full browser QA are proven.
+
+Push and PR mutation remain blocked until the canonical remote is confirmed.
+
 ## Hourly Log
 
 | Time | Summary | Checks | Blockers | Next |
