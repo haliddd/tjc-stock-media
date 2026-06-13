@@ -1,5 +1,5 @@
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
-import { buildDeliveryReadinessManifest, type DeliveryReadinessManifest } from "@/lib/derivative-index";
+import { buildDeliveryReadinessManifest, type DeliveryReadinessManifest } from "@/lib/delivery-readiness";
 import type { DemoRole, StockMediaAsset } from "@/lib/types";
 
 export type BrandKitGovernance = {

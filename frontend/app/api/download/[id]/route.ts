@@ -4,7 +4,7 @@ import { decideAccess } from "@/lib/access-decisions";
 import { assetResourceRef } from "@/lib/asset-refs";
 import { getAssetRecordById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
-import { buildDeliveryReadinessManifest } from "@/lib/derivative-index";
+import { buildDeliveryReadinessManifest } from "@/lib/delivery-readiness";
 import { consumeDownloadTicket, mintDownloadTicket } from "@/lib/download-tickets";
 import {
   approvedCopyDownloadedAuditEvent,

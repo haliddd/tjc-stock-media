@@ -1,5 +1,5 @@
 import type { DemoRole, DamPackage, ReuseBlocker, ReuseState, StockMediaAsset } from "@/lib/types";
-import { buildDeliveryReadinessManifest, type DeliveryReadinessManifest, type DeliveryReadinessUse } from "@/lib/derivative-index";
+import { buildDeliveryReadinessManifest, type DeliveryReadinessManifest, type DeliveryReadinessUse } from "@/lib/delivery-readiness";
 import type { ResolvedPackageSection } from "@/lib/package-drafts";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
 import { canReview } from "@/lib/permissions";
