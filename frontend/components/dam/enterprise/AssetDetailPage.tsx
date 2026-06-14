@@ -137,7 +137,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                 <ActionButton onClick={() => setActionsOpen((open) => !open)}>More actions <ChevronDown size={14} /></ActionButton>
                 {actionsOpen ? (
                   <div className="ed-more-actions-menu ed-detail-actions-menu" role="menu">
-                    {approved ? <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}><Download size={15} />Download approved copy<span>Runs backend gate and audit before derivative delivery.</span></button> : null}
+                    {approved ? <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}><Download size={15} />Download approved copy<span>Runs approved-copy gate and audit before delivery.</span></button> : null}
                     <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Favorite saved for this beta session."); setActionsOpen(false); }}><Star size={15} />Favorite<span>Save this record for this beta session.</span></button>
                     <button type="button" role="menuitem" onClick={() => { setTab("Activity"); setActionsOpen(false); }}><FileText size={15} />View activity<span>Open exported activity and review notes.</span></button>
                     <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Use Distribution Sets to add governed references without copying source files."); setActionsOpen(false); }}><PackageCheck size={15} />Add to distribution set<span>Collect reference without moving source files.</span></button>
@@ -170,7 +170,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
           <ClearanceStatusPanel asset={asset} source={detail.source} onRequestReview={() => { void requestReview(); }} />
           <NextActionPanel
             title={approved ? "Use approved derivative within recorded scope." : presentation.primaryActionLabel}
-            detail={approved ? "Download still runs backend audit and approved-copy gate. Source files stay restricted." : `${reusePacket.viewerVerdict.reason} Primary blocker: ${reusePacket.reuse.blockers[0]?.label || "review evidence"}.`}
+            detail={approved ? "Download still records audit and runs approved-copy gate. Source files stay restricted." : `${reusePacket.viewerVerdict.reason} Primary blocker: ${reusePacket.reuse.blockers[0]?.label || "review evidence"}.`}
             action={approved ? "Download approved copy" : "Request DAM review"}
             onAction={approved ? requestApprovedDownload : requestReview}
             disabled={assetActionPending}

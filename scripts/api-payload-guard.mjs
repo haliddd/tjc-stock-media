@@ -55,23 +55,30 @@ for (const fullPath of walk(apiRoot)) {
 
 const downloadRoute = "frontend/app/api/download/[id]/route.ts";
 const downloadSource = fs.readFileSync(path.join(root, downloadRoute), "utf8");
+const approvedDeliveryGateSource = fs.readFileSync(path.join(root, "frontend/lib/approved-delivery-gate.ts"), "utf8");
 const thumbnailRoute = "frontend/app/api/assets/thumbnail/[id]/route.ts";
 const thumbnailSource = fs.readFileSync(path.join(root, thumbnailRoute), "utf8");
 const mediaDeliverySource = fs.readFileSync(path.join(root, "frontend/lib/media-delivery.ts"), "utf8");
-if (!downloadSource.includes("readApprovedCopyDelivery(id, asset.title, source)") || !downloadSource.includes("hasApprovedCopyDerivative(id, source)") || !downloadSource.includes("downloadMalformedIdError()") || !downloadSource.includes("downloadNotFoundError(session, source)") || !downloadSource.includes("downloadRoleDeniedError(session, source)") || !downloadSource.includes("downloadRoleDeniedAuditEvent(asset, session, source)") || !downloadSource.includes("approvedCopyUnavailableError(delivery, session, source)") || !downloadSource.includes("approvedCopyDownloadedAuditEvent(asset, delivery, session, source") || !downloadSource.includes("approvedCopyImageResponse(delivery)")) {
-  failures.push(`${downloadRoute} must resolve approved-copy GET responses and gate checks through media-delivery`);
+if (!downloadSource.includes("runApprovedDeliveryGate(") || !downloadSource.includes("approvedDeliveryGateResponse(")) {
+  failures.push(`${downloadRoute} must delegate approved-copy delivery to approved-delivery-gate`);
 }
-if (!downloadSource.includes("Private originals and S3 paths are not exposed.")) {
-  failures.push(`${downloadRoute} must keep explicit no-originals response copy`);
+if (/appendRequiredAuditEvent|appendAuditEvent|decideAccess|assetResourceRef|getAssetRecordById|createDamRouteSession|buildDeliveryReadinessManifest|consumeDownloadTicket|mintDownloadTicket|canDownloadApprovedCopy|readApprovedCopyDelivery|hasApprovedCopyDerivative|approvedCopyDownloadedAuditEvent|approvedCopyImageResponse|session\.sourceEnvelope/.test(downloadSource)) {
+  failures.push(`${downloadRoute} must stay transport-only and avoid scattered approved-delivery gate modules`);
+}
+if (!approvedDeliveryGateSource.includes("readApprovedCopyDelivery(id, asset.title, source)") || !approvedDeliveryGateSource.includes("hasApprovedCopyDerivative(id, source)") || !approvedDeliveryGateSource.includes("approvedCopyDownloadedAuditEvent(asset, delivery, session, source") || !approvedDeliveryGateSource.includes("approvedCopyImageResponse(delivery)")) {
+  failures.push("approved-delivery-gate must resolve approved-copy GET responses and gate checks through media-delivery");
+}
+if (!approvedDeliveryGateSource.includes("Private originals and storage paths are not exposed.")) {
+  failures.push("approved-delivery-gate must keep explicit no-originals response copy");
 }
 if (!mediaDeliverySource.includes("function approvedCopyFileName") || !mediaDeliverySource.includes("safeSlugText(normalizeDisplayTextField")) {
   failures.push(`${downloadRoute} must derive download filenames through media-delivery approvedCopyFileName`);
 }
-if (!downloadSource.includes("readDownloadGateInput(request)") || !mediaDeliverySource.includes("function readDownloadGateInput") || !mediaDeliverySource.includes("function normalizeDownloadVariant") || !mediaDeliverySource.includes("function readApprovedCopyDelivery") || !mediaDeliverySource.includes("function hasApprovedCopyDerivative") || !mediaDeliverySource.includes("function downloadMalformedIdError") || !mediaDeliverySource.includes("function downloadNotFoundError") || !mediaDeliverySource.includes("function downloadRoleDeniedError") || !mediaDeliverySource.includes("function approvedCopyUnavailableError") || !mediaDeliverySource.includes("function approvedCopyImageResponse") || !mediaDeliverySource.includes("function approvedCopyDownloadedAuditEvent") || !mediaDeliverySource.includes("function downloadRoleDeniedAuditEvent")) {
-  failures.push(`${downloadRoute} must delegate download gate body parsing, approved-copy delivery, metadata normalization, GET errors, and GET audit details to media-delivery`);
+if (!approvedDeliveryGateSource.includes("readDownloadGateInput(request)") || !mediaDeliverySource.includes("function readDownloadGateInput") || !mediaDeliverySource.includes("function normalizeDownloadVariant") || !mediaDeliverySource.includes("function readApprovedCopyDelivery") || !mediaDeliverySource.includes("function hasApprovedCopyDerivative") || !mediaDeliverySource.includes("function downloadMalformedIdError") || !mediaDeliverySource.includes("function downloadNotFoundError") || !mediaDeliverySource.includes("function downloadRoleDeniedError") || !mediaDeliverySource.includes("function approvedCopyUnavailableError") || !mediaDeliverySource.includes("function approvedCopyImageResponse") || !mediaDeliverySource.includes("function approvedCopyDownloadedAuditEvent") || !mediaDeliverySource.includes("function downloadRoleDeniedAuditEvent")) {
+  failures.push("approved-delivery-gate must delegate download gate body parsing, approved-copy delivery, metadata normalization, GET errors, and GET audit details to media-delivery");
 }
-if (!downloadSource.includes("consumeDownloadTicket(") || !downloadSource.includes("mintDownloadTicket(") || !downloadSource.includes("appendRequiredAuditEvent(") || !downloadSource.includes("ticket=${encodeURIComponent(ticket.ticket)}")) {
-  failures.push(`${downloadRoute} must require one-time tickets and fail closed when required download audit cannot persist`);
+if (!approvedDeliveryGateSource.includes("consumeDownloadTicket(") || !approvedDeliveryGateSource.includes("mintDownloadTicket(") || !approvedDeliveryGateSource.includes("appendRequiredAuditEvent(") || !approvedDeliveryGateSource.includes("ticket=${encodeURIComponent(ticket.ticket)}")) {
+  failures.push("approved-delivery-gate must require one-time tickets and fail closed when required download audit cannot persist");
 }
 if (!thumbnailSource.includes('deliveryInput.variant === "download"') || !thumbnailSource.includes("thumbnailDownloadVariantDeniedError(session, source)") || !mediaDeliverySource.includes("function thumbnailDownloadVariantDeniedError") || !mediaDeliverySource.includes("request-download-ticket")) {
   failures.push(`${thumbnailRoute} must block download-grade thumbnail delivery outside the approved-copy ticket gate`);
@@ -168,6 +175,7 @@ const assetDetailResponseSource = fs.readFileSync(path.join(root, "frontend/lib/
 const reviewRoute = "frontend/app/api/review/route.ts";
 const reviewRouteSource = fs.readFileSync(path.join(root, reviewRoute), "utf8");
 const reviewActionWorkflowSource = fs.readFileSync(path.join(root, "frontend/lib/review-action-workflow.ts"), "utf8");
+const reviewEvidencePacketSource = fs.readFileSync(path.join(root, "frontend/lib/review-evidence-packet.ts"), "utf8");
 const reviewQueueResponseSource = fs.readFileSync(path.join(root, "frontend/lib/review-queue-response.ts"), "utf8");
 const workflowPolicySource = fs.readFileSync(path.join(root, "frontend/lib/workflow-policy.ts"), "utf8");
 if (!requestValidationSource.includes("function readJsonObject")) {
@@ -206,6 +214,12 @@ if (!reviewRouteSource.includes("buildReviewQueueResponse(queue, session)") || !
 }
 if (!workflowPolicySource.includes("function normalizeReviewQueueId") || !reviewActionWorkflowSource.includes("function readReviewActionRequestBody") || !reviewActionWorkflowSource.includes("readJsonObject<ReviewActionRequestBody>(request)")) {
   failures.push("review modules must own review queue normalization and action body parsing");
+}
+if (!reviewActionWorkflowSource.includes("buildReviewEvidencePacket(") || !reviewActionWorkflowSource.includes("reviewEvidencePacketBlockedBody(packet)") || !reviewEvidencePacketSource.includes("function buildReviewEvidencePacket") || !reviewEvidencePacketSource.includes("function reviewEvidencePacketBlockedAuditEvent") || !reviewEvidencePacketSource.includes("function queueReviewEvidencePacketDecision")) {
+  failures.push("review evidence packet must own checklist/note normalization, missing evidence, blocked body/audit, and queued decision packet");
+}
+if (/missingReviewEvidence|missingDomainReviewEvidence|reviewDomainMissingLabels|reviewActionDisabledReason|queuePendingReviewDecision|assetResourceRef|normalizeDisplayTextField/.test(reviewActionWorkflowSource)) {
+  failures.push(`${reviewRoute} workflow must not hand-roll review evidence packet assembly, normalization, missing evidence, refs, or queue details`);
 }
 if (/readJsonObject|function\s+normalizeQueue|reviewQueues|pendingReviewWriteSummary|resourceSpaceRecordRef|resourceSpaceAssetUrl|canOpenResourceSpace|role-cannot-review|Review Inbox requires reviewer access/.test(reviewRouteSource)) {
   failures.push(`${reviewRoute} must not hand-roll review body parsing, queue normalization, response payload assembly, denial copy, or audit details`);
@@ -331,13 +345,15 @@ if (/readJsonObject|sanitizePackageDraft|safeIsoTimestampIdPart|savePackageDraft
 
 for (const route of [
   assetDetailRoute,
-  "frontend/app/api/assets/thumbnail/[id]/route.ts",
-  "frontend/app/api/download/[id]/route.ts"
+  "frontend/app/api/assets/thumbnail/[id]/route.ts"
 ]) {
   const source = fs.readFileSync(path.join(root, route), "utf8");
   if (!source.includes("normalizeAssetId((await params).id)")) {
     failures.push(`${route} must normalize path params through normalizeAssetId`);
   }
+}
+if (!approvedDeliveryGateSource.includes("normalizeAssetId(rawAssetId)")) {
+  failures.push("approved-delivery-gate must normalize download path params through normalizeAssetId");
 }
 
 const uploadRoute = "frontend/app/api/upload/route.ts";

@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
+import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
+import { durableRuntimeStoreConfigured } from "@/lib/env";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
-import { isRuntimeWriteBlockedError, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
+import { isRuntimeWriteBlockedError, runtimeStoreDiagnostics, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 import { taxonomyGovernanceForRole } from "@/lib/taxonomy";
 import type { StockMediaAsset } from "@/lib/types";
 
@@ -89,6 +91,24 @@ describe("production identity guard", () => {
 });
 
 describe("production runtime write guard", () => {
+  it("does not treat Vercel KV env as generic durable runtime storage", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.RUNTIME_STORE = "vercel-kv";
+    process.env.KV_REST_API_URL = "https://kv.example.invalid";
+    process.env.KV_REST_API_TOKEN = "secret";
+
+    expect(durableRuntimeStoreConfigured()).toBe(false);
+    expect(runtimeStoreDiagnostics()).toMatchObject({
+      mode: "vercel-kv",
+      adapter: "local-filesystem",
+      durable: false,
+      production: true,
+      statefulWritesAllowed: false,
+      state: "Blocked"
+    });
+    expect(runtimeStoreDiagnostics().detail).toContain("Vercel KV is implemented for beta feedback only");
+  });
+
   it("turns blocked runtime writes into explicit 503 route errors", () => {
     const error = new Error("Durable runtime store required for production beta-feedback writes.");
     const response = runtimeWriteBlockedRouteError("beta-feedback", error);
@@ -109,6 +129,24 @@ describe("production runtime write guard", () => {
     const error = new Error("Unexpected write failure");
 
     expect(isRuntimeWriteBlockedError(error)).toBe(false);
+  });
+
+  it("fails hosted beta feedback writes and reads instead of falling back to local memory", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.KV_REST_API_URL;
+    delete process.env.KV_REST_API_TOKEN;
+
+    await expect(createBetaFeedback({
+      role: "Viewer",
+      route: "/",
+      task: "Hosted feedback proof",
+      severity: "low",
+      expected: "Feedback persists durably.",
+      actual: "Durable store missing."
+    })).rejects.toSatisfy(isBetaFeedbackDurableStorageError);
+
+    await expect(listBetaFeedback()).rejects.toSatisfy(isBetaFeedbackDurableStorageError);
   });
 });
 

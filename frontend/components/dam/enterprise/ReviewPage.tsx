@@ -196,7 +196,7 @@ export function EnterpriseReviewPage() {
     if (!selectedAsset) return;
     const payload = await downloadGate.requestDownload({ reason: `Reviewer gated download check for ${displayTitle(selectedAsset)}`, variant: "review-preview" });
     if (payload.allowed && payload.downloadUrl) {
-      setDecisionMessage("Download gate approved by backend. Opening approved copy.");
+      setDecisionMessage("Download gate approved. Opening approved copy.");
       window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
       return;
     }
@@ -361,8 +361,8 @@ export function EnterpriseReviewPage() {
                 <AssetThumb asset={selectedAsset} className="ed-review-preview-image" fit="contain" />
                 <button className="ed-preview-corner" type="button" aria-label="Open preview record" onClick={() => queuePortalNote("Preview record opened")}>▣</button>
                 <div className="ed-preview-toolbar" aria-label="Preview zoom controls">
-                  <button type="button" aria-label="Zoom out" disabled title="Zoom controls are disabled for beta fixtures."><Minus size={15} /></button>
-                  <button type="button" aria-label="Zoom in" disabled title="Zoom controls are disabled for beta fixtures."><Plus size={15} /></button>
+                  <button type="button" aria-label="Zoom out" disabled title="Zoom controls are disabled until safe preview tooling is connected."><Minus size={15} /></button>
+                  <button type="button" aria-label="Zoom in" disabled title="Zoom controls are disabled until safe preview tooling is connected."><Plus size={15} /></button>
                   <strong>100%</strong>
                   <button type="button" aria-label={previewExpanded ? "Collapse preview" : "Expand preview"} onClick={() => setPreviewExpanded((expanded) => !expanded)}><Grid3X3 size={15} /></button>
                 </div>

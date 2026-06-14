@@ -3,9 +3,11 @@ import { appendAuditEvent } from "@/lib/audit-log";
 import {
   betaFeedbackAdminDeniedAuditEvent,
   betaFeedbackAdminDeniedError,
+  betaFeedbackDurableStorageRouteError,
   betaFeedbackExportAuditEvent,
   betaFeedbackExportHeaders,
   buildBetaFeedbackExport,
+  isBetaFeedbackDurableStorageError,
   listBetaFeedback,
   readBetaFeedbackExportFilters
 } from "@/lib/beta-feedback";
@@ -23,7 +25,16 @@ export async function GET(request: NextRequest) {
   }
 
   const filters = readBetaFeedbackExportFilters(request.nextUrl.searchParams);
-  const records = await listBetaFeedback();
+  let records: Awaited<ReturnType<typeof listBetaFeedback>>;
+  try {
+    records = await listBetaFeedback();
+  } catch (error) {
+    if (isBetaFeedbackDurableStorageError(error)) {
+      const blocked = betaFeedbackDurableStorageRouteError(error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    throw error;
+  }
   const packet = buildBetaFeedbackExport(records, filters);
   appendAuditEvent(betaFeedbackExportAuditEvent(packet, identity.role, identity.id));
   return NextResponse.json(packet, {

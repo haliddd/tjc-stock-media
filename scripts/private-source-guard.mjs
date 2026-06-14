@@ -34,12 +34,12 @@ for (const file of scanRoots.flatMap(walk)) {
   }
 }
 
-const reviewActionWorkflow = fs.readFileSync(path.join(root, "frontend/lib/review-action-workflow.ts"), "utf8");
-if (!reviewActionWorkflow.includes("normalizeDisplayTextField")) {
-  failures.push("frontend/lib/review-action-workflow.ts must normalize reviewer-visible text through normalizeDisplayTextField");
+const reviewEvidencePacket = fs.readFileSync(path.join(root, "frontend/lib/review-evidence-packet.ts"), "utf8");
+if (!reviewEvidencePacket.includes("normalizeDisplayTextField")) {
+  failures.push("frontend/lib/review-evidence-packet.ts must normalize reviewer-visible text through normalizeDisplayTextField");
 }
-if (/function\s+safeDisplayText\s*\(/.test(reviewActionWorkflow)) {
-  failures.push("frontend/lib/review-action-workflow.ts must not hand-roll reviewer text sanitization");
+if (/function\s+safeDisplayText\s*\(/.test(reviewEvidencePacket)) {
+  failures.push("frontend/lib/review-evidence-packet.ts must not hand-roll reviewer text sanitization");
 }
 
 if (failures.length) {

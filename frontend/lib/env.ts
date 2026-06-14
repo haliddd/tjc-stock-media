@@ -144,6 +144,5 @@ export function runtimeStoreMode() {
 }
 
 export function durableRuntimeStoreConfigured() {
-  const mode = runtimeStoreMode();
-  return (mode === "vercel-kv" && hasVercelKvConfig()) || mode === "external-durable";
+  return false;
 }

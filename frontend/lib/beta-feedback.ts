@@ -31,6 +31,8 @@ type BetaFeedbackRouteError = {
   body: {
     error: string;
     missing?: string[];
+    reasonCode?: string;
+    detail?: string;
   };
   status: 400 | 403 | 503;
 };
@@ -121,6 +123,29 @@ function safeUrl(value: unknown) {
 
 function feedbackKey(id: string) {
   return `${feedbackRecordPrefix}${id}`;
+}
+
+function hostedRuntime() {
+  return process.env.VERCEL === "1";
+}
+
+function durableFeedbackError(action: string) {
+  return new Error(`Beta feedback durable storage ${action} failed in hosted runtime.`);
+}
+
+export function isBetaFeedbackDurableStorageError(error: unknown): error is Error {
+  return error instanceof Error && /^Beta feedback durable storage .+ failed in hosted runtime\.$/.test(error.message);
+}
+
+export function betaFeedbackDurableStorageRouteError(error: unknown): BetaFeedbackRouteError {
+  return {
+    body: {
+      error: "Beta feedback durable storage is unavailable.",
+      reasonCode: "feedback-durable-storage-unavailable",
+      detail: isBetaFeedbackDurableStorageError(error) ? error.message : "Hosted feedback storage failed."
+    },
+    status: 503
+  };
 }
 
 function newestFirst(records: BetaFeedbackRecord[]) {
@@ -315,10 +340,11 @@ export function betaFeedbackDisabledError(): BetaFeedbackRouteError {
 }
 
 export function betaFeedbackStorageUnavailableError(): BetaFeedbackRouteError | null {
-  if (process.env.VERCEL !== "1" || hasVercelKvConfig()) return null;
+  if (!hostedRuntime() || hasVercelKvConfig()) return null;
   return {
     body: {
       error: "Beta feedback durable storage is not configured.",
+      reasonCode: "feedback-durable-storage-missing",
       missing: ["KV_REST_API_URL", "KV_REST_API_TOKEN"]
     },
     status: 503
@@ -389,6 +415,9 @@ export async function createBetaFeedback(input: Omit<BetaFeedbackRecord, "id" | 
     storageMode: kvAvailable ? "vercel-kv" : "local-json"
   };
   const wroteKv = kvAvailable ? await writeKvFeedback(record).catch(() => false) : false;
+  if (!wroteKv && hostedRuntime()) {
+    throw durableFeedbackError("write");
+  }
   if (!wroteKv) {
     record.storageMode = "local-json";
     const records = await readLocalFeedback();
@@ -418,8 +447,12 @@ export async function createBetaFeedbackFromSubmission(submission: NormalizedBet
 }
 
 export async function listBetaFeedback() {
-  const kvRecords = await readKvFeedback().catch(() => null);
+  const kvRecords = await readKvFeedback().catch((error) => {
+    if (hostedRuntime() && hasVercelKvConfig()) throw durableFeedbackError("read");
+    return null;
+  });
   if (kvRecords) return kvRecords;
+  if (hostedRuntime()) throw durableFeedbackError("read");
   return newestFeedbackWindow(await readLocalFeedback());
 }
 
@@ -537,6 +570,9 @@ export async function patchBetaFeedback(id: string, patch: FeedbackPatch) {
     updatedAt: new Date().toISOString()
   };
   const wroteKv = await writeKvFeedback(next).catch(() => false);
+  if (!wroteKv && hostedRuntime()) {
+    throw durableFeedbackError("update");
+  }
   if (!wroteKv) {
     const localRecords = await readLocalFeedback();
     await writeLocalFeedback([{ ...next, storageMode: "local-json" }, ...localRecords.filter((record) => record.id !== cleanId)]);

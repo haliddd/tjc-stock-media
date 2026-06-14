@@ -11791,8 +11791,8 @@ button:disabled,
   .ed-badge,
   .ed-admin-status {
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .ed-empty-state.is-quiet,

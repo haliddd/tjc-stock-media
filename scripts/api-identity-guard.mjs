@@ -8,7 +8,8 @@ const handlerPattern = /export\s+async\s+function\s+(GET|POST|PATCH|PUT|DELETE)\
 const identityCalls = [
   "requestIdentity(",
   "createDamRouteSession(",
-  "runReviewActionWorkflow("
+  "runReviewActionWorkflow(",
+  "runApprovedDeliveryGate("
 ];
 
 function walk(dir) {

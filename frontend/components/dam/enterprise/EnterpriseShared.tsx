@@ -584,7 +584,7 @@ export function SourcePill({ source, live }: { source?: MediaSourceStatus | null
 }
 
 export function LoadingCard({ label = "Loading ResourceSpace data..." }: { label?: string }) {
-  return <section className="ed-card ed-empty-state" role="status"><Database size={24} /><h2>{label}</h2><p>Source system connection pending where noted. Previews and metadata may be beta fixtures. No frontend secrets are used.</p></section>;
+  return <section className="ed-card ed-empty-state" role="status"><Database size={24} /><h2>{label}</h2><p>Source connection pending where noted. Unavailable media stays clearly marked. No frontend secrets are used.</p></section>;
 }
 
 export function ErrorCard({ message, source }: { message: string; source?: MediaSourceStatus | null }) {
@@ -879,10 +879,10 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
       </dl>
       {message ? <p className="ed-inline-success">{message}</p> : null}
       <div className="ed-inspector-actions">
-        <ActionButton tone="dark" icon={Download} disabled disabledReason="Open the full record to run the backend download gate. Source files remain restricted.">Download</ActionButton>
+        <ActionButton tone="dark" icon={Download} disabled disabledReason="Open the full record to run the approved-copy download gate. Source files remain restricted.">Download</ActionButton>
         <ActionButton icon={Folder} disabled disabledReason="Use Distribution Sets for governed references. This panel does not copy source files.">Add to distribution set</ActionButton>
       </div>
-      <p className="ed-action-helper">Open full record for backend download-ticket checks. Distribution actions stay gated; no ZIP, public link, or source-file copy is created.</p>
+      <p className="ed-action-helper">Open full record for approved-copy ticket checks. Distribution actions stay gated; no ZIP, public link, or source-file copy is created.</p>
     </aside>
   );
 }

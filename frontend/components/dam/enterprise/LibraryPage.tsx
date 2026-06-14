@@ -375,7 +375,7 @@ export function EnterpriseLibraryPage() {
       announceLibraryAction(payload.error || "Saved search failed.");
       return;
     }
-    announceLibraryAction(`Saved "${payload.search?.title || "search"}" to ${payload.storageMode || "local-json"}. Team-wide saved views need backend storage.`);
+    announceLibraryAction(`Saved "${payload.search?.title || "search"}" to ${payload.storageMode || "local-json"}. Team-wide saved views need durable team storage.`);
   };
   const toggleFilter = (filter: string) => {
     setFilters((current) => current.includes(filter) ? current.filter((item) => item !== filter) : [...current, filter]);
@@ -432,7 +432,7 @@ export function EnterpriseLibraryPage() {
         subtitle="Browse role-safe media for ministry use. Source files remain restricted."
       />
       {libraryMessage ? <p className="ed-inline-success">{libraryMessage}</p> : null}
-      <section className="ed-approved-banner"><CheckCircle2 size={24} /><div><strong>{search.live ? `Showing ${sourceNoun(search.source)}-backed records` : `${sourceNoun(search.source)} disconnected or read-only`}</strong><span>{search.source?.detail || "Source system connection pending where noted. Previews and metadata are beta fixtures. Source files remain restricted."}</span></div><SourcePill source={search.source} live={search.live} /></section>
+      <section className="ed-approved-banner"><CheckCircle2 size={24} /><div><strong>{search.live ? `Showing ${sourceNoun(search.source)}-backed records` : `${sourceNoun(search.source)} disconnected or read-only`}</strong><span>{search.source?.detail || "Source connection pending where noted. Unavailable media stays clearly marked. Source files remain restricted."}</span></div><SourcePill source={search.source} live={search.live} /></section>
       <DamSegmentedNav
         label="Library workspace views"
         activeId="assets"

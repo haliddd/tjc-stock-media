@@ -48,11 +48,30 @@ export type ConsumeDownloadTicketInput = {
   assetId: string;
   role: DemoRole;
   variant: "download";
+  beforeConsume?: (record: DownloadTicketRecord) => void;
 };
 
 export type ConsumeDownloadTicketResult =
   | { ok: true; record: DownloadTicketRecord }
   | { ok: false; reasonCode: string; reason: string; ticketId?: string };
+
+function validateDownloadTicketRecord(input: ConsumeDownloadTicketInput, parsed: { id: string; secret: string }): ConsumeDownloadTicketResult {
+  const record = readRuntimeJsonFile(ticketPath(parsed.id), normalizeTicketRecord);
+  if (!record) return { ok: false, reasonCode: "ticket-not-found", reason: "Download ticket is invalid.", ticketId: parsed.id };
+  if (!secureEquals(record.tokenHash, hashSecret(parsed.secret))) return { ok: false, reasonCode: "ticket-invalid", reason: "Download ticket is invalid.", ticketId: parsed.id };
+  if (record.consumedAt) return { ok: false, reasonCode: "ticket-reused", reason: "Download ticket has already been used.", ticketId: parsed.id };
+  if (Date.parse(record.expiresAt) <= Date.now()) return { ok: false, reasonCode: "ticket-expired", reason: "Download ticket has expired.", ticketId: parsed.id };
+  if (record.actor !== input.actor || record.assetId !== input.assetId || record.role !== input.role || record.variant !== input.variant) {
+    return { ok: false, reasonCode: "ticket-mismatch", reason: "Download ticket does not match this request.", ticketId: parsed.id };
+  }
+  return { ok: true, record };
+}
+
+export function validateDownloadTicket(input: ConsumeDownloadTicketInput): ConsumeDownloadTicketResult {
+  const parsed = splitTicket(input.ticket);
+  if (!parsed) return { ok: false, reasonCode: "ticket-missing", reason: "Download ticket is required." };
+  return validateDownloadTicketRecord(input, parsed);
+}
 
 function ticketDir() {
   return path.join(writableRuntimeRoot(), ".runtime", "download-tickets");
@@ -183,15 +202,11 @@ export function consumeDownloadTicket(input: ConsumeDownloadTicketInput): Consum
   const release = acquireTicketLock(parsed.id);
   if (!release) return { ok: false, reasonCode: "ticket-busy", reason: "Download ticket is already being consumed.", ticketId: parsed.id };
   try {
-    const record = readRuntimeJsonFile(ticketPath(parsed.id), normalizeTicketRecord);
-    if (!record) return { ok: false, reasonCode: "ticket-not-found", reason: "Download ticket is invalid.", ticketId: parsed.id };
-    if (!secureEquals(record.tokenHash, hashSecret(parsed.secret))) return { ok: false, reasonCode: "ticket-invalid", reason: "Download ticket is invalid.", ticketId: parsed.id };
-    if (record.consumedAt) return { ok: false, reasonCode: "ticket-reused", reason: "Download ticket has already been used.", ticketId: parsed.id };
-    if (Date.parse(record.expiresAt) <= Date.now()) return { ok: false, reasonCode: "ticket-expired", reason: "Download ticket has expired.", ticketId: parsed.id };
-    if (record.actor !== input.actor || record.assetId !== input.assetId || record.role !== input.role || record.variant !== input.variant) {
-      return { ok: false, reasonCode: "ticket-mismatch", reason: "Download ticket does not match this request.", ticketId: parsed.id };
-    }
+    const validation = validateDownloadTicketRecord(input, parsed);
+    if (!validation.ok) return validation;
+    const record = validation.record;
 
+    input.beforeConsume?.(record);
     const consumedRecord: DownloadTicketRecord = {
       ...record,
       consumedAt: new Date().toISOString(),

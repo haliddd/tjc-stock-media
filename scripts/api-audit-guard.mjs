@@ -8,7 +8,8 @@ const mutatingMethodPattern = /export\s+async\s+function\s+(POST|PATCH|PUT|DELET
 const auditedWorkflowCalls = [
   "appendAuditEvent(",
   "appendRequiredAuditEvent(",
-  "runReviewActionWorkflow("
+  "runReviewActionWorkflow(",
+  "runApprovedDeliveryGate("
 ];
 
 function walk(dir) {

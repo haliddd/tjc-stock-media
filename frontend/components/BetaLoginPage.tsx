@@ -52,7 +52,7 @@ export function BetaLoginPage() {
           <ul>
             <li>Vercel protection remains first gate.</li>
             <li>Original/source files remain restricted.</li>
-            <li>Previews and metadata are beta fixtures where source connection is pending.</li>
+            <li>Records stay unavailable when the source connection is not verified.</li>
           </ul>
         </div>
 

@@ -27,15 +27,19 @@ function categoryForPath(filePath: string): RuntimeStateCategory {
 export function runtimeStoreDiagnostics() {
   const durable = durableRuntimeStoreConfigured();
   const production = productionRuntime();
+  const mode = runtimeStoreMode();
+  const requestedDurableMode = mode !== "local-filesystem";
   return {
-    mode: runtimeStoreMode(),
+    mode,
     adapter: "local-filesystem",
     durable,
     production,
     statefulWritesAllowed: !production || durable,
     state: production && !durable ? "Blocked" : durable ? "Operational" : "Local beta only",
     detail: production && !durable
-      ? "Production stateful features require a configured durable runtime store. Local filesystem state is blocked."
+      ? requestedDurableMode
+        ? "Production stateful features are blocked because generic runtime writes still use the local filesystem adapter. Vercel KV is implemented for beta feedback only, not audit logs, tickets, package drafts, saved searches, or pending write queues."
+        : "Production stateful features require a configured durable runtime store. Local filesystem state is blocked."
       : durable
         ? "Durable runtime store is configured for production readiness checks."
         : "Local filesystem runtime state is enabled for local/private beta only."

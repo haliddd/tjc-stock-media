@@ -19,6 +19,7 @@ const files = {
   env: "frontend/lib/env.ts",
   nextConfig: "frontend/next.config.mjs",
   reviewEvidence: "frontend/lib/review-evidence.ts",
+  reviewEvidencePacket: "frontend/lib/review-evidence-packet.ts",
   requestValidation: "frontend/lib/request-validation.ts",
   catalog: "frontend/lib/catalog.ts",
   catalogSearchRequest: "frontend/lib/catalog-search-request.ts",
@@ -45,6 +46,7 @@ const files = {
   batchActions: "frontend/lib/batch-actions.ts",
   batchRoute: "frontend/app/api/batch/route.ts",
   downloadRoute: "frontend/app/api/download/[id]/route.ts",
+  approvedDeliveryGate: "frontend/lib/approved-delivery-gate.ts",
   reviewActionWorkflow: "frontend/lib/review-action-workflow.ts",
   resourceSpaceApi: "frontend/lib/media-source/resourcespace-api.ts",
   resourceSpaceFieldMap: "frontend/lib/resourcespace-field-map.ts",
@@ -88,6 +90,7 @@ const runtimeFileStore = read(files.runtimeFileStore);
 const env = read(files.env);
 const nextConfig = read(files.nextConfig);
 const reviewEvidence = read(files.reviewEvidence);
+const reviewEvidencePacket = read(files.reviewEvidencePacket);
 const requestValidation = read(files.requestValidation);
 const catalog = read(files.catalog);
 const catalogSearchRequest = read(files.catalogSearchRequest);
@@ -114,6 +117,7 @@ const reviewQueueResponse = read(files.reviewQueueResponse);
 const batchActions = read(files.batchActions);
 const batchRoute = read(files.batchRoute);
 const downloadRoute = read(files.downloadRoute);
+const approvedDeliveryGate = read(files.approvedDeliveryGate);
 const reviewActionWorkflow = read(files.reviewActionWorkflow);
 const resourceSpaceApi = read(files.resourceSpaceApi);
 const resourceSpaceFieldMap = read(files.resourceSpaceFieldMap);
@@ -274,8 +278,8 @@ for (const surface of [
   { name: "asset route", source: assetRoute },
   { name: "review queue response", source: reviewQueueResponse },
   { name: "batch actions", source: batchActions },
-  { name: "download route", source: downloadRoute },
-  { name: "review action workflow", source: reviewActionWorkflow },
+  { name: "approved delivery gate", source: approvedDeliveryGate },
+  { name: "review evidence packet", source: reviewEvidencePacket },
   { name: "ResourceSpace API adapter", source: resourceSpaceApi }
 ]) {
   if (!surface.source.includes("assetResourceRef") || /asset\.resourceSpaceId\s*\|\|\s*asset\.id/.test(surface.source)) {
@@ -530,7 +534,7 @@ if (!apiPayloadGuard.includes('stringArrayConst(sourceRedactionSource, "sourceCu
 if (/sourcePath",\s*new Set|masterDrivePath",\s*new Set/.test(apiPayloadGuard)) {
   failures.push("API payload guard must not allowlist raw source path keys in API routes");
 }
-if (!downloadRoute.includes("const auditSource = envelope.source") || /source:\s*source\.label/.test(downloadRoute) || /sourceDetail:\s*source\.detail/.test(downloadRoute)) {
+if (!approvedDeliveryGate.includes("const auditSource = envelope.source") || /source:\s*source\.label/.test(approvedDeliveryGate) || /sourceDetail:\s*source\.detail/.test(approvedDeliveryGate)) {
   failures.push("download audit details must derive source labels/details from role-safe envelope source");
 }
 requireAllStrings("API payload guard direct URL keys", apiPayloadGuard, ["signedUrl", "originalUrl"]);

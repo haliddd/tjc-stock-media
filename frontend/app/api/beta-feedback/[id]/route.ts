@@ -3,9 +3,11 @@ import { appendAuditEvent } from "@/lib/audit-log";
 import {
   betaFeedbackAdminDeniedAuditEvent,
   betaFeedbackAdminDeniedError,
+  betaFeedbackDurableStorageRouteError,
   betaFeedbackPatchValidationError,
   betaFeedbackTriagedAuditEvent,
   buildBetaFeedbackPatchResponse,
+  isBetaFeedbackDurableStorageError,
   patchBetaFeedback,
   readBetaFeedbackPatchInput
 } from "@/lib/beta-feedback";
@@ -35,6 +37,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     record = await patchBetaFeedback(id, input.patch);
   } catch (error) {
+    if (isBetaFeedbackDurableStorageError(error)) {
+      const blocked = betaFeedbackDurableStorageRouteError(error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
     if (isRuntimeWriteBlockedError(error)) {
       const blocked = runtimeWriteBlockedRouteError("beta-feedback", error);
       return NextResponse.json(blocked.body, { status: blocked.status });

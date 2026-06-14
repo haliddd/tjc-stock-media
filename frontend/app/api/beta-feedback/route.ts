@@ -4,6 +4,7 @@ import { betaFeedbackEnabled } from "@/lib/env";
 import {
   betaFeedbackAdminDeniedAuditEvent,
   betaFeedbackAdminDeniedError,
+  betaFeedbackDurableStorageRouteError,
   betaFeedbackDisabledError,
   betaFeedbackStorageUnavailableError,
   betaFeedbackSubmissionValidationError,
@@ -11,6 +12,7 @@ import {
   buildBetaFeedbackInboxResponse,
   buildBetaFeedbackSubmitResponse,
   createBetaFeedbackFromSubmission,
+  isBetaFeedbackDurableStorageError,
   listBetaFeedback,
   normalizeBetaFeedbackSubmission,
   readBetaFeedbackRequestInput
@@ -32,7 +34,16 @@ export async function GET(request: NextRequest) {
   if (storageUnavailable) {
     return NextResponse.json(storageUnavailable.body, { status: storageUnavailable.status });
   }
-  const feedback = await listBetaFeedback();
+  let feedback: Awaited<ReturnType<typeof listBetaFeedback>>;
+  try {
+    feedback = await listBetaFeedback();
+  } catch (error) {
+    if (isBetaFeedbackDurableStorageError(error)) {
+      const blocked = betaFeedbackDurableStorageRouteError(error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    throw error;
+  }
   return NextResponse.json(buildBetaFeedbackInboxResponse(feedback));
 }
 
@@ -56,6 +67,10 @@ export async function POST(request: NextRequest) {
   try {
     record = await createBetaFeedbackFromSubmission(submission, identity, file);
   } catch (error) {
+    if (isBetaFeedbackDurableStorageError(error)) {
+      const blocked = betaFeedbackDurableStorageRouteError(error);
+      return NextResponse.json(blocked.body, { status: blocked.status });
+    }
     if (isRuntimeWriteBlockedError(error)) {
       const blocked = runtimeWriteBlockedRouteError("beta-feedback", error);
       return NextResponse.json(blocked.body, { status: blocked.status });

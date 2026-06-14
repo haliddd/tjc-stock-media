@@ -32,6 +32,7 @@ type DownloadGateBody = {
 export type DownloadGateInput = {
   role?: string;
   variant: "download";
+  requestedVariant: string | null;
   usageChannel: string | null;
   reason: string | null;
   termsAccepted: boolean;
@@ -291,9 +292,11 @@ export function readThumbnailDeliveryInput(search: Pick<URLSearchParams, "get">)
 
 export async function readDownloadGateInput(request: { json(): Promise<unknown> }): Promise<DownloadGateInput> {
   const body = await readJsonObject<DownloadGateBody>(request);
+  const requestedVariant = normalizeDisplayTextField(body.variant, "", 40) || null;
   return {
     role: typeof body.role === "string" ? body.role : undefined,
     variant: normalizeDownloadVariant(body.variant),
+    requestedVariant,
     usageChannel: normalizeDisplayTextField(body.usageChannel, "", 80) || null,
     reason: normalizeDisplayTextField(body.reason, "", 240) || null,
     termsAccepted: body.termsAccepted === true
