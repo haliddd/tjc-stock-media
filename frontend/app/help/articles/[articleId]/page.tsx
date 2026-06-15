@@ -1,6 +1,6 @@
-import { EnterpriseHelpPage } from "@/components/dam/EnterpriseDamPages";
+import { GuidePage } from "@/components/GuidePage";
 
 export default async function Page({ params }: { params: Promise<{ articleId: string }> }) {
   await params;
-  return <EnterpriseHelpPage />;
+  return <GuidePage />;
 }

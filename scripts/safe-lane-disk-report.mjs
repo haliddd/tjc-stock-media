@@ -4,9 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 const expectedWorktreeInput = process.env.SAFE_LANE_EXPECTED_WORKTREE
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
-const expectedSourceCheckoutInput = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
   || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
+const expectedSourceCheckoutInput = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15";
 const defaultMinFreeGiB = 10;
 const failures = [];
 

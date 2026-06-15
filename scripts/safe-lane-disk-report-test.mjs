@@ -65,11 +65,19 @@ if (current.status === 0) {
     "This script deletes nothing",
     "Default heavy-run minimum: 10 GiB",
     "Heavy local reruns:",
-    "Blocked scope: dev/build/start/browser/smoke/bootstrap/docker/import/media/backup.",
-    "Focused threshold override requires SAFE_LANE_HEADROOM_OVERRIDE_REASON.",
-    "shared checkout: /Users/halim4pro/Desktop/MVP/tjc-stock-media"
+    "shared checkout: /Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15"
   ]) {
     if (!current.stdout.includes(expectedText)) failures.push(`current report missing ${expectedText}`);
+  }
+  if (current.stdout.includes("Heavy local reruns: BLOCKED")) {
+    for (const expectedText of [
+      "Blocked scope: dev/build/start/browser/smoke/bootstrap/docker/import/media/backup.",
+      "Focused threshold override requires SAFE_LANE_HEADROOM_OVERRIDE_REASON."
+    ]) {
+      if (!current.stdout.includes(expectedText)) failures.push(`current blocked report missing ${expectedText}`);
+    }
+  } else if (!current.stdout.includes("Heavy local reruns: PASS default 10 GiB headroom.")) {
+    failures.push("current report missing high-headroom PASS copy");
   }
 }
 

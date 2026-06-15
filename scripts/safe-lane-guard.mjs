@@ -4,13 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 const expectedWorktree = process.env.SAFE_LANE_EXPECTED_WORKTREE
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
-const expectedSourceCheckout = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
   || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
+const expectedSourceCheckout = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15";
 const expectedBranch = process.env.SAFE_LANE_EXPECTED_BRANCH
-  || "codex/safe-ui-beta-proof-2026-06-15";
+  || "codex/final-stock-media-canonical-2026-06-15";
 const expectedBaseUrl = process.env.SAFE_LANE_EXPECTED_BASE_URL
-  || "http://localhost:4871";
+  || "http://localhost:4867";
 const ledgerPath = process.env.SAFE_LANE_LEDGER_PATH
   || "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md";
 const failures = [];

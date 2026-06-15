@@ -1,5 +1,5 @@
-import { EnterpriseHelpPage } from "@/components/dam/EnterpriseDamPages";
+import { GuidePage } from "@/components/GuidePage";
 
 export default function Page() {
-  return <EnterpriseHelpPage />;
+  return <GuidePage />;
 }

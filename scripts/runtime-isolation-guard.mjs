@@ -4,9 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 const expectedWorktree = process.env.RUNTIME_ISOLATION_EXPECTED_WORKTREE
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
-const expectedSourceCheckout = process.env.RUNTIME_ISOLATION_EXPECTED_SOURCE_CHECKOUT
   || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
+const expectedSourceCheckout = process.env.RUNTIME_ISOLATION_EXPECTED_SOURCE_CHECKOUT
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15";
 const ledgerPath = process.env.RUNTIME_ISOLATION_LEDGER_PATH
   || "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md";
 const dailyPath = process.env.RUNTIME_ISOLATION_DAILY_PATH

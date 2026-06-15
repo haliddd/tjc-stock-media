@@ -18,6 +18,31 @@ Status: PASS.
 - Latest protected browser QA rerun: `2026-06-15T13:27:23.819Z`
 - Latest hosted read-only rerun: `2026-06-15T11:52:56.617Z`
 
+## Canonical Cleanup Update
+
+Status: PASS after stock-media reconciliation.
+
+- Source checkout: `/Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15`
+- Isolated worktree path: `/Users/halim4pro/Desktop/MVP/tjc-stock-media`
+- Branch: `codex/final-stock-media-canonical-2026-06-15`
+- Current HEAD commit: `f0df4d2450f6a8c8b1bd4232b58cb985f0048413`
+- Actual BASE_URL: `http://localhost:4867`
+- Secrets redacted: yes
+- Runtime/build artifacts isolated under isolated worktree: yes
+- Shared checkout untouched by this build/dev/smoke lane: yes
+
+Forbidden surfaces not touched:
+
+- Vercel prod env
+- ResourceSpace prod data
+- Google Drive originals
+- DNS
+- Billing
+- Live writeback
+- Tester invites
+- Public launch
+- Source media
+
 ## Sibling Session Status
 
 User reported two other active sessions:

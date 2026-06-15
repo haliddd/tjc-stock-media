@@ -138,6 +138,10 @@ function isTransientBrowserTargetClose(error) {
   return /Target page, context or browser has been closed|ERR_ABORTED|frame was detached/i.test(String(error?.message || error));
 }
 
+function isTransientNavigationError(error) {
+  return /Timeout .* exceeded|Navigation timeout|ERR_CONNECTION_REFUSED|ECONNREFUSED|ERR_EMPTY_RESPONSE|Target page, context or browser has been closed/i.test(String(error?.message || error));
+}
+
 function trustedRoleHeaders(role) {
   if (!trustedHeaderQa || !role) return {};
   return {
@@ -317,8 +321,8 @@ async function gotoAndSettle(page, url) {
       break;
     } catch (error) {
       const message = String(error?.message || error);
-      if (/ERR_CONNECTION_REFUSED|ECONNREFUSED|ERR_EMPTY_RESPONSE/i.test(message) && attempt < 3) {
-        await page.waitForTimeout(750);
+      if (isTransientNavigationError(error) && attempt < 3) {
+        await page.waitForTimeout(750 * (attempt + 1));
         continue;
       }
       if (!/ERR_ABORTED|frame was detached/i.test(message)) throw error;
