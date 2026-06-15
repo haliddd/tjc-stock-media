@@ -95,6 +95,91 @@ requireText("docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md", "Fixed `Qu
 requireText("docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md", "Review Queue premium workflow/redaction pass", "Review Queue premium evidence row");
 requireText("docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md", "DEV role switch hidden outside explicit local dev mode", "DEV role switch evidence row");
 
+const routeIdentitySpecs = [
+  {
+    label: "Requests",
+    routeFile: "frontend/app/requests/page.tsx",
+    componentFile: "frontend/components/dam/enterprise/RequestsPage.tsx",
+    navHref: 'href: "/requests"',
+    h1: 'title="Requests"',
+    forbiddenH1: 'title="Help Center"',
+    primarySection: 'data-primary-section="requests-table"',
+    inspector: "Request summary"
+  },
+  {
+    label: "My Tasks",
+    routeFile: "frontend/app/my-tasks/page.tsx",
+    componentFile: "frontend/components/dam/enterprise/MyTasksPage.tsx",
+    navHref: 'href: "/my-tasks"',
+    h1: 'title="My Tasks"',
+    forbiddenH1: 'title="Help Center"',
+    primarySection: 'data-primary-section="task-work-queue"',
+    inspector: "Task context"
+  },
+  {
+    label: "Help Center",
+    routeFile: "frontend/app/help/page.tsx",
+    componentFile: "frontend/components/GuidePage.tsx",
+    navHref: 'href: "/help"',
+    h1: 'Help Center',
+    forbiddenH1: 'title="Requests"',
+    primarySection: 'data-primary-section="help-articles"',
+    inspector: "Documentation scope"
+  },
+  {
+    label: "Recent Uploads",
+    routeFile: "frontend/app/recent-uploads/page.tsx",
+    componentFile: "frontend/components/dam/enterprise/RecentUploadsPage.tsx",
+    navHref: 'href: "/recent-uploads"',
+    h1: 'title="Recent Uploads"',
+    forbiddenH1: 'title="Library"',
+    primarySection: 'data-primary-section="recent-uploads-ledger"',
+    inspector: "Intake context"
+  }
+];
+
+const nav = read("frontend/components/dam/shell/damShellNav.ts");
+const sidebar = read("frontend/components/dam/shell/AppSidebar.tsx");
+const routeIdentity = read("frontend/lib/dam-route-identity.ts");
+const routeIdentityTest = read("frontend/lib/dam-route-identity.test.ts");
+
+if (sidebar) {
+  if (!sidebar.includes("isDamShellRouteActive")) failures.push("AppSidebar must use shared DAM route active-state helper");
+  if (!sidebar.includes("item.activeHrefs")) failures.push("AppSidebar must pass nav active aliases for legacy route support");
+}
+
+if (routeIdentity) {
+  for (const text of ["/requests", "/my-tasks", "/tasks", "/help", "/guide", "/recent-uploads"]) {
+    if (!routeIdentity.includes(text)) failures.push(`dam-route-identity helper missing ${text}`);
+  }
+}
+
+if (routeIdentityTest) {
+  for (const text of [
+    "/requests/REQ-1024",
+    "/my-tasks",
+    "/tasks",
+    "/help",
+    "/guide",
+    "/recent-uploads",
+    "activeLabels"
+  ]) {
+    if (!routeIdentityTest.includes(text)) failures.push(`dam-route-identity test missing ${text}`);
+  }
+}
+
+for (const spec of routeIdentitySpecs) {
+  requireText(spec.routeFile, spec.componentFile.includes("/components/") ? spec.componentFile.split("/").pop()?.replace(".tsx", "") || spec.label : spec.label, `${spec.label} route component import`);
+  const component = read(spec.componentFile);
+  if (component) {
+    for (const text of [spec.h1, spec.primarySection, spec.inspector]) {
+      if (!component.includes(text)) failures.push(`${spec.componentFile} missing ${spec.label} route identity marker ${text}`);
+    }
+    if (component.includes(spec.forbiddenH1)) failures.push(`${spec.componentFile} must not masquerade as ${spec.forbiddenH1}`);
+  }
+  if (nav && !nav.includes(spec.navHref)) failures.push(`DAM shell nav missing ${spec.label} canonical href ${spec.navHref}`);
+}
+
 if (failures.length) {
   console.error("UI maturity guard failed:");
   for (const failure of failures) console.error(`- ${failure}`);

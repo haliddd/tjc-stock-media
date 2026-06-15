@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Archive,
   BarChart3,
+  Clock3,
+  ClipboardList,
   FileSearch,
   FolderOpen,
   Grid3X3,
@@ -12,6 +14,7 @@ import {
   KeyRound,
   Library,
   ListFilter,
+  MessageSquareText,
   Search,
   Settings2,
   ShieldAlert,
@@ -138,10 +141,43 @@ const damCommands: DamCommand[] = [
     suggestion: true
   },
   {
+    id: "nav-requests",
+    label: "Requests",
+    description: "Track source access, rights issues, download unlocks, and review requests",
+    href: "/requests",
+    icon: MessageSquareText,
+    group: "Navigate",
+    keywords: ["requests", "ticket", "source access", "rights issue", "download unlock"],
+    shortcut: "G Q",
+    suggestion: true
+  },
+  {
+    id: "nav-my-tasks",
+    label: "My Tasks",
+    description: "Open assigned evidence checks and review actions",
+    href: "/my-tasks",
+    icon: ClipboardList,
+    group: "Navigate",
+    keywords: ["tasks", "assigned", "work queue", "evidence", "policy"],
+    shortcut: "G T",
+    suggestion: true
+  },
+  {
+    id: "nav-recent-uploads",
+    label: "Recent Uploads",
+    description: "Inspect recent intake without treating uploads as approved media",
+    href: "/recent-uploads",
+    icon: Clock3,
+    group: "Navigate",
+    keywords: ["recent", "uploads", "intake", "submitted"],
+    shortcut: "G N",
+    roles: ["Contributor", "Reviewer", "DAM Admin"]
+  },
+  {
     id: "nav-help",
-    label: "Help",
+    label: "Help Center",
     description: "Open policy-safe DAM guidance",
-    href: "/guide",
+    href: "/help",
     icon: HelpCircle,
     group: "Navigate",
     keywords: ["help", "guide", "policy", "usage"],

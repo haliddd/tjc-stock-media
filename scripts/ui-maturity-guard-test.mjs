@@ -11,8 +11,20 @@ const failures = [];
 process.on("exit", () => fs.rmSync(tempRoot, { recursive: true, force: true }));
 
 const fixtureFiles = [
+  "frontend/app/requests/page.tsx",
+  "frontend/app/my-tasks/page.tsx",
+  "frontend/app/help/page.tsx",
+  "frontend/app/recent-uploads/page.tsx",
+  "frontend/lib/dam-route-identity.ts",
+  "frontend/lib/dam-route-identity.test.ts",
+  "frontend/components/dam/shell/AppSidebar.tsx",
+  "frontend/components/dam/shell/damShellNav.ts",
+  "frontend/components/GuidePage.tsx",
   "frontend/components/dam/enterprise/LibraryPage.tsx",
   "frontend/components/dam/enterprise/EnterpriseShared.tsx",
+  "frontend/components/dam/enterprise/RequestsPage.tsx",
+  "frontend/components/dam/enterprise/MyTasksPage.tsx",
+  "frontend/components/dam/enterprise/RecentUploadsPage.tsx",
   "frontend/components/dam/enterprise/ReviewPage.tsx",
   "frontend/app/dam-enterprise.css",
   "frontend/components/RoleProvider.tsx",
@@ -89,6 +101,26 @@ expectFail("client-node-env-regression", (targetRoot) => {
 expectFail("missing-evidence-row", (targetRoot) => {
   const file = "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md";
   write(targetRoot, file, read(targetRoot, file).replace("Review Queue premium workflow/redaction pass", "Review Queue workflow"));
+});
+
+expectFail("requests-help-center-regression", (targetRoot) => {
+  const file = "frontend/components/dam/enterprise/RequestsPage.tsx";
+  write(targetRoot, file, read(targetRoot, file).replace('title="Requests"', 'title="Help Center"'));
+});
+
+expectFail("my-tasks-help-center-regression", (targetRoot) => {
+  const file = "frontend/components/dam/enterprise/MyTasksPage.tsx";
+  write(targetRoot, file, read(targetRoot, file).replace('title="My Tasks"', 'title="Help Center"'));
+});
+
+expectFail("requests-nav-href-regression", (targetRoot) => {
+  const file = "frontend/components/dam/shell/damShellNav.ts";
+  write(targetRoot, file, read(targetRoot, file).replace('href: "/requests"', 'href: "/help#request-review"'));
+});
+
+expectFail("active-route-helper-regression", (targetRoot) => {
+  const file = "frontend/components/dam/shell/AppSidebar.tsx";
+  write(targetRoot, file, read(targetRoot, file).replaceAll("isDamShellRouteActive", "isActiveRoute"));
 });
 
 if (failures.length) {

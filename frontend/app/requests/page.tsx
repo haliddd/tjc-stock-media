@@ -1,5 +1,5 @@
-import { EnterpriseHelpPage } from "@/components/dam/EnterpriseDamPages";
+import { RequestsPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <EnterpriseHelpPage />;
+  return <RequestsPage />;
 }

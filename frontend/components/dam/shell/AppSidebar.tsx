@@ -11,6 +11,7 @@ import {
   damShellNavGroups,
   type DamShellNavItem
 } from "@/components/dam/shell/damShellNav";
+import { isDamShellRouteActive } from "@/lib/dam-route-identity";
 import {
   Sidebar,
   SidebarContent,
@@ -24,39 +25,8 @@ import {
   SidebarMenuItem,
   useSidebar
 } from "@/components/ui/sidebar";
-import { routeWithRole } from "@/lib/role-routes";
 import { cn } from "@/lib/utils";
-
-function hasParams(params: URLSearchParams) {
-  return Array.from(params.keys()).length > 0;
-}
-
-function isActiveRoute(pathname: string, currentSearch: string, currentHash: string, href: string) {
-  const target = new URL(href, "http://tjc.local");
-  const targetPathname = target.pathname || "/";
-  const pathMatches = targetPathname === "/"
-    ? pathname === "/"
-    : pathname === targetPathname || pathname.startsWith(`${targetPathname}/`);
-
-  if (!pathMatches) return false;
-
-  const targetParams = new URLSearchParams(target.search);
-  const currentParams = new URLSearchParams(currentSearch);
-  targetParams.delete("role");
-  currentParams.delete("role");
-
-  if (hasParams(targetParams)) {
-    for (const [key, value] of targetParams) {
-      if (currentParams.get(key) !== value) return false;
-    }
-  } else if (hasParams(currentParams)) {
-    return false;
-  }
-
-  const targetHash = target.hash.replace(/^#/, "");
-  if (targetHash) return currentHash === targetHash;
-  return !currentHash;
-}
+import { routeWithRole } from "@/lib/role-routes";
 
 function useCurrentHash(pathname: string, currentSearch: string) {
   const [hash, setHash] = useState("");
@@ -83,7 +53,13 @@ function SidebarLink({ item, compact = false }: { item: DamShellNavItem; compact
   const { role } = useDemoRole();
   const { setOpenMobile, isMobile } = useSidebar();
   const Icon = item.icon;
-  const active = isActiveRoute(pathname, currentSearch, currentHash, item.href);
+  const active = isDamShellRouteActive({
+    pathname,
+    currentSearch,
+    currentHash,
+    href: item.href,
+    activeHrefs: item.activeHrefs
+  });
 
   return (
     <SidebarMenuItem>
@@ -219,8 +195,8 @@ export function AppSidebar() {
         <Link
           href={routeWithRole("/help", role)}
           className="hidden min-h-10 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:grid"
-          aria-label="Help"
-          title="Help"
+          aria-label="Help Center"
+          title="Help Center"
         >
           <HelpCircle className="size-4" aria-hidden="true" />
         </Link>

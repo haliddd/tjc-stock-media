@@ -45,7 +45,7 @@ function DamFooter() {
   const { role, betaLocked } = useDemoRole();
   return (
     <footer className="relative z-10 mx-auto flex w-full max-w-[1760px] flex-wrap items-center gap-3 border-t border-[#d8e1da] px-4 py-6 text-sm font-semibold text-tjc-muted md:px-6">
-      <Link href={routeWithRole("/help", role)} className="font-black text-tjc-evergreen">Help</Link>
+      <Link href={routeWithRole("/help", role)} className="font-black text-tjc-evergreen">Help Center</Link>
       <span>Review queues, evidence, and audit-safe actions stay together.</span>
       <span>{betaLocked ? "Internal beta access. Role personas are for QA testing only. Not production SSO." : "Production access follows assigned DAM roles."}</span>
     </footer>

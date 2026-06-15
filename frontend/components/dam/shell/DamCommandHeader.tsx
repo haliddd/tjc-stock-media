@@ -11,7 +11,10 @@ const FIRST_LEVEL_PATHS = new Set([
   "/packages",
   "/distribution-sets",
   "/upload",
+  "/recent-uploads",
   "/requests",
+  "/my-tasks",
+  "/tasks",
   "/insights",
   "/admin",
   "/admin/users",
@@ -38,9 +41,12 @@ const ROOT_LABELS: Record<string, string> = {
   help: "Help Center",
   insights: "Insights",
   library: "Library",
+  "my-tasks": "My Tasks",
   packages: "Distribution Sets",
+  "recent-uploads": "Recent Uploads",
   requests: "Requests",
   review: "Review Queue",
+  tasks: "My Tasks",
   upload: "Upload"
 };
 
