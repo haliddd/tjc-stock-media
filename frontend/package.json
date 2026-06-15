@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "predev": "SAFE_LANE_HEADROOM_CONTEXT=dev-server node ../scripts/safe-lane-headroom-guard.mjs",
-    "dev": "next dev --port 4867",
+    "dev": "PORTAL_ALLOW_BETA_ROLE_OVERRIDE=1 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=1 next dev --port 4867",
     "prebuild": "node ../scripts/dev-server-build-guard.mjs && SAFE_LANE_HEADROOM_CONTEXT=production-build node ../scripts/safe-lane-headroom-guard.mjs",
     "build": "next build",
     "prestart": "SAFE_LANE_HEADROOM_CONTEXT=next-start node ../scripts/safe-lane-headroom-guard.mjs",

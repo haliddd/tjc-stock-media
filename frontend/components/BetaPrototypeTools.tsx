@@ -43,7 +43,7 @@ const routeLinks = [
   { href: "/upload", label: "Upload" },
   { href: "/review", label: "Review" },
   { href: "/admin", label: "Admin" },
-  { href: "/guide", label: "Guide" }
+  { href: "/help", label: "Help Center" }
 ];
 
 const severityOptions: BetaFeedbackSeverity[] = ["low", "medium", "high", "critical"];
@@ -242,7 +242,7 @@ export function BetaPrototypeTools() {
                 <button type="submit" disabled={submitting}><Send size={15} />{submitting ? "Saving..." : "Submit"}</button>
               </footer>
             </form>
-            <Link className="beta-report-guide" href="/guide?taskMode=1"><FileText size={15} />Open test guide <ExternalLink size={13} /></Link>
+            <Link className="beta-report-guide" href="/help?taskMode=1"><FileText size={15} />Open Help Center <ExternalLink size={13} /></Link>
           </div>
         </div>
       ) : null}

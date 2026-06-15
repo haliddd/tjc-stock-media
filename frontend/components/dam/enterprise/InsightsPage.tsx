@@ -378,7 +378,7 @@ function PriorityActions({ result }: { result?: SearchResult }) {
       severity: (metadata?.needsUsage || 0) ? "Action needed" : "Healthy",
       count: `${formatCount(metadata?.needsUsage)} gaps`,
       reason: (metadata?.needsUsage || 0) ? "Self-serve users need clear reuse scope before download decisions." : "Usage guidance coverage is ready for current records.",
-      href: "/guide#policies",
+      href: "/help#policies",
       actionLabel: "Open policy center",
       tone: (metadata?.needsUsage || 0) ? "medium" : "ready"
     },
@@ -671,12 +671,12 @@ function ViewerInsights({
     <>
       <div className="ed-insight-stat-grid">{stats.map((stat) => <InsightStatCard key={stat.label} stat={stat} />)}</div>
       <div className="ed-viewer-board">
-        <InsightPanel title="My Common Use Cases" action="View all use cases" actionHref="/guide">{useCases.map(([title, detail, Icon, href]) => <a className="ed-use-case" href={routeWithRole(href, role)} key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong><span>›</span></a>)}</InsightPanel>
+        <InsightPanel title="My Common Use Cases" action="View all use cases" actionHref="/help">{useCases.map(([title, detail, Icon, href]) => <a className="ed-use-case" href={routeWithRole(href, role)} key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong><span>›</span></a>)}</InsightPanel>
         <InsightPanel title="Frequently Used Topics" action="Browse all topics" actionHref="/?view=saved"><TopicsList usage={usage} savedViews={savedViews} /></InsightPanel>
         <InsightPanel title="Recently Viewed Assets"><div className="ed-recent-assets">{assets.slice(0, 5).map((asset) => <article key={asset.id}><AssetThumb asset={asset} /><strong>{displayTitle(asset)}<small>{assetType(asset)} · {formatBytes(asset.fileSizeBytes)}</small></strong><span>Visible</span></article>)}</div></InsightPanel>
         <InsightPanel title="Top Categories" action="Explore all categories" actionHref="/collections"><CategoryDonut assets={assets} visibleTotal={visible} /></InsightPanel>
-        <InsightPanel title="Approved Media Reuse Guide" action="View policies" actionHref="/guide#policies">{reuseGuide.map(([title, detail]) => <p className="ed-guide-row" key={title}><CheckCircle2 size={16} /><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
-        <InsightPanel title="Tips & Shortcuts" action="View help center" actionHref="/guide">{tips.map(([title, detail, Icon]) => <p className="ed-tip-row" key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
+        <InsightPanel title="Approved Media Reuse Guide" action="View policies" actionHref="/help#policies">{reuseGuide.map(([title, detail]) => <p className="ed-guide-row" key={title}><CheckCircle2 size={16} /><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
+        <InsightPanel title="Tips & Shortcuts" action="View help center" actionHref="/help">{tips.map(([title, detail, Icon]) => <p className="ed-tip-row" key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
       </div>
     </>
   );

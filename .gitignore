@@ -9,6 +9,7 @@ backups/
 __pycache__/
 *.pyc
 frontend/node_modules/
+.next/
 frontend/.next/
 frontend/.next.stale-*/
 frontend/out/

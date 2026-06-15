@@ -6,6 +6,15 @@ export type DamRouteActiveInput = {
   activeHrefs?: string[];
 };
 
+export const damRouteIdentityPaths = [
+  "/requests",
+  "/my-tasks",
+  "/tasks",
+  "/help",
+  "/guide",
+  "/recent-uploads"
+] as const;
+
 function hasParams(params: URLSearchParams) {
   return Array.from(params.keys()).length > 0;
 }
