@@ -58,7 +58,7 @@ export function latestMetadataExportPath() {
   if (!fs.existsSync(exportDir)) return null;
   const files = fs
     .readdirSync(exportDir)
-    .filter((file) => file.endsWith(".csv"))
+    .filter((file) => /^resourcespace-metadata-\d{8}-\d{6}\.csv$/.test(file))
     .sort();
   const latest = files.at(-1);
   return latest ? path.join(exportDir, latest) : null;
