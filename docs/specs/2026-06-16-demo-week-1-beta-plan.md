@@ -9,7 +9,7 @@ Not approved as: production launch, public launch, church-wide rollout, paid clo
 
 ## Summary
 
-TJC Stock Media needs a real-feeling DAM demo tomorrow and a controlled team beta this week. The selected approach is a two-lane plan:
+TJC Stock Media needs an operational DAM behavior demo tomorrow and a controlled team beta this week. The selected approach is a two-lane plan:
 
 1. Use the current local ResourceSpace-backed portal with the existing 181-photo MVP batch as the fallback demo path.
 2. Build a hosted ResourceSpace instance on Azure Student credit, connect the hosted portal to it, import a small photo-only sample under 10GB, and use it for team beta if verification passes.
@@ -20,9 +20,9 @@ This spec outcome is the June 16 demo plus Week-1 controlled team beta plan. Do 
 
 ## Goals
 
-- Let the core TJC media team see a real DAM workflow on Tuesday, June 16, 2026.
+- Let the core TJC media team see operational DAM behavior on Tuesday, June 16, 2026.
 - Show that a team member can search, open, request, upload, review, and understand photo reuse safety.
-- Host ResourceSpace in cloud so the portal can view real ResourceSpace photos and previews.
+- Host ResourceSpace in cloud so the portal can view Hosted DAM instance photos and previews.
 - Keep the first beta photo-only with a couple hundred assets at most.
 - Leave visible room for future video and audio intake without importing video or audio now.
 - Use Azure Student credit only. Do not create any cash charge in June.
@@ -46,7 +46,7 @@ Use Approach B: Azure hosted ResourceSpace with local fallback.
 
 ### Why This Approach
 
-The team wants to see and use a real hosted DAM, not only a local prototype. Azure Student is active and provides credit without immediate cash spend. A single VM is a better fit than free app platforms because ResourceSpace needs a LAMP-style host, MariaDB/MySQL, PHP extensions, local filestore, and media tooling.
+The team wants to see and use a Hosted DAM instance, not only a local prototype. Azure Student is active and provides credit without immediate cash spend. A single VM is a better fit than free app platforms because ResourceSpace needs a LAMP-style host, MariaDB/MySQL, PHP extensions, local filestore, and media tooling.
 
 Local ResourceSpace remains the fallback because cloud setup, DNS, imports, previews, API keys, and field mapping can fail close to demo time. The demo should not depend on a brand-new VM being perfect by tomorrow.
 
@@ -106,6 +106,11 @@ If any step requires card spend or non-credit payment, stop and ask Hali.
 
 Do not overwrite `prd.json`. Do not mutate source media.
 
+Azure account authority:
+
+- Hali Ding is the only person approved to operate the Azure Student account for this plan.
+- Agents may prepare commands, runbooks, and verification checklists, but Hali must confirm any Azure login, VM creation, public IP or DNS exposure, secret display, paid-plan prompt, spending-limit change, or subscription/billing decision.
+
 ## ResourceSpace Data Scope
 
 Use the existing MVP photo batch first:
@@ -129,7 +134,7 @@ The portal must support:
 - Asset detail with raw ResourceSpace status and portal reuse state separated.
 - Thumbnail and preview derivatives from ResourceSpace.
 - Honest no-preview states when derivatives are missing.
-- Download gating.
+- Download gating for approved delivery copies only.
 - Upload/intake for Contributor workflow.
 - Review workflow for Reviewer.
 - Admin readiness and blocker visibility for DAM Admin.
@@ -144,7 +149,7 @@ Controlled photo-only beta. Not public. No video/audio import yet. Source files 
 
 ## Writeback Policy
 
-The long-term target is live ResourceSpace writeback because the team wants a real hosted DAM. Live writeback is disabled until field mapping smoke proves reviewer, review date, usage scope, notes, and review/publish state map correctly. If mapping is not proven, decisions queue as pending writes and the demo says so clearly.
+The long-term target is live ResourceSpace writeback because the team wants a Hosted DAM instance. Live writeback is disabled until field mapping smoke proves reviewer, review date, usage scope, notes, and review/publish state map correctly. If mapping is not proven, decisions queue as pending writes and the demo says so clearly.
 
 Required mapped fields:
 
@@ -166,6 +171,26 @@ For the Tuesday demo, queued writeback is acceptable if live mapping is not prov
 
 ## Team Roles
 
+Named beta testers for Week-1 scope:
+
+- Jackie Yu
+- Alan Yu
+- Enoch Liu
+- Hali Ding
+- Joanna Chou
+- Richard Pang
+
+Do not widen beyond these six people without a new approval.
+
+Week-1 access model:
+
+- All six named testers may act as Admin observers and view the portal Admin screen for shared operational learning.
+- Hali Ding and Enoch Liu are the only Beta operators approved to mutate/configure Admin settings, ResourceSpace settings, hosted env, field mapping, or cloud resources.
+- The other four testers use Admin observer visibility for inspection and feedback only.
+- The Admin screen should show readiness, blockers, status, counts, and redacted config names. It must not expose secrets, raw env values, API keys, private source paths, or cloud console authority to general beta viewers.
+- No tester role grants Azure billing/subscription control, raw secret export, Google Shared Drive master-original custody, source media mutation, public launch, or public publishing.
+- Day-to-day Week-1 beta tasks should happen through the portal. ResourceSpace direct UI is backend/admin software for Hali/Enoch configuration and emergency verification; other testers should not rely on direct ResourceSpace use unless Hali explicitly asks them to inspect it.
+
 ### Viewer
 
 - Search photo library.
@@ -176,10 +201,11 @@ For the Tuesday demo, queued writeback is acceptable if live mapping is not prov
 
 ### Contributor
 
-- Submit harmless sample/photo intake.
+- Submit harmless sample/photo intake only.
 - Add source, event, rights, people/minors, and usage context.
 - Confirm upload never publishes or approves.
 - Follow large-media guidance for future video/audio.
+- Do not upload real church media during Week-1 beta until hosted storage, backup/restore, rights review, and custody path are proven.
 
 ### Reviewer
 
@@ -196,7 +222,7 @@ For the Tuesday demo, queued writeback is acceptable if live mapping is not prov
 
 ## Tuesday Demo Script
 
-Primary story: "The team can do real photo DAM work while safety gates stay visible."
+Primary story: "The team can do operational photo DAM work while safety gates stay visible."
 
 Demo order:
 
@@ -224,11 +250,28 @@ Before the demo, verify:
 - Screenshot fallback exists.
 - Current limitations are visible in Admin or demo script.
 
+UI/UX quality gate:
+
+- Use `grill-with-docs` to keep labels aligned with project language: Hosted DAM instance, Demo rehearsal, Controlled team beta, Pending Review Write, Confirmed ResourceSpace write, Beta visibility approval, and Reuse approval.
+- Use `impeccable` product-UI criteria before implementation: critique the demo surfaces, polish the highest-risk route set, and adapt at 1440, 1024, 768, 390, and 320 px.
+- Balance visual polish with trust clarity. If polish and clarity conflict, clarity wins.
+- The first screen should open as a Library operations workbench, not a welcome or marketing page. Search, sample count/source truth, saved views, and status legend should be visible without scrolling.
+- Asset cards and detail pages must separate two answers: `Can testers see this in beta?` and `Can this be reused/downloaded?`
+- Use short status language for those answers: `Visible in beta`, `Reuse approved`, `Needs review before reuse`, and `Blocked from reuse`.
+- Keep raw labels such as `Approved Public` and `Portal Ready` in source-truth/detail contexts only. They must not be the primary user-facing answer to whether the asset can be reused.
+- Review action copy should say `Queue decision` unless a Confirmed ResourceSpace write exists. Use `Synced to ResourceSpace` only after post-write re-read confirmation.
+- Source truth should be visible as `Hosted DAM instance`, `Local demo fallback`, or `Fixture fallback`; do not bury fallback state in diagnostics only.
+- Admin observer mode must be read-only and redacted. Beta operator controls may exist only for Hali/Enoch paths.
+- Demo surfaces must communicate safety through layout, labels, disabled states, and evidence rows, not color alone.
+- Product UI should feel like a trusted operations tool: restrained color, consistent controls, standard affordances, dense but scannable tables, and no decorative motion.
+- Current static UI scan found one layout-transition warning in `frontend/app/globals.css`; the polish pass should remove or justify it before demo QA.
+
 Before team beta, also verify:
 
 - Hosted portal and hosted ResourceSpace point to the same tested instance.
 - ResourceSpace access is protected.
 - API credentials are server-side only.
+- Downloads are limited to approved delivery copies or safe sample derivatives; blocked, review-needed, and source/master originals do not download.
 - Live writeback either confirms ResourceSpace updates or stays queued/disabled.
 - Feedback and incident stop-test path are ready.
 - Named testers and roles are confirmed.
@@ -241,7 +284,7 @@ Stop implementation or beta if any of these occur:
 - Blocked media can download.
 - Viewer or Contributor sees original/master source paths, private URLs, checksums, or admin-only fields.
 - UI says ResourceSpace updated when only portal/local state changed.
-- Hosted portal uses fallback/demo data while presenting it as real ResourceSpace.
+- Hosted portal uses fallback/demo data while presenting it as Hosted DAM instance data.
 - ResourceSpace API secrets appear in browser payloads.
 - Import or preview generation risks data loss or source media mutation.
 - Cloud disk or local disk pressure threatens completion or safety.
@@ -250,7 +293,7 @@ Stop implementation or beta if any of these occur:
 
 Tuesday demo succeeds if the core TJC media team believes:
 
-- This can support real photo search/review tasks this week.
+- This can support operational photo search/review tasks this week.
 - The system is honest about what is approved, blocked, pending, or not production-ready.
 - ResourceSpace is the DAM layer and the portal is the safer team workflow layer.
 - Google Shared Drive remains master-original custody.
