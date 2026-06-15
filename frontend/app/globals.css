@@ -6201,7 +6201,7 @@ body {
 .dam-app-header,
 .dam-app-header + .dam-desktop-rail + #main-content,
 .dam-app-header + .dam-desktop-rail + main {
-  transition: margin-left .2s ease;
+  transition: opacity .18s ease, background-color .18s ease;
 }
 
 @media (min-width: 1024px) {

@@ -784,11 +784,18 @@ export function EnterpriseUploadPage() {
   return (
     <div className="damx-page damx-upload-page">
       <PageHeader
-        title="Upload assets for review"
-        description="Submit media with metadata, rights evidence, people/consent details, and requested usage scope. Submission does not publish assets."
-        primaryAction={<EnterpriseButton tone="primary" icon={<UploadCloud size={16} aria-hidden="true" />} disabled={step !== uploadSteps.length - 1} disabledReason="Review the packet before submitting." onClick={() => setMessage("Submitted for review. New assets enter Submitted or Needs Evidence and remain restricted until approval.")}>Submit for review</EnterpriseButton>}
+        title="Upload media for review"
+        description="Submit photo intake with metadata, rights evidence, people/consent details, and requested usage scope. Video and audio slots stay reserved for later imports."
+        primaryAction={<EnterpriseButton tone="primary" icon={<UploadCloud size={16} aria-hidden="true" />} disabled={step !== uploadSteps.length - 1} disabledReason="Review the packet before submitting." onClick={() => setMessage("Submitted for review. New media enters Needs Review / Do Not Publish. Nothing is approved or published.")}>Submit for review</EnterpriseButton>}
         secondaryActions={<EnterpriseButton icon={<Save size={16} aria-hidden="true" />} onClick={() => setMessage("Draft saved locally. Source files remain restricted.")}>Save draft</EnterpriseButton>}
       />
+      <section className="damx-beta-limit-banner" aria-label="Upload beta limitations">
+        <ShieldCheck size={18} aria-hidden="true" />
+        <div>
+          <strong>Controlled photo-only beta</strong>
+          <span>Not public. No video/audio import yet. Source files remain protected. Approved derivatives only after reviewer evidence clears.</span>
+        </div>
+      </section>
       {message ? <p className="damx-notice">{message}</p> : null}
       <nav className="damx-stepper" aria-label="Upload steps">
         {uploadSteps.map((item, index) => (
@@ -806,7 +813,7 @@ export function EnterpriseUploadPage() {
               <div className="damx-dropzone">
                 <UploadCloud size={28} aria-hidden="true" />
                 <strong>Drag files here or browse</strong>
-                <p>Add files, a folder upload where supported, or a source link. Validation and duplicate detection happen before submit.</p>
+                <p>Add photo files, a folder upload where supported, or a source link. Video/audio intake space is reserved but disabled for this beta.</p>
                 <input type="file" multiple aria-label="Browse files" onChange={(event) => handleFiles(event.target.files)} />
               </div>
               <label className="damx-field">
@@ -886,6 +893,7 @@ export function EnterpriseUploadPage() {
             <li>Uploaded source files remain restricted.</li>
             <li>Assets enter review as Submitted or Needs Evidence.</li>
             <li>Public/external use remains blocked until reviewer approval.</li>
+            <li>Video and audio imports are reserved for future upload passes.</li>
           </ul>
         </aside>
       </div>
@@ -895,7 +903,7 @@ export function EnterpriseUploadPage() {
         {step < uploadSteps.length - 1 ? (
           <EnterpriseButton tone="primary" onClick={() => setStep((current) => Math.min(uploadSteps.length - 1, current + 1))}>Next</EnterpriseButton>
         ) : (
-          <EnterpriseButton tone="primary" onClick={() => setMessage("Submitted for review. Submission does not publish assets.")}>Submit for review</EnterpriseButton>
+          <EnterpriseButton tone="primary" onClick={() => setMessage("Submitted for review. Submission does not publish assets or create approved downloads.")}>Submit for review</EnterpriseButton>
         )}
       </div>
     </div>

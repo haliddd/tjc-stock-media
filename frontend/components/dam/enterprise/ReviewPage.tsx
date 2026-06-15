@@ -8,7 +8,7 @@ import { useDemoRole } from "@/components/RoleProvider";
 import { useDownloadGate, useReviewQueue } from "@/components/dam/useDamApi";
 import { assetRecordRef, assetType, displayTitle, formatBytes } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus, type EnterpriseStatus } from "@/lib/enterprise-status";
-import { presentReviewContext } from "@/lib/portal-context-presenters";
+import { betaVisibilityLabel, presentReviewContext, reuseAnswerLabel } from "@/lib/portal-context-presenters";
 import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
 import { buildReviewQueueMetrics, buildReviewSignals, buildSelectedReviewGuidance, checklistActionLabel, reviewEvidenceGroups, reviewMetadataCompleteness, reviewWaitingDays, reviewWorkbenchTabs, type PendingReviewDecisionSummary } from "@/lib/review-workbench";
 import { routeWithRole } from "@/lib/role-routes";
@@ -356,6 +356,12 @@ export function EnterpriseReviewPage() {
                 <p>{reviewPresentation?.nextDetail}</p>
                 <button type="button" onClick={() => queuePortalNote("Reviewer guidance viewed")}>View guidance</button>
               </section>
+              <section className="ed-review-summary-strip ed-review-trust-strip" aria-label="Selected review trust answers">
+                <span><small>Beta visibility</small><strong>{reviewPresentation?.betaVisibility || betaVisibilityLabel(selectedAsset)}</strong></span>
+                <span><small>Reuse/download</small><strong>{reviewPresentation?.reuseAnswer || reuseAnswerLabel("blocked-needs-review")}</strong></span>
+                <span><small>Source truth</small><strong>Hosted DAM instance</strong></span>
+                <span><small>Next blocker</small><strong>{topBlocker}</strong></span>
+              </section>
               <div className={cn("ed-hero-preview is-review", previewExpanded && "is-expanded")}>
                 <span className="ed-preview-derivative-label">Portal-safe preview derivative</span>
                 <AssetThumb asset={selectedAsset} className="ed-review-preview-image" fit="contain" />
@@ -372,11 +378,11 @@ export function EnterpriseReviewPage() {
                 </div>
                 <button className="ed-preview-ratio" type="button" onClick={() => setPreviewExpanded((expanded) => !expanded)}>1:1</button>
               </div>
-              <section className="ed-review-summary-strip" aria-label="Selected review record summary">
+              <section className="ed-review-summary-strip" aria-label="Selected review record details">
                 <span><small>Record ID</small><strong>{assetRecordRef(selectedAsset)}</strong></span>
                 <span><small>Rights status</small><strong>{selectedAsset.rightsStatus || "Needs evidence"}</strong></span>
                 <span><small>Policy</small><strong>{selectedAsset.downloadPolicy || "not-downloadable"}</strong></span>
-                <span><small>Next required action</small><strong>{topBlocker}</strong></span>
+                <span><small>Review queue</small><strong>{currentQueueLabel}</strong></span>
               </section>
               <section className="ed-review-governance-groups" aria-label="Review queue governance groups">
                 {governanceGroups.map((group) => (
@@ -450,9 +456,9 @@ export function EnterpriseReviewPage() {
                   <ActionButton icon={FileText} onClick={() => queuePortalNote("Submission package review requested")}>View details</ActionButton>
                 </div>
                 <nav className="ed-review-decision-actions" aria-label="Review decision actions">
-                  <button type="button" disabled={Boolean(publicDisabledReason)} title={publicDisabledReason || "Evidence complete for public decision."} onClick={() => decide("Approved", "Approve Public")}>Queue public decision</button>
-                  <button type="button" disabled={Boolean(requestInfoDisabledReason)} title={requestInfoDisabledReason || "Evidence complete for request decision."} onClick={() => decide("Needs Review", "Request More Info")}>Request evidence</button>
-                  <button type="button" disabled={Boolean(restrictDisabledReason)} title={restrictDisabledReason || "Evidence complete for restriction decision."} onClick={() => decide("Restricted", "Do Not Use")}>Restrict use</button>
+                  <button type="button" disabled={Boolean(publicDisabledReason)} title={publicDisabledReason || "Evidence complete for decision queueing."} onClick={() => decide("Approved", "Approve Public")}>Queue decision</button>
+                  <button type="button" disabled={Boolean(requestInfoDisabledReason)} title={requestInfoDisabledReason || "Evidence complete for request decision."} onClick={() => decide("Needs Review", "Request More Info")}>Queue evidence request</button>
+                  <button type="button" disabled={Boolean(restrictDisabledReason)} title={restrictDisabledReason || "Evidence complete for restriction decision."} onClick={() => decide("Restricted", "Do Not Use")}>Queue restriction</button>
                 </nav>
                 <p className="ed-action-disabled-reason">{publicDisabledReason || "Public approval evidence checks are complete; ResourceSpace still remains final truth."}</p>
               </section>

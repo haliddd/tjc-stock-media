@@ -27,6 +27,7 @@ import { assetRecordRef, assetType, displayTitle, formatBytes, sourceNoun } from
 import { assetEnterpriseStatus } from "@/lib/enterprise-status";
 import { canReview } from "@/lib/permissions";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
+import { betaVisibilityLabel, reuseAnswerLabel } from "@/lib/portal-context-presenters";
 import { routeWithRole } from "@/lib/role-routes";
 import { ActionButton, AssetCard, AssetQuickLookDrawer, AssetThumb, DamSegmentedNav, DamToolbar, ErrorCard, InspectorDrawer, LoadingCard, PageHeader, SavedViewPanel, SourcePill, StatusBadge } from "./EnterpriseShared";
 
@@ -246,7 +247,7 @@ function LibraryResultList({
                 <strong>{displayTitle(asset)}</strong>
                 <StatusBadge status={assetEnterpriseStatus(asset)} />
               </header>
-              <p>{packet.reuse.label} · {asset.usageScope || "Usage scope pending"} · {assetType(asset)}</p>
+              <p>{betaVisibilityLabel(asset)} · {reuseAnswerLabel(packet.reuse.state)} · {assetType(asset)}</p>
               <span>{assetRecordRef(asset)} · {formatBytes(asset.fileSizeBytes)}</span>
               <button type="button" onClick={() => onQuickLook(asset)}>Quick look</button>
             </article>
@@ -257,7 +258,8 @@ function LibraryResultList({
         <thead>
           <tr>
             <th>Media</th>
-            <th>Clearance status</th>
+            <th>Beta visibility</th>
+            <th>Reuse/download</th>
             <th>Usage / people</th>
             <th>Type</th>
             <th>Reference</th>
@@ -276,7 +278,8 @@ function LibraryResultList({
                     <span><strong>{displayTitle(asset)}</strong><small>{formatBytes(asset.fileSizeBytes)}</small></span>
                   </div>
                 </td>
-                <td><StatusBadge status={assetEnterpriseStatus(asset)} /> <small>{packet.reuse.label}</small></td>
+                <td><strong className="ed-table-answer">{betaVisibilityLabel(asset)}</strong><small>Controlled photo beta</small></td>
+                <td><StatusBadge status={assetEnterpriseStatus(asset)} /> <small>{reuseAnswerLabel(packet.reuse.state)}</small></td>
                 <td>{asset.usageScope || "Pending"}<br /><small>{asset.peopleRisk || "People/minors unknown"}</small></td>
                 <td>{assetType(asset)}</td>
                 <td>{assetRecordRef(asset)}<br /><small>{primaryBlocker === "None" ? "Evidence clear in current role view" : primaryBlocker}</small></td>
@@ -437,6 +440,11 @@ export function EnterpriseLibraryPage() {
       />
       {libraryMessage ? <p className="ed-inline-success">{libraryMessage}</p> : null}
       <section className="ed-approved-banner"><CheckCircle2 size={24} /><div><strong>{search.live ? `Showing ${sourceNoun(search.source)}-backed records` : `${sourceNoun(search.source)} disconnected or read-only`}</strong><span>{search.source?.detail || "Source connection pending where noted. Unavailable media stays clearly marked. Source files remain restricted."}</span></div><SourcePill source={search.source} live={search.live} /></section>
+      <section className="ed-trust-answer-strip ed-library-answer-strip" aria-label="Library trust model">
+        <span><small>Beta visibility</small><strong>Visible in beta</strong></span>
+        <span><small>Reuse/download</small><strong>Item evidence decides</strong></span>
+        <span><small>Source truth</small><strong>{search.live ? "Hosted DAM instance" : "Local demo fallback"}</strong></span>
+      </section>
       <DamSegmentedNav
         label="Library workspace views"
         activeId="assets"
@@ -457,9 +465,9 @@ export function EnterpriseLibraryPage() {
         filterCount={activeFilterCount}
         selectedCount={selectedIds.length}
         sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className={viewMode === "list" ? "is-active" : ""} aria-label="List view" onClick={() => setViewMode("list")}><List size={15} aria-hidden="true" /></button><button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-label="Grid view" onClick={() => setViewMode("grid")}><Grid3X3 size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
-        quickFilters={[{ id: "portal ready", label: "Portal Ready" }, { id: "needs review", label: "Needs Evidence" }, { id: "rights review", label: "Rights Review" }, { id: "people unknown", label: "People/Minors" }, { id: "photo", label: "Images" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
+        quickFilters={[{ id: "portal ready", label: "Reuse approved" }, { id: "needs review", label: "Needs evidence" }, { id: "rights review", label: "Rights review" }, { id: "people unknown", label: "People/minors" }, { id: "photo", label: "Images" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
       />
-      <p className="ed-action-helper">Collection, package, saved view, tag, and metric context never grants reuse permission. Each result shows one clearance status from item-level evidence.</p>
+      <p className="ed-action-helper">Collection, package, saved view, tag, and metric context never grants reuse permission. Each result separates beta visibility from reuse/download approval.</p>
       {discovery ? (
         <section className="ed-smart-discovery" aria-label="Smart discovery packet">
           <div>

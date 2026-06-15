@@ -19,6 +19,15 @@ export type ApiEnvelope<T> = {
   refresh: () => void;
 };
 
+function withRoleParam(url: string, role?: DemoRole) {
+  if (!role) return url;
+  const [path, query = ""] = url.split("?");
+  const params = new URLSearchParams(query);
+  params.set("role", role);
+  const queryString = params.toString();
+  return `${path}${queryString ? `?${queryString}` : ""}`;
+}
+
 export type AssetDetailResponse = {
   asset: StockMediaAsset;
   source: MediaSourceStatus;
@@ -103,9 +112,10 @@ function useJsonApi<T extends DamApiPayload>(url: string | null, role?: DemoRole
   const [version, setVersion] = useState(0);
 
   const refresh = useCallback(() => setVersion((current) => current + 1), []);
+  const requestUrl = useMemo(() => (url ? withRoleParam(url, role) : null), [role, url]);
 
   useEffect(() => {
-    if (!url) {
+    if (!requestUrl) {
       setData(null);
       setSource(null);
       setError(null);
@@ -117,7 +127,7 @@ function useJsonApi<T extends DamApiPayload>(url: string | null, role?: DemoRole
     setLoading(true);
     setError(null);
 
-    fetchDamJson<T>(url)
+    fetchDamJson<T>(requestUrl)
       .then((payload) => {
         if (cancelled) return;
         setData(payload);
@@ -136,7 +146,7 @@ function useJsonApi<T extends DamApiPayload>(url: string | null, role?: DemoRole
     return () => {
       cancelled = true;
     };
-  }, [url, role, version]);
+  }, [requestUrl, version]);
 
   const sourceKind = useMemo(() => mediaSourceKind(source), [source]);
 

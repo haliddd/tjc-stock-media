@@ -39,7 +39,7 @@ import { assetDate, assetRecordRef, assetType, displayTitle, formatBytes, record
 import { inspectorMetadataRows } from "@/lib/enterprise-metadata";
 import { assetEnterpriseStatus, statusToneClass, type EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaPreviewState, mediaPreviewUnavailableReason } from "@/lib/media-preview-state";
-import { presentAssetCardContext, presentAssetDetailContext } from "@/lib/portal-context-presenters";
+import { betaVisibilityLabel, presentAssetCardContext, presentAssetDetailContext, reuseAnswerLabel } from "@/lib/portal-context-presenters";
 import { routeWithRole } from "@/lib/role-routes";
 import { matchesCatalogFilter } from "@/lib/catalog-language";
 import { cn } from "@/lib/ui";
@@ -66,6 +66,24 @@ function blockerEvidenceHint(blocker: ReuseBlocker) {
 
 function roleCanActOnReview(role: DemoRole) {
   return role === "Reviewer" || role === "DAM Admin";
+}
+
+function TrustAnswerStrip({
+  visible,
+  reuse,
+  source
+}: {
+  visible: string;
+  reuse: string;
+  source?: string;
+}) {
+  return (
+    <div className="ed-trust-answer-strip" aria-label="Beta visibility and reuse answers">
+      <span><small>Beta visibility</small><strong>{visible}</strong></span>
+      <span><small>Reuse/download</small><strong>{reuse}</strong></span>
+      {source ? <span><small>Source truth</small><strong>{source}</strong></span> : null}
+    </div>
+  );
 }
 
 export function BlockedReasonList({
@@ -140,9 +158,14 @@ export function ClearanceStatusPanel({
   return (
     <section className={cn("ed-card ed-verdict-card", approved ? "is-approved" : "is-blocked", compact && "is-compact")}>
       <div className="ed-decision-header">
-        <h3>Clearance status</h3>
+        <h3>Reuse answer</h3>
         <StatusBadge status={status} />
       </div>
+      <TrustAnswerStrip
+        visible={presentation ? betaVisibilityLabel(asset) : "Visibility unknown"}
+        reuse={presentation ? reuseAnswerLabel(presentation.packet.reuse.state) : "Needs review before reuse"}
+        source={sourceTruthDisplay(source)}
+      />
       <div className="ed-verdict-body">
         <span aria-hidden="true">{approved ? <Check size={24} /> : <Lock size={22} />}</span>
         <div className="ed-verdict-summary">
@@ -591,8 +614,16 @@ export function DamToolbar({
   );
 }
 
+function sourceTruthDisplay(source?: MediaSourceStatus | null) {
+  const label = sourceLabel(source);
+  if (/fixture|fallback/i.test(label)) return "Fixture fallback";
+  if (/resourcespace|dam/i.test(label)) return "Hosted DAM instance";
+  if (/local/i.test(label)) return "Local demo fallback";
+  return label;
+}
+
 export function SourcePill({ source, live }: { source?: MediaSourceStatus | null; live?: boolean }) {
-  return <span className={cn("ed-source-pill", live && "is-live", source?.adapter === "demo-fallback" && "is-fallback")}>{sourceLabel(source)}</span>;
+  return <span className={cn("ed-source-pill", live && "is-live", source?.adapter === "demo-fallback" && "is-fallback")}>{sourceTruthDisplay(source)}</span>;
 }
 
 export function LoadingCard({ label = "Loading ResourceSpace data..." }: { label?: string }) {
@@ -679,7 +710,7 @@ export function AssetCard({
       ) : null}
       <div className="ed-card-footer">
         <StatusBadge status={assetEnterpriseStatus(asset)} />
-        <span className="ed-card-date">{cardContext.approvalLabel} · {cardContext.sourceLabel} · {assetDate(asset)}</span>
+        <span className="ed-card-date">{cardContext.betaVisibilityLabel} · {cardContext.reuseAnswerLabel} · {assetDate(asset)}</span>
         <button className="ed-card-hover-action" type="button" onClick={onQuickLook || onSelect}>Quick look</button>
       </div>
     </article>
@@ -745,11 +776,11 @@ export function PremiumTaxonomyRail({
   ];
   const visibleTags = tagOptions.filter((option) => option.label.toLowerCase().includes(tagQuery.trim().toLowerCase()));
   const wiredFilterGroups: Array<{ label: string; open?: boolean; options: Array<{ label: string; filter: string }> }> = [
-    { label: "Clearance status", open: true, options: [
-      { label: "Portal Ready", filter: "portal ready" },
+    { label: "Reuse/download answer", open: true, options: [
+      { label: "Reuse approved", filter: "portal ready" },
       { label: "Public approval record", filter: "approved public" },
       { label: "Internal approval record", filter: "approved internal" },
-      { label: "Needs Review", filter: "needs review" },
+      { label: "Needs review before reuse", filter: "needs review" },
       { label: "Archive / Do Not Publish", filter: "archive only" }
     ] },
     { label: "Review state", options: [
@@ -898,6 +929,11 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
       </section>
       <div className="ed-meta-line"><StatusBadge status={assetEnterpriseStatus(asset)} /><span>{asset.collection || "Unassigned collection"}</span></div>
       <SourcePill source={source} live={live} />
+      <TrustAnswerStrip
+        visible={betaVisibilityLabel(asset)}
+        reuse={reuseAnswerLabel(presentation.packet.reuse.state)}
+        source={sourceTruthDisplay(source)}
+      />
       <RightsVerdictCard asset={asset} source={source} />
       <nav className="ed-tabs" aria-label="Asset inspector tabs">{inspectorDrawerTabs.map((item) => <button className={cn(tab === item && "is-active")} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</nav>
       <dl className="ed-metadata">

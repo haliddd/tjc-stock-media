@@ -7,9 +7,9 @@ import { useDemoRole } from "@/components/RoleProvider";
 import { useAssetDetail, useDownloadGate, useReviewRequest } from "@/components/dam/useDamApi";
 import { assetHasRenditionGap, assetMetadataHealth } from "@/lib/asset-governance";
 import { assetDetailTabs, isActivityTab } from "@/lib/asset-record-workbench";
-import { assetRecordRef, assetType, displayTitle } from "@/lib/enterprise-display";
+import { assetRecordRef, assetType, displayTitle, sourceLabel } from "@/lib/enterprise-display";
 import { assetDetailMetadataRows, assetKeywordText } from "@/lib/enterprise-metadata";
-import { presentAssetDetailContext } from "@/lib/portal-context-presenters";
+import { betaVisibilityLabel, presentAssetDetailContext, reuseAnswerLabel } from "@/lib/portal-context-presenters";
 import { routeWithRole } from "@/lib/role-routes";
 import { cn } from "@/lib/ui";
 import { ActionButton, AdminDiagnosticCard, AssetThumb, BlockedReasonList, ClearanceStatusPanel, EvidenceChecklistSummary, ErrorCard, LoadingCard, MetadataGroup, NextActionPanel, RoleSafeActionBar, SuggestedTagGroup } from "./EnterpriseShared";
@@ -31,6 +31,14 @@ function isLowResolution(dimensions: ReturnType<typeof parseDimensions>) {
   const longEdge = Math.max(dimensions.width, dimensions.height);
   const shortEdge = Math.min(dimensions.width, dimensions.height);
   return longEdge < LOW_RES_LONG_EDGE || shortEdge < LOW_RES_SHORT_EDGE;
+}
+
+function assetSourceTruth(source: Parameters<typeof sourceLabel>[0]) {
+  const label = sourceLabel(source);
+  if (/fixture|fallback/i.test(label)) return "Fixture fallback";
+  if (/resourcespace|dam/i.test(label)) return "Hosted DAM instance";
+  if (/local/i.test(label)) return "Local demo fallback";
+  return label;
 }
 
 export function EnterpriseAssetDetailPage({ id }: { id: string }) {
@@ -63,7 +71,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
       : lowResolutionPreview
         ? "Low-res derivative"
         : approved
-          ? "Approved derivative"
+          ? "Reuse-approved derivative"
           : "Role-safe derivative";
   const summaryFacts = presentation.summaryFacts;
   const hasVersionData = Boolean(asset.originalFilename || asset.duplicateRole || asset.duplicateGroup);
@@ -147,6 +155,11 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             </div>
           </header>
           {assetActionMessage ? <p className="ed-inline-success">{assetActionMessage}</p> : null}
+          <section className="ed-trust-answer-strip ed-detail-answer-strip" aria-label="Asset trust answers">
+            <span><small>Beta visibility</small><strong>{betaVisibilityLabel(asset)}</strong></span>
+            <span><small>Reuse/download</small><strong>{reuseAnswerLabel(reusePacket.reuse.state)}</strong></span>
+            <span><small>Source truth</small><strong>{assetSourceTruth(detail.source)}</strong></span>
+          </section>
           <section className={cn("ed-detail-preview-workbench", lowResolutionPreview && "is-low-resolution", limitedDerivative && "has-limited-derivative")} aria-label="Role-safe media preview workbench">
             <div className="ed-hero-preview">
               <AssetThumb asset={asset} fit="contain" className="ed-detail-preview-media" />
@@ -169,7 +182,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
         <aside className="ed-detail-rail">
           <ClearanceStatusPanel asset={asset} source={detail.source} onRequestReview={() => { void requestReview(); }} />
           <NextActionPanel
-            title={approved ? "Use approved derivative within recorded scope." : presentation.primaryActionLabel}
+            title={approved ? "Use approved copy within recorded scope." : presentation.primaryActionLabel}
             detail={approved ? "Download still records audit and runs approved-copy gate. Source files stay restricted." : `${reusePacket.viewerVerdict.reason} Primary blocker: ${reusePacket.reuse.blockers[0]?.label || "review evidence"}.`}
             action={approved ? "Download approved copy" : "Request DAM review"}
             onAction={approved ? requestApprovedDownload : requestReview}
