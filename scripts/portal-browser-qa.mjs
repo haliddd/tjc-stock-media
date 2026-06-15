@@ -42,9 +42,18 @@ const requiredShots = [
   { name: "admin-desktop.png", path: "/admin", role: "DAM Admin", width: 1440, height: 1000 },
   { name: "admin-mobile-320.png", path: "/admin", role: "DAM Admin", width: 320, height: 900 },
   { name: "admin-mobile-390.png", path: "/admin", role: "DAM Admin", width: 390, height: 900 },
-  { name: "guide-desktop.png", path: "/guide", role: "Viewer", width: 1440, height: 1000 },
-  { name: "guide-mobile-320.png", path: "/guide", role: "Viewer", width: 320, height: 900 },
-  { name: "guide-mobile-390.png", path: "/guide", role: "Viewer", width: 390, height: 900 }
+  { name: "requests-desktop.png", path: "/requests", role: "Viewer", width: 1440, height: 1000 },
+  { name: "requests-mobile-320.png", path: "/requests", role: "Viewer", width: 320, height: 900 },
+  { name: "requests-mobile-390.png", path: "/requests", role: "Viewer", width: 390, height: 900 },
+  { name: "my-tasks-desktop.png", path: "/my-tasks", role: "Viewer", width: 1440, height: 1000 },
+  { name: "my-tasks-mobile-320.png", path: "/my-tasks", role: "Viewer", width: 320, height: 900 },
+  { name: "my-tasks-mobile-390.png", path: "/my-tasks", role: "Viewer", width: 390, height: 900 },
+  { name: "help-desktop.png", path: "/help", role: "Viewer", width: 1440, height: 1000 },
+  { name: "help-mobile-320.png", path: "/help", role: "Viewer", width: 320, height: 900 },
+  { name: "help-mobile-390.png", path: "/help", role: "Viewer", width: 390, height: 900 },
+  { name: "recent-uploads-desktop.png", path: "/recent-uploads", role: "Contributor", width: 1440, height: 1000 },
+  { name: "recent-uploads-mobile-320.png", path: "/recent-uploads", role: "Contributor", width: 320, height: 900 },
+  { name: "recent-uploads-mobile-390.png", path: "/recent-uploads", role: "Contributor", width: 390, height: 900 }
 ];
 
 const qaViewports = [1440, 1280, 1024, 768, 390, 320];
@@ -63,9 +72,12 @@ const qaPaths = [
   { path: "/upload", role: "Contributor", label: "upload-contributor" },
   { path: "/review", role: "Viewer", label: "review-viewer" },
   { path: "/review?queue=pending", role: "Reviewer", label: "review-reviewer" },
+  { path: "/requests", role: "Viewer", label: "requests-viewer" },
+  { path: "/my-tasks", role: "Viewer", label: "my-tasks-viewer" },
+  { path: "/help", role: "Viewer", label: "help-viewer" },
+  { path: "/recent-uploads", role: "Contributor", label: "recent-uploads-contributor" },
   { path: "/admin", role: "Viewer", label: "admin-viewer" },
-  { path: "/admin", role: "DAM Admin", label: "admin-dam-admin" },
-  { path: "/guide", role: "Viewer", label: "guide-viewer" }
+  { path: "/admin", role: "DAM Admin", label: "admin-dam-admin" }
 ];
 
 const qaAsset = {
@@ -330,6 +342,30 @@ async function waitForAppReady(page, routePath, role) {
     await page.waitForFunction(() => !/Loading ResourceSpace review queue/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
     await page.locator(".ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 })
       .catch(() => page.getByText(/Evidence and next action|Review Evidence/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {}));
+  }
+}
+
+async function activeSidebarLabels(page) {
+  return page.locator('[data-sidebar="menu-button"][data-active="true"]').evaluateAll((nodes) => nodes
+    .map((node) => (node.textContent || "").replace(/\s+/g, " ").trim())
+    .filter(Boolean));
+}
+
+async function assertRouteIdentity({ path: pathName, role, h1, activeLabel, primarySection, forbiddenPrimaryH1 }) {
+  const { page, context } = await newRolePage(role, 1440, 1000);
+  try {
+    await gotoAndSettle(page, `${base}${pathName}`);
+    await waitForAppReady(page, pathName, role);
+    const firstH1 = (await page.locator("h1").first().innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+    if (firstH1 !== h1) failures.push(`${pathName}: expected primary H1 ${h1}, saw "${firstH1}"`);
+    if (forbiddenPrimaryH1 && firstH1 === forbiddenPrimaryH1) failures.push(`${pathName}: primary H1 masquerades as ${forbiddenPrimaryH1}`);
+    if ((await page.locator(`[data-primary-section="${primarySection}"]`).count()) < 1) failures.push(`${pathName}: primary data section ${primarySection} missing`);
+    const activeLabels = await activeSidebarLabels(page);
+    if (activeLabels.length !== 1 || !activeLabels[0].includes(activeLabel)) {
+      failures.push(`${pathName}: sidebar active mismatch expected ${activeLabel}, got ${JSON.stringify(activeLabels)}`);
+    }
+  } finally {
+    await closeContext(context);
   }
 }
 
