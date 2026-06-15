@@ -558,7 +558,7 @@ if (missingWidths.length) {
   process.exit(1);
 }
 const viewerDetailAvailable = report.qaAsset?.detail?.available !== false;
-const minimumPages = viewerDetailAvailable ? 17 : 16;
+const minimumPages = viewerDetailAvailable ? 20 : 19;
 if ((report.pages || 0) < minimumPages) {
   console.error(`browser QA page coverage too low: ${report.pages || 0}`);
   process.exit(1);
@@ -572,7 +572,10 @@ const requiredScreenshots = [
   "upload-mobile-320.png",
   "review-desktop.png",
   "admin-desktop.png",
-  "guide-mobile-320.png"
+  "requests-mobile-320.png",
+  "my-tasks-mobile-320.png",
+  "help-mobile-320.png",
+  "recent-uploads-mobile-320.png"
 ];
 if (viewerDetailAvailable) requiredScreenshots.push("detail-mobile-320.png");
 const missingScreenshots = requiredScreenshots.filter((name) => !screenshots.has(name));

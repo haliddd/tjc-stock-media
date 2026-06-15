@@ -728,7 +728,7 @@ for (const width of qaViewports) {
         if (item.label === "admin-viewer" && !state.hasAdminBlock) failures.push(`${item.label} ${width}: viewer admin block missing`);
         if (item.label === "library-reviewer" && state.hasOriginalFilenameOnCard) failures.push(`${item.label} ${width}: original filename exposed on Find card`);
         if (item.label === "viewer-needs-review-hidden" && state.textSample.includes("2012 Photo")) warnings.push(`${item.label} ${width}: viewer may see review asset copy`);
-        if ((width === 1024 || width === 768 || width === 390 || width === 320) && ["library-viewer", "review-reviewer", "guide-viewer"].includes(item.label)) {
+        if ((width === 1024 || width === 768 || width === 390 || width === 320) && ["library-viewer", "review-reviewer", "help-viewer", "requests-viewer", "my-tasks-viewer", "recent-uploads-contributor"].includes(item.label)) {
           await saveFullPageScreenshot(page, path.join(outDir, "qa", `${item.label}-${width}.png`));
         }
         completed = true;
@@ -969,15 +969,20 @@ if (hasViewerDetailAsset()) {
   await closeContext(context);
 }
 
+await assertRouteIdentity({ path: "/requests", role: "Viewer", h1: "Requests", activeLabel: "Requests", primarySection: "requests-table", forbiddenPrimaryH1: "Help Center" });
+await assertRouteIdentity({ path: "/my-tasks", role: "Viewer", h1: "My Tasks", activeLabel: "My Tasks", primarySection: "task-work-queue", forbiddenPrimaryH1: "Help Center" });
+await assertRouteIdentity({ path: "/help", role: "Viewer", h1: "Help Center", activeLabel: "Help Center", primarySection: "help-articles", forbiddenPrimaryH1: "Requests" });
+await assertRouteIdentity({ path: "/recent-uploads", role: "Contributor", h1: "Recent Uploads", activeLabel: "Recent Uploads", primarySection: "recent-uploads-ledger", forbiddenPrimaryH1: "Library" });
+
 {
   const { page, context } = await newRolePage("Viewer", 390, 900);
-  await gotoAndSettle(page, `${base}/guide`);
-  if ((await page.getByText("Media Help Center").count()) < 1) failures.push("guide-help-center: guide heading missing");
+  await gotoAndSettle(page, `${base}/help`);
+  if ((await page.getByText("Help Center").count()) < 1) failures.push("help-center: heading missing");
   await page.getByLabel(/Search help articles/i).fill("source");
   const sourceTask = page.getByRole("link", { name: /Request source-file access/ });
-  if ((await sourceTask.count()) < 1) failures.push("guide-help-center: search did not match source task");
-  if ((await page.getByRole("link", { name: /Open review request/ }).count()) < 1) failures.push("guide-help-center: review CTA missing");
-  if ((await page.getByText("What is an approved derivative?").count()) < 1) failures.push("guide-help-center: FAQ missing");
+  if ((await sourceTask.count()) < 1) failures.push("help-center: search did not match source task");
+  if ((await page.getByRole("link", { name: /^Open Requests$/ }).count()) < 1) failures.push("help-center: requests pointer missing");
+  if ((await page.getByText("What is an approved derivative?").count()) < 1) failures.push("help-center: FAQ missing");
   await closeContext(context);
 }
 
@@ -1067,8 +1072,8 @@ if (hasViewerDetailAsset()) {
   warnings.push("media preview image proof skipped: no Viewer-visible asset fixture");
 }
 
-await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/guide", async (page) => {
-  await page.getByText("Media Help Center").scrollIntoViewIfNeeded();
+await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/help", async (page) => {
+  await page.getByText("Help Center").scrollIntoViewIfNeeded();
 });
 
 await captureProof("upload-dropzone-tags.png", "Contributor", 1440, 1000, "/upload", async (page) => {
