@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { BETA_SESSION_ROLE_HEADER, BETA_SESSION_VERIFIED_HEADER } from "@/lib/beta-auth";
 import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
 import { durableRuntimeStoreConfigured } from "@/lib/env";
@@ -58,6 +59,54 @@ function approvedAsset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsse
 }
 
 describe("production identity guard", () => {
+  it("does not trust caller-supplied beta role headers without middleware verification", () => {
+    vi.stubEnv("BETA_AUTH_ENABLED", "true");
+    vi.stubEnv("NODE_ENV", "development");
+    process.env.SSO_TRUSTED_HEADERS = "0";
+    process.env.SSO_PROVIDER = "";
+
+    const spoofedRequest = nextRequest("http://localhost:4871/api/review?role=Viewer");
+    spoofedRequest.headers.set(BETA_SESSION_ROLE_HEADER, "Reviewer");
+    const spoofedIdentity = requestIdentity(spoofedRequest, "Viewer");
+    const spoofedOverride = resolveClientRoleOverride(spoofedRequest, "Viewer");
+
+    expect(spoofedIdentity.role).toBe("Viewer");
+    expect(spoofedOverride.reasonCode).toBe("client-role-disabled");
+
+    const verifiedRequest = nextRequest("http://localhost:4871/api/review?role=Viewer");
+    verifiedRequest.headers.set(BETA_SESSION_ROLE_HEADER, "Reviewer");
+    verifiedRequest.headers.set(BETA_SESSION_VERIFIED_HEADER, "1");
+    const verifiedIdentity = requestIdentity(verifiedRequest, "Viewer");
+    const verifiedOverride = resolveClientRoleOverride(verifiedRequest, "Viewer");
+
+    expect(verifiedIdentity.role).toBe("Reviewer");
+    expect(verifiedOverride.reasonCode).toBe("beta-session-authoritative");
+  });
+
+  it("defaults query role callers to Viewer unless server-only local override is enabled", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    process.env.SSO_TRUSTED_HEADERS = "0";
+    process.env.SSO_PROVIDER = "";
+    delete process.env.PORTAL_ALLOW_BETA_ROLE_OVERRIDE;
+    delete process.env.BETA_ROLE_OVERRIDE_ENABLED;
+
+    const request = nextRequest("http://localhost:4871/api/review?role=Reviewer");
+    const deniedOverride = resolveClientRoleOverride(request, "Reviewer");
+    const deniedIdentity = requestIdentity(request, "Reviewer");
+
+    expect(deniedOverride.allowed).toBe(false);
+    expect(deniedOverride.denied).toBe(true);
+    expect(deniedOverride.reasonCode).toBe("client-role-disabled");
+    expect(deniedIdentity.role).toBe("Viewer");
+
+    vi.stubEnv("PORTAL_ALLOW_BETA_ROLE_OVERRIDE", "1");
+    const allowedOverride = resolveClientRoleOverride(request, "Reviewer");
+    const allowedIdentity = requestIdentity(request, "Reviewer");
+
+    expect(allowedOverride.allowed).toBe(true);
+    expect(allowedIdentity.role).toBe("Reviewer");
+  });
+
   it("ignores client role overrides in production when trusted SSO is not enabled", () => {
     vi.stubEnv("NODE_ENV", "production");
     process.env.SSO_TRUSTED_HEADERS = "0";
@@ -74,8 +123,8 @@ describe("production identity guard", () => {
     expect(identity.id).toBe("production:trusted-identity-missing");
   });
 
-  it("maps trusted SSO groups through strongest role precedence", () => {
-    vi.stubEnv("NODE_ENV", "production");
+  it("maps local trusted-header rehearsal groups through strongest role precedence", () => {
+    vi.stubEnv("NODE_ENV", "development");
     process.env.SSO_TRUSTED_HEADERS = "1";
     process.env.SSO_ROLE_MAP_JSON = JSON.stringify({ "media-reviewers": "Reviewer", "media-admins": "DAM Admin" });
 
@@ -85,6 +134,41 @@ describe("production identity guard", () => {
     const identity = requestIdentity(request, "Viewer");
 
     expect(identity.role).toBe("DAM Admin");
+    expect(identity.email).toBe("reviewer@example.org");
+    expect(identity.sourceSystem).toBe("sso");
+  });
+
+  it("ignores generic trusted-header role shims in production without Cloudflare Access proof", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.SSO_TRUSTED_HEADERS = "1";
+    process.env.SSO_PROVIDER = "";
+
+    const request = nextRequest("https://stock-media.example.tjc.org/api/admin/readiness");
+    request.headers.set("x-tjc-role", "DAM Admin");
+    request.headers.set("x-auth-request-email", "admin@example.org");
+    request.headers.set("x-auth-request-groups", "media-admins");
+    const identity = requestIdentity(request);
+
+    expect(identity.role).toBe("Viewer");
+    expect(identity.id).toBe("production:trusted-identity-missing");
+    expect(identity.sourceSystem).toBe("local-beta");
+  });
+
+  it("maps production Cloudflare Access groups and ignores direct role shims", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.SSO_PROVIDER = "cloudflare-access";
+    process.env.SSO_TRUSTED_HEADERS = "0";
+    process.env.SSO_ROLE_MAP_JSON = JSON.stringify({ "media-reviewers": "Reviewer", "media-admins": "DAM Admin" });
+
+    const request = nextRequest("https://stock-media.example.tjc.org/api/review?role=DAM%20Admin");
+    request.headers.set("cf-access-jwt-assertion", "signed-by-cloudflare-access");
+    request.headers.set("cf-access-authenticated-user-email", "reviewer@example.org");
+    request.headers.set("cf-access-groups", "members,media-reviewers");
+    request.headers.set("x-tjc-role", "DAM Admin");
+    request.headers.set("x-auth-request-groups", "media-admins");
+    const identity = requestIdentity(request, "DAM Admin");
+
+    expect(identity.role).toBe("Reviewer");
     expect(identity.email).toBe("reviewer@example.org");
     expect(identity.sourceSystem).toBe("sso");
   });

@@ -64,7 +64,7 @@ Latest local beta rehearsal evidence:
 
 ## Sample Searches To Run
 
-Run as Viewer at `https://tjc-stock-media.vercel.app/?role=Viewer&taskMode=1`, then repeat confusing cases as Reviewer.
+Run as Viewer through trusted beta session/SSO at `https://tjc-stock-media.vercel.app/`, then repeat confusing cases as Reviewer through trusted beta session/SSO.
 
 | Search | Expected reviewer check |
 |---|---|

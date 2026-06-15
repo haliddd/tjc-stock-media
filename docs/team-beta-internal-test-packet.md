@@ -1,10 +1,18 @@
 # Team Beta Internal Tester Packet
 
-Last updated: 2026-06-12
+Last updated: 2026-06-15
 
-Use this packet only after the pre-send gates below are signed. This is the send-ready packet for a tiny internal Team Beta workflow test of the TJC internal DAM portal. It is not approval for production launch, public sharing, source media changes, live ResourceSpace writeback, public downloads, or broad archive reuse.
+## June 15 Safety Override
 
-Internal beta access update: when `BETA_AUTH_ENABLED=true`, testers must use `/beta-login` and the assigned persona password from Vercel env vars. The older role-query links below are legacy QA shortcuts for beta-off/local rehearsals only and should not be sent as the primary hosted access path.
+Current status: **NO-GO for sending teammate invites.** Use this packet as a draft only until `docs/runs/evidence/2026-06-15/11-friday-readiness-report.md` blockers close and Hali renews approval.
+
+Reason: June 15 local proof fixed a P0 query-role elevation class, but hosted authenticated protection, canonical deployment, ResourceSpace scope, Google Drive custody, durable/fail-closed hosted state, and renewed tester approval remain unresolved.
+
+Do not send hosted `?role=` links. Query roles are not authority. Hosted beta must use `/beta-login` or trusted SSO after approval. `portal-hosted-smoke` is mutating and requires `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` plus `PORTAL_HOSTED_SMOKE_APPROVED_BY`; use `portal-hosted-readonly-probe` for non-mutating hosted checks.
+
+Use this packet only after the pre-send gates below are renewed and signed. This is a draft packet for a tiny internal Team Beta workflow test of the TJC internal DAM portal. It is not approval for production launch, public sharing, source media changes, live ResourceSpace writeback, public downloads, or broad archive reuse.
+
+Internal beta access update: when `BETA_AUTH_ENABLED=true`, testers must use `/beta-login` and the assigned persona password from Vercel env vars. Role-query URLs are legacy QA shortcuts for beta-off/local rehearsals only and must not be sent as hosted access.
 
 Current beta-auth handoff: `docs/free-internal-beta-handoff-2026-06-12.md`
 
@@ -29,9 +37,9 @@ Supporting docs:
 
 ## Current Send Status
 
-Packet status: ready to send to the signed six-person tiny internal Team Beta batch.
+Packet status: draft / blocked after June 15 P0.
 
-Invite status: GO for the named testers below. Do not widen beyond this group without a new signoff.
+Invite status: NO-GO until hosted/canonical/custody/durable gates close and Hali renews tester approval.
 
 Mature DAM beta boundaries after Phases 0-7:
 
@@ -47,13 +55,13 @@ Mature DAM beta boundaries after Phases 0-7:
 
 | Gate | Required signoff | Owner | Timestamp | Decision |
 |---|---|---|---|---|
-| Seed/media safety | Rights/media reviewer confirms preview-only beta visibility is safe, or seed is scrubbed/hidden before invites. | Enoch Liu primary; Hali Ding backup | 2026-06-11T21:36:44Z | Approved |
-| Access and private URL | Access owner confirms the invite list is internal only, only the stable unlisted URL is shared, and no Vercel preview URL is shared. | Enoch Liu | 2026-06-11T21:36:44Z | Approved |
-| Hosted writeback env | Tech owner confirms `RESOURCESPACE_ENABLE_WRITEBACK=0`, `RESOURCESPACE_WRITEBACK_MODE=queued`, `BETA_FEEDBACK_ENABLED=1`, and `BETA_TASK_MODE_ENABLED=1`. | Hali Ding | 2026-06-11T21:36:44Z | Approved |
-| Feedback triage | First-batch triager confirms they will watch Admin -> Feedback Inbox, classify P0/P1/P2/P3, export agent-ready JSON, and decide next-batch status. | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z | Approved |
-| Stop-test response | Incident lead confirms they can pause testing, notify testers, preserve safe evidence, and decide resume/no-resume. | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z | Approved |
+| Seed/media safety | Rights/media reviewer confirms preview-only beta visibility is safe, or seed is scrubbed/hidden before invites. | Enoch Liu primary; Hali Ding backup | pending renewed June 15 approval | NO-GO |
+| Access and private URL | Access owner confirms the invite list is internal only, only the stable unlisted URL is shared, and no Vercel preview URL is shared. | Enoch Liu | pending canonical hosted proof | NO-GO |
+| Hosted writeback env | Tech owner confirms `RESOURCESPACE_ENABLE_WRITEBACK=0`, `RESOURCESPACE_WRITEBACK_MODE=queued`, `BETA_FEEDBACK_ENABLED=1`, and `BETA_TASK_MODE_ENABLED=1`. | Hali Ding | pending hosted env/durable proof | NO-GO |
+| Feedback triage | First-batch triager confirms they will watch Admin -> Feedback Inbox, classify P0/P1/P2/P3, export agent-ready JSON, and decide next-batch status. | Hali Ding primary; Enoch Liu backup | pending renewed send window | NO-GO |
+| Stop-test response | Incident lead confirms they can pause testing, notify testers, preserve safe evidence, and decide resume/no-resume. | Hali Ding primary; Enoch Liu backup | pending renewed incident owner approval | NO-GO |
 
-Signed send rule:
+Draft send rule, inactive until renewed approval:
 
 - Send only to Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, and Richard Pang.
 - Use only `https://tjc-stock-media.vercel.app`; do not share Vercel preview URLs.
@@ -77,13 +85,13 @@ If beta auth is enabled, open:
 
 Select your assigned persona and enter the password provided by the beta coordinator. This is internal beta access for QA testing only. It is not production SSO, not real church member auth, and not impersonation.
 
-Legacy beta-off/local role shortcuts:
+Role entry paths after trusted beta session/SSO:
 
-- Viewer: `https://tjc-stock-media.vercel.app/?role=Viewer&taskMode=1`
-- Contributor: `https://tjc-stock-media.vercel.app/upload?role=Contributor&taskMode=1`
-- Reviewer: `https://tjc-stock-media.vercel.app/review?role=Reviewer&taskMode=1`
-- DAM Admin: `https://tjc-stock-media.vercel.app/admin?role=DAM%20Admin&taskMode=1`
-- Guide: `https://tjc-stock-media.vercel.app/guide?role=Viewer&taskMode=1`
+- Viewer: `/`
+- Contributor: `/upload`
+- Reviewer: `/review`
+- DAM Admin: `/admin`
+- Guide: `/guide`
 
 Important boundaries:
 

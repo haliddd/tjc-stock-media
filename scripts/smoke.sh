@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-resourcespace-smoke}" node scripts/safe-lane-headroom-guard.mjs
 
 if [ ! -f .env ]; then
   echo "FAIL: .env missing. Run: cp .env.example .env"

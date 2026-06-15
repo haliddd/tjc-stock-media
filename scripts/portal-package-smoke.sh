@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4868}"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 CURL_MAX_TIME="${PORTAL_PACKAGE_SMOKE_CURL_MAX_TIME:-30}"
 MARKER="package-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
 TMP_DIR="$(mktemp -d)"
 cleanup() {
   MARKER="$MARKER" node <<'NODE' >/dev/null 2>&1 || true
@@ -23,7 +24,7 @@ trap cleanup EXIT
 http_code() {
   local output="$1"
   shift
-  curl --max-time "$CURL_MAX_TIME" -sS -o "$output" -w '%{http_code}' "$@"
+  portal_smoke_http_code "$output" "$@"
 }
 
 expect_json_status() {

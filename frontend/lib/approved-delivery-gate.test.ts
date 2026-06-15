@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import {
   approvedDeliveryGateDefaultDeps,
@@ -206,6 +206,10 @@ function expireTicket(root: string, ticket: string) {
   record.expiresAt = "2020-01-01T00:00:00.000Z";
   fs.writeFileSync(ticketPath, `${JSON.stringify(record, null, 2)}\n`);
 }
+
+beforeEach(() => {
+  vi.stubEnv("PORTAL_ALLOW_BETA_ROLE_OVERRIDE", "1");
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

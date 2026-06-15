@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   BETA_SESSION_COOKIE,
+  BETA_SESSION_ROLE_HEADER,
+  BETA_SESSION_VERIFIED_HEADER,
   betaAuthEnabled,
   betaLoginPathForReturn,
   verifyBetaSessionCookieValue
@@ -27,14 +29,17 @@ export async function middleware(request: NextRequest) {
   if (!betaAuthEnabled()) return NextResponse.next();
 
   if (isPublicPath(pathname)) return NextResponse.next();
-  if (pathname === "/beta-login" || pathname.startsWith("/api/beta-auth/")) {
-    return NextResponse.next();
-  }
 
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete(BETA_SESSION_ROLE_HEADER);
+  requestHeaders.delete(BETA_SESSION_VERIFIED_HEADER);
   const session = await verifyBetaSessionCookieValue(request.cookies.get(BETA_SESSION_COOKIE)?.value);
   if (session) {
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-tjc-beta-role", session.role);
+    requestHeaders.set(BETA_SESSION_ROLE_HEADER, session.role);
+    requestHeaders.set(BETA_SESSION_VERIFIED_HEADER, "1");
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+  if (pathname === "/beta-login" || pathname.startsWith("/api/beta-auth/")) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 

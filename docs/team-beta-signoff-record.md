@@ -1,6 +1,6 @@
 # Team Beta Signoff Record
 
-Last updated: 2026-06-11
+Last updated: 2026-06-15
 
 Use this file as the human-owned record before sending any teammate invite links. The current default is **NO-GO**. Change the decision to GO only after every required gate below has an owner, timestamp, evidence, and decision.
 
@@ -8,23 +8,23 @@ This record does not approve production launch, public sharing, live ResourceSpa
 
 ## Current Decision
 
-Decision: GO
+Decision: NO-GO
 
-Decision timestamp: 2026-06-11T21:36:44Z
+Decision timestamp: 2026-06-15T07:29:52Z
 
-Decision owner: Hali Ding + Enoch Liu
+Decision owner: Codex safety evidence update, pending Hali + Enoch renewed approval
 
-Decision notes: Tiny internal Team Beta approved for six named testers only. Production launch, public sharing, live ResourceSpace writeback, public downloads, broad reuse, source media mutation, staging, commits, deploys, and external communications remain out of scope.
+Decision notes: June 15 P0 query-role fix is locally proven, but hosted teammate invites remain blocked until canonical deployment, hosted authenticated protection, ResourceSpace scope, Google Drive custody, durable/fail-closed hosted state, and renewed tester approval are proven. Prior June 11 tiny Team Beta approval is superseded for send/invite decisions.
 
 ## Required Gates
 
 | Gate | Owner | Timestamp | Evidence | Decision | Notes |
 |---|---|---|---|---|---|
-| Seed/media safety | Enoch Liu primary; Hali Ding backup | 2026-06-11T21:36:44Z | Final owner values supplied in this thread; seed is approved for preview-only tiny internal beta visibility with 181 Viewer-visible records and 0 portal-ready/downloadable records. | Approved for preview-only tiny internal Team Beta | No public reuse or download approval. Official TJC websites are the authority source for doctrine, hymn, RE/minors, testimony, and taxonomy gates. |
-| Access/private URL | Enoch Liu | 2026-06-11T21:36:44Z | Six named testers only: Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang. Stable URL only: `https://tjc-stock-media.vercel.app`. Preview URL sharing blocked. | Approved | Stakeholders/supervisors: Jackie, Alan, Joanna, Richard. |
-| Hosted env/writeback | Hali Ding | 2026-06-11T21:36:44Z | Required hosted values confirmed: `RESOURCESPACE_ENABLE_WRITEBACK=0`, `RESOURCESPACE_WRITEBACK_MODE=queued`, `BETA_FEEDBACK_ENABLED=1`, `BETA_TASK_MODE_ENABLED=1`, `DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0`. | Approved | No secrets or full env dumps recorded. Live ResourceSpace writeback is not approved. |
-| Feedback triage | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z | Hali watches first 24 hours after invite; Enoch backs up; Hali owns feedback export and next-batch decision with project owners. | Approved | Next-batch review happens 24 hours after first invite. |
-| Stop-test response | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z | Stop-test rule included; Hali can pause testing; Enoch backs up; testers and supervisors are notified through the same internal invite channel. | Approved | P0 stops active testing. |
+| Seed/media safety | Enoch Liu primary; Hali Ding backup | 2026-06-11T21:36:44Z; renewed proof still required after June 15 P0 | Historical preview-only owner values exist, but June 15 packet still needs renewed seed/media approval before any hosted invite. | NO-GO pending renewed approval | No public reuse or download approval. Official TJC websites are the authority source for doctrine, hymn, RE/minors, testimony, and taxonomy gates. |
+| Access/private URL | Enoch Liu | 2026-06-11T21:36:44Z; renewed proof still required after June 15 P0 | Historical six-tester list exists, but canonical deployment/protection and invite approval are not current. | NO-GO pending canonical hosted proof | Stakeholders/supervisors: Jackie, Alan, Joanna, Richard. |
+| Hosted env/writeback | Hali Ding | 2026-06-11T21:36:44Z; renewed proof still required after June 15 P0 | Historical values exist; June 15 run did not verify Vercel env, durable state, authenticated hosted redaction/download, or hosted writeback behavior. | NO-GO pending hosted proof | No secrets or full env dumps recorded. Live ResourceSpace writeback is not approved. |
+| Feedback triage | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z; renewed assignment still required before invite | Historical triage assignment exists, but no June 15 send window or renewed tester approval exists. | NO-GO pending renewed approval | Next-batch review happens only after a renewed approved first invite. |
+| Stop-test response | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z; renewed assignment still required before invite | Stop-test rule exists, but hosted invite is blocked until current P0 and external evidence gates close. | NO-GO pending renewed approval | P0 stops active testing. |
 
 Minimum GO rule:
 
@@ -50,12 +50,12 @@ Research-authority response captured: official TJC websites are the authority so
 
 ## Final Send Approval
 
-Fill only when ready to send:
+Do not fill as GO until June 15 evidence blockers close and Hali renews approval. Current record remains NO-GO:
 
 ```text
-Final decision: GO
-Decision owner: Hali Ding + Enoch Liu
-Decision timestamp: 2026-06-11T21:36:44Z
+Final decision: NO-GO
+Decision owner: Codex safety evidence update, pending Hali + Enoch renewed approval
+Decision timestamp: 2026-06-15T07:29:52Z
 Named tester count: 6
 Named testers: Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang
 Roles assigned: Viewer, Contributor, Reviewer, DAM Admin QA roles as needed for assigned beta tasks
@@ -113,4 +113,4 @@ Next-batch review time:
 Final decision: <GO or NO-GO>
 ```
 
-Current status: **GO for tiny internal Team Beta invite batch. Production remains blocked.**
+Current status: **NO-GO for teammate invite batch until June 15 evidence blockers close.**

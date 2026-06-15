@@ -1,17 +1,25 @@
 # Beta Readiness Command Center
 
-Last updated: 2026-06-11
+Last updated: 2026-06-15
+
+## June 15 Safety Override
+
+Current recommendation is **NO-GO for teammate invites or hosted mutation** until the June 15 evidence packet blockers are resolved. Use `docs/runs/evidence/2026-06-15/11-friday-readiness-report.md` as the current readiness source.
+
+Reason: the June 15 run fixed a P0 query-role elevation class locally, added protected local smokes, and added hosted read-only probes, but canonical deployment, hosted authenticated protection, ResourceSpace scope, Google Drive custody, durable/fail-closed hosted state, and tester approval remain unresolved.
+
+Do not run the mutating hosted smoke without explicit owner approval. That script now hard-stops on non-local targets unless `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` and `PORTAL_HOSTED_SMOKE_APPROVED_BY` are set. Use `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe` for non-mutating hosted proof.
 
 Use this page before inviting teammates. The goal is a controlled beta test, not production launch. ResourceSpace remains source of truth, Google Shared Drive remains master-original warehouse, and TJC Stock Media remains the role-aware workbench.
 
 ## Go / No-Go
 
-Current recommendation: **GO for tiny internal Team Beta on the stable unlisted Vercel URL for the six named testers only. Production, public sharing, public downloads, live ResourceSpace writeback, broad reuse, source media mutation, staging, commits, deploys, and external communications remain out of scope.**
+Current recommendation: **NO-GO for sending or widening Team Beta on hosted URL until the June 15 P0 evidence packet blockers are resolved. Production, public sharing, public downloads, live ResourceSpace writeback, broad reuse, source media mutation, staging, commits, deploys, and external communications remain out of scope.**
 
 Status split:
 
-- **Local code/test gate: GO.** The listed local and hosted smokes passed for the beta workflow and safety claims they cover.
-- **Invite/send gate: GO for six named internal testers.** Final signoff is recorded in `docs/team-beta-signoff-record.md`; do not widen beyond this group without a new signoff.
+- **Local code/test gate: PASS for isolated June 15 local proof.** Query-role elevation is fixed locally and protected smokes/browser QA pass on `http://localhost:4871`.
+- **Invite/send gate: NO-GO pending June 15 blockers.** Prior June 11 signoff is superseded for hosted invites until canonical deployment, hosted protection, ResourceSpace/Drive custody, durability, and tester approval are renewed.
 - **Production launch gate: NO-GO.** Production SSO, durable storage, full rights review, live ResourceSpace writeback, and full archive launch are not proven.
 
 Signoff packets now prepared:
@@ -27,17 +35,18 @@ Local dry run may continue when these pass:
 
 - [x] `make frontend-check`
 - [x] `make launch-readiness`
-- [x] `BASE_URL=http://localhost:4868 make portal-api-smoke`
-- [x] `BASE_URL=http://localhost:4876 make portal-sso-smoke` against `SSO_TRUSTED_HEADERS=1` local server
-- [x] `BASE_URL=http://localhost:4878 make portal-usage-smoke` against `PORTAL_USAGE_LOGGING=1` local server
-- [x] `BASE_URL=http://localhost:4880 make portal-delivery-smoke`
-- [x] `BASE_URL=http://localhost:4868 make portal-download-ticket-smoke` against local beta server
-- [x] `BASE_URL=http://localhost:4868 make portal-writeback-guard-smoke` against no-live-writeback local server
-- [x] `BASE_URL=http://localhost:4868 make portal-package-smoke`
-- [x] `BASE_URL=http://localhost:4868 make portal-saved-search-smoke`
-- [x] `BASE_URL=http://localhost:4880 make portal-beta-rehearsal`
-- [x] `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke`
-- [x] `BASE_URL=http://localhost:4868 make portal-browser-qa`
+- [x] `BASE_URL=http://localhost:4871 make portal-api-smoke`
+- [x] `BASE_URL=http://localhost:4871 make portal-sso-smoke` against `SSO_TRUSTED_HEADERS=1` local server
+- [x] `BASE_URL=http://localhost:4871 make portal-usage-smoke` against `PORTAL_USAGE_LOGGING=1` local server
+- [x] `BASE_URL=http://localhost:4871 make portal-delivery-smoke`
+- [x] `BASE_URL=http://localhost:4871 make portal-download-ticket-smoke` against local beta server
+- [x] `BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke` against no-live-writeback local server
+- [x] `BASE_URL=http://localhost:4871 make portal-package-smoke`
+- [x] `BASE_URL=http://localhost:4871 make portal-saved-search-smoke`
+- [x] `BASE_URL=http://localhost:4871 make portal-beta-rehearsal`
+- [x] `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe` June 15 partial read-only PASS
+- [ ] Mutating hosted smoke NOT RUN June 15; requires `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` and `PORTAL_HOSTED_SMOKE_APPROVED_BY`
+- [x] `BASE_URL=http://localhost:4871 make portal-browser-qa`
 - [x] Viewer unsafe download stays blocked.
 - [x] Reviewer approval without evidence stays blocked.
 - [x] Reviewer approval with evidence returns honest queued/pending-write state.
@@ -45,7 +54,7 @@ Local dry run may continue when these pass:
 Invite a tiny internal Team Beta batch only when these are also true:
 
 - [x] Stable unlisted beta URL exists: `https://tjc-stock-media.vercel.app`.
-- [x] Hosted post-deploy smoke passes: `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke`.
+- [ ] Hosted authenticated/mutating smoke is approved and passes with explicit owner approval env: `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1 PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-or-ticket> BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke`.
 - [x] Test data source is safe fallback/export data, not live writeback.
 - [x] Seed/media signoff packet is prepared: `docs/team-beta-seed-media-signoff.md`.
 - [x] Rights/media reviewer confirms preview-only seed visibility for this tiny internal beta: Enoch Liu primary, Hali Ding backup.
@@ -65,11 +74,11 @@ Use this as the one-page launch checklist before sending invite links. Do not in
 
 | Gate | Required confirmation | Default owner | Status |
 |---|---|---|---|
-| Seed data safety | Confirm beta seed/export has no sensitive, private, unreleased, youth-identifiable, copyrighted, source, or master media visible to testers. Record sample search terms checked. | Enoch Liu primary; Hali Ding backup | Closed for six-person tiny beta |
-| Access and private URL | Confirm only the stable unlisted URL is shared, deployment preview URLs are not shared, invite list is internal only, and beta role switch is understood as QA-only. | Enoch Liu | Closed for six-person tiny beta |
-| Hosted writeback env | Confirm hosted env keeps `RESOURCESPACE_ENABLE_WRITEBACK=0`, `RESOURCESPACE_WRITEBACK_MODE=queued`, `BETA_FEEDBACK_ENABLED=1`, and `BETA_TASK_MODE_ENABLED=1`; confirm no live ResourceSpace writeback is claimed. | Hali Ding | Closed for six-person tiny beta |
-| Feedback triage | Confirm who watches Admin -> Feedback Inbox, assigns P0/P1/P2/P3, exports agent-ready JSON, and posts next-batch decision. | Hali Ding primary; Enoch Liu backup | Closed for six-person tiny beta |
-| Stop-test response | Confirm who pauses testing, notifies invited testers, captures evidence, and decides resume/no-resume for privacy, source-truth, writeback honesty, or unsafe-download reports. | Hali Ding primary; Enoch Liu backup | Closed for six-person tiny beta |
+| Seed data safety | Confirm beta seed/export has no sensitive, private, unreleased, youth-identifiable, copyrighted, source, or master media visible to testers. Record sample search terms checked. | Enoch Liu primary; Hali Ding backup | NO-GO pending renewed June 15 approval |
+| Access and private URL | Confirm only the stable unlisted URL is shared, deployment preview URLs are not shared, invite list is internal only, and beta role switch is understood as QA-only. | Enoch Liu | NO-GO pending canonical hosted proof |
+| Hosted writeback env | Confirm hosted env keeps `RESOURCESPACE_ENABLE_WRITEBACK=0`, `RESOURCESPACE_WRITEBACK_MODE=queued`, `BETA_FEEDBACK_ENABLED=1`, and `BETA_TASK_MODE_ENABLED=1`; confirm no live ResourceSpace writeback is claimed. | Hali Ding | NO-GO pending hosted env/durable proof |
+| Feedback triage | Confirm who watches Admin -> Feedback Inbox, assigns P0/P1/P2/P3, exports agent-ready JSON, and posts next-batch decision. | Hali Ding primary; Enoch Liu backup | NO-GO pending renewed send window |
+| Stop-test response | Confirm who pauses testing, notifies invited testers, captures evidence, and decides resume/no-resume for privacy, source-truth, writeback honesty, or unsafe-download reports. | Hali Ding primary; Enoch Liu backup | NO-GO pending renewed incident owner approval |
 
 Tester report response:
 
@@ -79,29 +88,29 @@ Tester report response:
 
 Minimum send decision:
 
-- **GO for internal beta ops** for Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, and Richard Pang only.
-- **NO-GO for wider internal beta ops** until a new signoff names the next tester batch and owners.
+- **NO-GO for teammate invite/send.** Historical six-person approval is superseded by the June 15 P0 evidence packet.
+- **PASS local only for Hali-controlled isolated dry run.** Do not convert local proof into hosted invite approval.
 
 ## Beta Surface
 
 | Area | Beta expectation | Owner | Status |
 |---|---|---|---|
-| URL | Stable unlisted Vercel Next.js deployment with API routes; not static S3-only | Hali | Code/test ready; invite send waits on ops gates |
-| Access | Tiny Team Beta only; production SSO not live | Enoch Liu | GO for six named testers |
-| Data | Safe fallback/export data; no live writeback | Enoch Liu primary; Hali Ding backup | GO for preview-only tiny beta |
-| Viewer | Can search, open records, request review, and see blocked unsafe downloads | Hali | Ready for dry run |
-| Contributor | Can test harmless intake only; uploads never publish | Hali | Ready for dry run |
-| Reviewer | Can test evidence lock and pending-write truth | Hali | Ready for dry run |
-| DAM Admin | Can inspect launch blockers and integration readiness | Hali | Ready for dry run |
-| Feedback | In-app Report issue plus DAM Admin Feedback Inbox; named triager handles first batch | Hali Ding primary; Enoch Liu backup | GO for first 24 hours after invite |
+| URL | Stable unlisted Vercel Next.js deployment with API routes; not static S3-only | Hali | Canonical deployment proof still blocked; invite send waits on ops gates |
+| Access | Tiny Team Beta only; production SSO not live | Enoch Liu | NO-GO pending June 15 hosted protection proof |
+| Data | Safe fallback/export data; no live writeback | Enoch Liu primary; Hali Ding backup | PASS local only; NO-GO for hosted invite until renewed seed approval |
+| Viewer | Can search, open records, request review, and see blocked unsafe downloads | Hali | PASS local only |
+| Contributor | Can test harmless intake only; uploads never publish | Hali | PASS local only |
+| Reviewer | Can test evidence lock and pending-write truth | Hali | PASS local only |
+| DAM Admin | Can inspect launch blockers and integration readiness | Hali | PASS local only |
+| Feedback | In-app Report issue plus DAM Admin Feedback Inbox; named triager handles first batch | Hali Ding primary; Enoch Liu backup | NO-GO pending durable hosted state and renewed send window |
 
 ## Latest Local Rehearsal
 
-Date: 2026-06-11
+Date: historical 2026-06-11 run, superseded by June 15 P0 packet
 
-Result: **Pass for local beta dry run. Stable hosted alias has smoke evidence, and final signoff is GO for the six named internal Team Beta testers only.**
+Result: **Historical local proof only. June 15 P0 packet supersedes prior hosted invite approval; current teammate invite/send posture is NO-GO until blockers close.**
 
-Checks:
+Historical checks, retained only as pre-June-15 context:
 
 - `make frontend-check`: pass.
 - `make launch-readiness`: pass with one `.env` placeholder warning.
@@ -114,7 +123,7 @@ Checks:
 - `BASE_URL=http://localhost:4868 make portal-package-smoke`: pass for package draft role gates, sanitized ResourceSpace refs, and local-json readiness.
 - `BASE_URL=http://localhost:4868 make portal-saved-search-smoke`: pass for saved search role gates, sanitization, and local-json readiness.
 - `BASE_URL=http://localhost:4880 make portal-beta-rehearsal`: pass; evidence JSON written under `.runtime/beta-rehearsals/`.
-- `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke`: pass against stable Vercel alias.
+- Mutating hosted smoke: historical June 11 hosted run existed; NOT RUN on June 15 because it mutates hosted state and now requires explicit approval env.
 - `BASE_URL=http://localhost:4868 make portal-browser-qa`: pass; 17 pages, six viewport widths, 23 screenshots, zero failures, zero warnings, zero console errors, zero network failures.
 - Explicit Viewer probe: `Bible` search returned assets, Viewer source payload stayed redacted as `media-library`, asset `368` opened, blocked download returned `403`, Viewer review action returned `403`.
 - Explicit Reviewer probe: incomplete evidence returned `400` with evidence blockers; complete evidence returned `202` queued pending-write truth.
@@ -161,27 +170,27 @@ Proposed signoff language:
 
 ## Dry-Run Script
 
-Run a local production server:
+Run the current isolated local production server:
 
 ```bash
 npm --prefix frontend run build
 cd frontend
-TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media npx next start --port 4868
+SSO_TRUSTED_HEADERS=1 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=0 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=0 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0 TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run npx next start --port 4871
 ```
 
 In another terminal:
 
 ```bash
-BASE_URL=http://localhost:4868 make portal-api-smoke
-BASE_URL=http://localhost:4868 make portal-sso-smoke
-BASE_URL=http://localhost:4868 make portal-usage-smoke
-BASE_URL=http://localhost:4868 make portal-delivery-smoke
-BASE_URL=http://localhost:4868 make portal-download-ticket-smoke
-BASE_URL=http://localhost:4868 make portal-writeback-guard-smoke
-BASE_URL=http://localhost:4868 make portal-package-smoke
-BASE_URL=http://localhost:4868 make portal-saved-search-smoke
-BASE_URL=http://localhost:4868 make portal-beta-rehearsal
-BASE_URL=http://localhost:4868 make portal-browser-qa
+BASE_URL=http://localhost:4871 make portal-api-smoke
+BASE_URL=http://localhost:4871 make portal-sso-smoke
+BASE_URL=http://localhost:4871 make portal-usage-smoke
+BASE_URL=http://localhost:4871 make portal-delivery-smoke
+BASE_URL=http://localhost:4871 make portal-download-ticket-smoke
+BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke
+BASE_URL=http://localhost:4871 make portal-package-smoke
+BASE_URL=http://localhost:4871 make portal-saved-search-smoke
+BASE_URL=http://localhost:4871 make portal-beta-rehearsal
+BASE_URL=http://localhost:4871 make portal-browser-qa
 ```
 
 For SSO rehearsal, start the server with `SSO_TRUSTED_HEADERS=1` or `SSO_PROVIDER=cloudflare-access`; otherwise `portal-sso-smoke` should fail because beta role fallback is intentionally not treated as trusted identity.
@@ -203,10 +212,14 @@ For private beta rehearsal, `portal-beta-rehearsal` writes a JSON evidence packe
 For hosted URL rehearsal, run:
 
 ```bash
-BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
+BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe
 ```
 
-This verifies the hosted routes, feedback POST, non-admin feedback denial, DAM Admin feedback inbox, and Viewer unsafe download block.
+This verifies hosted read-only route protection without POST, writeback, env mutation, raw body capture, or tester invite behavior. Run mutating hosted smoke only after explicit owner approval:
+
+```bash
+PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1 PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-or-ticket> BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
+```
 
 Manual Viewer dry run:
 
@@ -219,7 +232,7 @@ Manual Viewer dry run:
 
 Manual Reviewer dry run:
 
-1. Open `/review?role=Reviewer`.
+1. Open `/review` through trusted beta session or trusted SSO Reviewer identity.
 2. Switch queue tabs.
 3. Select a review item.
 4. Try approval without evidence and note; confirm it blocks.
@@ -230,7 +243,7 @@ Manual Reviewer dry run:
 
 Preferred path: use the in-app Report issue button during Task Mode. DAM Admin reviews reports in Admin → Feedback Inbox, sets status, and exports JSON for agents. Use `docs/teammate-feedback-template.md` only when the app is unavailable. Full operating detail is in `docs/team-beta-feedback-incident-runbook.md`.
 
-Agent handoff export: DAM Admin uses Feedback Inbox → Export JSON or `/api/beta-feedback/export?role=DAM%20Admin&status=agent-ready`. The export packet includes schema, filters, counts, and matching records so agents can distinguish all feedback from agent-ready work.
+Agent handoff export: DAM Admin uses Feedback Inbox → Export JSON or calls `/api/beta-feedback/export?status=agent-ready` through trusted beta session or trusted SSO DAM Admin identity. The export packet includes schema, filters, counts, and matching records so agents can distinguish all feedback from agent-ready work.
 
 | Severity | Action |
 |---|---|

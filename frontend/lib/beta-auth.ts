@@ -2,6 +2,8 @@ import type { DemoRole } from "@/lib/types";
 import { normalizeRole } from "@/lib/permissions";
 
 export const BETA_SESSION_COOKIE = "tjc_beta_session";
+export const BETA_SESSION_ROLE_HEADER = "x-tjc-beta-role";
+export const BETA_SESSION_VERIFIED_HEADER = "x-tjc-beta-session-verified";
 export const BETA_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 
 export type BetaPersona = {

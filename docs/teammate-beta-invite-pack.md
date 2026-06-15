@@ -1,18 +1,33 @@
 # Teammate Beta Invite Pack
 
-Last updated: 2026-06-11
+Last updated: 2026-06-15
 
-Use this only after `docs/beta-readiness-command-center.md` marks the Team Beta ops runbook complete. This invite pack is for tiny internal Team Beta testing only. Share the stable hosted beta URL, not a deployment-specific Vercel preview URL:
+## June 15 Safety Override
+
+Current status: **NO-GO for sending teammate invites.** Use this invite pack as draft copy only until `docs/runs/evidence/2026-06-15/11-friday-readiness-report.md` blockers close and Hali renews approval.
+
+Do not send hosted `?role=` links. Query roles are not authority. Hosted beta must use `/beta-login` or trusted SSO after approval. Current production SSO proof requires Cloudflare Access assertion/email plus mapped groups; local trusted-header shims are not hosted authority.
+
+Use `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe` for non-mutating hosted checks. Do not run hosted mutation unless `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` and `PORTAL_HOSTED_SMOKE_APPROVED_BY` are set.
+
+Use this only after `docs/beta-readiness-command-center.md` marks the Team Beta ops runbook complete again after June 15. This invite pack is for tiny internal Team Beta testing only. Share the stable hosted beta URL, not a deployment-specific Vercel preview URL:
 
 `https://tjc-stock-media.vercel.app`
 
-## Role Links
+## Hosted Access Draft
 
-- Viewer: `https://tjc-stock-media.vercel.app/?role=Viewer&taskMode=1`
-- Contributor: `https://tjc-stock-media.vercel.app/upload?role=Contributor&taskMode=1`
-- Reviewer: `https://tjc-stock-media.vercel.app/review?role=Reviewer&taskMode=1`
-- DAM Admin: `https://tjc-stock-media.vercel.app/admin?role=DAM%20Admin&taskMode=1`
-- Guide: `https://tjc-stock-media.vercel.app/guide?role=Viewer&taskMode=1`
+- Primary hosted beta path after approval: `https://tjc-stock-media.vercel.app/beta-login`
+- Assigned persona/password comes from beta coordinator only after hosted protection and renewed send approval.
+
+## Role Entry Paths
+
+- Viewer: beta session/SSO -> `/`
+- Contributor: beta session/SSO -> `/upload`
+- Reviewer: beta session/SSO -> `/review`
+- DAM Admin: beta session/SSO -> `/admin`
+- Guide: beta session/SSO -> `/guide`
+
+Do not send query-role URLs as hosted access. They are not authority and are not invite links.
 
 ## Missions
 

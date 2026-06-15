@@ -1,0 +1,1012 @@
+{
+  "generatedAt": "2026-06-15T15:25:10.190Z",
+  "baseUrl": "http://localhost:4873",
+  "routes": [
+    {
+      "role": "Viewer",
+      "route": "/library",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library",
+      "h1": "Library",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/library/367",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library/367",
+      "h1": "Bee",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/upload",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/upload/drafts/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload/drafts/draft-1",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/review",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/review/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review/request-1",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/requests",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/requests/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests/request-1",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/collections",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/collections/sabbath",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections/sabbath",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/distribution-sets",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/distribution-sets/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets/draft-1",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/governance",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/governance/rights-consent",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/rights-consent",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/governance/metadata-health",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/metadata-health",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/governance/policy-center",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/policy-center",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/governance/audit-log",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/audit-log",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/governance/integrations",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/integrations",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/admin",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/admin/users",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/users",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/admin/roles",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/roles",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/admin/taxonomy",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/taxonomy",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/admin/settings",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/settings",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/help",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Viewer",
+      "route": "/help/articles/source-access",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help/articles/source-access",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/library",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library",
+      "h1": "Library",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/library/367",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library/367",
+      "h1": "Bee",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/upload",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload",
+      "h1": "Upload assets for review",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/upload/drafts/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload/drafts/draft-1",
+      "h1": "Upload assets for review",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/review",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/review/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review/request-1",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/requests",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/requests/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests/request-1",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/collections",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/collections/sabbath",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections/sabbath",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/distribution-sets",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/distribution-sets/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets/draft-1",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/governance",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/governance/rights-consent",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/rights-consent",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/governance/metadata-health",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/metadata-health",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/governance/policy-center",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/policy-center",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/governance/audit-log",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/audit-log",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/governance/integrations",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/integrations",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/admin",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/admin/users",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/users",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/admin/roles",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/roles",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/admin/taxonomy",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/taxonomy",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/admin/settings",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/settings",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/help",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Contributor",
+      "route": "/help/articles/source-access",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help/articles/source-access",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/library",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library",
+      "h1": "Library",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/library/367",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library/367",
+      "h1": "Bee",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/upload",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload",
+      "h1": "Upload assets for review",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/upload/drafts/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload/drafts/draft-1",
+      "h1": "Upload assets for review",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/review",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review",
+      "h1": "Review Queue",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/review/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review/request-1",
+      "h1": "Review Queue",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/requests",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/requests/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests/request-1",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/collections",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/collections/sabbath",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections/sabbath",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/distribution-sets",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/distribution-sets/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets/draft-1",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/governance",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance",
+      "h1": "Governance Dashboard",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/governance/rights-consent",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/rights-consent",
+      "h1": "Rights & Consent",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/governance/metadata-health",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/metadata-health",
+      "h1": "Metadata Health",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/governance/policy-center",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/policy-center",
+      "h1": "Policy Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/governance/audit-log",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/audit-log",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/governance/integrations",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/integrations",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/admin",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/admin/users",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/users",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/admin/roles",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/roles",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/admin/taxonomy",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/taxonomy",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/admin/settings",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/settings",
+      "h1": "",
+      "blocked": true,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/help",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "Reviewer",
+      "route": "/help/articles/source-access",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help/articles/source-access",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/library",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library",
+      "h1": "Library",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/library/367",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/library/367",
+      "h1": "Bee",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/upload",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload",
+      "h1": "Upload assets for review",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/upload/drafts/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/upload/drafts/draft-1",
+      "h1": "Upload assets for review",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/review",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review",
+      "h1": "Review Queue",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/review/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/review/request-1",
+      "h1": "Review Queue",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/requests",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/requests/request-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/requests/request-1",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/collections",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/collections/sabbath",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/collections/sabbath",
+      "h1": "Collections",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/distribution-sets",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/distribution-sets/draft-1",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/distribution-sets/draft-1",
+      "h1": "Distribution Set Draft",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/governance",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance",
+      "h1": "Governance Dashboard",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/governance/rights-consent",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/rights-consent",
+      "h1": "Rights & Consent",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/governance/metadata-health",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/metadata-health",
+      "h1": "Metadata Health",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/governance/policy-center",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/policy-center",
+      "h1": "Policy Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/governance/audit-log",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/audit-log",
+      "h1": "Audit Log",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/governance/integrations",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/governance/integrations",
+      "h1": "Integrations",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/admin",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin",
+      "h1": "Governance Dashboard",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/admin/users",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/users",
+      "h1": "Governance Dashboard",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/admin/roles",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/roles",
+      "h1": "Governance Dashboard",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/admin/taxonomy",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/taxonomy",
+      "h1": "Metadata Health",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/admin/settings",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/admin/settings",
+      "h1": "Integrations",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/help",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    },
+    {
+      "role": "DAM Admin",
+      "route": "/help/articles/source-access",
+      "status": 200,
+      "finalUrl": "http://localhost:4873/help/articles/source-access",
+      "h1": "Help Center",
+      "blocked": false,
+      "error": null,
+      "textSample": "Skip to content\nTrue Jesus Church\nMedia Library\nSearch assets, records, packages, collections...\nCtrl K\nDAM command center\n\nSearch assets, navigate routes, and open role-aware DAM workflows.\n\nMedia\nLibrary\nCollections\nDistribution Sets\nRece"
+    }
+  ],
+  "unauthorized": {
+    "route": "/review",
+    "status": 200,
+    "finalUrl": "http://localhost:4873/beta-login?returnTo=%2Freview",
+    "redirectedToLogin": true
+  }
+}

@@ -128,7 +128,7 @@ function BrandLockup() {
         <Menu className="size-4" aria-hidden="true" />
       </button>
       <Link
-        href={routeWithRole("/", role)}
+        href={routeWithRole("/library", role)}
         className="dam-sidebar-brand-link flex min-w-0 flex-1 items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         aria-label="True Jesus Church Media Library home"
       >
@@ -184,7 +184,7 @@ function SidebarUserCard() {
 export function AppSidebar() {
   const { role } = useDemoRole();
   const visibleItems = damShellItemsForRole(role);
-  const footerItems = visibleItems.filter((item) => item.group === "System");
+  const footerItems: DamShellNavItem[] = [];
 
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border">
@@ -196,7 +196,7 @@ export function AppSidebar() {
       <SidebarContent className="px-2">
         {damShellNavGroups.map((group) => {
           const groupItems = visibleItems.filter((item) => item.group === group);
-          if (!groupItems.length || group === "System") return null;
+          if (!groupItems.length) return null;
           return (
             <SidebarGroup key={group} className="px-0 py-1">
               <SidebarGroupLabel className="text-white/54">{group}</SidebarGroupLabel>
@@ -217,7 +217,7 @@ export function AppSidebar() {
         <SidebarUserCard />
 
         <Link
-          href={routeWithRole("/guide", role)}
+          href={routeWithRole("/help", role)}
           className="hidden min-h-10 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:grid"
           aria-label="Help"
           title="Help"

@@ -1,0 +1,1318 @@
+{
+  "generatedAt": "2026-06-15T15:23:29.665Z",
+  "baseUrl": "http://localhost:4873",
+  "probes": [
+    {
+      "role": "Viewer",
+      "name": "viewer-approved-copy-ticket",
+      "method": "POST",
+      "path": "/api/download/367",
+      "status": 503,
+      "json": {
+        "allowed": false,
+        "error": "Required download audit could not be persisted.",
+        "requiredAction": "retry-after-audit-recovers",
+        "reasonCode": "audit-required"
+      },
+      "text": ""
+    },
+    {
+      "role": "Viewer",
+      "name": "viewer-original-denied",
+      "method": "POST",
+      "path": "/api/download/367",
+      "status": 503,
+      "json": {
+        "allowed": false,
+        "error": "Required download audit could not be persisted.",
+        "requiredAction": "retry-after-audit-recovers",
+        "reasonCode": "audit-required"
+      },
+      "text": ""
+    },
+    {
+      "role": "Contributor",
+      "name": "contributor-review-denied",
+      "method": "POST",
+      "path": "/api/review",
+      "status": 403,
+      "json": {
+        "error": "Reviewer controls are unavailable for this role."
+      },
+      "text": ""
+    },
+    {
+      "role": "Reviewer",
+      "name": "reviewer-public-approval-without-evidence-blocked",
+      "method": "POST",
+      "path": "/api/review",
+      "status": 400,
+      "json": {
+        "error": "Review evidence is incomplete.",
+        "disabledReason": "Missing: Source evidence missing, Owner/license evidence missing, People/minors status unresolved, Children/youth review required, Usage scope missing...",
+        "missingEvidence": [
+          "sourceConfirmed",
+          "rightsConfirmed",
+          "peopleVisibilityConfirmed",
+          "childrenYouthChecked",
+          "usageScopeSelected",
+          "derivativeAvailable",
+          "sensitiveContextChecked",
+          "creditRequirementChecked",
+          "attributionConfirmed",
+          "expirationRereviewSet",
+          "proofLinkAttached",
+          "childrenYouthEvidence"
+        ],
+        "missingEvidenceLabels": [
+          "Source evidence missing",
+          "Owner/license evidence missing",
+          "People/minors status unresolved",
+          "Children/youth review required",
+          "Usage scope missing",
+          "Approved derivative missing",
+          "Sensitive context review required",
+          "Credit requirement evidence missing",
+          "Attribution evidence missing",
+          "Expiration or re-review decision missing",
+          "Proof link or note missing",
+          "Children/youth evidence missing"
+        ],
+        "source": {
+          "adapter": "exported-metadata",
+          "label": "ResourceSpace metadata export",
+          "detail": "Reading latest ResourceSpace metadata export. Approval writes still require ResourceSpace API field mapping.",
+          "readOnly": true,
+          "sourceKind": "resourcespace",
+          "live": true
+        },
+        "sourceStatus": {
+          "adapter": "exported-metadata",
+          "label": "ResourceSpace metadata export",
+          "detail": "Reading latest ResourceSpace metadata export. Approval writes still require ResourceSpace API field mapping.",
+          "readOnly": true,
+          "sourceKind": "resourcespace",
+          "live": true
+        },
+        "sourceKind": "resourcespace",
+        "live": true
+      },
+      "text": ""
+    },
+    {
+      "role": "DAM Admin",
+      "name": "admin-readiness-access",
+      "method": "GET",
+      "path": "/api/admin/readiness",
+      "status": 200,
+      "json": {
+        "source": {
+          "adapter": "exported-metadata",
+          "label": "ResourceSpace metadata export",
+          "detail": "Reading latest ResourceSpace metadata export. Approval writes still require ResourceSpace API field mapping.",
+          "readOnly": true
+        },
+        "score": 31,
+        "assetCount": 2290,
+        "metrics": {
+          "approvedPublic": 181,
+          "portalReady": 0,
+          "needsReview": 2109,
+          "rightsReview": 2290,
+          "missingSource": 0,
+          "childrenYouth": 0,
+          "aiEnrichment": 2290,
+          "taxonomyDrift": 2290,
+          "duplicateCandidates": 0,
+          "renditionGaps": 181,
+          "staleApprovals": 0
+        },
+        "readiness": [
+          {
+            "id": "find",
+            "pillar": "Find",
+            "label": "Search quality",
+            "score": 0,
+            "detail": "Controlled vocabulary, metadata enrichment backlog, and useful titles.",
+            "action": "Clear taxonomy drift and enrichment queues.",
+            "savedViewId": "taxonomy-drift",
+            "tone": "warn"
+          },
+          {
+            "id": "trust",
+            "pillar": "Trust",
+            "label": "Use confidence",
+            "score": 33,
+            "detail": "Source, rights, people/minors, consent, and review evidence.",
+            "action": "Fix missing source, rights review, and unknown people fields.",
+            "savedViewId": "rights-review",
+            "tone": "warn"
+          },
+          {
+            "id": "review",
+            "pillar": "Review",
+            "label": "Reviewer workflow",
+            "score": 8,
+            "detail": "Assets should enter Needs Review, then leave with reviewer, date, notes, and status.",
+            "action": "Work pending review queue and required review fields.",
+            "savedViewId": "needs-review",
+            "tone": "warn"
+          },
+          {
+            "id": "share",
+            "pillar": "Share",
+            "label": "Portal readiness",
+            "score": 46,
+            "detail": "Public portals need approved assets, safe metadata, and approved derivatives.",
+            "action": "Fix portal-ready blockers and rendition gaps before public sharing.",
+            "savedViewId": "portal-ready",
+            "tone": "warn"
+          },
+          {
+            "id": "govern",
+            "pillar": "Govern",
+            "label": "Archive control",
+            "score": 67,
+            "detail": "Duplicates, stale approvals, taxonomy drift, and source traceability stay visible.",
+            "action": "Resolve duplicate cleanup, stale approvals, and vocabulary drift.",
+            "savedViewId": "duplicate-candidates",
+            "tone": "info"
+          }
+        ],
+        "fieldMappings": [
+          {
+            "key": "publishStatus",
+            "label": "Publish status",
+            "resourceSpaceField": "publish_status",
+            "required": true,
+            "coverage": 100,
+            "present": 2290,
+            "missing": 0
+          },
+          {
+            "key": "usageScope",
+            "label": "Usage scope",
+            "resourceSpaceField": "usage_scope",
+            "required": true,
+            "coverage": 100,
+            "present": 2290,
+            "missing": 0
+          },
+          {
+            "key": "rightsStatus",
+            "label": "Rights status",
+            "resourceSpaceField": "rights_status",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "consentStatus",
+            "label": "Consent status",
+            "resourceSpaceField": "consent_status",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "peopleVisible",
+            "label": "People visible",
+            "resourceSpaceField": "people_visible",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "minorsVisible",
+            "label": "Children/youth visible",
+            "resourceSpaceField": "minors_visible",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "reviewer",
+            "label": "Reviewer",
+            "resourceSpaceField": "reviewed_by",
+            "required": true,
+            "coverage": 8,
+            "present": 181,
+            "missing": 2109
+          },
+          {
+            "key": "reviewedDate",
+            "label": "Review date",
+            "resourceSpaceField": "reviewed_date",
+            "required": true,
+            "coverage": 8,
+            "present": 181,
+            "missing": 2109
+          },
+          {
+            "key": "sourceSystem",
+            "label": "Source system",
+            "resourceSpaceField": "source_system",
+            "required": true,
+            "coverage": 100,
+            "present": 2290,
+            "missing": 0
+          },
+          {
+            "key": "sourceAccount",
+            "label": "Source / photographer",
+            "resourceSpaceField": "source_account",
+            "required": false,
+            "coverage": 100,
+            "present": 2290,
+            "missing": 0
+          },
+          {
+            "key": "sourcePath",
+            "label": "Source path",
+            "resourceSpaceField": "source_path",
+            "required": true,
+            "coverage": 100,
+            "present": 2290,
+            "missing": 0
+          },
+          {
+            "key": "sourceAlbumMemberships",
+            "label": "Album memberships",
+            "resourceSpaceField": "source_album_memberships",
+            "required": false,
+            "coverage": 92,
+            "present": 2109,
+            "missing": 181
+          },
+          {
+            "key": "visibleTags",
+            "label": "Visible tags",
+            "resourceSpaceField": "visible_content_tags",
+            "required": true,
+            "coverage": 3,
+            "present": 77,
+            "missing": 2213
+          },
+          {
+            "key": "tjcTerms",
+            "label": "TJC terms",
+            "resourceSpaceField": "tjc_terms",
+            "required": true,
+            "coverage": 3,
+            "present": 77,
+            "missing": 2213
+          },
+          {
+            "key": "checksumSha256",
+            "label": "Checksum",
+            "resourceSpaceField": "checksum_sha256",
+            "required": true,
+            "coverage": 100,
+            "present": 2290,
+            "missing": 0
+          },
+          {
+            "key": "duplicateGroup",
+            "label": "Duplicate group",
+            "resourceSpaceField": "duplicate_group",
+            "required": false,
+            "coverage": 92,
+            "present": 2109,
+            "missing": 181
+          },
+          {
+            "key": "reuseTier",
+            "label": "Reuse tier",
+            "resourceSpaceField": "reuseTier",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "visibilityTier",
+            "label": "Visibility tier",
+            "resourceSpaceField": "visibilityTier",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "sensitivityClass",
+            "label": "Sensitivity class",
+            "resourceSpaceField": "sensitivityClass",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "rightsBasis",
+            "label": "Rights basis",
+            "resourceSpaceField": "rightsBasis",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "approvedChannels",
+            "label": "Approved channels",
+            "resourceSpaceField": "approvedChannels",
+            "required": true,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "requiredNotice",
+            "label": "Required notice",
+            "resourceSpaceField": "requiredNotice",
+            "required": false,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "consentReleaseRecordId",
+            "label": "Consent/release record",
+            "resourceSpaceField": "consentReleaseRecordId",
+            "required": false,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "approvalRecheckDate",
+            "label": "Approval recheck date",
+            "resourceSpaceField": "approvalRecheckDate",
+            "required": false,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          },
+          {
+            "key": "domainReviewer",
+            "label": "Domain reviewer",
+            "resourceSpaceField": "domainReviewer",
+            "required": false,
+            "coverage": 0,
+            "present": 0,
+            "missing": 2290
+          }
+        ],
+        "vocabulary": [
+          {
+            "term": "Bible",
+            "count": 46,
+            "kind": "canonical"
+          },
+          {
+            "term": "book",
+            "count": 23,
+            "kind": "canonical"
+          },
+          {
+            "term": "flower",
+            "count": 34,
+            "kind": "canonical"
+          },
+          {
+            "term": "plant",
+            "count": 34,
+            "kind": "canonical"
+          },
+          {
+            "term": "fountain",
+            "count": 6,
+            "kind": "canonical"
+          },
+          {
+            "term": "water",
+            "count": 9,
+            "kind": "canonical"
+          },
+          {
+            "term": "landscape",
+            "count": 3,
+            "kind": "canonical"
+          },
+          {
+            "term": "MVP 2024",
+            "count": 77,
+            "kind": "candidate"
+          },
+          {
+            "term": "stock media candidate",
+            "count": 77,
+            "kind": "candidate"
+          },
+          {
+            "term": "nature",
+            "count": 42,
+            "kind": "candidate"
+          },
+          {
+            "term": "scripture",
+            "count": 23,
+            "kind": "candidate"
+          },
+          {
+            "term": "outdoor",
+            "count": 14,
+            "kind": "candidate"
+          },
+          {
+            "term": "animal",
+            "count": 8,
+            "kind": "candidate"
+          },
+          {
+            "term": "desk",
+            "count": 5,
+            "kind": "candidate"
+          },
+          {
+            "term": "indoor",
+            "count": 5,
+            "kind": "candidate"
+          },
+          {
+            "term": "workspace",
+            "count": 5,
+            "kind": "candidate"
+          },
+          {
+            "term": "beach",
+            "count": 3,
+            "kind": "candidate"
+          }
+        ],
+        "portalPolicy": [
+          {
+            "id": "approval",
+            "label": "Approved Public only",
+            "blocked": 2109,
+            "detail": "Public portals should exclude anything not approved public.",
+            "savedViewId": "approved-church-wide"
+          },
+          {
+            "id": "rights",
+            "label": "Rights clear",
+            "blocked": 2290,
+            "detail": "Rights review must be clear before external reuse.",
+            "savedViewId": "rights-review"
+          },
+          {
+            "id": "source",
+            "label": "Source traceable",
+            "blocked": 0,
+            "detail": "Source system, album, path, or owner must be traceable.",
+            "savedViewId": "missing-source"
+          },
+          {
+            "id": "children",
+            "label": "Children/youth guarded",
+            "blocked": 0,
+            "detail": "Children/youth assets require explicit review before public use.",
+            "savedViewId": "children-youth-review"
+          },
+          {
+            "id": "renditions",
+            "label": "Derivatives ready",
+            "blocked": 181,
+            "detail": "Approved download/detail derivatives must exist for sharing.",
+            "savedViewId": "rendition-gaps"
+          },
+          {
+            "id": "stale",
+            "label": "Approval current",
+            "blocked": 0,
+            "detail": "Old approvals need periodic recheck.",
+            "savedViewId": "stale-approvals"
+          }
+        ],
+        "actionBacklog": [
+          {
+            "id": "write-mapping",
+            "severity": "critical",
+            "label": "ResourceSpace write mapping",
+            "count": 2109,
+            "owner": "DAM Admin",
+            "action": "Map publish status, reviewer, date, notes, and audit fields before real approvals persist."
+          },
+          {
+            "id": "rights-review",
+            "severity": "high",
+            "label": "Rights and consent review coverage",
+            "count": 2290,
+            "owner": "Reviewer",
+            "action": "Confirm rights status, consent, restrictions, and public-use notes before external reuse.",
+            "savedViewId": "rights-review"
+          },
+          {
+            "id": "people-review",
+            "severity": "high",
+            "label": "People/minors unknown",
+            "count": 2290,
+            "owner": "Reviewer",
+            "action": "Mark people visible, no people, adults visible, or children/youth possible for every reusable asset.",
+            "savedViewId": "people-unknown"
+          },
+          {
+            "id": "metadata",
+            "severity": "medium",
+            "label": "Metadata enrichment",
+            "count": 4580,
+            "owner": "Contributor",
+            "action": "Normalize useful titles, controlled TJC terms, visible tags, and use-case vocabulary.",
+            "savedViewId": "ai-enrichment"
+          },
+          {
+            "id": "renditions",
+            "severity": "medium",
+            "label": "Derivative readiness",
+            "count": 181,
+            "owner": "DAM Admin",
+            "action": "Confirm detail/download derivatives and dimensions so previews are not stretched or misleading.",
+            "savedViewId": "rendition-gaps"
+          },
+          {
+            "id": "missing-source",
+            "severity": "low",
+            "label": "Source traceability",
+            "count": 0,
+            "owner": "Contributor",
+            "action": "Attach source system, source account, album/path, or ResourceSpace source fields.",
+            "savedViewId": "missing-source"
+          },
+          {
+            "id": "children-youth",
+            "severity": "low",
+            "label": "Children/youth guardrail",
+            "count": 0,
+            "owner": "Reviewer",
+            "action": "Keep youth/minors media out of public portals until explicit review is recorded.",
+            "savedViewId": "children-youth-review"
+          },
+          {
+            "id": "governance-housekeeping",
+            "severity": "low",
+            "label": "Governance housekeeping",
+            "count": 0,
+            "owner": "DAM Admin",
+            "action": "Review stale approvals and duplicate groups without losing source provenance.",
+            "savedViewId": "stale-approvals"
+          }
+        ],
+        "integrationReadiness": [
+          {
+            "id": "metadata-source",
+            "label": "ResourceSpace metadata export",
+            "ready": true,
+            "owner": "ResourceSpace",
+            "state": "Read-only",
+            "detail": "Reading latest ResourceSpace metadata export. Approval writes still require ResourceSpace API field mapping."
+          },
+          {
+            "id": "resourcespace-live-api",
+            "label": "ResourceSpace live API",
+            "ready": false,
+            "owner": "ResourceSpace",
+            "state": "Not configured",
+            "detail": "Server-side ResourceSpace API credentials are not configured. Export mode remains read-only."
+          },
+          {
+            "id": "resourcespace-field-map",
+            "label": "ResourceSpace field map",
+            "ready": true,
+            "owner": "ResourceSpace",
+            "state": "Read-only",
+            "detail": "Using built-in beta field map. Set RESOURCESPACE_FIELD_MAP_JSON after ResourceSpace metadata fields are finalized."
+          },
+          {
+            "id": "resourcespace-preview",
+            "label": "ResourceSpace preview proxy",
+            "ready": true,
+            "owner": "ResourceSpace",
+            "state": "Operational",
+            "detail": "Previews route through backend thumbnail API and derivative manifest. Indexed entries: 59,848. Missing derivatives show explicit unavailable states. Local .runtime derivative index is a read/cache helper, not a durable production rendition factory."
+          },
+          {
+            "id": "review-writes",
+            "label": "ResourceSpace review writeback",
+            "ready": false,
+            "owner": "ResourceSpace",
+            "state": "Not configured",
+            "detail": "Review decisions save as portal pending-sync events. They are not final ResourceSpace truth."
+          },
+          {
+            "id": "runtime-state-store",
+            "label": "Runtime state durability",
+            "ready": false,
+            "owner": "Portal",
+            "state": "Blocked",
+            "detail": "Production stateful features require a configured durable runtime store. Local filesystem state is blocked. Mode: local-filesystem; adapter: local-filesystem."
+          },
+          {
+            "id": "pending-review-writes",
+            "label": "Pending review write queue",
+            "ready": false,
+            "owner": "DAM Admin",
+            "state": "Degraded",
+            "detail": "200 pending writes. Last attempt: 2026-06-15T04:46:54.524Z. Last error: none."
+          },
+          {
+            "id": "audit-log",
+            "label": "Portal audit log",
+            "ready": false,
+            "owner": "Portal",
+            "state": "Degraded",
+            "detail": "200 recent audit events. Latest event: 2026-06-15T04:47:30.002Z. Portal audit events are local runtime JSONL accountability evidence. They are not ResourceSpace truth and are not production-durable until identity-backed durable storage and restore proof are configured."
+          },
+          {
+            "id": "auth",
+            "label": "Real authentication / SSO",
+            "ready": false,
+            "owner": "Identity Provider",
+            "state": "Pending setup",
+            "detail": "SSO-ready shim is implemented, but local role selection remains beta fallback until trusted IdP headers are enabled."
+          },
+          {
+            "id": "role-gates",
+            "label": "Role gates",
+            "ready": true,
+            "owner": "Portal",
+            "state": "Operational",
+            "detail": "Viewer, Contributor, Reviewer, and DAM Admin gates are enforced through backend decisions for sensitive actions."
+          },
+          {
+            "id": "master-originals",
+            "label": "Google Shared Drive master originals",
+            "ready": false,
+            "owner": "Google Shared Drive",
+            "state": "Not configured",
+            "detail": "Master-original model is documented; production needs Shared Drive ID, service credentials, backup, and ownership confirmation."
+          },
+          {
+            "id": "s3-delivery",
+            "label": "Amazon S3 derivative delivery",
+            "ready": false,
+            "owner": "Amazon S3",
+            "state": "Not configured",
+            "detail": "Approved derivative delivery is local/export-backed now. Delivery privacy smoke protects browser payloads; configure S3 bucket, region, and access role for production signed URLs."
+          },
+          {
+            "id": "approved-copy-delivery",
+            "label": "Approved copy delivery",
+            "ready": false,
+            "owner": "Portal",
+            "state": "Blocked",
+            "detail": "181 ResourceSpace-approved public assets still need portal reuse checks before copy delivery."
+          },
+          {
+            "id": "public-portal",
+            "label": "Media Library UI",
+            "ready": false,
+            "owner": "Portal",
+            "state": "Degraded",
+            "detail": "No asset passes portal-ready policy until rights, people/minors, and derivative confidence improve."
+          },
+          {
+            "id": "usage-analytics",
+            "label": "Usage analytics",
+            "ready": false,
+            "owner": "Portal",
+            "state": "Pending setup",
+            "detail": "Usage analytics is unavailable; search, zero-result, and trend metrics must not be reported as zero-success until durable event logging is connected."
+          },
+          {
+            "id": "beta-feedback-storage",
+            "label": "Beta feedback storage",
+            "ready": true,
+            "owner": "Portal",
+            "state": "Degraded",
+            "detail": "Feedback is using local-json; this is suitable for local/private beta rehearsal only, not wider rollout. Records: 7; open: 7; critical open: 0. Configure Vercel KV for durable hosted feedback and Blob for attachments before larger testing."
+          },
+          {
+            "id": "saved-search-storage",
+            "label": "Saved search storage",
+            "ready": false,
+            "owner": "Portal",
+            "state": "Pending setup",
+            "detail": "Saved searches use local-json; suitable for local/private beta only, not wider rollout. Saved searches: 0. Connect durable profile storage before favorites, teams, or persistent saved views are promised."
+          },
+          {
+            "id": "package-draft-storage",
+            "label": "Package draft storage",
+            "ready": true,
+            "owner": "Portal",
+            "state": "Degraded",
+            "detail": "Package drafts use local-json; suitable for local/private beta only, not wider rollout. Production-ready sharing: no. Drafts: 5; open: 5; blocked refs: 5. Connect durable backend storage before package sharing or invites."
+          },
+          {
+            "id": "brand-kit-collections",
+            "label": "ResourceSpace-managed identity assets",
+            "ready": false,
+            "owner": "DAM Admin",
+            "state": "Pending setup",
+            "detail": "Do not mirror logo/template downloads in the DAM. Link to identity.tjc.org unless assets require ResourceSpace review/audit."
+          },
+          {
+            "id": "package-publishing",
+            "label": "Package publishing",
+            "ready": false,
+            "owner": "DAM Admin",
+            "state": "Read-only",
+            "detail": "Package builder stores ResourceSpace references in portal state. Publishing remains blocked until share links, audit, and all-item rights checks are wired."
+          }
+        ],
+        "betaReadiness": {
+          "ready": false,
+          "score": 55,
+          "generatedAt": "2026-06-15T15:23:29.664Z",
+          "facts": [
+            {
+              "id": "auth",
+              "label": "SSO / role identity",
+              "ready": false,
+              "state": "warn",
+              "detail": "SSO-ready shim is implemented, but local role selection remains beta fallback until trusted IdP headers are enabled.",
+              "source": "integration"
+            },
+            {
+              "id": "review-writes",
+              "label": "ResourceSpace review writeback",
+              "ready": false,
+              "state": "block",
+              "detail": "Review decisions save as portal pending-sync events. They are not final ResourceSpace truth.",
+              "source": "integration"
+            },
+            {
+              "id": "approved-copy-delivery",
+              "label": "Approved copy derivatives",
+              "ready": false,
+              "state": "block",
+              "detail": "181 ResourceSpace-approved public assets still need portal reuse checks before copy delivery.",
+              "source": "integration"
+            },
+            {
+              "id": "private-beta-url",
+              "label": "Private beta URL",
+              "ready": false,
+              "state": "warn",
+              "detail": "No non-local private beta URL is configured. Use localhost for rehearsal only.",
+              "source": "environment"
+            },
+            {
+              "id": "seed-data",
+              "label": "Seed catalog data",
+              "ready": true,
+              "state": "warn",
+              "detail": "2,290 assets loaded; 0 portal-ready assets.",
+              "source": "catalog"
+            },
+            {
+              "id": "env-file",
+              "label": "Runtime env file",
+              "ready": false,
+              "state": "warn",
+              "detail": ".env still contains placeholder values.",
+              "source": "environment"
+            },
+            {
+              "id": "brand-asset-allowlist",
+              "label": "Brand PNG allowlist",
+              "ready": true,
+              "state": "pass",
+              "detail": "Launch readiness allows tracked app brand assets while still blocking church media files.",
+              "source": "git-hygiene"
+            },
+            {
+              "id": "beta-role-switch-copy",
+              "label": "Beta-only role switch copy",
+              "ready": true,
+              "state": "pass",
+              "detail": "App and teammate docs label role switching as simulated beta QA, not production access.",
+              "source": "launch-readiness"
+            },
+            {
+              "id": "beta-stop-test-policy",
+              "label": "P0 stop-test policy",
+              "ready": true,
+              "state": "pass",
+              "detail": "Teammate docs include stop-test rules and forbidden sensitive/private/youth/copyrighted media categories.",
+              "source": "launch-readiness"
+            },
+            {
+              "id": "browser-qa",
+              "label": "Viewer and Reviewer browser QA",
+              "ready": true,
+              "state": "warn",
+              "detail": "Last QA 2026-06-14T07:35:39.571Z covered 16 pages across 1440, 1280, 1024, 768, 390, 320 px. Warnings: 2.",
+              "source": "qa-report"
+            },
+            {
+              "id": "audit-evidence",
+              "label": "Audit evidence",
+              "ready": true,
+              "state": "pass",
+              "detail": "25 recent actor-backed audit events available for beta rehearsal across Contributor, DAM Admin, Reviewer, Viewer.",
+              "source": "catalog"
+            }
+          ]
+        },
+        "auditLog": {
+          "count": 200,
+          "latestAt": "2026-06-15T04:47:30.002Z",
+          "denied": 54,
+          "queued": 3,
+          "storage": {
+            "mode": "local-runtime-jsonl",
+            "durable": false,
+            "productionReady": false,
+            "accountabilityEvidence": true,
+            "truthBoundary": "portal-accountability-only",
+            "detail": "Portal audit events are local runtime JSONL accountability evidence. They are not ResourceSpace truth and are not production-durable until identity-backed durable storage and restore proof are configured."
+          },
+          "coverage": [
+            {
+              "type": "asset_viewed",
+              "area": "asset-access"
+            },
+            {
+              "type": "sensitive_asset_viewed",
+              "area": "asset-access"
+            },
+            {
+              "type": "admin_readiness_denied",
+              "area": "admin-readiness"
+            },
+            {
+              "type": "admin_readiness_viewed",
+              "area": "admin-readiness"
+            },
+            {
+              "type": "download_gate_checked",
+              "area": "download"
+            },
+            {
+              "type": "approved_download",
+              "area": "download"
+            },
+            {
+              "type": "denied_download",
+              "area": "download"
+            },
+            {
+              "type": "upload_denied",
+              "area": "intake"
+            },
+            {
+              "type": "upload_submitted",
+              "area": "intake"
+            },
+            {
+              "type": "review_denied",
+              "area": "review"
+            },
+            {
+              "type": "review_evidence_incomplete",
+              "area": "review"
+            },
+            {
+              "type": "review_pending_write_queued",
+              "area": "review"
+            },
+            {
+              "type": "collection_draft_denied",
+              "area": "package"
+            },
+            {
+              "type": "collection_draft_previewed",
+              "area": "package"
+            },
+            {
+              "type": "saved_search_denied",
+              "area": "search"
+            },
+            {
+              "type": "saved_search_saved",
+              "area": "search"
+            },
+            {
+              "type": "saved_search_listed",
+              "area": "search"
+            },
+            {
+              "type": "package_draft_denied",
+              "area": "package"
+            },
+            {
+              "type": "package_draft_saved",
+              "area": "package"
+            },
+            {
+              "type": "package_draft_listed",
+              "area": "package"
+            },
+            {
+              "type": "batch_action_denied",
+              "area": "intake"
+            },
+            {
+              "type": "batch_action_previewed",
+              "area": "intake"
+            },
+            {
+              "type": "admin_denied",
+              "area": "admin-readiness"
+            },
+            {
+              "type": "beta_auth_login",
+              "area": "admin-readiness"
+            },
+            {
+              "type": "beta_auth_logout",
+              "area": "admin-readiness"
+            },
+            {
+              "type": "beta_feedback_submitted",
+              "area": "beta-feedback"
+            },
+            {
+              "type": "beta_feedback_triaged",
+              "area": "beta-feedback"
+            },
+            {
+              "type": "resourcespace_write_attempted",
+              "area": "resourcespace-sync"
+            },
+            {
+              "type": "resourcespace_write_succeeded",
+              "area": "resourcespace-sync"
+            },
+            {
+              "type": "resourcespace_write_failed",
+              "area": "resourcespace-sync"
+            },
+            {
+              "type": "original_access_requested",
+              "area": "original-access"
+            },
+            {
+              "type": "original_access_granted",
+              "area": "original-access"
+            },
+            {
+              "type": "original_access_denied",
+              "area": "original-access"
+            },
+            {
+              "type": "original_access_revoked",
+              "area": "original-access"
+            },
+            {
+              "type": "original_access_expired",
+              "area": "original-access"
+            },
+            {
+              "type": "rendition_request_recorded",
+              "area": "rendition"
+            },
+            {
+              "type": "package_export_blocked",
+              "area": "package"
+            },
+            {
+              "type": "package_export_approved",
+              "area": "package"
+            },
+            {
+              "type": "package_share_decision",
+              "area": "package"
+            },
+            {
+              "type": "duplicate_candidate_reviewed",
+              "area": "duplicate"
+            },
+            {
+              "type": "taxonomy_change_reviewed",
+              "area": "taxonomy"
+            },
+            {
+              "type": "search_signal_recorded",
+              "area": "search"
+            }
+          ],
+          "recent": [
+            {
+              "id": "2026-06-15T04-47-30-002Z-989aba2f",
+              "type": "admin_readiness_viewed",
+              "area": "admin-readiness",
+              "createdAt": "2026-06-15T04:47:30.002Z",
+              "role": "DAM Admin",
+              "actor": "local-beta:DAM Admin",
+              "status": "allowed",
+              "summary": "Governance readiness viewed."
+            },
+            {
+              "id": "2026-06-15T04-47-29-939Z-f69bb08a",
+              "type": "review_pending_write_queued",
+              "area": "review",
+              "createdAt": "2026-06-15T04:47:29.939Z",
+              "role": "Reviewer",
+              "actor": "local-beta:Reviewer",
+              "status": "queued",
+              "assetId": "1781",
+              "resourceSpaceId": "1781",
+              "summary": "Review decision queued for media-team follow-up."
+            },
+            {
+              "id": "2026-06-15T04-47-29-878Z-53d3736d",
+              "type": "review_evidence_incomplete",
+              "area": "review",
+              "createdAt": "2026-06-15T04:47:29.878Z",
+              "role": "Reviewer",
+              "actor": "local-beta:Reviewer",
+              "status": "blocked",
+              "assetId": "1781",
+              "resourceSpaceId": "1781",
+              "summary": "Review decision blocked by missing evidence."
+            },
+            {
+              "id": "2026-06-15T04-47-27-641Z-0f718660",
+              "type": "review_denied",
+              "area": "review",
+              "createdAt": "2026-06-15T04:47:27.641Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "assetId": "1781",
+              "summary": "Review action denied for role."
+            },
+            {
+              "id": "2026-06-15T04-47-27-581Z-cae10c00",
+              "type": "denied_download",
+              "area": "download",
+              "createdAt": "2026-06-15T04:47:27.581Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "assetId": "1556",
+              "resourceSpaceId": "1556",
+              "summary": "Approved delivery gate denied approved-copy delivery."
+            },
+            {
+              "id": "2026-06-15T04-47-19-675Z-be89ed5d",
+              "type": "admin_readiness_viewed",
+              "area": "admin-readiness",
+              "createdAt": "2026-06-15T04:47:19.675Z",
+              "role": "DAM Admin",
+              "actor": "local-beta:DAM Admin",
+              "status": "allowed",
+              "summary": "Governance readiness viewed."
+            },
+            {
+              "id": "2026-06-15T04-47-19-635Z-6b916616",
+              "type": "saved_search_listed",
+              "area": "search",
+              "createdAt": "2026-06-15T04:47:19.635Z",
+              "role": "Reviewer",
+              "actor": "local-beta:Reviewer",
+              "status": "preview",
+              "summary": "Saved search list viewed."
+            },
+            {
+              "id": "2026-06-15T04-47-19-596Z-1e435ce0",
+              "type": "saved_search_listed",
+              "area": "search",
+              "createdAt": "2026-06-15T04:47:19.596Z",
+              "role": "Contributor",
+              "actor": "local-beta:Contributor",
+              "status": "preview",
+              "summary": "Saved search list viewed."
+            },
+            {
+              "id": "2026-06-15T04-47-19-535Z-e839c6ad",
+              "type": "saved_search_saved",
+              "area": "search",
+              "createdAt": "2026-06-15T04:47:19.535Z",
+              "role": "Contributor",
+              "actor": "local-beta:Contributor",
+              "status": "preview",
+              "summary": "Saved search created: portal ready."
+            },
+            {
+              "id": "2026-06-15T04-47-19-499Z-d4c68051",
+              "type": "saved_search_saved",
+              "area": "search",
+              "createdAt": "2026-06-15T04:47:19.499Z",
+              "role": "Contributor",
+              "actor": "local-beta:Contributor",
+              "status": "preview",
+              "summary": "Saved search created: saved-search-smoke-20260615T044719Z-26568 Bible search."
+            },
+            {
+              "id": "2026-06-15T04-47-19-427Z-26546c79",
+              "type": "saved_search_denied",
+              "area": "search",
+              "createdAt": "2026-06-15T04:47:19.427Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "summary": "Saved search save denied for Viewer role."
+            },
+            {
+              "id": "2026-06-15T04-47-19-386Z-fc9382b1",
+              "type": "saved_search_denied",
+              "area": "search",
+              "createdAt": "2026-06-15T04:47:19.386Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "summary": "Saved search list denied for Viewer role."
+            },
+            {
+              "id": "2026-06-15T04-47-12-709Z-29c37b5e",
+              "type": "admin_readiness_viewed",
+              "area": "admin-readiness",
+              "createdAt": "2026-06-15T04:47:12.709Z",
+              "role": "DAM Admin",
+              "actor": "local-beta:DAM Admin",
+              "status": "allowed",
+              "summary": "Governance readiness viewed."
+            },
+            {
+              "id": "2026-06-15T04-47-12-670Z-fce8241d",
+              "type": "package_draft_listed",
+              "area": "package",
+              "createdAt": "2026-06-15T04:47:12.670Z",
+              "role": "Reviewer",
+              "actor": "local-beta:Reviewer",
+              "status": "preview",
+              "summary": "Package draft list viewed."
+            },
+            {
+              "id": "2026-06-15T04-47-12-604Z-0217de4f",
+              "type": "package_draft_saved",
+              "area": "package",
+              "createdAt": "2026-06-15T04:47:12.604Z",
+              "role": "Contributor",
+              "actor": "local-beta:Contributor",
+              "status": "preview",
+              "packageId": "pkg-package-smoke-20260615T044712Z-25790",
+              "summary": "Package draft saved: package-smoke-20260615T044712Z-25790 ministry toolkit."
+            },
+            {
+              "id": "2026-06-15T04-47-12-464Z-b5d56f9c",
+              "type": "package_draft_denied",
+              "area": "package",
+              "createdAt": "2026-06-15T04:47:12.464Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "summary": "Package draft save denied for Viewer role."
+            },
+            {
+              "id": "2026-06-15T04-47-12-427Z-333926fe",
+              "type": "package_draft_denied",
+              "area": "package",
+              "createdAt": "2026-06-15T04:47:12.427Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "summary": "Package draft list denied for non-review role."
+            },
+            {
+              "id": "2026-06-15T04-47-05-261Z-ac26ed70",
+              "type": "admin_readiness_viewed",
+              "area": "admin-readiness",
+              "createdAt": "2026-06-15T04:47:05.261Z",
+              "role": "DAM Admin",
+              "actor": "local-beta:DAM Admin",
+              "status": "allowed",
+              "summary": "Governance readiness viewed."
+            },
+            {
+              "id": "2026-06-15T04-47-05-220Z-527dc8d4",
+              "type": "beta_feedback_triaged",
+              "area": "beta-feedback",
+              "createdAt": "2026-06-15T04:47:05.220Z",
+              "role": "DAM Admin",
+              "actor": "local-beta:DAM Admin",
+              "status": "preview",
+              "summary": "Beta feedback export packet generated."
+            },
+            {
+              "id": "2026-06-15T04-47-05-177Z-a93191b7",
+              "type": "admin_denied",
+              "area": "admin-readiness",
+              "createdAt": "2026-06-15T04:47:05.177Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "summary": "Beta feedback export denied for non-admin role."
+            },
+            {
+              "id": "2026-06-15T04-47-04-942Z-97f3b0b2",
+              "type": "beta_feedback_triaged",
+              "area": "beta-feedback",
+              "createdAt": "2026-06-15T04:47:04.942Z",
+              "role": "DAM Admin",
+              "actor": "local-beta:DAM Admin",
+              "status": "preview",
+              "summary": "Beta feedback eedc9412-31b8-48b8-9e88-1c70b2f5fce7 updated to agent-ready."
+            },
+            {
+              "id": "2026-06-15T04-47-04-801Z-fc23e103",
+              "type": "admin_denied",
+              "area": "admin-readiness",
+              "createdAt": "2026-06-15T04:47:04.801Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "summary": "Beta feedback update denied for non-admin role."
+            },
+            {
+              "id": "2026-06-15T04-47-04-313Z-41246190",
+              "type": "admin_denied",
+              "area": "admin-readiness",
+              "createdAt": "2026-06-15T04:47:04.313Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "denied",
+              "summary": "Beta feedback inbox access denied for non-admin role."
+            },
+            {
+              "id": "2026-06-15T04-47-04-214Z-56ebaca2",
+              "type": "beta_feedback_submitted",
+              "area": "beta-feedback",
+              "createdAt": "2026-06-15T04:47:04.214Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "preview",
+              "summary": "Audit event"
+            },
+            {
+              "id": "2026-06-15T04-47-04-176Z-aa29ef8a",
+              "type": "beta_feedback_submitted",
+              "area": "beta-feedback",
+              "createdAt": "2026-06-15T04:47:04.176Z",
+              "role": "Viewer",
+              "actor": "local-beta:Viewer",
+              "status": "preview",
+              "summary": "Audit event"
+            }
+          ]
+        }
+      },
+      "text": ""
+    }
+  ]
+}

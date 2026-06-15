@@ -1,14 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_URL="${BASE_URL:-https://tjc-stock-media.vercel.app}"
+local_runtime_probe=0
+case "$BASE_URL" in
+  http://localhost:*|http://127.0.0.1:*|http://[::1]:*) local_runtime_probe=1 ;;
+esac
+
+if [ "$local_runtime_probe" != "1" ]; then
+  if [ "${PORTAL_HOSTED_SMOKE_ALLOW_MUTATION:-}" != "1" ] || [ -z "${PORTAL_HOSTED_SMOKE_APPROVED_BY:-}" ]; then
+    cat >&2 <<EOF
+FAIL: portal-hosted-smoke is mutating for non-local BASE_URL=$BASE_URL.
+This script can POST beta login/feedback state and must not run against hosted targets by default.
+For explicit owner-approved hosted mutation only, set:
+  PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1
+  PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-name-or-ticket>
+Optional:
+  PORTAL_HOSTED_SMOKE_APPROVAL_REF=<approval-link-or-note>
+Use portal-hosted-readonly-probe for unauthenticated hosted read-only proof.
+EOF
+    exit 2
+  fi
+  echo "PASS: hosted mutation smoke approved by $PORTAL_HOSTED_SMOKE_APPROVED_BY${PORTAL_HOSTED_SMOKE_APPROVAL_REF:+ ($PORTAL_HOSTED_SMOKE_APPROVAL_REF)}"
+fi
+
+(
+  cd "$ROOT"
+  SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-portal-hosted-smoke}" node scripts/safe-lane-headroom-guard.mjs
+)
+
 MARKER="hosted-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
-local_runtime_probe=0
-case "$BASE_URL" in
-  http://localhost:*|http://127.0.0.1:*) local_runtime_probe=1 ;;
-esac
 
 http_code() {
   local output="$1"
@@ -211,7 +235,7 @@ else
     cat "$BETA_SESSION_PROBE"
     exit 1
   fi
-  echo "PASS: local smoke using query/local trusted-header fallback; beta auth session endpoint status $BETA_SESSION_CODE"
+  echo "PASS: local smoke using trusted-header helper path; beta auth session endpoint status $BETA_SESSION_CODE"
 fi
 
 blocked_asset_id_script='

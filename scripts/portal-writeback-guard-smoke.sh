@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4868}"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 CURL_MAX_TIME="${PORTAL_WRITEBACK_GUARD_SMOKE_CURL_MAX_TIME:-30}"
 MARKER="writeback-guard-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 SMOKE_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 local_runtime_probe=0
@@ -15,7 +16,7 @@ esac
 http_code() {
   local output="$1"
   shift
-  curl --max-time "$CURL_MAX_TIME" -sS -o "$output" -w '%{http_code}' "$@"
+  portal_smoke_http_code "$output" "$@"
 }
 
 expect_json_status() {

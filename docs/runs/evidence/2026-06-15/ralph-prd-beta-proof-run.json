@@ -1,0 +1,147 @@
+{
+  "project": "TJC Stock Media",
+  "branchName": "ralph/beta-proof-run",
+  "description": "TJC Stock Media Beta-Proof Run - evidence-first proof of protected access, real data truth, custody, redaction, download safety, durable state, and final beta recommendation for June 15-20, 2026.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Canonical Surface And Dependency Ledger",
+      "description": "As a beta operator, I want the repo, branch, commit, deployment, local commands, env names, and Hali-owned dependencies recorded so readiness evidence is tied to the correct surface.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/00-hali-dependencies.md",
+        "Create docs/runs/evidence/2026-06-15/01-canonical-repo-deploy.md",
+        "Record repo owner/name, current branch, commit SHA, remotes, Vercel project name, hosted URL if known, local install/start commands, actual or blocked BASE_URL, env var names only, Makefile targets, npm scripts, unavailable expected commands, and repo/branch ambiguity",
+        "Mark unknown or human-owned items as blockers, not passing results",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Local Baseline Command Proof",
+      "description": "As a beta operator, I want safe local checks inventoried and run when possible so local readiness claims have command evidence.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/02-local-baseline-checks.md",
+        "Record all available baseline commands and expected smoke/guard targets",
+        "Run only commands safe in the current shared checkout, or mark blocked by concurrent sessions",
+        "Record exact pass, fail, blocked, not available, or not run status",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Hosted Protected Access Proof",
+      "description": "As a beta operator, I want hosted protected access proven or blocked so anonymous access and role spoofing cannot be waved through.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/03-hosted-access-proof.md",
+        "Record hosted URL, Vercel project name if known, deployment commit status, beta auth env names, and protection status",
+        "Do not run hosted mutating smoke without Hali approval",
+        "Record anonymous access, invalid session, persona login, and role spoofing proof as PASS/FAIL/BLOCKED/NOT RUN",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "ResourceSpace Real Read And Demo Honesty Proof",
+      "description": "As a beta operator, I want real DAM reads and fallback behavior proven so demo data cannot masquerade as real teammate data.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/04-resourcespace-read-proof.md",
+        "Create docs/runs/evidence/2026-06-15/05-real-vs-demo-proof.md",
+        "Record ResourceSpace env names, adapter paths, field map status, and read-only credential availability without values",
+        "Prove real ResourceSpace or export-backed data appears, or mark real read proof blocked",
+        "Prove unavailable/fallback state is honest",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Google Shared Drive Custody Proof",
+      "description": "As a beta operator, I want source custody documented so Google Shared Drive remains master-original storage and portal actions cannot mutate originals.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/06-google-drive-custody-proof.md",
+        "Define sanitized custody manifest requirements",
+        "Record whether Hali supplied sanitized custody proof",
+        "Verify or block proof that normal roles cannot see source paths, checksums, original URLs, or custody internals",
+        "Confirm no source media files were touched",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Redaction And Download Safety Proof",
+      "description": "As a beta operator, I want role payloads and download gates proven so normal users cannot see private fields or download blocked media.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/07-redaction-and-download-safety-proof.md",
+        "Test or document blockage for Viewer, Contributor, Reviewer, and DAM Admin payload differences",
+        "Prove Viewer and Contributor payloads hide source/original/private/admin fields",
+        "Prove blocked and missing-derivative downloads fail closed",
+        "Record any leak as P0 NO-GO",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Durable Beta State Proof",
+      "description": "As a beta operator, I want beta-critical state classified as durable, disabled, local-only, forbidden, or blocked so hosted workflows do not silently lose state.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/08-durable-state-proof.md",
+        "Classify audit log, download tickets, feedback, pending review/write queue, saved searches, and package drafts",
+        "Prove durable store where available, or prove fail-closed/disabled behavior",
+        "Record local/session-only workflows as not beta-ready",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Teammate Beta Packet",
+      "description": "As a beta operator, I want a complete honest teammate packet so Hali can approve or reject a tiny internal beta without sending invites prematurely.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/09-beta-packet.md",
+        "Include placeholder tester matrix until names are supplied",
+        "Include role-specific tasks, invite copy, feedback process, triage labels, stop conditions, limitations, and no sensitive uploads rule",
+        "State ResourceSpace is private admin software, Google Shared Drive keeps originals, packages/tags/collections do not grant permission, and blocked downloads are expected when rights are unclear",
+        "Do not send invites",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Final QA Summary And Readiness Report",
+      "description": "As Hali, I want final evidence summarized into a clear GO, CONDITIONAL-GO, or NO-GO recommendation with blockers and next steps.",
+      "acceptanceCriteria": [
+        "Create docs/runs/evidence/2026-06-15/10-final-qa-summary.md",
+        "Create docs/runs/evidence/2026-06-15/11-friday-readiness-report.md",
+        "Reconfirm repo, branch, commit, deployment, local BASE_URL, and command results",
+        "Classify failures as blocker, acceptable beta limitation, follow-up, not applicable, not run: missing access, not run: command unavailable, or not run: unsafe without approval",
+        "Choose exactly one decision recommendation: GO, CONDITIONAL-GO, or NO-GO",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

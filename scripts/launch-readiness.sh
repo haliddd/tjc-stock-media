@@ -116,19 +116,69 @@ require_file "scripts/portal-writeback-guard-smoke.sh"
 require_file "scripts/portal-package-smoke.sh"
 require_file "scripts/portal-saved-search-smoke.sh"
 require_file "scripts/portal-beta-rehearsal.sh"
+require_file "scripts/portal-hosted-readonly-probe.mjs"
 require_file "scripts/portal-hosted-smoke.sh"
+require_file "scripts/portal-smoke-trusted-identity.sh"
 require_file "scripts/live-dam-surface-guard.mjs"
 require_file "scripts/api-identity-guard.mjs"
+require_file "scripts/api-identity-guard-test.mjs"
 require_file "scripts/api-audit-guard.mjs"
 require_file "scripts/api-payload-guard.mjs"
+require_file "scripts/api-payload-guard-test.mjs"
 require_file "scripts/private-source-guard.mjs"
+require_file "scripts/private-source-guard-test.mjs"
 require_file "scripts/public-env-guard.mjs"
+require_file "scripts/public-env-guard-test.mjs"
 require_file "scripts/git-hygiene-guard.mjs"
+require_file "scripts/git-hygiene-guard-test.mjs"
 require_file "scripts/storage-honesty-guard.mjs"
+require_file "scripts/storage-honesty-guard-test.mjs"
+require_file "scripts/ui-maturity-guard.mjs"
+require_file "scripts/ui-maturity-guard-test.mjs"
+require_file "scripts/completion-audit-guard.mjs"
+require_file "scripts/completion-audit-guard-test.mjs"
+require_file "scripts/safe-lane-guard.mjs"
+require_file "scripts/safe-lane-guard-test.mjs"
+require_file "scripts/runtime-isolation-guard.mjs"
+require_file "scripts/runtime-isolation-guard-test.mjs"
+require_file "scripts/safe-lane-disk-report.mjs"
+require_file "scripts/safe-lane-disk-report-test.mjs"
+require_file "scripts/safe-lane-headroom-guard.mjs"
+require_file "scripts/safe-lane-headroom-guard-test.mjs"
+require_file "scripts/dev-server-build-guard.mjs"
+require_file "scripts/dev-server-build-guard-test.mjs"
+require_file "scripts/hosted-readonly-probe-guard.mjs"
+require_file "scripts/hosted-readonly-probe-guard-test.mjs"
+require_file "scripts/hosted-smoke-mutation-guard.mjs"
+require_file "scripts/hosted-smoke-mutation-guard-test.mjs"
+require_file "scripts/open-blockers-guard.mjs"
+require_file "scripts/open-blockers-guard-test.mjs"
+require_file "scripts/evidence-packet-guard.mjs"
+require_file "scripts/evidence-packet-guard-test.mjs"
+require_file "scripts/external-proof-contract-guard.mjs"
+require_file "scripts/external-proof-contract-guard-test.mjs"
 require_file "scripts/team-beta-signoff-guard.mjs"
 require_file "scripts/team-beta-signoff-guard-test.mjs"
 require_file "frontend/app/api/beta-feedback/export/route.ts"
 require_file "frontend/app/api/saved-searches/route.ts"
+
+for smoke_script in \
+  scripts/portal-delivery-smoke.sh \
+  scripts/portal-package-smoke.sh \
+  scripts/portal-saved-search-smoke.sh \
+  scripts/portal-feedback-smoke.sh \
+  scripts/portal-beta-rehearsal.sh \
+  scripts/portal-writeback-guard-smoke.sh \
+  scripts/portal-usage-smoke.sh \
+  scripts/portal-download-ticket-smoke.sh
+do
+  if grep -q 'portal-smoke-trusted-identity.sh' "$smoke_script" \
+    && grep -q 'portal_smoke_http_code' "$smoke_script"; then
+    pass "protected local smoke uses trusted-header helper: $smoke_script"
+  else
+    fail "protected local smoke still relies on query-role-only curl path: $smoke_script"
+  fi
+done
 
 beta_invite_pack="docs/teammate-beta-invite-pack.md"
 beta_ui_file="frontend/components/BetaPrototypeTools.tsx"
@@ -173,6 +223,13 @@ else
   cat /tmp/tjc-api-identity-guard.txt
 fi
 
+if node scripts/api-identity-guard-test.mjs >/tmp/tjc-api-identity-guard-test.txt 2>&1; then
+  pass "API identity guard self-test rejects query-role and trusted-identity regressions"
+else
+  fail "API identity guard self-test failed"
+  cat /tmp/tjc-api-identity-guard-test.txt
+fi
+
 if node scripts/api-audit-guard.mjs >/tmp/tjc-api-audit-guard.txt 2>&1; then
   pass "mutating API routes have audit coverage"
 else
@@ -187,6 +244,13 @@ else
   cat /tmp/tjc-api-payload-guard.txt
 fi
 
+if node scripts/api-payload-guard-test.mjs >/tmp/tjc-api-payload-guard-test.txt 2>&1; then
+  pass "API payload guard self-test rejects private URL and redaction regressions"
+else
+  fail "API payload guard self-test failed"
+  cat /tmp/tjc-api-payload-guard-test.txt
+fi
+
 if node scripts/private-source-guard.mjs >/tmp/tjc-private-source-guard.txt 2>&1; then
   pass "frontend private-source and URL safety checks stay centralized"
 else
@@ -194,11 +258,25 @@ else
   cat /tmp/tjc-private-source-guard.txt
 fi
 
+if node scripts/private-source-guard-test.mjs >/tmp/tjc-private-source-guard-test.txt 2>&1; then
+  pass "private source guard self-test rejects ad hoc path, URL, token, and reviewer text regressions"
+else
+  fail "private source guard self-test failed"
+  cat /tmp/tjc-private-source-guard-test.txt
+fi
+
 if node scripts/public-env-guard.mjs >/tmp/tjc-public-env-guard.txt 2>&1; then
   pass "public env stays free of server-side secrets"
 else
   fail "public env guard failed"
   cat /tmp/tjc-public-env-guard.txt
+fi
+
+if node scripts/public-env-guard-test.mjs >/tmp/tjc-public-env-guard-test.txt 2>&1; then
+  pass "public env guard self-test rejects public secret and client server-env regressions"
+else
+  fail "public env guard self-test failed"
+  cat /tmp/tjc-public-env-guard-test.txt
 fi
 
 if grep -q 'DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0' .env.production.example \
@@ -216,11 +294,207 @@ else
   cat /tmp/tjc-git-hygiene-guard.txt
 fi
 
+if node scripts/git-hygiene-guard-test.mjs >/tmp/tjc-git-hygiene-guard-test.txt 2>&1; then
+  pass "git hygiene guard self-test rejects tracked media, env, runtime, and model artifacts"
+else
+  fail "git hygiene guard self-test failed"
+  cat /tmp/tjc-git-hygiene-guard-test.txt
+fi
+
 if node scripts/storage-honesty-guard.mjs >/tmp/tjc-storage-honesty-guard.txt 2>&1; then
   pass "beta persistence stays capped and honest about storage durability"
 else
   fail "storage honesty guard failed"
   cat /tmp/tjc-storage-honesty-guard.txt
+fi
+
+if node scripts/storage-honesty-guard-test.mjs >/tmp/tjc-storage-honesty-guard-test.txt 2>&1; then
+  pass "storage honesty guard self-test rejects durability overclaims and persistence drift"
+else
+  fail "storage honesty guard self-test failed"
+  cat /tmp/tjc-storage-honesty-guard-test.txt
+fi
+
+if node scripts/ui-maturity-guard.mjs >/tmp/tjc-ui-maturity-guard.txt 2>&1; then
+  pass "premium DAM UI maturity regressions stay guarded"
+else
+  fail "UI maturity guard failed"
+  cat /tmp/tjc-ui-maturity-guard.txt
+fi
+
+if node scripts/ui-maturity-guard-test.mjs >/tmp/tjc-ui-maturity-guard-test.txt 2>&1; then
+  pass "premium DAM UI maturity guard self-test rejects regressions"
+else
+  fail "UI maturity guard self-test failed"
+  cat /tmp/tjc-ui-maturity-guard-test.txt
+fi
+
+if node scripts/completion-audit-guard.mjs >/tmp/tjc-completion-audit-guard.txt 2>&1; then
+  pass "completion audit keeps overall goal open until external gates close"
+else
+  fail "completion audit guard failed"
+  cat /tmp/tjc-completion-audit-guard.txt
+fi
+
+if node scripts/completion-audit-guard-test.mjs >/tmp/tjc-completion-audit-guard-test.txt 2>&1; then
+  pass "completion audit guard self-test rejects false-complete cases"
+else
+  fail "completion audit guard self-test failed"
+  cat /tmp/tjc-completion-audit-guard-test.txt
+fi
+
+if node scripts/safe-lane-guard.mjs >/tmp/tjc-safe-lane-guard.txt 2>&1; then
+  pass "safe lane remains in isolated worktree with recorded BASE_URL and forbidden surfaces untouched"
+else
+  fail "safe lane guard failed"
+  cat /tmp/tjc-safe-lane-guard.txt
+fi
+
+if node scripts/safe-lane-guard-test.mjs >/tmp/tjc-safe-lane-guard-test.txt 2>&1; then
+  pass "safe lane guard self-test rejects wrong cwd, stale ledger, and tracked forbidden artifacts"
+else
+  fail "safe lane guard self-test failed"
+  cat /tmp/tjc-safe-lane-guard-test.txt
+fi
+
+if node scripts/runtime-isolation-guard.mjs >/tmp/tjc-runtime-isolation-guard.txt 2>&1; then
+  pass "runtime, build, screenshot, and evidence artifacts stay isolated to safe worktree"
+else
+  fail "runtime isolation guard failed"
+  cat /tmp/tjc-runtime-isolation-guard.txt
+fi
+
+if node scripts/runtime-isolation-guard-test.mjs >/tmp/tjc-runtime-isolation-guard-test.txt 2>&1; then
+  pass "runtime isolation guard self-test rejects stale or tracked artifact cases"
+else
+  fail "runtime isolation guard self-test failed"
+  cat /tmp/tjc-runtime-isolation-guard-test.txt
+fi
+
+if node scripts/dev-server-build-guard.mjs >/tmp/tjc-dev-server-build-guard.txt 2>&1; then
+  pass "dev server build guard confirms safe-lane dev ports are stopped before build"
+else
+  fail "dev server build guard failed"
+  cat /tmp/tjc-dev-server-build-guard.txt
+fi
+
+if node scripts/dev-server-build-guard-test.mjs >/tmp/tjc-dev-server-build-guard-test.txt 2>&1; then
+  pass "dev server build guard self-test rejects listening-port and invalid-port regressions"
+else
+  fail "dev server build guard self-test failed"
+  cat /tmp/tjc-dev-server-build-guard-test.txt
+fi
+if grep -q 'SAFE_LANE_HEADROOM_CONTEXT=dev-server' frontend/package.json \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT=production-build' frontend/package.json \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT=next-start' frontend/package.json \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT=docker-up' Makefile \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT=resourcespace-smoke' Makefile \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT=frontend-check' Makefile \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-frontend-check}"' scripts/frontend-check.sh \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-resourcespace-bootstrap}"' scripts/bootstrap-official-docker.sh \
+  && grep -q 'safe-lane-headroom-guard.mjs' scripts/portal-browser-qa.mjs \
+  && grep -q 'SAFE_LANE_HEADROOM_CONTEXT: "browser-qa"' scripts/portal-browser-qa.mjs; then
+  pass "heavy local dev/build/start/browser/bootstrap/docker paths run safe lane headroom guard"
+else
+  fail "heavy local dev/build/start/browser/bootstrap/docker paths missing safe lane headroom guard"
+fi
+smoke_headroom_ok=1
+for smoke_context in \
+  portal-api-smoke \
+  portal-sso-smoke \
+  portal-usage-smoke \
+  portal-delivery-smoke \
+  portal-download-ticket-smoke \
+  portal-writeback-guard-smoke \
+  portal-package-smoke \
+  portal-saved-search-smoke \
+  portal-feedback-smoke \
+  portal-beta-rehearsal
+do
+  if ! grep -q "SAFE_LANE_HEADROOM_CONTEXT=${smoke_context}" Makefile; then
+    smoke_headroom_ok=0
+  fi
+done
+if [ "$smoke_headroom_ok" -eq 1 ]; then
+  pass "local runtime smoke targets run safe lane headroom guard"
+else
+  fail "local runtime smoke targets missing safe lane headroom guard"
+fi
+if node scripts/safe-lane-headroom-guard-test.mjs >/tmp/tjc-safe-lane-headroom-guard-test.txt 2>&1; then
+  pass "safe lane headroom guard self-test rejects low-disk/shared-checkout regressions"
+else
+  fail "safe lane headroom guard self-test failed"
+  cat /tmp/tjc-safe-lane-headroom-guard-test.txt
+fi
+
+if node scripts/hosted-readonly-probe-guard.mjs >/tmp/tjc-hosted-readonly-probe-guard.txt 2>&1; then
+  pass "hosted read-only probe stays non-mutating and summary-only"
+else
+  fail "hosted read-only probe guard failed"
+  cat /tmp/tjc-hosted-readonly-probe-guard.txt
+fi
+
+if node scripts/hosted-readonly-probe-guard-test.mjs >/tmp/tjc-hosted-readonly-probe-guard-test.txt 2>&1; then
+  pass "hosted read-only probe guard self-test rejects mutating/raw-capture regressions"
+else
+  fail "hosted read-only probe guard self-test failed"
+  cat /tmp/tjc-hosted-readonly-probe-guard-test.txt
+fi
+
+if node scripts/hosted-smoke-mutation-guard.mjs >/tmp/tjc-hosted-smoke-mutation-guard.txt 2>&1; then
+  pass "hosted mutating smoke requires explicit owner approval before non-local POSTs"
+else
+  fail "hosted smoke mutation guard failed"
+  cat /tmp/tjc-hosted-smoke-mutation-guard.txt
+fi
+
+if node scripts/hosted-smoke-mutation-guard-test.mjs >/tmp/tjc-hosted-smoke-mutation-guard-test.txt 2>&1; then
+  pass "hosted smoke mutation guard self-test rejects non-local mutation bypasses"
+else
+  fail "hosted smoke mutation guard self-test failed"
+  cat /tmp/tjc-hosted-smoke-mutation-guard-test.txt
+fi
+
+if node scripts/open-blockers-guard.mjs >/tmp/tjc-open-blockers-guard.txt 2>&1; then
+  pass "open blocker matrix keeps NO-GO gates machine-readable"
+else
+  fail "open blockers guard failed"
+  cat /tmp/tjc-open-blockers-guard.txt
+fi
+
+if node scripts/open-blockers-guard-test.mjs >/tmp/tjc-open-blockers-guard-test.txt 2>&1; then
+  pass "open blockers guard self-test rejects false GO and missing blocker cases"
+else
+  fail "open blockers guard self-test failed"
+  cat /tmp/tjc-open-blockers-guard-test.txt
+fi
+
+if node scripts/evidence-packet-guard.mjs >/tmp/tjc-evidence-packet-guard.txt 2>&1; then
+  pass "evidence packet keeps required docs, NO-GO posture, and blocked external gates"
+else
+  fail "evidence packet guard failed"
+  cat /tmp/tjc-evidence-packet-guard.txt
+fi
+
+if node scripts/evidence-packet-guard-test.mjs >/tmp/tjc-evidence-packet-guard-test.txt 2>&1; then
+  pass "evidence packet guard self-test rejects warning, timestamp, and GO regressions"
+else
+  fail "evidence packet guard self-test failed"
+  cat /tmp/tjc-evidence-packet-guard-test.txt
+fi
+
+if node scripts/external-proof-contract-guard.mjs >/tmp/tjc-external-proof-contract-guard.txt 2>&1; then
+  pass "external proof contract keeps canonical, hosted, ResourceSpace, Drive, durability, and tester gates blocked/partial"
+else
+  fail "external proof contract guard failed"
+  cat /tmp/tjc-external-proof-contract-guard.txt
+fi
+
+if node scripts/external-proof-contract-guard-test.mjs >/tmp/tjc-external-proof-contract-guard-test.txt 2>&1; then
+  pass "external proof contract guard self-test rejects false external gate completion"
+else
+  fail "external proof contract guard self-test failed"
+  cat /tmp/tjc-external-proof-contract-guard-test.txt
 fi
 
 if [ -f .env ]; then
@@ -265,6 +539,7 @@ fi
 if [ -f docs/screenshots/qa/browser-qa-report.json ]; then
   if node -e '
 const fs = require("fs");
+const path = require("path");
 const report = JSON.parse(fs.readFileSync("docs/screenshots/qa/browser-qa-report.json", "utf8"));
 const failures = [
   ...(report.failures || []),
@@ -303,6 +578,27 @@ if (viewerDetailAvailable) requiredScreenshots.push("detail-mobile-320.png");
 const missingScreenshots = requiredScreenshots.filter((name) => !screenshots.has(name));
 if (missingScreenshots.length) {
   console.error(`browser QA missing proof screenshots: ${missingScreenshots.join(", ")}`);
+  process.exit(1);
+}
+function pngDimensions(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  if (buffer.length < 24 || buffer.toString("ascii", 1, 4) !== "PNG") return null;
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+const badFiles = [];
+for (const name of screenshots) {
+  const filePath = path.join("docs", "screenshots", name);
+  if (!fs.existsSync(filePath)) {
+    badFiles.push(`${name}: missing file`);
+    continue;
+  }
+  const dimensions = pngDimensions(filePath);
+  if (!dimensions || dimensions.width < 300 || dimensions.height < 600) {
+    badFiles.push(`${name}: invalid or tiny PNG ${dimensions ? `${dimensions.width}x${dimensions.height}` : "unknown"}`);
+  }
+}
+if (badFiles.length) {
+  console.error(`browser QA screenshot files invalid: ${badFiles.slice(0, 12).join(", ")}`);
   process.exit(1);
 }
 ' >/tmp/tjc-browser-qa-check.txt 2>&1; then
@@ -377,6 +673,19 @@ else
   pass "local free disk at least ${min_free_gib} GiB: ${free_gib} GiB"
 fi
 
+if node scripts/safe-lane-disk-report.mjs >/tmp/tjc-safe-lane-disk-report.txt 2>&1; then
+  pass "safe lane disk report is non-destructive and isolated"
+else
+  fail "safe lane disk report failed"
+  cat /tmp/tjc-safe-lane-disk-report.txt
+fi
+if node scripts/safe-lane-disk-report-test.mjs >/tmp/tjc-safe-lane-disk-report-test.txt 2>&1; then
+  pass "safe lane disk report self-test rejects shared-checkout and destructive regressions"
+else
+  fail "safe lane disk report self-test failed"
+  cat /tmp/tjc-safe-lane-disk-report-test.txt
+fi
+
 video_zip="/Users/halim4pro/Desktop/MVP/Stock Media/01_Source Exports/Videos/Incoming/Samuel Kuo/Samuel Kuo-3-001.zip"
 video_dir="/Users/halim4pro/Desktop/MVP/Stock Media/01_Source Exports/Videos/Incoming/Samuel Kuo/Samuel Kuo"
 if [ -f "$video_zip" ] && [ -d "$video_dir" ]; then
@@ -435,21 +744,12 @@ fi
 team_beta_signoff_output="/tmp/tjc-team-beta-signoff-guard.txt"
 if node scripts/team-beta-signoff-guard.mjs >"$team_beta_signoff_output" 2>&1; then
   if grep -q 'Team Beta signoff guard passed (GO)' "$team_beta_signoff_output"; then
-    if grep -q 'Owner-led internal dry run | GO' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'Tiny teammate invite batch | GO' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'Production/internal launch | NO-GO' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'Final Signoff Block' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'Current final call: \*\*GO for tiny internal Team Beta invite batch' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'docs/team-beta-go-no-go-packet.md' docs/beta-readiness-command-center.md docs/team-beta-internal-test-packet.md; then
-      pass "Team Beta GO/NO-GO packet matches signed invite GO"
-    else
-      fail "Team Beta GO/NO-GO packet missing signed invite GO evidence"
-    fi
+    fail "Team Beta signoff record still says GO after June 15 P0; renew approval only after blockers close"
   else
-    if grep -q 'Owner-led internal dry run | GO' docs/team-beta-go-no-go-packet.md \
+    if grep -q 'Owner-led internal dry run | PASS local only' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Tiny teammate invite batch | NO-GO until human gates close' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Production/internal launch | NO-GO' docs/team-beta-go-no-go-packet.md \
-      && grep -Eqi 'Do not claim invite GO while any .*field is blank' docs/team-beta-go-no-go-packet.md \
+      && grep -Eqi 'Do not claim invite GO while any June 15 .*field is blank' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Final Signoff Block' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Current final call: \*\*NO-GO for teammate invite batch' docs/team-beta-go-no-go-packet.md \
       && grep -q 'docs/team-beta-go-no-go-packet.md' docs/beta-readiness-command-center.md docs/team-beta-internal-test-packet.md; then
@@ -463,11 +763,11 @@ else
   cat "$team_beta_signoff_output"
 fi
 
-if grep -q 'Team Beta signoff guard passed' "$team_beta_signoff_output" \
+if grep -q 'Team Beta signoff guard passed (NO-GO)' "$team_beta_signoff_output" \
   && grep -q 'docs/team-beta-signoff-record.md' docs/team-beta-go-no-go-packet.md docs/beta-readiness-command-center.md docs/team-beta-internal-test-packet.md; then
-  pass "Team Beta human signoff record is valid"
+  pass "Team Beta human signoff record is current NO-GO after June 15 P0"
 else
-  fail "Team Beta human signoff record invalid"
+  fail "Team Beta human signoff record must be current NO-GO after June 15 P0"
   cat "$team_beta_signoff_output"
 fi
 

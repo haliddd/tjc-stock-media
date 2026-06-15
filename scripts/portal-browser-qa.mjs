@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 import playwright from "../frontend/node_modules/playwright/index.js";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+execFileSync(process.execPath, ["scripts/safe-lane-headroom-guard.mjs"], {
+  stdio: "inherit",
+  env: { ...process.env, SAFE_LANE_HEADROOM_CONTEXT: "browser-qa" }
+});
+
 const { chromium } = playwright;
-const base = process.env.BASE_URL || "http://localhost:3008";
+const base = process.env.BASE_URL || "http://localhost:4871";
 const trustedHeaderQa = process.env.PORTAL_QA_TRUSTED_HEADERS === "1";
 let betaAuthProbe = null;
 const outDir = path.resolve("docs/screenshots");

@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUPS="$ROOT/.runtime/backups"
 
+cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-restore-test}" node scripts/safe-lane-headroom-guard.mjs
+
 latest="$(
   find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null \
     | while read -r candidate; do

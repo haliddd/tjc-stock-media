@@ -173,7 +173,6 @@ export function useAssetsSearch({
   offset?: number;
 }) {
   const params = new URLSearchParams();
-  params.set("role", role);
   params.set("limit", String(limit));
   params.set("offset", String(offset));
   if (query) params.set("q", query);
@@ -187,11 +186,12 @@ export function useAssetsSearch({
 
 export function useAssetDetail(id: string, role: DemoRole) {
   const encoded = encodeURIComponent(id);
-  return useJsonApi<AssetDetailResponse>(id ? `/api/assets/${encoded}?role=${encodeURIComponent(role)}` : null, role);
+  return useJsonApi<AssetDetailResponse>(id ? `/api/assets/${encoded}` : null, role);
 }
 
 export function useReviewQueue(role: DemoRole, queue = "pending") {
-  const url = canReview(role) ? `/api/review?role=${encodeURIComponent(role)}&queue=${encodeURIComponent(queue)}` : null;
+  const params = new URLSearchParams({ queue });
+  const url = canReview(role) ? `/api/review?${params.toString()}` : null;
   return useJsonApi<ReviewQueueResponse>(url, role);
 }
 
@@ -214,12 +214,12 @@ export function useInsights(role: DemoRole) {
 }
 
 export function useAdminReadiness(role: DemoRole) {
-  const url = role === "DAM Admin" ? `/api/admin/readiness?role=${encodeURIComponent(role)}` : null;
+  const url = role === "DAM Admin" ? "/api/admin/readiness" : null;
   return useJsonApi<DamReadinessResult>(url, role);
 }
 
 export function useBrandKit(id: string, role: DemoRole) {
-  return useJsonApi<BrandKitResponse>(`/api/brand-kits/${encodeURIComponent(id)}?role=${encodeURIComponent(role)}`, role);
+  return useJsonApi<BrandKitResponse>(`/api/brand-kits/${encodeURIComponent(id)}`, role);
 }
 
 export function useDownloadGate(id: string, role: DemoRole) {

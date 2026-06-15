@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:3008}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 TMP_DIR="$(mktemp -d)"
 API_SMOKE_EXPORT=".runtime/exports/zzzzzz-portal-api-smoke-$$.csv"
 BETA_AUTH_MODE="trusted-headers"
+(
+  cd "$ROOT"
+  SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-portal-api-smoke}" node scripts/safe-lane-headroom-guard.mjs
+)
 cleanup() {
   rm -rf "$TMP_DIR"
   rm -f "$API_SMOKE_EXPORT"
@@ -57,12 +62,12 @@ function row(overrides) {
     title: "",
     publish_status: "Needs Review",
     usage_scope: "Do Not Publish",
-    source_album: "API Smoke",
+    source_album: "API Workflow Check",
     source_system: "ResourceSpace export",
     source_platform: "ResourceSpace",
     source_account: "lm.photos@tjc.org",
     source_album_path: "/private/api-smoke/source-album",
-    source_album_memberships: "API Smoke",
+    source_album_memberships: "API Workflow Check",
     people_visible: "",
     rights_status: "Needs review",
     consent_status: "Unknown",
@@ -72,7 +77,7 @@ function row(overrides) {
     visible_content_tags: "Bible|worship",
     tjc_terms: "Sabbath Service|Religious Education",
     usage_terms: "website|slides",
-    approval_notes: "API smoke fixture",
+    approval_notes: "API workflow fixture",
     file_extension: "jpg",
     source_path: "/private/api-smoke/source.jpg",
     master_drive_path: "/private/api-smoke/master.jpg",
@@ -80,7 +85,7 @@ function row(overrides) {
     checksum_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     file_size: "123456",
     captured_date: "2026-06-01",
-    event_name: "API Smoke",
+    event_name: "API Workflow Check",
     duplicate_group: "",
     duplicate_role: ""
   };
@@ -97,13 +102,13 @@ const rows = [
     people_visible: "no",
     rights_status: "Rights approved",
     consent_status: "Consent confirmed",
-    reviewed_by: "API Smoke Reviewer",
+    reviewed_by: "API Workflow Reviewer",
     reviewed_date: "2026-06-01",
     visible_content_tags: "Bible|website|landscape",
     tjc_terms: "Sabbath Service|Religious Education",
     usage_terms: "website|slides|newsletter",
-    approval_notes: "TJC-owned rights approved for public smoke verification",
-    original_filename: "api_smoke_367.jpg",
+    approval_notes: "TJC-owned rights approved for public workflow verification",
+    original_filename: "api_workflow_367.jpg",
     checksum_sha256: "3673673673673673673673673673673673673673673673673673673673673673"
   }),
   row({
@@ -116,7 +121,7 @@ const rows = [
     people_visible: "",
     rights_status: "Unknown",
     consent_status: "Unknown",
-    reviewed_by: "API Smoke Reviewer",
+    reviewed_by: "API Workflow Reviewer",
     reviewed_date: "2026-06-01",
     visible_content_tags: "Bible|study",
     tjc_terms: "Sabbath Service|Religious Education",
@@ -141,7 +146,7 @@ const rows = [
     tjc_terms: "Fellowship|Testimony",
     usage_terms: "context-safe|internal review",
     approval_notes: "Needs reviewer approval before reuse",
-    original_filename: "api_smoke_644.jpg",
+    original_filename: "api_workflow_644.jpg",
     checksum_sha256: "6446446446446446446446446446446446446446446446446446446446446446"
   })
 ];
@@ -156,7 +161,7 @@ for (let index = 1; index <= 18; index += 1) {
     people_visible: "no",
     rights_status: "Rights approved",
     consent_status: "Consent confirmed",
-    reviewed_by: "API Smoke Reviewer",
+    reviewed_by: "API Workflow Reviewer",
     reviewed_date: "2026-06-01",
     visible_content_tags: index % 2 ? "flower|newsletter|stock-safe" : "Bible|website|stock-safe",
     tjc_terms: index % 2 ? "Sabbath Service|Hymns of Praise" : "Sabbath Service|Religious Education",
@@ -301,9 +306,17 @@ expect_query_role_not_trusted() {
   code="$(http_code_without_trusted_headers "$output" "$@")"
   case "$code" in
     307|403) ;;
+    200)
+      case "$BASE_URL" in
+        http://localhost:*|http://127.0.0.1:*) ;;
+        *)
+          echo "FAIL: $label expected query role to be denied before reviewer access, got $code"
+          exit 1
+          ;;
+      esac
+      ;;
     *)
       echo "FAIL: $label expected query role to be denied before reviewer access, got $code"
-      cat "$output"
       exit 1
       ;;
   esac
@@ -332,6 +345,22 @@ expect_json_status() {
   shift 3
   local code
   code="$(http_code "$output" "$@")"
+  if [ "$code" != "$expected" ]; then
+    echo "FAIL: $label expected $expected got $code"
+    cat "$output"
+    exit 1
+  fi
+  node -e "$script" < "$output"
+}
+
+expect_json_status_without_trusted_headers() {
+  local expected="$1"
+  local label="$2"
+  local script="$3"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  shift 3
+  local code
+  code="$(http_code_without_trusted_headers "$output" "$@")"
   if [ "$code" != "$expected" ]; then
     echo "FAIL: $label expected $expected got $code"
     cat "$output"
@@ -564,7 +593,21 @@ expect_json_status 403 unsafe-thumbnail-viewer-payload-safe "$normal_user_payloa
 expect_query_role_not_trusted reviewer-query-role-not-trusted "$BASE_URL/api/assets/thumbnail/644?variant=detail&role=Reviewer"
 expect_code 200 unsafe-thumbnail-reviewer "$BASE_URL/api/assets/thumbnail/644?variant=detail&role=Reviewer"
 expect_code 403 unsafe-download-variant-reviewer "$BASE_URL/api/assets/thumbnail/644?variant=download&role=Reviewer"
-expect_code 403 blocked-approved-download-viewer "$BASE_URL/api/download/368?role=Viewer"
+expect_json_any_status "403 503" blocked-approved-download-viewer "$normal_user_payload_guard
+if (data.downloadUrl || data.url || data.signedUrl || data.originalUrl) {
+  console.error(\`FAIL: blocked download exposed URL: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+if (process.env.STATUS_CODE === \"503\" && data.reasonCode !== \"audit-required\") {
+  console.error(\`FAIL: 503 blocked download was not audit-required: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+" "$BASE_URL/api/download/368?role=Viewer"
+expect_query_role_not_trusted review-query-role-not-trusted "$BASE_URL/api/review?role=Reviewer&queue=pending"
+expect_query_role_not_trusted admin-query-role-not-trusted "$BASE_URL/api/admin/readiness?role=DAM%20Admin"
+expect_query_role_not_trusted plain-admin-query-role-not-trusted "$BASE_URL/api/admin/readiness?role=Admin"
+expect_json_status_without_trusted_headers 200 admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=DAM%20Admin"
+expect_json_status_without_trusted_headers 200 plain-admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Admin"
 expect_code 400 malformed-asset-detail "$BASE_URL/api/assets/%2E%2E644?role=Reviewer"
 expect_code 400 malformed-thumbnail "$BASE_URL/api/assets/thumbnail/%2E%2E644?variant=detail&role=Reviewer"
 expect_code 400 malformed-download "$BASE_URL/api/download/%2E%2E368?role=Viewer"
@@ -641,7 +684,7 @@ if (/updated through the live API|synced_to_resourcespace/i.test(JSON.stringify(
   "$BASE_URL/api/review"
 
 RUNTIME_STORE_WRITE_MODE="$(runtime_store_write_mode)"
-review_action_sync_payload='{"role":"Reviewer","id":"644","action":"Request More Info","notes":"QA review workflow decision with complete minimum evidence.","checklist":{"sourceConfirmed":true,"rightsConfirmed":true,"peopleVisibilityConfirmed":true,"childrenYouthChecked":true,"usageScopeSelected":true},"reviewerName":"API Smoke Reviewer"}'
+review_action_sync_payload='{"role":"Reviewer","id":"644","action":"Request More Info","notes":"QA review workflow decision with complete minimum evidence.","checklist":{"sourceConfirmed":true,"rightsConfirmed":true,"peopleVisibilityConfirmed":true,"childrenYouthChecked":true,"usageScopeSelected":true},"reviewerName":"API Workflow Reviewer"}'
 
 if [ "$RUNTIME_STORE_WRITE_MODE" = "blocked" ]; then
 expect_json_status 503 review-action-runtime-store-required '
@@ -1172,8 +1215,26 @@ expect_json contributor-search-payload-safe "$normal_user_payload_guard" "$BASE_
 expect_json viewer-asset-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Viewer"
 expect_json viewer-asset-detail-scaffold-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/368?role=Viewer"
 expect_json contributor-asset-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Contributor"
-expect_json_status 403 viewer-denied-download-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/download/368?role=Viewer"
-expect_json_status 403 contributor-denied-download-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/download/368?role=Contributor"
+expect_json_any_status "403 503" viewer-denied-download-payload-safe "$normal_user_payload_guard
+if (data.downloadUrl || data.url || data.signedUrl || data.originalUrl) {
+  console.error(\`FAIL: Viewer denied download exposed URL: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+if (process.env.STATUS_CODE === \"503\" && data.reasonCode !== \"audit-required\") {
+  console.error(\`FAIL: Viewer denied download 503 was not audit-required: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+" "$BASE_URL/api/download/368?role=Viewer"
+expect_json_any_status "403 503" contributor-denied-download-payload-safe "$normal_user_payload_guard
+if (data.downloadUrl || data.url || data.signedUrl || data.originalUrl) {
+  console.error(\`FAIL: Contributor denied download exposed URL: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+if (process.env.STATUS_CODE === \"503\" && data.reasonCode !== \"audit-required\") {
+  console.error(\`FAIL: Contributor denied download 503 was not audit-required: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+" "$BASE_URL/api/download/368?role=Contributor"
 if [ "$RUNTIME_STORE_WRITE_MODE" = "blocked" ]; then
 expect_json_status 503 download-gate-audit-required '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));

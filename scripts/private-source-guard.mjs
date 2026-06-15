@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const root = process.cwd();
+const root = process.env.PRIVATE_SOURCE_GUARD_ROOT || process.cwd();
 const allowedFiles = new Set(["frontend/lib/private-source-text.ts"]);
 const scanRoots = ["frontend/lib", "frontend/app"];
 const forbiddenPatterns = [

@@ -281,8 +281,12 @@ function LibraryResultList({
                 <td>{assetType(asset)}</td>
                 <td>{assetRecordRef(asset)}<br /><small>{primaryBlocker === "None" ? "Evidence clear in current role view" : primaryBlocker}</small></td>
                 <td>
-                  <button type="button" onClick={() => onQuickLook(asset)}>Quick look</button>
-                  <button type="button" onClick={() => onSelect(asset)}>{selectedIds.includes(asset.id) ? "Selected" : "Select"}</button>
+                  <div className="ed-library-row-actions">
+                    <button className="ed-row-open" type="button" onClick={() => onQuickLook(asset)}>Open</button>
+                    <button className={cn("ed-row-select", selectedIds.includes(asset.id) && "is-selected")} type="button" aria-pressed={selectedIds.includes(asset.id)} onClick={() => onSelect(asset)}>
+                      {selectedIds.includes(asset.id) ? <><CheckCircle2 size={13} aria-hidden="true" />Selected</> : "Select"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
@@ -358,7 +362,7 @@ export function EnterpriseLibraryPage() {
       announceLibraryAction("Choose a query, saved view, collection, or filter before saving this search.");
       return;
     }
-    const response = await fetch(`/api/saved-searches?role=${encodeURIComponent(role)}`, {
+    const response = await fetch("/api/saved-searches", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
@@ -437,10 +441,10 @@ export function EnterpriseLibraryPage() {
         label="Library workspace views"
         activeId="assets"
         items={[
-          { id: "assets", label: "Assets", icon: Grid3X3, href: routeWithRole("/", role) },
+          { id: "assets", label: "Assets", icon: Grid3X3, href: routeWithRole("/library", role) },
           { id: "collections", label: "Collections", icon: Folder, href: routeWithRole("/collections", role) },
-          { id: "packages", label: "Packages", icon: Archive, href: routeWithRole("/packages", role) },
-          ...(canReview(role) ? [{ id: "rights", label: "Rights", icon: ShieldCheck, href: routeWithRole("/review?queue=rights-review", role) }] : [])
+          { id: "packages", label: "Distribution Sets", icon: Archive, href: routeWithRole("/distribution-sets", role) },
+          ...(canReview(role) ? [{ id: "rights", label: "Rights", icon: ShieldCheck, href: routeWithRole("/governance/rights-consent", role) }] : [])
         ]}
       />
       <DamToolbar
@@ -453,7 +457,7 @@ export function EnterpriseLibraryPage() {
         filterCount={activeFilterCount}
         selectedCount={selectedIds.length}
         sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className={viewMode === "list" ? "is-active" : ""} aria-label="List view" onClick={() => setViewMode("list")}><List size={15} aria-hidden="true" /></button><button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-label="Grid view" onClick={() => setViewMode("grid")}><Grid3X3 size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
-        quickFilters={[{ id: "portal ready", label: "Portal Ready" }, { id: "needs review", label: "Needs Review" }, { id: "rights review", label: "Rights Review" }, { id: "people unknown", label: "People/Minors" }, { id: "photo", label: "Photo beta" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
+        quickFilters={[{ id: "portal ready", label: "Portal Ready" }, { id: "needs review", label: "Needs Evidence" }, { id: "rights review", label: "Rights Review" }, { id: "people unknown", label: "People/Minors" }, { id: "photo", label: "Images" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
       />
       <p className="ed-action-helper">Collection, package, saved view, tag, and metric context never grants reuse permission. Each result shows one clearance status from item-level evidence.</p>
       {discovery ? (
@@ -539,12 +543,13 @@ export function EnterpriseLibraryPage() {
                 key={asset.id}
               />
             ))}</div> : (
-              <section className="ed-empty-state is-quiet">
-                <Search size={24} />
+              <section className="ed-empty-state ed-empty-search is-quiet">
+                <span className="ed-empty-icon"><Search size={24} /></span>
+                <p className="ed-empty-eyebrow">{sourceNoun(search.source)} discovery</p>
                 <h2>{noResultHelp?.title || `No ${sourceNoun(search.source)} records match this search`}</h2>
-                <p>{noResultHelp?.guidance || "Try a broader ministry, category, channel, or rights term."}</p>
+                <p>{noResultHelp?.guidance || "Try a broader ministry, category, channel, or rights term. Saved views and common filters stay available for a fast reset."}</p>
                 {noResultHelp?.querySuggestions.length ? (
-                  <nav aria-label="Suggested searches">
+                  <nav className="ed-empty-suggestions" aria-label="Suggested searches">
                     {noResultHelp.querySuggestions.map((term) => <button type="button" key={term} onClick={() => runSuggestedQuery(term)}>{term}</button>)}
                   </nav>
                 ) : null}
@@ -558,7 +563,10 @@ export function EnterpriseLibraryPage() {
                     {noResultHelp.savedViews.map((item) => <button type="button" key={item.id} onClick={() => openSuggestedView(item.id)}>{item.label}</button>)}
                   </nav>
                 ) : null}
-                <ActionButton onClick={clearAll}>Clear all</ActionButton>
+                <div className="ed-empty-actions">
+                  <ActionButton tone="primary" onClick={clearAll}>Reset library</ActionButton>
+                  <ActionButton onClick={() => setQuery("")}>Clear search</ActionButton>
+                </div>
               </section>
             )}
             {pagination ? (

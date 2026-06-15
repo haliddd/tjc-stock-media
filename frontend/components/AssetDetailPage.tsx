@@ -326,7 +326,7 @@ export function AssetDetailPage({ id }: { id: string }) {
     if (!ready) return;
     let cancelled = false;
     setError("");
-    fetch(`/api/assets/${id}?role=${encodeURIComponent(role)}`)
+    fetch(`/api/assets/${encodeURIComponent(id)}`)
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || "Unable to load media record.");

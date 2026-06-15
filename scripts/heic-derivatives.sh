@@ -13,6 +13,7 @@ CONTAINER_PLAN="/tmp/tjc-heic-derivative-plan-$STAMP.csv"
 CONTAINER_AUDIT="/tmp/tjc-heic-derivative-audit-$STAMP.csv"
 
 cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-heic-derivatives}" node scripts/safe-lane-headroom-guard.mjs
 
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "FAIL: source directory not found: $SOURCE_DIR"

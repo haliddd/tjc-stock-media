@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 
+const root = process.env.GIT_HYGIENE_GUARD_ROOT || process.cwd();
 const mediaPattern = /\.(jpg|jpeg|png|heic|heif|gif|tif|tiff|mp4|mov|m4v|mp3|wav|m4a|aac|flac)$/i;
 const allowedMediaPatterns = [
   /^frontend\/public\/brand\/[^/]+\.png$/i,
@@ -9,7 +10,7 @@ const allowedMediaPatterns = [
 const runtimePattern = /(^|\/)(\.env$|\.runtime|data\/runtime|filestore|mariadb|ComfyUI|models\/)/;
 
 function gitLsFiles() {
-  return execFileSync("git", ["ls-files"], { encoding: "utf8" })
+  return execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);

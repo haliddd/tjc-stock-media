@@ -2,7 +2,7 @@
 
 ## Status
 
-This packet is ready as a human-facing draft. Do not send it until blockers in the final readiness report are cleared.
+June 15 safety update: this packet is a historical draft only. Current status is **NO-GO for sending teammate invites** until `docs/runs/evidence/2026-06-15/11-friday-readiness-report.md` blockers close and Hali renews approval. Do not send this packet or any hosted URL from it.
 
 ## Who Can Test
 

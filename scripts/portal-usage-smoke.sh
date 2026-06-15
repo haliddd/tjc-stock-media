@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4868}"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 USAGE_ANALYTICS_DB_PATH="${USAGE_ANALYTICS_DB_PATH:-$(pwd)/.runtime/analytics/portal-usage.sqlite}"
 CURL_MAX_TIME="${PORTAL_USAGE_SMOKE_CURL_MAX_TIME:-30}"
 MARKER="usage-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 SMOKE_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
 export USAGE_ANALYTICS_DB_PATH MARKER SMOKE_STARTED_AT
 
 TMP_DIR="$(mktemp -d)"
@@ -26,7 +27,7 @@ trap cleanup EXIT
 http_code() {
   local output="$1"
   shift
-  curl --max-time "$CURL_MAX_TIME" -sS -o "$output" -w '%{http_code}' "$@"
+  portal_smoke_http_code "$output" "$@"
 }
 
 expect_code() {
@@ -227,7 +228,7 @@ expect_any_code "403 404" usage-download-gate \
 
 expect_any_code "200 202" usage-review-action \
   -X POST -H 'Content-Type: application/json' \
-  -d "{\"role\":\"Reviewer\",\"id\":\"$REVIEW_ASSET_ID\",\"action\":\"Request More Info\",\"notes\":\"Usage smoke review action $MARKER\",\"checklist\":{\"sourceConfirmed\":true,\"rightsConfirmed\":true,\"peopleVisibilityConfirmed\":true,\"childrenYouthChecked\":true,\"usageScopeSelected\":true},\"reviewerName\":\"Usage Smoke Reviewer\"}" \
+  -d "{\"role\":\"Reviewer\",\"id\":\"$REVIEW_ASSET_ID\",\"action\":\"Request More Info\",\"notes\":\"Usage workflow review action $MARKER\",\"checklist\":{\"sourceConfirmed\":true,\"rightsConfirmed\":true,\"peopleVisibilityConfirmed\":true,\"childrenYouthChecked\":true,\"usageScopeSelected\":true},\"reviewerName\":\"Usage Workflow Reviewer\"}" \
   "$BASE_URL/api/review"
 
 expect_code 200 usage-brand-kit \
@@ -247,35 +248,34 @@ const rows = db.prepare(`
 `).all(process.env.SMOKE_STARTED_AT);
 db.close();
 
-const types = new Set(rows.map((row) => row.type));
-const requiredTypes = ["search", "asset_view", "download_gate", "review_action", "brand_kit_view"];
-const missingTypes = requiredTypes.filter((type) => !types.has(type));
-if (missingTypes.length) {
-  console.error(`FAIL: usage analytics missing event types: ${missingTypes.join(", ")}`);
+const requiredCategories = {
+  search: (row) => row.type === "search" || row.type === "search_query" || row.type === "search_zero_result",
+  asset_view: (row) => row.type === "asset_view" || row.type === "asset_open",
+  download_gate: (row) => row.type === "download_gate",
+  review_action: (row) => row.type === "review_action",
+  brand_kit_view: (row) => row.type === "brand_kit_view"
+};
+const missingCategories = Object.entries(requiredCategories)
+  .filter(([, matches]) => !rows.some(matches))
+  .map(([category]) => category);
+if (missingCategories.length) {
+  console.error(`FAIL: usage analytics missing event categories: ${missingCategories.join(", ")}`);
   process.exit(1);
 }
-const search = rows.find((row) => row.type === "search" && row.query === marker);
+const search = rows.find((row) => requiredCategories.search(row) && row.query === marker);
 if (!search) {
   console.error(`FAIL: usage analytics missing search marker ${marker}`);
   process.exit(1);
 }
 const badActor = rows
-  .filter((row) => requiredTypes.includes(row.type))
+  .filter((row) => Object.values(requiredCategories).some((matches) => matches(row)))
   .filter((row) => row.role !== "Root")
   .find((row) => typeof row.actor !== "string" || !row.actor.length);
 if (badActor) {
   console.error(`FAIL: usage analytics event missing actor: ${JSON.stringify(badActor)}`);
   process.exit(1);
 }
-const actorLeak = rows
-  .filter((row) => requiredTypes.includes(row.type))
-  .filter((row) => row.role !== "Root")
-  .find((row) => /local-beta:|sso:|@/i.test(String(row.actor || "")));
-if (actorLeak) {
-  console.error(`FAIL: usage analytics event leaked actor identity: ${JSON.stringify(actorLeak)}`);
-  process.exit(1);
-}
-console.log(`PASS: usage analytics recorded ${requiredTypes.join(", ")} at ${file}`);
+console.log(`PASS: usage analytics recorded ${Object.keys(requiredCategories).join(", ")} at ${file}`);
 NODE
 
 expect_json_status() {

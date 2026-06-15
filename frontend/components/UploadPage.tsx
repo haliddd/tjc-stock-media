@@ -257,7 +257,7 @@ export function UploadPage() {
         <EmptyState
           title="Send media requires Contributor access"
           description="Contributors provide source, people, rights, files, tags, and reviewer notes. New media stays blocked until review."
-          primary={<PrimaryAction href="/" icon={Search}>Find approved media</PrimaryAction>}
+          primary={<PrimaryAction href="/library" icon={Search}>Find approved media</PrimaryAction>}
         />
       </div>
     );
@@ -279,7 +279,7 @@ export function UploadPage() {
         <dl className="send-command-ledger" aria-label="Send media safety summary">
           {[
             ["Intake", "Review packet"],
-            ["Media scope", "Photo beta"],
+            ["Media scope", "Image intake"],
             ["Default", uploadDefaultState.status],
             ["Publish", "Never from Send"],
             ["Truth", "DAM review"]

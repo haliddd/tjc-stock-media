@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const root = process.cwd();
+const root = process.env.STORAGE_HONESTY_GUARD_ROOT || process.cwd();
 const files = {
   feedback: "frontend/lib/beta-feedback.ts",
   savedSearches: "frontend/lib/saved-search-store.ts",
@@ -45,6 +45,7 @@ const files = {
   reviewQueueResponse: "frontend/lib/review-queue-response.ts",
   batchActions: "frontend/lib/batch-actions.ts",
   batchRoute: "frontend/app/api/batch/route.ts",
+  downloadTickets: "frontend/lib/download-tickets.ts",
   downloadRoute: "frontend/app/api/download/[id]/route.ts",
   approvedDeliveryGate: "frontend/lib/approved-delivery-gate.ts",
   reviewActionWorkflow: "frontend/lib/review-action-workflow.ts",
@@ -73,6 +74,10 @@ function requireAllStrings(label, source, values) {
   for (const value of values) {
     if (!source.includes(`"${value}"`)) failures.push(`${label} must cover ${value}`);
   }
+}
+
+function occurrences(source, value) {
+  return source.split(value).length - 1;
 }
 
 const feedback = read(files.feedback);
@@ -116,6 +121,7 @@ const reviewRoute = read(files.reviewRoute);
 const reviewQueueResponse = read(files.reviewQueueResponse);
 const batchActions = read(files.batchActions);
 const batchRoute = read(files.batchRoute);
+const downloadTickets = read(files.downloadTickets);
 const downloadRoute = read(files.downloadRoute);
 const approvedDeliveryGate = read(files.approvedDeliveryGate);
 const reviewActionWorkflow = read(files.reviewActionWorkflow);
@@ -156,6 +162,15 @@ if (!localJsonStore.includes("function normalizeWindow") || !localJsonStore.incl
 }
 if (!runtimeFileStore.includes("writeRuntimeJsonFile") || !runtimeFileStore.includes("appendRuntimeJsonLine") || !runtimeFileStore.includes("readRuntimeJsonLines") || !runtimeFileStore.includes("listRuntimeFiles")) {
   failures.push("shared runtime file module must own JSON file writes, JSONL append/read, and runtime file listing");
+}
+if (!localJsonStore.includes("assertRuntimeWriteAllowed(categoryForPath(options.filePath()))")) {
+  failures.push("local JSON writes must fail closed in production unless durable runtime storage is configured");
+}
+if (occurrences(runtimeFileStore, "assertRuntimeWriteAllowed(categoryForPath(filePath))") < 2) {
+  failures.push("runtime JSON/JSONL writes must fail closed in production unless durable runtime storage is configured");
+}
+if (!runtimeFileStore.includes("statefulWritesAllowed: !production || durable") || !runtimeFileStore.includes('state: production && !durable ? "Blocked"')) {
+  failures.push("runtime store diagnostics must expose fail-closed production write state");
 }
 if (!runtimeFileStore.includes("maxFilesFromEnd") || !runtimeFileStore.includes("function fileWindow")) {
   failures.push("shared runtime file module must own bounded runtime file listing windows for diagnostics");
@@ -558,6 +573,27 @@ for (const module of [
 
 if (!feedback.includes("normalizeSafeRoutePath")) failures.push("feedback store must normalize routes through normalizeSafeRoutePath");
 if (/containsUnsafeRouteText|startsWith\("\/"\)/.test(feedback)) failures.push("feedback store must not hand-roll route path normalization");
+for (const route of [
+  { name: "beta feedback update route", source: betaFeedbackUpdateRoute, category: "beta-feedback" },
+  { name: "saved search route", source: savedSearchRoute, category: "saved-searches" },
+  { name: "package route", source: packageRoute, category: "package-drafts" }
+]) {
+  if (!route.source.includes("isRuntimeWriteBlockedError") || !route.source.includes(`runtimeWriteBlockedRouteError("${route.category}"`)) {
+    failures.push(`${route.name} must return fail-closed 503 diagnostics when durable runtime writes are unavailable`);
+  }
+}
+if (!betaFeedbackUpdateRoute.includes("isBetaFeedbackDurableStorageError") || !betaFeedbackUpdateRoute.includes("betaFeedbackDurableStorageRouteError(error)")) {
+  failures.push("beta feedback update route must return fail-closed diagnostics when hosted durable feedback storage fails");
+}
+if (!approvedDeliveryGate.includes("ticket-mint-failed") || !approvedDeliveryGate.includes("retry-after-ticket-store-recovers") || !approvedDeliveryGate.includes("Download ticket could not be issued.")) {
+  failures.push("download-ticket issuance must fail closed with explicit diagnostics when ticket storage is unavailable");
+}
+if (!approvedDeliveryGate.includes("RequiredAuditFailedError") || !approvedDeliveryGate.includes("auditRequiredErrorResponse()")) {
+  failures.push("approved-download delivery must fail closed when required audit persistence fails");
+}
+if (occurrences(downloadTickets, "writeRuntimeJsonFile(ticketPath(") < 2 || /fs\.writeFileSync\(ticketPath/.test(downloadTickets)) {
+  failures.push("download-ticket mint/consume writes must use fail-closed runtime JSON persistence");
+}
 if (/npm --prefix frontend run (build|dev|typecheck)/.test(makefile) || /npm --prefix frontend run (build|typecheck)/.test(frontendCheck)) {
   failures.push("frontend build/dev checks must run from frontend cwd so Next outputFileTracingRoot and production artifacts are correct");
 }

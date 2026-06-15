@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4868}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+(
+  cd "$ROOT"
+  SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-portal-sso-smoke}" node scripts/safe-lane-headroom-guard.mjs
+)
+
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 CURL_MAX_TIME="${PORTAL_SSO_SMOKE_CURL_MAX_TIME:-30}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT

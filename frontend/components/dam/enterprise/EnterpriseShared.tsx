@@ -156,13 +156,13 @@ export function ClearanceStatusPanel({
       ) : null}
       <BlockedReasonList blockers={blockers} />
       {approved ? (
-        <Link className="ed-action is-primary" href={routeWithRole("/guide", role)}>View use guidance</Link>
+        <Link className="ed-action is-primary" href={routeWithRole("/help", role)}>View use guidance</Link>
       ) : onRequestReview ? (
         <button className="ed-action" type="button" onClick={onRequestReview}>{actionLabel}</button>
       ) : asset ? (
         <Link className="ed-action" href={routeWithRole(`/assets/${asset.id}`, role)}>{actionLabel}</Link>
       ) : (
-        <Link className="ed-action" href={routeWithRole("/guide", role)}>View use guidance</Link>
+        <Link className="ed-action" href={routeWithRole("/help", role)}>View use guidance</Link>
       )}
     </section>
   );
@@ -312,6 +312,9 @@ export function RoleSafeActionBar({
           Add to distribution set
         </ActionButton>
       </div>
+      {!packet.access.downloadApprovedCopy.allowed ? (
+        <LockedActionNotice reason={packet.access.downloadApprovedCopy.reason || "Reviewer action required before an approved derivative can be downloaded."} />
+      ) : null}
       <p className="ed-action-helper">No public links, CDN/embed, portal shortcuts, or source-file delivery in v1 beta.</p>
     </section>
   );
@@ -403,6 +406,15 @@ export function ActionButton({ children, tone = "secondary", icon: Icon, onClick
       {Icon ? <Icon size={16} aria-hidden="true" /> : null}
       {children}
     </button>
+  );
+}
+
+function LockedActionNotice({ title = "Download locked", reason }: { title?: string; reason: string }) {
+  return (
+    <p className="ed-lock-notice">
+      <Lock size={15} aria-hidden="true" />
+      <span><strong>{title}</strong>{reason}</span>
+    </p>
   );
 }
 
@@ -755,7 +767,7 @@ export function PremiumTaxonomyRail({
       { label: "Sensitive context", filter: "children/youth" }
     ] },
     { label: "Media type", open: true, options: [
-      { label: "Photo beta", filter: "photo" },
+      { label: "Images", filter: "photo" },
       { label: "Graphic/document review", filter: "graphic" }
     ] },
     { label: "Orientation", options: [
@@ -855,7 +867,21 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
   const { role } = useDemoRole();
   const [tab, setTab] = useState(inspectorDrawerTabs[0]);
   const [message, setMessage] = useState("");
-  if (!asset) return <aside className="ed-inspector ed-panel"><h2>Select an asset</h2><p>{sourceNoun(source)} search returned no visible assets.</p></aside>;
+  if (!asset) {
+    return (
+      <aside className="ed-inspector ed-panel ed-inspector-empty">
+        <span className="ed-empty-eyebrow">Context rail</span>
+        <h2>No asset selected</h2>
+        <p>{sourceNoun(source)} search returned no visible assets. Use this rail to keep the next safe action obvious.</p>
+        <div className="ed-empty-intel">
+          <span><strong>1</strong><small>Reset filters</small></span>
+          <span><strong>2</strong><small>Try saved views</small></span>
+          <span><strong>3</strong><small>Request review</small></span>
+        </div>
+        <SourcePill source={source} live={live} />
+      </aside>
+    );
+  }
   const presentation = presentAssetDetailContext(asset, role, source);
   const tabRows = inspectorMetadataRows({ asset, tab, source });
   return (
@@ -882,6 +908,7 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
         <ActionButton tone="dark" icon={Download} disabled disabledReason="Open the full record to run the approved-copy download gate. Source files remain restricted.">Download</ActionButton>
         <ActionButton icon={Folder} disabled disabledReason="Use Distribution Sets for governed references. This panel does not copy source files.">Add to distribution set</ActionButton>
       </div>
+      <LockedActionNotice reason="Open the full record to run the approved-copy gate. Reviewer evidence, approved derivative, and source restrictions still apply." />
       <p className="ed-action-helper">Open full record for approved-copy ticket checks. Distribution actions stay gated; no ZIP, public link, or source-file copy is created.</p>
     </aside>
   );
@@ -959,6 +986,9 @@ export function AssetQuickLookDrawer({
           <Link className="ed-action is-dark" href={routeWithRole(`/assets/${asset.id}`, role)}>Open full record</Link>
           <ActionButton icon={Download} disabled disabledReason={canUseAsset ? "Use full record download gate before any approved-copy download." : "Needs review before download is available."}>Download</ActionButton>
           <ActionButton icon={Folder} disabled disabledReason={canUseAsset ? "Use Distribution Sets for governed references." : "Resolve rights review before adding this asset to a distribution set."}>Add to distribution set</ActionButton>
+        </div>
+        <div className="px-5 pb-3">
+          <LockedActionNotice reason={canUseAsset ? "Use full record ticket gate before downloading an approved copy." : "Reviewer action required before any approved-copy download is available."} />
         </div>
         <p className="ed-action-helper px-5 pb-5">Quick look is read-only. Source files remain restricted; no distribution copy, ZIP, or public link is created here.</p>
       </SheetContent>

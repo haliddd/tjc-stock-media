@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4868}"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 CURL_MAX_TIME="${PORTAL_FEEDBACK_SMOKE_CURL_MAX_TIME:-30}"
 MARKER="feedback-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
 TMP_DIR="$(mktemp -d)"
 cleanup() {
   MARKER="$MARKER" node <<'NODE' >/dev/null 2>&1 || true
@@ -27,7 +28,7 @@ esac
 http_code() {
   local output="$1"
   shift
-  curl --max-time "$CURL_MAX_TIME" -sS -o "$output" -w '%{http_code}' "$@"
+  portal_smoke_http_code "$output" "$@"
 }
 
 expect_json_status() {
@@ -351,7 +352,7 @@ if (/\.\.\/private|source path|master drive|checksum|[a-f0-9]{32,}/i.test(JSON.s
   process.exit(1);
 }
 ' -X PATCH -H 'Content-Type: application/json' \
-  -d '{"role":"DAM Admin","status":"agent-ready","severity":"high","notes":"Smoke triage note for agent-ready feedback."}' \
+  -d '{"role":"DAM Admin","status":"agent-ready","severity":"high","notes":"Workflow triage note for agent-ready feedback."}' \
   "$BASE_URL/api/beta-feedback/$feedback_id?role=DAM%20Admin"
 
 FEEDBACK_ID="$feedback_id" expect_json_status 200 feedback-admin-list-patched '

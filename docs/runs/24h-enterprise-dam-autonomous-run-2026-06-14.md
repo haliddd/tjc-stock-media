@@ -133,7 +133,7 @@ Integrated code:
 
 - Viewer/Contributor source, original, private, admin, checksum, path, signed URL, or ResourceSpace internals leak.
 - Blocked or non-portal-ready media becomes downloadable.
-- Production query-role trust is enabled.
+- Stop if production query-role trust becomes enabled.
 - Live ResourceSpace writeback is enabled or claimed.
 - Feedback secret, private, source, or unsafe screenshot material is exposed.
 - Public share, CDN, embed, original delivery, or public portal behavior appears.

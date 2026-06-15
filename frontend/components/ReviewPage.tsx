@@ -141,7 +141,7 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
     }
     let cancelled = false;
     setError("");
-    fetch(`/api/review?role=${encodeURIComponent(role)}&queue=${encodeURIComponent(activeQueue)}`)
+    fetch(`/api/review?queue=${encodeURIComponent(activeQueue)}`)
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || "Unable to load review queue.");

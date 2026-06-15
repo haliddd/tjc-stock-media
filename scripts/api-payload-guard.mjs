@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const root = process.cwd();
+const root = process.env.API_PAYLOAD_GUARD_ROOT || process.cwd();
 const apiRoot = path.join(root, "frontend/app/api");
 const sourceRedactionSource = fs.readFileSync(path.join(root, "frontend/lib/source-redaction.ts"), "utf8");
 

@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const root = process.cwd();
+const root = process.env.PUBLIC_ENV_GUARD_ROOT || process.cwd();
 const allowedPublicEnv = new Set([
   "NEXT_PUBLIC_BETA_TASK_MODE_ENABLED",
   "NEXT_PUBLIC_BETA_FEEDBACK_ENABLED",

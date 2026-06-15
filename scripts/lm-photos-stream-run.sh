@@ -14,6 +14,7 @@ MIN_FREE_MB="${MIN_FREE_MB:-1024}"
 PROCESS_LIMIT="${PROCESS_LIMIT:-0}"
 
 cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-lm-photos-stream-run}" node scripts/safe-lane-headroom-guard.mjs
 mkdir -p "$WORK_ROOT" "$AUDIT_DIR"
 
 if [ ! -d "$ZIP_DIR" ]; then

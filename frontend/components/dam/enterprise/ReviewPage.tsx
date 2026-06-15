@@ -350,8 +350,8 @@ export function EnterpriseReviewPage() {
                   </div>
                 </div>
               </header>
-              <section className="ed-review-next-action">
-                <span>Next</span>
+              <section className="ed-review-next-action" aria-label="Next required review evidence">
+                <span>Next required evidence</span>
                 <strong>{reviewPresentation?.nextAction}</strong>
                 <p>{reviewPresentation?.nextDetail}</p>
                 <button type="button" onClick={() => queuePortalNote("Reviewer guidance viewed")}>View guidance</button>
@@ -359,6 +359,10 @@ export function EnterpriseReviewPage() {
               <div className={cn("ed-hero-preview is-review", previewExpanded && "is-expanded")}>
                 <span className="ed-preview-derivative-label">Portal-safe preview derivative</span>
                 <AssetThumb asset={selectedAsset} className="ed-review-preview-image" fit="contain" />
+                <div className="ed-preview-redaction-note" aria-label="Preview redaction notice">
+                  <Lock size={14} aria-hidden="true" />
+                  <span>Role-safe derivative only. Source/original hidden.</span>
+                </div>
                 <button className="ed-preview-corner" type="button" aria-label="Open preview record" onClick={() => queuePortalNote("Preview record opened")}>▣</button>
                 <div className="ed-preview-toolbar" aria-label="Preview zoom controls">
                   <button type="button" aria-label="Zoom out" disabled title="Zoom controls are disabled until safe preview tooling is connected."><Minus size={15} /></button>

@@ -145,7 +145,7 @@ export function EnterprisePackageBuilderPage() {
     }
     setSaving(true);
     try {
-      const response = await fetch(`/api/packages?role=${encodeURIComponent(role)}`, {
+      const response = await fetch("/api/packages", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ draft })

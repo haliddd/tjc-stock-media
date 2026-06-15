@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4868}"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 CURL_MAX_TIME="${PORTAL_DOWNLOAD_TICKET_CURL_MAX_TIME:-30}"
 TMP_DIR="$(mktemp -d)"
 SMOKE_EXPORT=".runtime/exports/zzzz-download-ticket-smoke-$$.csv"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
 cleanup() {
   rm -rf "$TMP_DIR"
   if [ "${PORTAL_DOWNLOAD_TICKET_KEEP_FIXTURE:-0}" != "1" ]; then
@@ -12,7 +13,7 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
-REVIEWER_HEADERS=(-H 'x-tjc-role: Reviewer' -H 'x-auth-request-email: reviewer-download@example.test')
+REVIEWER_HEADERS=(-H 'x-tjc-role: Reviewer' -H "x-auth-request-email: $(portal_smoke_trusted_email "Reviewer")")
 local_runtime_probe=0
 case "$BASE_URL" in
   http://localhost:*|http://127.0.0.1:*) local_runtime_probe=1 ;;
@@ -22,6 +23,12 @@ http_code() {
   local output="$1"
   shift
   curl --max-time "$CURL_MAX_TIME" -sS -o "$output" -w '%{http_code}' "$@"
+}
+
+trusted_http_code() {
+  local output="$1"
+  shift
+  portal_smoke_http_code "$output" "$@"
 }
 
 absolute_url() {
@@ -60,14 +67,14 @@ const rows = [
   ],
   [
     "ticket-approved-001",
-    "Ticket Smoke Approved",
+    "Approved Copy Gate Fixture Approved",
     "Approved Internal",
     "Internal",
-    "Download Ticket Smoke",
+    "Approved Copy Gate Fixture",
     "smoke-fixture",
     "no",
     "Rights approved",
-    "Smoke Reviewer",
+    "Workflow Reviewer",
     "2026-06-11",
     "1x1",
     "Bible|Study",
@@ -77,10 +84,10 @@ const rows = [
   ],
   [
     "ticket-blocked-001",
-    "Ticket Smoke Blocked",
+    "Approved Copy Gate Fixture Blocked",
     "Needs Review",
     "Do Not Publish",
-    "Download Ticket Smoke",
+    "Approved Copy Gate Fixture",
     "smoke-fixture",
     "yes",
     "Needs review",
@@ -113,6 +120,40 @@ expect_code() {
 }
 
 expect_json_status() {
+  local expected="$1"
+  local label="$2"
+  local script="$3"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  shift 3
+  local code
+  code="$(http_code "$output" "$@")"
+  if [ "$code" != "$expected" ]; then
+    echo "FAIL: $label expected $expected got $code"
+    cat "$output"
+    exit 1
+  fi
+  node -e "$script" < "$output"
+  echo "PASS: $label ($code)"
+}
+
+expect_json_status_with_trusted_helper() {
+  local expected="$1"
+  local label="$2"
+  local script="$3"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  shift 3
+  local code
+  code="$(trusted_http_code "$output" "$@")"
+  if [ "$code" != "$expected" ]; then
+    echo "FAIL: $label expected $expected got $code"
+    cat "$output"
+    exit 1
+  fi
+  node -e "$script" < "$output"
+  echo "PASS: $label ($code)"
+}
+
+expect_json_status_without_trusted_headers() {
   local expected="$1"
   local label="$2"
   local script="$3"
@@ -295,7 +336,7 @@ if (data.allowed !== false || data.downloadUrl || data.ticket || /ResourceSpace|
 expect_code 400 unsafe-download-path-denied "$BASE_URL/api/download/%2E%2E$APPROVED_ID?role=Viewer"
 
 if [ "$local_runtime_probe" = "1" ]; then
-  expect_json_status 403 body-role-spoof-denied-without-trusted-header '
+  expect_json_status_without_trusted_headers 403 body-role-spoof-denied-without-trusted-header '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 if (data.allowed !== false || data.ticket || data.downloadUrl || !/role|review|not downloadable|approved/i.test(JSON.stringify(data))) {
   console.error(`FAIL: body-only Reviewer spoof did not fail closed: ${JSON.stringify(data)}`);
@@ -305,7 +346,7 @@ if (data.allowed !== false || data.ticket || data.downloadUrl || !/role|review|n
   -d '{"role":"Reviewer","termsAccepted":true,"usageChannel":"Download ticket smoke","reason":"Body role spoof must not mint a ticket."}' \
   "$BASE_URL/api/download/$APPROVED_ID"
 else
-  expect_json_status 200 body-role-spoof-ignored-for-public-viewer '
+  expect_json_status_without_trusted_headers 200 body-role-spoof-ignored-for-public-viewer '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
 if (data.allowed !== true || !data.downloadUrl || data.downloadUrl.includes("role=Reviewer") || /signedUrl|originalUrl|s3:\/\//i.test(text)) {
@@ -427,7 +468,7 @@ if (!gate || !transfer) {
 console.error("PASS: required download audit events persisted");
 '
 else
-  expect_json_status 200 hosted-admin-readiness-audit-surface-safe '
+  expect_json_status_with_trusted_helper 200 hosted-admin-readiness-audit-surface-safe '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 if (!Array.isArray(data.readiness) || !Array.isArray(data.fieldMappings) || !Array.isArray(data.vocabulary)) {
   console.error("FAIL: hosted readiness did not return readiness, field mappings, and vocabulary");
@@ -438,7 +479,7 @@ if (/signedUrl|originalUrl|s3:\/\/|master drive path|sourceAlbumPath|masterDrive
   console.error(`FAIL: hosted readiness exposed private delivery/source internals: ${text.slice(0, 900)}`);
   process.exit(1);
 }
-' "$BASE_URL/api/admin/readiness?role=DAM%20Admin"
+  ' "$BASE_URL/api/admin/readiness?role=DAM%20Admin"
   echo "PASS: hosted audit persistence covered by per-request auditId checks"
 fi
 

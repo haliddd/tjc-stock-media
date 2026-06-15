@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
+import { middleware } from "@/middleware";
 import {
+  BETA_SESSION_COOKIE,
+  BETA_SESSION_ROLE_HEADER,
+  BETA_SESSION_VERIFIED_HEADER,
   betaLoginPathForReturn,
   betaPasswordMatches,
   betaSessionSecretConfigured,
@@ -54,5 +59,37 @@ describe("beta auth", () => {
     expect(safeBetaReturnTo("//example.com/admin")).toBe("/");
     expect(safeBetaReturnTo("/api/assets")).toBe("/");
     expect(safeBetaReturnTo("/beta-login?returnTo=/admin")).toBe("/");
+  });
+
+  it("strips caller-supplied beta role headers on beta auth routes", async () => {
+    configureBetaEnv();
+
+    const response = await middleware(new NextRequest("http://localhost:4871/api/beta-auth/session", {
+      headers: {
+        [BETA_SESSION_ROLE_HEADER]: "Reviewer",
+        [BETA_SESSION_VERIFIED_HEADER]: "1"
+      }
+    }));
+
+    expect(response.headers.get(`x-middleware-request-${BETA_SESSION_ROLE_HEADER}`)).toBeNull();
+    expect(response.headers.get(`x-middleware-request-${BETA_SESSION_VERIFIED_HEADER}`)).toBeNull();
+    expect(response.headers.get("x-middleware-override-headers") || "").not.toContain(BETA_SESSION_ROLE_HEADER);
+    expect(response.headers.get("x-middleware-override-headers") || "").not.toContain(BETA_SESSION_VERIFIED_HEADER);
+  });
+
+  it("injects beta role headers only from verified session cookies", async () => {
+    configureBetaEnv();
+    const cookieValue = await createBetaSessionCookieValue("Reviewer");
+
+    const response = await middleware(new NextRequest("http://localhost:4871/api/beta-auth/session", {
+      headers: {
+        cookie: `${BETA_SESSION_COOKIE}=${cookieValue}`,
+        [BETA_SESSION_ROLE_HEADER]: "DAM Admin",
+        [BETA_SESSION_VERIFIED_HEADER]: "1"
+      }
+    }));
+
+    expect(response.headers.get(`x-middleware-request-${BETA_SESSION_ROLE_HEADER}`)).toBe("Reviewer");
+    expect(response.headers.get(`x-middleware-request-${BETA_SESSION_VERIFIED_HEADER}`)).toBe("1");
   });
 });

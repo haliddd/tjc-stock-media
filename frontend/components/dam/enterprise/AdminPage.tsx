@@ -206,7 +206,7 @@ function LaunchReadinessSummary({ readiness, onSelectModule }: { readiness?: Dam
   const auditActivity = readiness?.auditLog.recent[0];
   const launchFact = facts.find((item) => item.source === "launch-readiness" && item.state !== "pass") || facts.find((item) => item.source === "launch-readiness");
   const stateTone: AdminStatusTone = beta?.ready ? "Healthy" : blockers.length ? "Critical" : "Warning";
-  const stateLabel = beta?.ready ? "Beta Go" : blockers.length ? "Beta No-Go" : "Beta Hold";
+  const stateLabel = beta?.ready ? "Release ready" : blockers.length ? "Release readiness blocked" : "Release hold";
   const queueItems = governanceQueueItems(readiness);
   const primaryQueueItem = queueItems[0];
   const remainingQueueItems = queueItems.slice(1);
@@ -474,7 +474,7 @@ function FeedbackInboxModule() {
   async function loadFeedback() {
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/beta-feedback?role=DAM%20Admin", { headers: { Accept: "application/json" } });
+    const response = await fetch("/api/beta-feedback", { headers: { Accept: "application/json" } });
     const payload = await response.json().catch(() => ({}));
     setLoading(false);
     if (!response.ok) {
@@ -498,7 +498,7 @@ function FeedbackInboxModule() {
   )), [feedback, roleFilter, routeFilter, severityFilter, statusFilter]);
 
   async function updateFeedback(id: string, patch: Partial<Pick<BetaFeedbackRecord, "status" | "severity" | "notes">>) {
-    const response = await fetch(`/api/beta-feedback/${encodeURIComponent(id)}?role=DAM%20Admin`, {
+    const response = await fetch(`/api/beta-feedback/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(patch)
@@ -513,7 +513,6 @@ function FeedbackInboxModule() {
 
   async function exportJson() {
     const params = new URLSearchParams({
-      role: "DAM Admin",
       status: statusFilter,
       severity: severityFilter,
       feedbackRole: roleFilter,
@@ -725,7 +724,7 @@ function OverviewModule({ readiness, onSelectModule }: { readiness?: DamReadines
   return (
     <>
       <section className="ed-admin-section" aria-labelledby="launch-readiness-section">
-        <header><div><span className="ed-section-eyebrow">Launch readiness</span><h3 id="launch-readiness-section" tabIndex={-1}>Go/No-Go evidence</h3></div><p>Exception-first beta controls before internal teammate testing.</p></header>
+        <header><div><span className="ed-section-eyebrow">Launch readiness</span><h3 id="launch-readiness-section" tabIndex={-1}>Blocking evidence</h3></div><p>Exception-first controls before internal teammate testing.</p></header>
         <BetaCommandCenter readiness={readiness} />
       </section>
       <section className="ed-admin-section" aria-labelledby="governance-policies-section">
@@ -740,7 +739,7 @@ function OverviewModule({ readiness, onSelectModule }: { readiness?: DamReadines
         <AuditTable readiness={readiness} onViewAll={() => onSelectModule("audit-logs")} />
       </section>
       <section className="ed-admin-section" aria-labelledby="system-health-section">
-        <header><div><span className="ed-section-eyebrow">System health</span><h3 id="system-health-section" tabIndex={-1}>Source and integration state</h3></div><p>Read-only states are intentional until ResourceSpace writeback is approved.</p></header>
+        <header><div><span className="ed-section-eyebrow">Integration health</span><h3 id="system-health-section" tabIndex={-1}>Source and integration state</h3></div><p>Read-only states are intentional until ResourceSpace writeback is approved.</p></header>
         <section className="ed-card"><header className="ed-card-head"><div><h3>Integration Status</h3><p>ResourceSpace, Drive, S3, and portal readiness.</p></div><SourcePill source={readiness?.source} live={mediaSourceIsLive(readiness?.source)} /></header><IntegrationTable rows={readiness?.integrationReadiness || []} /></section>
       </section>
     </>
@@ -930,7 +929,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNa
   if (activeNav === "audit-logs") return <AuditTable readiness={readiness} />;
   return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>System Status</h3><p>Configuration status for ResourceSpace, writeback, preview proxy, and audit evidence.</p></div><StatusBadge status={readiness?.source.readOnly ? "Read-only" : "Operational"} /></header>
+      <header className="ed-card-head"><div><h3>Integration Status</h3><p>Configuration status for ResourceSpace, writeback, preview proxy, and audit evidence.</p></div><StatusBadge status={readiness?.source.readOnly ? "Read-only" : "Operational"} /></header>
       <IntegrationTable rows={integrations} />
       <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
     </section>
@@ -967,11 +966,11 @@ export function EnterpriseAdminPage() {
   }, []);
 
   if (!ready) return <div className="enterprise-page"><LoadingCard label="Loading control center..." /></div>;
-  if (role !== "DAM Admin") return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Governance requires DAM Admin role</h1><p>System governance, policies, user access, integrations, and audit controls are restricted to DAM Admins.</p><Link href={routeWithRole("/", role)}>Return to Asset Library</Link></section></div>;
+  if (role !== "DAM Admin") return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Governance requires DAM Admin role</h1><p>DAM governance, policies, user access, integrations, and audit controls are restricted to DAM Admins.</p><Link href={routeWithRole("/library", role)}>Return to Asset Library</Link></section></div>;
   const readiness = admin.data;
   return (
     <div className="enterprise-page enterprise-admin-control">
-      <PageHeader title="Governance" subtitle="Launch readiness, policies, audit activity, and system health for the DAM beta." />
+      <PageHeader title="Governance" subtitle="Launch readiness, policies, audit activity, and integration health for the DAM workspace." />
       {admin.loading ? <LoadingCard /> : admin.error ? <ErrorCard message={admin.error} source={admin.source} /> : <LaunchReadinessSummary readiness={readiness} onSelectModule={selectAdminNav} />}
       <div className="ed-admin-grid">
         <aside className="ed-panel ed-admin-nav" aria-label="Admin section navigation"><strong>Section jump list</strong>{adminNavItems.map((item) => {
@@ -984,7 +983,7 @@ export function EnterpriseAdminPage() {
             <AdminModuleContent activeNav={activeNav} readiness={readiness} onSelectModule={selectAdminNav} />
           </>}
         </section>
-        <aside className="ed-admin-rail"><BetaCommandCenter readiness={readiness} compact /><section className="ed-card"><h3>Policy Summary</h3><p>{readiness?.source.detail || "Readiness not loaded."}</p><div className="ed-big-check"><Check size={30} /></div>{policySummaryRows(readiness).map((row) => <p className="ed-row-between" key={row.label}><span>{row.label}</span><strong>{row.value.toLocaleString()}</strong></p>)}<ActionButton onClick={() => selectAdminNav("rights-policies")}>Manage policies</ActionButton></section><section className="ed-card"><header className="ed-card-head"><h3>Recent Activity</h3><button className="ed-link-button" type="button" onClick={() => selectAdminNav("audit-logs")}>View all</button></header>{(readiness?.auditLog.recent || []).slice(0, 5).map((item) => <p className="ed-activity" key={item.id}><Bell size={16} />{item.summary}<small>{item.actor ? `${item.actor} · ` : ""}{item.role} · {item.createdAt}</small></p>)}</section><section className="ed-card"><h3>System Health</h3>{systemHealthRows(readiness).map((item) => <p className="ed-row-between" key={item.id}><span>{item.label}</span><StatusBadge status={item.state} /></p>)}<button className="ed-link-button" type="button" onClick={() => selectAdminNav("system-settings")}>View system status</button></section></aside>
+        <aside className="ed-admin-rail"><BetaCommandCenter readiness={readiness} compact /><section className="ed-card"><h3>Policy Summary</h3><p>{readiness?.source.detail || "Readiness not loaded."}</p><div className="ed-big-check"><Check size={30} /></div>{policySummaryRows(readiness).map((row) => <p className="ed-row-between" key={row.label}><span>{row.label}</span><strong>{row.value.toLocaleString()}</strong></p>)}<ActionButton onClick={() => selectAdminNav("rights-policies")}>Manage policies</ActionButton></section><section className="ed-card"><header className="ed-card-head"><h3>Recent Activity</h3><button className="ed-link-button" type="button" onClick={() => selectAdminNav("audit-logs")}>View all</button></header>{(readiness?.auditLog.recent || []).slice(0, 5).map((item) => <p className="ed-activity" key={item.id}><Bell size={16} />{item.summary}<small>{item.actor ? `${item.actor} · ` : ""}{item.role} · {item.createdAt}</small></p>)}</section><section className="ed-card"><h3>Integration Health</h3>{systemHealthRows(readiness).map((item) => <p className="ed-row-between" key={item.id}><span>{item.label}</span><StatusBadge status={item.state} /></p>)}<button className="ed-link-button" type="button" onClick={() => selectAdminNav("system-settings")}>View integration status</button></section></aside>
       </div>
     </div>
   );

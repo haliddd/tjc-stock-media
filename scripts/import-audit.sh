@@ -9,6 +9,9 @@ OUT_DIR="$ROOT/.runtime/audits"
 MANIFEST="$OUT_DIR/mvp-2024-manifest-$STAMP.csv"
 SUMMARY="$OUT_DIR/mvp-2024-summary-$STAMP.md"
 
+cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-import-audit}" node scripts/safe-lane-headroom-guard.mjs
+
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "FAIL: source directory not found: $SOURCE_DIR"
   exit 1
