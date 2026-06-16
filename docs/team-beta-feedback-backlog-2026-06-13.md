@@ -1,6 +1,6 @@
 # Team Beta Feedback Backlog
 
-Last updated: 2026-06-13T01:48Z
+Last updated: 2026-06-13T05:55Z
 
 Purpose: coordinate internal beta feedback for the completed mature DAM beta and turn safe, triaged teammate reports into a prioritized beta-fix backlog without weakening ResourceSpace, Google Shared Drive, or original/source boundaries.
 
@@ -16,7 +16,9 @@ This artifact does not approve production launch, public publishing, public down
 | Invite packet | `docs/team-beta-internal-test-packet.md` | Ready for six named testers only |
 | Incident runbook | `docs/team-beta-feedback-incident-runbook.md` | Active triage source of truth |
 
-Current backlog call: no confirmed teammate P0/P1 issue is available for code triage. Do not edit app code until a P0/P1 report is reproduced and marked `agent-ready`, or until owner explicitly requests a non-code/docs cleanup.
+Current backlog call: no confirmed teammate-submitted P0/P1 issue is available for code triage. Weekend hardening did find launch-safety P0/P1 issues through code audit, not teammate feedback. Treat those as weekend hardening PRs, not teammate feedback volume.
+
+Do not edit app code from this backlog until a P0/P1 report is reproduced and marked `agent-ready`, or until the owner explicitly scopes a non-feedback launch hardening fix.
 
 ## Boundary Rules
 
@@ -53,6 +55,9 @@ Current backlog call: no confirmed teammate P0/P1 issue is available for code tr
 |---|---|---|---|---|
 | P0 | None confirmed | All / source boundary | Hold code edits until a reproduced P0 exists. | Hosted export or Admin inbox shows `critical` + `agent-ready`; incident lead records stop/resume call. |
 | P1 | None confirmed | All / core route | Hold code edits until a reproduced P1 exists. | Hosted export or Admin inbox shows `high` + `agent-ready`; repro has role, route, expected, actual, device/browser. |
+| P1 | Weekend hardening | Security / feedback | Hosted feedback storage and attachment safety must be deployed and validated before next batch. | Attachments disabled or privately gated; hosted KV failure does not claim saved; Admin can verify feedback works. |
+| P1 | Weekend hardening | Security / auth | Hosted beta must require explicit `BETA_SESSION_SECRET` and throttle repeated invalid login attempts. | Focused tests pass; hosted env name confirmed without recording value; no session cookie on rate limit. |
+| P1 | Weekend hardening | Viewer / photo-only scope | Normal Viewer/Contributor beta must be photo-only and hide fixture/demo rows. | No audio/video, `demo-fallback`, fixture labels, `@example` creators, source/original/private tokens in normal payloads. |
 | P2 | Watch | DAM Admin / feedback operations | Separate smoke-loop feedback from teammate reports so backlog counts do not look like user confusion. | Smoke records are marked `fixed`, `wont-fix`, or labeled as QA smoke before next batch report. |
 | P2 | Watch | Viewer / search recovery | Track whether `RE`, `Religious Education`, `Sabbath Service`, `Hymns of Praise`, `baptism`, `Holy Communion`, `testimony`, `children`, and `archive-only` feel TJC-native. | 80%+ testers can find useful results or clear recovery guidance; no sensitive category looks stock-safe without review. |
 | P2 | Watch | Viewer / trust language | Track whether testers can distinguish `Portal Ready`, `Needs Review`, `Stock-safe`, `Context-safe`, and `Archive-only` within 60 seconds. | No tester reports that raw `Approved Public`, package membership, collection membership, metrics, or AI suggestions read as permission. |
@@ -84,6 +89,7 @@ Do not invite a wider internal batch until:
 
 - P0 count is 0 unresolved.
 - P1 count is 0 unresolved or explicitly documented as accepted beta limit.
+- Weekend hardening P0/P1 PRs are reviewed, merged by a human, deployed by a human if needed, and hosted evidence is rerun with explicit approval for mutating smokes.
 - Feedback export has been reviewed for private/source details before commit.
 - Smoke-loop records are excluded from teammate feedback counts.
 - Incident lead records resume or hold-next-batch decision.

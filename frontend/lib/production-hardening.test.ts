@@ -173,7 +173,6 @@ describe("photo-only beta fixture scope", () => {
     expect(payload.title).toBe("Media record");
     expect(payload.collection).toBe("Media library");
   });
-
   it("redacts fallback fixture labels from normal role collection thumbnails", () => {
     const collections = buildCollections(demoFallbackAssets, "Viewer");
     const text = JSON.stringify(collections);
