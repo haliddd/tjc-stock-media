@@ -1,4 +1,4 @@
-.PHONY: init up down restart logs smoke tag-search-static-smoke import-audit import-mvp-batch approve-mvp-batch heic-derivatives polish-mvp-ui lm-photos-zip-inventory lm-photos-stream-run lm-photos-run-report video-manifest export-metadata backup restore-test launch-readiness live-dam-surface-guard api-identity-guard api-audit-guard api-payload-guard private-source-guard public-env-guard git-hygiene-guard storage-honesty-guard frontend-dev frontend-check demo-check portal-api-smoke portal-sso-smoke portal-usage-smoke portal-delivery-smoke portal-download-ticket-smoke portal-writeback-guard-smoke portal-package-smoke portal-saved-search-smoke portal-feedback-smoke portal-redaction-crawler portal-beta-rehearsal portal-hosted-smoke portal-browser-qa
+.PHONY: init up down restart logs smoke tag-search-static-smoke import-audit import-mvp-batch approve-mvp-batch heic-derivatives polish-mvp-ui lm-photos-zip-inventory lm-photos-stream-run lm-photos-run-report video-manifest export-metadata backup restore-test launch-readiness photo-only-resourcespace-readiness live-dam-surface-guard api-identity-guard api-audit-guard api-payload-guard private-source-guard public-env-guard git-hygiene-guard storage-honesty-guard frontend-dev frontend-check demo-check portal-api-smoke portal-sso-smoke portal-usage-smoke portal-delivery-smoke portal-download-ticket-smoke portal-writeback-guard-smoke portal-package-smoke portal-saved-search-smoke portal-feedback-smoke portal-redaction-crawler portal-beta-rehearsal portal-hosted-smoke portal-browser-qa
 
 IMPORT_DIR ?= /Users/halim4pro/Desktop/MVP/Stock Media/01_Source Exports/Photos/Imported/MVP 2024
 LM_PHOTOS_ZIP_DIR ?= /Users/halim4pro/Desktop/MVP/Stock Media/01_Source Exports/Photos/Incoming/lm-photo
@@ -63,6 +63,9 @@ restore-test:
 
 launch-readiness:
 	./scripts/launch-readiness.sh
+
+photo-only-resourcespace-readiness:
+	node scripts/photo-only-resourcespace-readiness.mjs
 
 live-dam-surface-guard:
 	./scripts/live-dam-surface-guard.mjs
