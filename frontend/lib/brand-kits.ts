@@ -145,7 +145,7 @@ function publicWarnings(warnings: string[]) {
 }
 
 export async function buildBrandKitResponse(config: BrandKitConfig, role: DemoRole) {
-  const { assets, ...envelope } = await getMediaSourceSession(role);
+  const { assets, rawSource, ...envelope } = await getMediaSourceSession(role);
   const collectionId = brandKitCollectionId(config.collectionEnvKey);
   const sectionMappings = buildSectionMappings(config);
   const liveCollection = collectionId ? await getResourceSpaceCollectionAssets(collectionId) : null;
@@ -193,6 +193,7 @@ export async function buildBrandKitResponse(config: BrandKitConfig, role: DemoRo
       warnings: governanceWarnings
     }),
     ...envelope,
+    ...(opsView ? { rawSource } : {}),
     warnings: governanceWarnings,
     collectionStatus: opsView && liveCollection
       ? {
