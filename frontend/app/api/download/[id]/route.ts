@@ -125,7 +125,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(error.body, { status: error.status });
   }
   if (session.roleOverride.denied) return roleOverrideDeniedResponse(session, id);
-  const { asset, source } = await getAssetRecordById(id);
+  const { asset, source } = await getAssetRecordById(id, role);
 
   if (!asset) {
     const error = downloadNotFoundError(session, source);
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (session.roleOverride.denied) return roleOverrideDeniedResponse(session, id);
 
-  const { asset, source } = await getAssetRecordById(id);
+  const { asset, source } = await getAssetRecordById(id, role);
   const envelope = session.sourceEnvelope(source);
   const auditSource = envelope.source;
 
