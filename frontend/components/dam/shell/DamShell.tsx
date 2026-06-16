@@ -3,12 +3,12 @@
 import { Suspense, useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FolderOpen, HelpCircle, Library, Menu, Search, ShieldCheck, UploadCloud } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { Toaster } from "sonner";
 import { BetaPrototypeTools } from "@/components/BetaPrototypeTools";
 import { AppSidebar } from "@/components/dam/shell/AppSidebar";
 import { DamCommandHeader } from "@/components/dam/shell/DamCommandHeader";
-import { workspaceCopyForPath } from "@/components/dam/shell/damShellNav";
+import { getVisibleMobileNavItems, workspaceCopyForPath } from "@/components/dam/shell/damShellNav";
 import { useDemoRole } from "@/components/RoleProvider";
 import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { routeWithRole } from "@/lib/role-routes";
@@ -63,13 +63,7 @@ function MobileAppBars() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const workspace = workspaceCopyForPath(pathname, searchParams.toString());
-  const bottomItems = [
-    { label: "Library", href: "/library", icon: Library },
-    { label: "Upload", href: "/upload", icon: UploadCloud },
-    { label: "Review", href: "/review", icon: ShieldCheck },
-    { label: "Collections", href: "/collections", icon: FolderOpen },
-    { label: "Help", href: "/help", icon: HelpCircle }
-  ];
+  const bottomItems = getVisibleMobileNavItems(role);
 
   return (
     <>
@@ -94,7 +88,7 @@ function MobileAppBars() {
           return (
             <Link key={item.href} href={routeWithRole(item.href, role)} aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined}>
               <Icon size={18} aria-hidden="true" />
-              <span>{item.label}</span>
+              <span>{item.mobileLabel || item.label}</span>
             </Link>
           );
         })}
