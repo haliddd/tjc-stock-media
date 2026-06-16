@@ -5,6 +5,7 @@ import type { AuditEventRecord } from "@/lib/audit-log";
 import type { getAssetRecordById } from "@/lib/catalog";
 import type { createDamRouteSession } from "@/lib/dam-route-session";
 import type { DownloadTicketRecord } from "@/lib/download-tickets";
+import { productionRuntime } from "@/lib/env";
 import type { ImageVariant } from "@/lib/images";
 import { findFilestoreDerivative } from "@/lib/media-source";
 import { safeSlugText } from "@/lib/persisted-record-safety";
@@ -90,6 +91,7 @@ export function readDeliveredImage(filePath: string): DeliveredImage | null {
 
 function generatedFallbackApprovedCopy(id: string, source?: AssetRecordResult["source"]): DeliveredImage | null {
   if (source?.adapter !== "demo-fallback" || !generatedFallbackApprovedCopyIds.has(id)) return null;
+  if (process.env.VERCEL === "1" || productionRuntime()) return null;
   const fileBytes = Buffer.from(generatedFallbackJpegBase64, "base64");
   const bytes = new ArrayBuffer(fileBytes.byteLength);
   new Uint8Array(bytes).set(fileBytes);
