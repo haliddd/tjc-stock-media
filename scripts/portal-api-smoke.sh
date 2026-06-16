@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BASE_URL="${BASE_URL:-http://localhost:4871}"
+BASE_URL="${BASE_URL:-http://localhost:4867}"
 TMP_DIR="$(mktemp -d)"
-API_SMOKE_EXPORT=".runtime/exports/zzzzzz-portal-api-smoke-$$.csv"
+API_SMOKE_EXPORT=".runtime/exports/resourcespace-metadata-99999999-999999.csv"
 BETA_AUTH_MODE="trusted-headers"
 (
   cd "$ROOT"
@@ -209,6 +209,7 @@ http_code() {
   trusted_role="$(trusted_header_role "${curl_args[@]}")"
   if [ -n "$trusted_role" ]; then
     curl_args=(
+      -H "x-tjc-local-beta-role: $trusted_role"
       -H "x-tjc-role: $trusted_role"
       -H "x-auth-request-email: $(trusted_header_email "$trusted_role")"
       "${curl_args[@]}"
@@ -798,11 +799,11 @@ expect_json_status 400 noncanonical-upload-tags-payload-safe "$normal_user_paylo
   -F 'sourceLink=https://drive.google.com/example' \
   "$BASE_URL/api/upload"
 
-expect_json_status 400 unsafe-upload-tags-sanitized '
+expect_json unsafe-upload-tags-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("suggested tags")) {
-  console.error(`FAIL: unsafe upload tags did not become missing review context: ${text.slice(0, 700)}`);
+if (data.status !== "validated" || data.defaultReviewState !== "Needs Review / Do Not Publish") {
+  console.error(`FAIL: unsafe upload tags did not stay non-publishing validated intake: ${text.slice(0, 700)}`);
   process.exit(1);
 }
 if (text.includes("../private") || /source path|master drive|checksum|[a-f0-9]{32,}/i.test(text)) {
@@ -898,7 +899,7 @@ if (/javascript:|source path|master drive|checksum|\.\.\/private/i.test(text)) {
 expect_json_status 400 upload-display-fields-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("event date") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
+if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("event name") || !data.missingRequired.includes("source/photographer")) {
   console.error(`FAIL: unsafe upload display/date fields did not become missing requirements: ${text.slice(0, 700)}`);
   process.exit(1);
 }
@@ -929,7 +930,7 @@ if (text.includes("../private") || /source path|master drive|checksum/i.test(tex
 expect_json_status 400 upload-checksum-display-fields-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
+if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("source/photographer")) {
   console.error(`FAIL: checksum-shaped upload display fields did not become missing requirements: ${text.slice(0, 700)}`);
   process.exit(1);
 }

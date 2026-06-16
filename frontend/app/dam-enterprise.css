@@ -9997,6 +9997,13 @@ body:has(.dam-packet-workbench) .beta-report-button {
   border-color: #0b4b42;
 }
 
+.beta-invite-hint {
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 800;
+  color: #68776f;
+}
+
 .beta-login-submit {
   display: inline-flex;
   align-items: center;

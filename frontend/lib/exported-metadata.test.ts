@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("latestMetadataExportPath", () => {
-  it("ignores smoke fixture CSVs when selecting ResourceSpace metadata", () => {
+  it("ignores non-ResourceSpace smoke CSVs when selecting ResourceSpace metadata", () => {
     const root = tempRuntimeRoot();
     const exportDir = path.join(root, ".runtime", "exports");
     const older = path.join(exportDir, "resourcespace-metadata-20260604-171242.csv");
@@ -34,5 +34,17 @@ describe("latestMetadataExportPath", () => {
     fs.writeFileSync(smoke, "resource_id,title\nsmoke,Fixture\n");
 
     expect(latestMetadataExportPath()).toBe(latest);
+  });
+
+  it("selects the API smoke fixture when it uses the ResourceSpace metadata filename contract", () => {
+    const root = tempRuntimeRoot();
+    const exportDir = path.join(root, ".runtime", "exports");
+    const baseline = path.join(exportDir, "resourcespace-metadata-20260604-193852.csv");
+    const smoke = path.join(exportDir, "resourcespace-metadata-99999999-999999.csv");
+
+    fs.writeFileSync(baseline, "resource_id,title\n1,Baseline\n");
+    fs.writeFileSync(smoke, "resource_id,title\n644,API Smoke Fixture\n");
+
+    expect(latestMetadataExportPath()).toBe(smoke);
   });
 });

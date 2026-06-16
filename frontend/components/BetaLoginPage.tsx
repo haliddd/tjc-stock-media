@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LockKeyhole, LogIn, ShieldCheck } from "lucide-react";
-import { betaPersonas, safeBetaReturnTo } from "@/lib/beta-auth";
+import { betaChurchInviteCodeRequired, betaPersonas, safeBetaReturnTo } from "@/lib/beta-auth";
 import type { DemoRole } from "@/lib/types";
 import { cn } from "@/lib/ui";
 
@@ -13,10 +13,12 @@ export function BetaLoginPage() {
   const returnTo = useMemo(() => safeBetaReturnTo(searchParams.get("returnTo")), [searchParams]);
   const [role, setRole] = useState<DemoRole>("Viewer");
   const [password, setPassword] = useState("");
+  const [invitationCode, setInvitationCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
 
   const selectedPersona = betaPersonas.find((persona) => persona.role === role) || betaPersonas[0];
+  const inviteRequired = betaChurchInviteCodeRequired(role);
 
   async function submitLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,7 +28,7 @@ export function BetaLoginPage() {
       const response = await fetch("/api/beta-auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ role, password, returnTo })
+        body: JSON.stringify({ role, password, invitationCode: inviteRequired ? invitationCode : "", returnTo })
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -76,6 +78,7 @@ export function BetaLoginPage() {
                 onClick={() => {
                   setRole(persona.role);
                   setPassword("");
+                  setInvitationCode("");
                   setMessage("");
                 }}
               >
@@ -95,6 +98,20 @@ export function BetaLoginPage() {
               required
             />
           </label>
+
+          {inviteRequired ? (
+            <label className="beta-password-field">
+              <span>Church invitation code</span>
+              <input
+                type="password"
+                value={invitationCode}
+                onChange={(event) => setInvitationCode(event.target.value)}
+                autoComplete="one-time-code"
+                required
+              />
+              <small className="beta-invite-hint">Contributor and above need a church-location invite code from their local church/location.</small>
+            </label>
+          ) : null}
 
           {message ? <p className="beta-login-error" role="alert">{message}</p> : null}
 

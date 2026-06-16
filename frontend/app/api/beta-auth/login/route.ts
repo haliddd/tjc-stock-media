@@ -4,6 +4,9 @@ import {
   BETA_SESSION_COOKIE,
   BETA_SESSION_MAX_AGE_SECONDS,
   betaAuthEnabled,
+  betaChurchInviteCodeMatches,
+  betaChurchInviteCodeRequired,
+  betaChurchInviteCodesConfigured,
   betaPasswordMatches,
   betaPersonaConfigured,
   betaPersonas,
@@ -34,7 +37,9 @@ export async function POST(request: NextRequest) {
   const body = await readJsonObject(request);
   const role = betaRoleFromInput(body.role);
   const password = typeof body.password === "string" ? body.password : "";
+  const invitationCode = typeof body.invitationCode === "string" ? body.invitationCode : "";
   const returnTo = safeBetaReturnTo(body.returnTo);
+  const inviteRequired = betaChurchInviteCodeRequired(role);
 
   if (!betaPersonaConfigured(role)) {
     appendAuditEvent({
@@ -69,8 +74,32 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ error: "Persona password did not match." }, { status: 401 });
   }
+  if (inviteRequired && !betaChurchInviteCodesConfigured()) {
+    appendAuditEvent({
+      type: "beta_auth_login",
+      role,
+      actor: session.identity.id,
+      status: "blocked",
+      summary: "Internal beta login blocked because church invite codes are not configured.",
+      details: { persona: role, inviteRequired: true }
+    });
+    return NextResponse.json({ error: "Church-location invite codes are not configured for Contributor and above." }, { status: 503 });
+  }
 
-  const value = await createBetaSessionCookieValue(role);
+  const inviteMatch = inviteRequired ? betaChurchInviteCodeMatches(invitationCode) : null;
+  if (inviteRequired && !inviteMatch) {
+    appendAuditEvent({
+      type: "beta_auth_login",
+      role,
+      actor: session.identity.id,
+      status: "denied",
+      summary: "Internal beta login denied because church invite code did not match.",
+      details: { persona: role, inviteRequired: true }
+    });
+    return NextResponse.json({ error: "Contributor and above need a church-location invite code." }, { status: 401 });
+  }
+
+  const value = await createBetaSessionCookieValue(role, Date.now(), inviteMatch?.churchLocation);
   if (!value) {
     appendAuditEvent({
       type: "beta_auth_login",
@@ -89,7 +118,7 @@ export async function POST(request: NextRequest) {
     actor: `internal-beta:${role}`,
     status: "allowed",
     summary: "Internal beta persona logged in.",
-    details: { persona: role }
+    details: { persona: role, churchLocation: inviteMatch?.churchLocation || null }
   });
 
   const response = NextResponse.json({

@@ -1,10 +1,11 @@
 import type { DemoRole } from "@/lib/types";
-import { normalizeRole } from "@/lib/permissions";
 
 export const BETA_SESSION_COOKIE = "tjc_beta_session";
 export const BETA_SESSION_ROLE_HEADER = "x-tjc-beta-role";
 export const BETA_SESSION_VERIFIED_HEADER = "x-tjc-beta-session-verified";
+export const BETA_SESSION_CHURCH_LOCATION_HEADER = "x-tjc-beta-church-location";
 export const BETA_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+export const BETA_CHURCH_INVITE_CODES_ENV = "BETA_CHURCH_INVITE_CODES_JSON";
 
 export type BetaPersona = {
   role: DemoRole;
@@ -18,35 +19,38 @@ export const betaPersonas: BetaPersona[] = [
     role: "Viewer",
     label: "Viewer",
     envName: "BETA_VIEWER_PASSWORD",
-    description: "Library browsing with viewer-safe metadata and gated downloads."
+    description: "Viewer can browse approved media only."
   },
   {
     role: "Contributor",
     label: "Contributor",
     envName: "BETA_CONTRIBUTOR_PASSWORD",
-    description: "Library, upload intake, and package drafts without review/admin controls."
+    description: "Contributor and above need a church-location invite code from their local church/location."
   },
   {
     role: "Reviewer",
     label: "Reviewer",
     envName: "BETA_REVIEWER_PASSWORD",
-    description: "Review queue and rights workflow where current gates allow it."
+    description: "Contributor and above need a church-location invite code from their local church/location."
   },
   {
     role: "DAM Admin",
     label: "DAM Admin",
     envName: "BETA_ADMIN_PASSWORD",
-    description: "Governance views and admin-only diagnostics behind existing gates."
+    description: "Contributor and above need a church-location invite code from their local church/location."
   }
 ];
 
 type BetaSessionPayload = {
   role: DemoRole;
+  churchLocation?: string | null;
   iat: number;
   exp: number;
 };
 
 const encoder = new TextEncoder();
+const betaRoles = ["Viewer", "Contributor", "Reviewer", "DAM Admin"] satisfies DemoRole[];
+const betaInviteRoles: readonly DemoRole[] = ["Contributor", "Reviewer", "DAM Admin"];
 
 function betaFlag(value: string | undefined) {
   return value === "1" || value?.toLowerCase() === "true";
@@ -63,6 +67,56 @@ export function betaPasswordForRole(role: DemoRole) {
 
 export function betaPersonaConfigured(role: DemoRole) {
   return Boolean(betaPasswordForRole(role));
+}
+
+export function betaChurchInviteCodeRequired(role: DemoRole) {
+  return betaInviteRoles.includes(role);
+}
+
+function normalizeChurchLocation(value: unknown) {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+}
+
+function normalizeInviteCode(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function betaChurchInviteCodeEntries() {
+  const raw = process.env[BETA_CHURCH_INVITE_CODES_ENV];
+  if (!raw) return [] as Array<{ churchLocation: string; codes: string[] }>;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    return Object.entries(parsed)
+      .map(([location, codes]) => {
+        const churchLocation = normalizeChurchLocation(location);
+        const codeList = Array.isArray(codes) ? codes : [codes];
+        return {
+          churchLocation,
+          codes: codeList.map(normalizeInviteCode).filter(Boolean)
+        };
+      })
+      .filter((entry) => entry.churchLocation && entry.codes.length);
+  } catch {
+    return [];
+  }
+}
+
+export function betaChurchInviteLocations() {
+  return betaChurchInviteCodeEntries().map((entry) => entry.churchLocation);
+}
+
+export function betaChurchInviteCodesConfigured() {
+  return betaChurchInviteLocations().length > 0;
+}
+
+export function betaChurchInviteCodeMatches(invitationCode: string) {
+  const candidate = normalizeInviteCode(invitationCode);
+  if (!candidate) return null;
+  const match = betaChurchInviteCodeEntries().find((entry) =>
+    entry.codes.some((code) => safeEqual(code, candidate))
+  );
+  return match ? { churchLocation: match.churchLocation } : null;
 }
 
 export function betaSessionSecretConfigured() {
@@ -130,15 +184,17 @@ export function betaPasswordMatches(role: DemoRole, password: string) {
 }
 
 export function betaRoleFromInput(value: unknown) {
-  return normalizeRole(typeof value === "string" ? value : null);
+  return betaRoles.includes(value as DemoRole) ? value as DemoRole : "Viewer";
 }
 
-export async function createBetaSessionCookieValue(role: DemoRole, now = Date.now()) {
+export async function createBetaSessionCookieValue(role: DemoRole, now = Date.now(), churchLocation?: string | null) {
+  const normalizedChurchLocation = normalizeChurchLocation(churchLocation);
   const payload: BetaSessionPayload = {
     role,
     iat: now,
     exp: now + BETA_SESSION_MAX_AGE_SECONDS * 1000
   };
+  if (normalizedChurchLocation) payload.churchLocation = normalizedChurchLocation;
   const encodedPayload = base64UrlEncodeText(JSON.stringify(payload));
   const signature = await hmacSignature(encodedPayload);
   if (!signature) return "";
@@ -161,6 +217,7 @@ export async function verifyBetaSessionCookieValue(value: string | undefined | n
     if (typeof parsed.exp !== "number" || parsed.exp <= now) return null;
     return {
       role: role as DemoRole,
+      churchLocation: normalizeChurchLocation(parsed.churchLocation) || null,
       expiresAt: parsed.exp,
       issuedAt: typeof parsed.iat === "number" ? parsed.iat : null
     };

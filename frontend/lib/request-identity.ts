@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { isKnownRole, normalizeRole, strongestRole } from "@/lib/permissions";
-import { BETA_SESSION_ROLE_HEADER, BETA_SESSION_VERIFIED_HEADER, betaAuthEnabled } from "@/lib/beta-auth";
+import { BETA_SESSION_CHURCH_LOCATION_HEADER, BETA_SESSION_ROLE_HEADER, BETA_SESSION_VERIFIED_HEADER, betaAuthEnabled } from "@/lib/beta-auth";
 import { localBetaRoleOverridesEnabled, productionRuntime, productionTrustedIdentityRequired, trustedSsoHeadersEnabled } from "@/lib/env";
 import { normalizePersistedDisplayText } from "@/lib/request-validation";
 import type { DamUser, DemoRole } from "@/lib/types";
+
+export const LOCAL_BETA_ROLE_OVERRIDE_HEADER = "x-tjc-local-beta-role";
 
 type HeaderReader = { get(name: string): string | null };
 
@@ -63,6 +65,10 @@ function verifiedBetaSessionRole(request: NextRequest) {
   const role = request.headers.get(BETA_SESSION_ROLE_HEADER);
   const verified = request.headers.get(BETA_SESSION_VERIFIED_HEADER) === "1";
   return betaAuthEnabled() && verified && isKnownRole(role) ? role : null;
+}
+
+export function localBetaRoleOverrideFromRequest(request: NextRequest) {
+  return request.headers.get(LOCAL_BETA_ROLE_OVERRIDE_HEADER);
 }
 
 export function resolveClientRoleOverride(
@@ -232,10 +238,12 @@ function mappedRole(groups: string[]) {
 export function requestIdentity(request: NextRequest, explicitRoleOrOptions?: string | null | RequestIdentityOptions): DamUser {
   const betaRole = verifiedBetaSessionRole(request);
   if (betaRole) {
+    const churchLocation = normalizeTrustedIdentityText(request.headers.get(BETA_SESSION_CHURCH_LOCATION_HEADER), 80);
     return {
       id: `internal-beta:${betaRole}`,
       name: `${betaRole} beta persona`,
       role: betaRole,
+      team: churchLocation || undefined,
       sourceSystem: "local-beta"
     };
   }

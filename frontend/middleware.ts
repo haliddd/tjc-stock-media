@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   BETA_SESSION_COOKIE,
+  BETA_SESSION_CHURCH_LOCATION_HEADER,
   BETA_SESSION_ROLE_HEADER,
   BETA_SESSION_VERIFIED_HEADER,
   betaAuthEnabled,
@@ -31,10 +32,12 @@ export async function middleware(request: NextRequest) {
   if (isPublicPath(pathname)) return NextResponse.next();
 
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete(BETA_SESSION_CHURCH_LOCATION_HEADER);
   requestHeaders.delete(BETA_SESSION_ROLE_HEADER);
   requestHeaders.delete(BETA_SESSION_VERIFIED_HEADER);
   const session = await verifyBetaSessionCookieValue(request.cookies.get(BETA_SESSION_COOKIE)?.value);
   if (session) {
+    if (session.churchLocation) requestHeaders.set(BETA_SESSION_CHURCH_LOCATION_HEADER, session.churchLocation);
     requestHeaders.set(BETA_SESSION_ROLE_HEADER, session.role);
     requestHeaders.set(BETA_SESSION_VERIFIED_HEADER, "1");
     return NextResponse.next({ request: { headers: requestHeaders } });
