@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { buildBrandKitResponse, getBrandKitConfig } from "@/lib/brand-kits";
+import { buildCollections } from "@/lib/catalog-summaries";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { scopedCatalogAssetsForRole } from "@/lib/catalog-scope";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
@@ -170,5 +172,24 @@ describe("photo-only beta fixture scope", () => {
     expect(text).not.toMatch(/Hosted Pagination Fixture|Hosted beta fixture|qa\.fixture|API Smoke|demo-fallback/i);
     expect(payload.title).toBe("Media record");
     expect(payload.collection).toBe("Media library");
+  });
+  it("redacts fallback fixture labels from normal role collection thumbnails", () => {
+    const collections = buildCollections(demoFallbackAssets, "Viewer");
+    const text = JSON.stringify(collections);
+
+    expect(text).not.toMatch(/Hosted Pagination Fixture|Hosted beta fixture|qa\.fixture|API Smoke|demo-fallback/i);
+    expect(collections.flatMap((collection) => collection.images).some((image) => image.alt === "Media preview")).toBe(true);
+  });
+
+  it("hides raw media source envelopes from normal role brand kit payloads", async () => {
+    const config = getBrandKitConfig("mvp-2024");
+    expect(config).toBeTruthy();
+
+    const viewer = await buildBrandKitResponse(config!, "Viewer");
+    const reviewer = await buildBrandKitResponse(config!, "Reviewer");
+
+    expect("rawSource" in viewer).toBe(false);
+    expect(JSON.stringify(viewer)).not.toMatch(/demo-fallback|fixture fallback|Hosted pagination fixture/i);
+    expect("rawSource" in reviewer).toBe(true);
   });
 });
