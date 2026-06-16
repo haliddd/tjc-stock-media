@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Archive, CheckCircle2, ChevronLeft, ChevronRight, Filter, Folder, Grid3X3, List, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { Archive, CheckCircle2, ChevronLeft, ChevronRight, Download, FileText, Filter, Folder, FolderPlus, Grid3X3, List, Search, Send, ShieldCheck, SlidersHorizontal, Tags, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/components/hooks/use-pagination";
 import { useDemoRole } from "@/components/RoleProvider";
@@ -22,13 +22,29 @@ import {
   SheetHeader,
   SheetTitle
 } from "@/components/ui/sheet";
-import type { CatalogSort, StockMediaAsset } from "@/lib/types";
-import { sourceNoun } from "@/lib/enterprise-display";
+import type { CatalogSort, DemoRole, MediaSourceStatus, StockMediaAsset } from "@/lib/types";
+import { assetRecordRef, assetType, displayTitle, sourceNoun } from "@/lib/enterprise-display";
 import { canReview } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
+import { buildLibrarySelectionSummary, reconcileVisibleSelection, selectRangeInVisibleOrder, shouldShowBulkBar, toggleSelectedId, type BulkActionId } from "@/lib/library-bulk-selection";
 import { ActionButton, AssetCard, AssetQuickLookDrawer, DamSegmentedNav, DamToolbar, ErrorCard, InspectorDrawer, LoadingCard, PageHeader, SavedViewPanel, SourcePill } from "./EnterpriseShared";
 
 const PAGE_SIZE_OPTIONS = [15, 30, 60, 120];
+type LibraryViewMode = "grid" | "table";
+
+const bulkActionIcons: Partial<Record<BulkActionId, typeof FolderPlus>> = {
+  "add-to-collection": FolderPlus,
+  "create-collection": FolderPlus,
+  "request-reuse": Send,
+  "send-review": FileText,
+  "assign-tags": Tags,
+  "mark-internal": ShieldCheck,
+  "download-approved": Download,
+  "export-metadata": FileText,
+  approve: CheckCircle2,
+  reject: X,
+  archive: Archive
+};
 
 function AppliedFilterBar({
   query,
@@ -220,6 +236,199 @@ function LibraryPaginationControls({
   );
 }
 
+function BulkActionBar({
+  selectedAssets,
+  role,
+  onClear,
+  onAction
+}: {
+  selectedAssets: StockMediaAsset[];
+  role: DemoRole;
+  onClear: () => void;
+  onAction: (actionId: BulkActionId, label: string) => void;
+}) {
+  const summary = useMemo(() => buildLibrarySelectionSummary(selectedAssets, role), [selectedAssets, role]);
+
+  if (!shouldShowBulkBar(selectedAssets.length)) return null;
+
+  return (
+    <section className="ed-bulk-action-bar" aria-label="Selected asset bulk actions">
+      <div className="ed-bulk-action-count">
+        <strong>{selectedAssets.length.toLocaleString()} selected</strong>
+        <span>Approved-copy gates and source restrictions still apply.</span>
+      </div>
+      <div className="ed-bulk-action-buttons">
+        {summary.actions.map((action) => {
+          const Icon = bulkActionIcons[action.id];
+          const disabled = !action.enabled;
+          const reason = disabled ? action.disabledReason : action.warning || action.disabledReason;
+          return (
+            <button
+              type="button"
+              key={action.id}
+              disabled={disabled}
+              title={reason}
+              aria-label={`${action.label}: ${action.statusLabel}${reason ? `. ${reason}` : ""}`}
+              onClick={() => onAction(action.id, action.label)}
+            >
+              {Icon ? <Icon size={15} aria-hidden="true" /> : null}
+              <span>{action.label}</span>
+              <small>{action.statusLabel}</small>
+            </button>
+          );
+        })}
+      </div>
+      <button className="ed-bulk-clear" type="button" onClick={onClear} aria-label="Clear selected assets">
+        <X size={15} aria-hidden="true" />
+        Clear
+      </button>
+    </section>
+  );
+}
+
+function SelectionSummaryRail({
+  assets,
+  role,
+  source,
+  live,
+  onAction
+}: {
+  assets: StockMediaAsset[];
+  role: DemoRole;
+  source?: MediaSourceStatus | null;
+  live?: boolean;
+  onAction: (actionId: BulkActionId, label: string) => void;
+}) {
+  const summary = useMemo(() => buildLibrarySelectionSummary(assets, role), [assets, role]);
+  const visibleActions = summary.actions.slice(0, 8);
+  const breakdowns = [
+    ["Status", summary.statusBreakdown],
+    ["Type", summary.typeBreakdown],
+    ["Rights / consent", summary.rightsBreakdown]
+  ] as const;
+
+  return (
+    <aside className="ed-inspector ed-panel ed-selection-summary-rail" aria-label="Multi-selection summary">
+      <div className="ed-drawer-top">
+        <span>Bulk</span>
+        <strong>{summary.count.toLocaleString()} selected</strong>
+        <span>Safe actions</span>
+      </div>
+      <section className="ed-selection-hero">
+        <strong>{summary.count.toLocaleString()}</strong>
+        <span>visible assets selected</span>
+        <SourcePill source={source} live={live} />
+      </section>
+      <div className="ed-selection-breakdowns">
+        {breakdowns.map(([label, rows]) => (
+          <section key={label}>
+            <h3>{label}</h3>
+            <dl>
+              {rows.slice(0, 5).map(([value, count]) => (
+                <div key={`${label}-${value}`}>
+                  <dt>{value}</dt>
+                  <dd>{count.toLocaleString()}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
+      </div>
+      <section className="ed-selection-shared">
+        <h3>Shared tags</h3>
+        {summary.sharedTags.length ? (
+          <div className="ed-card-tags">{summary.sharedTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+        ) : <p>No tags shared across every selected asset.</p>}
+      </section>
+      <section className="ed-selection-shared">
+        <h3>Selected references</h3>
+        <p>{summary.references.slice(0, 8).join(", ")}</p>
+        <small>{summary.references.length > 8 ? `+${summary.references.length - 8} more references` : "Current visible selection"}</small>
+      </section>
+      <section className="ed-selection-shared">
+        <h3>ResourceSpace IDs</h3>
+        <p>{summary.resourceSpaceIds.slice(0, 8).join(", ")}</p>
+      </section>
+      <section className="ed-selection-warnings">
+        <h3>Warnings</h3>
+        {summary.warnings.map((warning) => <p key={warning}>{warning}</p>)}
+      </section>
+      <section className="ed-selection-actions">
+        <h3>Available bulk actions</h3>
+        {visibleActions.map((action) => {
+          const Icon = bulkActionIcons[action.id];
+          return (
+            <button
+              type="button"
+              key={action.id}
+              disabled={!action.enabled}
+              title={!action.enabled ? action.disabledReason : action.warning}
+              onClick={() => onAction(action.id, action.label)}
+            >
+              {Icon ? <Icon size={15} aria-hidden="true" /> : null}
+              <span>{action.label}</span>
+              <small>{action.statusLabel}</small>
+            </button>
+          );
+        })}
+      </section>
+    </aside>
+  );
+}
+
+function LibraryAssetTable({
+  assets,
+  selectedIds,
+  onSelect,
+  onQuickLook
+}: {
+  assets: StockMediaAsset[];
+  selectedIds: string[];
+  onSelect: (asset: StockMediaAsset, event?: Pick<MouseEvent, "shiftKey" | "metaKey" | "ctrlKey">) => void;
+  onQuickLook: (asset: StockMediaAsset) => void;
+}) {
+  return (
+    <div className="ed-library-table-wrap" role="region" aria-label="Library table view">
+      <table className="ed-table ed-library-table">
+        <thead>
+          <tr>
+            <th scope="col">Select</th>
+            <th scope="col">Asset</th>
+            <th scope="col">Status</th>
+            <th scope="col">Type</th>
+            <th scope="col">Rights</th>
+            <th scope="col">Reference</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assets.map((asset) => {
+            const selected = selectedIds.includes(asset.id);
+            const title = displayTitle(asset);
+            return (
+              <tr className={selected ? "is-selected" : ""} key={asset.id} onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey) onSelect(asset, event);
+              }}>
+                <td>
+                  <button className="ed-row-select-checkbox" type="button" aria-pressed={selected} aria-label={selected ? `Deselect ${title}` : `Select ${title}`} onClick={(event) => { event.stopPropagation(); onSelect(asset, event); }}>
+                    {selected ? <CheckCircle2 size={14} aria-hidden="true" /> : null}
+                  </button>
+                </td>
+                <td><strong title={title}>{title}</strong><small>{asset.collection || "Unassigned"}</small></td>
+                <td>{asset.status}</td>
+                <td>{assetType(asset)}</td>
+                <td>{asset.rightsStatus || asset.consentStatus || "Not provided"}</td>
+                <td>{assetRecordRef(asset)}</td>
+                <td><button type="button" onClick={(event) => { event.stopPropagation(); onQuickLook(asset); }}>Quick look</button></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function EnterpriseLibraryPage() {
   const { role } = useDemoRole();
   const [query, setQuery] = useState("");
@@ -229,8 +438,10 @@ export function EnterpriseLibraryPage() {
   const [sort, setSort] = useState<CatalogSort>("Newest");
   const [limit, setLimit] = useState(15);
   const [offset, setOffset] = useState(0);
+  const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null);
   const [quickLookId, setQuickLookId] = useState<string | null>(null);
   const [libraryMessage, setLibraryMessage] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -241,6 +452,12 @@ export function EnterpriseLibraryPage() {
   const savedViewLabel = search.data?.savedViews?.find((item) => item.id === view)?.label;
   const collectionLabel = search.data?.collections?.find((item) => item.id === collection)?.name;
   const activeFilterCount = (query ? 1 : 0) + (view ? 1 : 0) + (collection ? 1 : 0) + filters.length;
+  const visibleIds = useMemo(() => assets.map((asset) => asset.id), [assets]);
+  const selectedAssets = useMemo(() => {
+    const byId = new Map(assets.map((asset) => [asset.id, asset]));
+    return selectedIds.map((id) => byId.get(id)).filter((asset): asset is StockMediaAsset => Boolean(asset));
+  }, [assets, selectedIds]);
+  const selectedAssetSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const filterCounts = useMemo(() => {
     const entries = discovery?.suggestedFilters?.map((item) => [item.filter, item.count] as const) || [];
     return Object.fromEntries(entries);
@@ -249,7 +466,6 @@ export function EnterpriseLibraryPage() {
     if (!assets[0]) return;
     if (!selectedId) {
       setSelectedId(assets[0].id);
-      setSelectedIds([assets[0].id]);
       return;
     }
     if (!assets.some((asset) => asset.id === selectedId)) {
@@ -259,21 +475,70 @@ export function EnterpriseLibraryPage() {
   useEffect(() => {
     setOffset(0);
     setSelectedId(null);
-    setSelectedIds([]);
+    setSelectionAnchorId(null);
+    setSelectedIds((current) => {
+      if (current.length) setLibraryMessage("Selection cleared because page, filters, sort, or role changed.");
+      return [];
+    });
   }, [query, filters, view, collection, sort, role]);
-  const selected = assets.find((asset) => asset.id === selectedId) || assets[0];
+  useEffect(() => {
+    setSelectedIds((current) => {
+      if (!current.length) return current;
+      const { nextIds, hiddenCount } = reconcileVisibleSelection(current, visibleIds);
+      if (hiddenCount) setLibraryMessage(`${hiddenCount.toLocaleString()} hidden selected asset${hiddenCount === 1 ? "" : "s"} cleared after results changed.`);
+      return nextIds.length === current.length ? current : nextIds;
+    });
+  }, [visibleIds]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !selectedIds.length) return;
+      setSelectedIds([]);
+      setSelectionAnchorId(null);
+      setLibraryMessage("Selection cleared.");
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedIds.length]);
+  const selected = selectedAssets.length === 1 ? selectedAssets[0] : assets.find((asset) => asset.id === selectedId) || assets[0];
   const quickLookAsset = assets.find((asset) => asset.id === quickLookId) || null;
   const pagination = search.data?.pagination;
-  const toggleAsset = (asset: StockMediaAsset) => {
+  const toggleAsset = (asset: StockMediaAsset, event?: Pick<MouseEvent, "shiftKey" | "metaKey" | "ctrlKey">) => {
     setSelectedId(asset.id);
-    setSelectedIds((current) => current.includes(asset.id) ? current.filter((id) => id !== asset.id) : [...current, asset.id]);
+    setSelectedIds((current) => {
+      if (event?.shiftKey) {
+        return selectRangeInVisibleOrder({
+          currentIds: current,
+          visibleIds,
+          anchorId: selectionAnchorId,
+          targetId: asset.id,
+          additive: Boolean(event.metaKey || event.ctrlKey)
+        });
+      }
+      return toggleSelectedId(current, asset.id);
+    });
+    setSelectionAnchorId(asset.id);
   };
   const openQuickLook = (asset: StockMediaAsset) => {
     setSelectedId(asset.id);
-    setSelectedIds((current) => current.includes(asset.id) ? current : [...current, asset.id]);
     setQuickLookId(asset.id);
   };
   const announceLibraryAction = (message: string) => setLibraryMessage(message);
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setSelectionAnchorId(null);
+    announceLibraryAction("Selection cleared.");
+  };
+  const selectAllVisible = () => {
+    setSelectedIds(visibleIds);
+    setSelectionAnchorId(visibleIds[0] || null);
+    announceLibraryAction(`${visibleIds.length.toLocaleString()} visible asset${visibleIds.length === 1 ? "" : "s"} selected.`);
+  };
+  const announceBulkAction = (actionId: BulkActionId, label: string) => {
+    const action = buildLibrarySelectionSummary(selectedAssets, role).actions.find((item) => item.id === actionId);
+    if (!action) return;
+    const suffix = action.warning || action.disabledReason || "No files copied and no source/originals exposed.";
+    announceLibraryAction(`${label}: ${action.statusLabel}. ${suffix}`);
+  };
   const saveCurrentSearch = async () => {
     if (!query && !view && !collection && !filters.length) {
       announceLibraryAction("Choose a query, saved view, collection, or filter before saving this search.");
@@ -364,7 +629,16 @@ export function EnterpriseLibraryPage() {
         onOpenFilters={() => setFiltersOpen(true)}
         filterCount={activeFilterCount}
         selectedCount={selectedIds.length}
-        sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className="is-active" aria-label="Grid view"><Grid3X3 size={15} aria-hidden="true" /></button><button type="button" aria-label="List view" disabled title="List view is not enabled for this beta."><List size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
+        actions={[
+          {
+            label: "Select all visible",
+            icon: CheckCircle2,
+            onClick: selectAllVisible,
+            disabled: !assets.length,
+            disabledReason: "No visible assets to select."
+          }
+        ]}
+        sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-label="Grid view" aria-pressed={viewMode === "grid"} onClick={() => setViewMode("grid")}><Grid3X3 size={15} aria-hidden="true" /></button><button type="button" className={viewMode === "table" ? "is-active" : ""} aria-label="Table view" aria-pressed={viewMode === "table"} onClick={() => setViewMode("table")}><List size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
         quickFilters={[{ id: "approved public", label: "Approved" }, { id: "portal ready", label: "Public use" }, { id: "no people", label: "No people" }, { id: "landscape", label: "Landscape" }, { id: "photo", label: "Photo" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
       />
       <AppliedFilterBar
@@ -398,15 +672,20 @@ export function EnterpriseLibraryPage() {
         <div className="ed-library-grid">
           <div className="ed-desktop-filter-rail">{filterPanel}</div>
           <main className="ed-asset-workspace">
-            {assets.length ? <div className="ed-grid">{assets.map((asset) => (
+            <BulkActionBar selectedAssets={selectedAssets} role={role} onClear={clearSelection} onAction={announceBulkAction} />
+            {assets.length && viewMode === "grid" ? <div className="ed-grid">{assets.map((asset) => (
               <AssetCard
                 asset={asset}
-                selected={selectedIds.includes(asset.id)}
-                onSelect={() => toggleAsset(asset)}
+                selected={selectedAssetSet.has(asset.id)}
+                onSelect={(event) => toggleAsset(asset, event)}
                 onQuickLook={() => openQuickLook(asset)}
                 key={asset.id}
               />
-            ))}</div> : (
+            ))}</div> : null}
+            {assets.length && viewMode === "table" ? (
+              <LibraryAssetTable assets={assets} selectedIds={selectedIds} onSelect={toggleAsset} onQuickLook={openQuickLook} />
+            ) : null}
+            {!assets.length ? (
               <section className="ed-empty-state">
                 <Search size={24} />
                 <h2>{noResultHelp?.title || `No ${sourceNoun(search.source)} records match this search`}</h2>
@@ -428,7 +707,7 @@ export function EnterpriseLibraryPage() {
                 ) : null}
                 <ActionButton onClick={clearAll}>Clear all</ActionButton>
               </section>
-            )}
+            ) : null}
             {pagination ? (
               <LibraryPaginationControls
                 rangeStart={pagination.rangeStart}
@@ -445,7 +724,11 @@ export function EnterpriseLibraryPage() {
               />
             ) : null}
           </main>
-          <InspectorDrawer asset={selected} source={search.source} live={search.live} />
+          {selectedAssets.length > 1 ? (
+            <SelectionSummaryRail assets={selectedAssets} role={role} source={search.source} live={search.live} onAction={announceBulkAction} />
+          ) : (
+            <InspectorDrawer asset={selected} source={search.source} live={search.live} />
+          )}
         </div>
       )}
       <AssetQuickLookDrawer
