@@ -50,6 +50,7 @@ const files = {
   resourceSpaceFieldMap: "frontend/lib/resourcespace-field-map.ts",
   resourceSpaceSchema: "frontend/lib/resourcespace-schema.ts",
   mediaSourceIndex: "frontend/lib/media-source/index.ts",
+  mediaDelivery: "frontend/lib/media-delivery.ts",
   readiness: "frontend/lib/dam-readiness-integrations.ts",
   portalApiSmoke: "scripts/portal-api-smoke.sh",
   portalBetaRehearsal: "scripts/portal-beta-rehearsal.sh",
@@ -119,6 +120,7 @@ const resourceSpaceApi = read(files.resourceSpaceApi);
 const resourceSpaceFieldMap = read(files.resourceSpaceFieldMap);
 const resourceSpaceSchema = read(files.resourceSpaceSchema);
 const mediaSourceIndex = read(files.mediaSourceIndex);
+const mediaDelivery = read(files.mediaDelivery);
 const readiness = read(files.readiness);
 const portalApiSmoke = read(files.portalApiSmoke);
 const portalBetaRehearsal = read(files.portalBetaRehearsal);
@@ -493,6 +495,9 @@ if (!usageAnalytics.includes("function usageAnalyticsStorageMode") || /\bdbPath\
 }
 if (/path\.relative\(repoRoot\(\),\s*exportPath\)|\.runtime\/exports|Reading \$\{/.test(mediaSourceIndex)) {
   failures.push("media source status must not expose metadata export filesystem paths");
+}
+if (!mediaDelivery.includes('import { productionRuntime } from "@/lib/env"') || !mediaDelivery.includes('process.env.VERCEL === "1" || productionRuntime()')) {
+  failures.push("media delivery must block generated demo-fallback approved-copy bytes in hosted and production runtimes");
 }
 if (!sourceRedaction.includes("function canSeePrivateSourceFiles") || /if \(canSeeOperationalSource\(role\)\) return asset/.test(sourceRedaction)) {
   failures.push("reviewer payloads must not expose raw private source-file fields");
