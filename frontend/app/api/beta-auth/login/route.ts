@@ -12,6 +12,12 @@ import {
   createBetaSessionCookieValue,
   safeBetaReturnTo
 } from "@/lib/beta-auth";
+import {
+  betaLoginThrottleKey,
+  betaLoginThrottleStatus,
+  clearBetaLoginThrottle,
+  recordBetaLoginFailure
+} from "@/lib/beta-login-throttle";
 import { createDamRouteSession } from "@/lib/dam-route-session";
 import { readJsonObject } from "@/lib/request-validation";
 
@@ -35,6 +41,22 @@ export async function POST(request: NextRequest) {
   const role = betaRoleFromInput(body.role);
   const password = typeof body.password === "string" ? body.password : "";
   const returnTo = safeBetaReturnTo(body.returnTo);
+  const throttleKey = betaLoginThrottleKey(request.headers);
+  const throttle = betaLoginThrottleStatus(throttleKey);
+
+  if (!throttle.allowed) {
+    appendAuditEvent({
+      type: "beta_auth_login",
+      role,
+      actor: session.identity.id,
+      status: "blocked",
+      summary: "Internal beta login blocked because repeated attempts were throttled.",
+      details: { persona: role, reason: "beta-login-throttled" }
+    });
+    const response = NextResponse.json({ error: "Too many beta login attempts. Try again later." }, { status: 429 });
+    response.headers.set("Retry-After", String(throttle.retryAfterSeconds));
+    return response;
+  }
 
   if (!betaPersonaConfigured(role)) {
     appendAuditEvent({
@@ -59,6 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Beta session signing secret is not configured." }, { status: 503 });
   }
   if (!betaPasswordMatches(role, password)) {
+    recordBetaLoginFailure(throttleKey);
     appendAuditEvent({
       type: "beta_auth_login",
       role,
@@ -67,7 +90,7 @@ export async function POST(request: NextRequest) {
       summary: "Internal beta login denied for persona.",
       details: { persona: role }
     });
-    return NextResponse.json({ error: "Persona password did not match." }, { status: 401 });
+    return NextResponse.json({ error: "Beta login did not match." }, { status: 401 });
   }
 
   const value = await createBetaSessionCookieValue(role);
@@ -91,6 +114,7 @@ export async function POST(request: NextRequest) {
     summary: "Internal beta persona logged in.",
     details: { persona: role }
   });
+  clearBetaLoginThrottle(throttleKey);
 
   const response = NextResponse.json({
     ok: true,

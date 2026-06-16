@@ -1,5 +1,5 @@
 import path from "node:path";
-import { hasVercelBlobConfig, hasVercelKvConfig, repoRoot } from "@/lib/env";
+import { betaFeedbackAttachmentsEnabled, hasVercelBlobConfig, hasVercelKvConfig, repoRoot } from "@/lib/env";
 import { readLocalJsonStore, readLocalJsonStoreSync, writeLocalJsonStore } from "@/lib/local-json-store";
 import { newestByTimestamp, safeCompactText, safeEnumValue, safeFileNameText, safeIsoTimestamp } from "@/lib/persisted-record-safety";
 import { isKnownRole, normalizeRoleFilter, normalizeRoleWithFallback } from "@/lib/permissions";
@@ -13,6 +13,7 @@ const feedbackRecordPrefix = "tjc-stock-media:beta-feedback:record:";
 const localFeedbackPath = () => path.join(repoRoot(), "data", "runtime", "beta-feedback.json");
 const localFileFeedbackEnabled = () => process.env.VERCEL !== "1";
 export const maxBetaFeedbackRecords = 500;
+export const maxBetaFeedbackAttachmentBytes = 2 * 1024 * 1024;
 
 export const betaFeedbackSeverities: BetaFeedbackSeverity[] = ["low", "medium", "high", "critical"];
 export const betaFeedbackStatuses: BetaFeedbackStatus[] = ["new", "triaged", "agent-ready", "fixed", "wont-fix"];
@@ -35,6 +36,12 @@ type BetaFeedbackRouteError = {
   status: 400 | 403 | 503;
 };
 type BetaFeedbackAdminArea = "inbox" | "update" | "export";
+export class BetaFeedbackStorageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BetaFeedbackStorageError";
+  }
+}
 export type BetaFeedbackExportFilters = {
   status?: BetaFeedbackStatus | "all";
   severity?: BetaFeedbackSeverity | "all";
@@ -80,6 +87,11 @@ function memoryFeedback() {
   const store = globalThis as FeedbackGlobal;
   store.__tjcStockMediaBetaFeedback ||= [];
   return store.__tjcStockMediaBetaFeedback;
+}
+
+export function resetBetaFeedbackForTests() {
+  const store = globalThis as FeedbackGlobal;
+  store.__tjcStockMediaBetaFeedback = [];
 }
 
 function safeText(value: unknown, maxLength: number) {
@@ -207,8 +219,52 @@ async function writeKvFeedback(record: BetaFeedbackRecord) {
   return true;
 }
 
+function hostedRuntime() {
+  return process.env.VERCEL === "1";
+}
+
+function betaFeedbackAttachmentTypeAllowed(file: File) {
+  const type = file.type.toLowerCase();
+  return [
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "application/pdf",
+    "text/plain"
+  ].includes(type);
+}
+
+export function betaFeedbackAttachmentValidationError(file: File | null): BetaFeedbackRouteError | null {
+  if (!file || !file.size) return null;
+  if (!betaFeedbackAttachmentsEnabled()) {
+    return {
+      body: { error: "Feedback attachments are disabled for this beta. Paste a redacted safe link instead." },
+      status: 400
+    };
+  }
+  if (!hasVercelBlobConfig()) {
+    return {
+      body: { error: "Feedback attachment storage is not configured." },
+      status: 503
+    };
+  }
+  if (file.size > maxBetaFeedbackAttachmentBytes) {
+    return {
+      body: { error: "Feedback attachment is too large. Limit attachments to 2 MB." },
+      status: 400
+    };
+  }
+  if (!betaFeedbackAttachmentTypeAllowed(file)) {
+    return {
+      body: { error: "Feedback attachment type is not allowed. Use PNG, JPEG, WebP, PDF, or plain text." },
+      status: 400
+    };
+  }
+  return null;
+}
+
 export async function putBetaFeedbackAttachment(id: string, file: File | null) {
-  if (!file || !file.size || !hasVercelBlobConfig()) return "";
+  if (!file || !file.size || !betaFeedbackAttachmentsEnabled() || !hasVercelBlobConfig()) return "";
   const { put } = await import("@vercel/blob");
   const safeName = safeFileNameText(file.name, 120) || "attachment";
   const blob = await put(`beta-feedback/${id}/${safeName}`, file, {
@@ -267,6 +323,7 @@ export async function readBetaFeedbackPatchInput(request: { json(): Promise<unkn
 export function betaFeedbackDiagnostics() {
   const kvConfigured = hasVercelKvConfig();
   const blobConfigured = hasVercelBlobConfig();
+  const attachmentsEnabled = betaFeedbackAttachmentsEnabled();
   const records = readLocalJsonStoreSync({
     filePath: localFeedbackPath,
     maxRecords: maxBetaFeedbackRecords,
@@ -281,9 +338,10 @@ export function betaFeedbackDiagnostics() {
   return {
     kvConfigured,
     blobConfigured,
-    hostedRuntime: process.env.VERCEL === "1",
+    attachmentsEnabled,
+    hostedRuntime: hostedRuntime(),
     durableStorageConfigured: kvConfigured,
-    attachmentStorageConfigured: blobConfigured,
+    attachmentStorageConfigured: blobConfigured && attachmentsEnabled,
     count: records.length,
     openCount: openRecords.length,
     criticalOpenCount: criticalOpen.length,
@@ -315,7 +373,7 @@ export function betaFeedbackDisabledError(): BetaFeedbackRouteError {
 }
 
 export function betaFeedbackStorageUnavailableError(): BetaFeedbackRouteError | null {
-  if (process.env.VERCEL !== "1" || hasVercelKvConfig()) return null;
+  if (!hostedRuntime() || hasVercelKvConfig()) return null;
   return {
     body: {
       error: "Beta feedback durable storage is not configured.",
@@ -323,6 +381,25 @@ export function betaFeedbackStorageUnavailableError(): BetaFeedbackRouteError | 
     },
     status: 503
   };
+}
+
+export function betaFeedbackDurableWriteFailedError(): BetaFeedbackRouteError {
+  return {
+    body: { error: "Beta feedback durable storage write failed. The report was not saved." },
+    status: 503
+  };
+}
+
+export function betaFeedbackDurableReadFailedError(): BetaFeedbackRouteError {
+  return {
+    body: { error: "Beta feedback durable storage read failed." },
+    status: 503
+  };
+}
+
+export function betaFeedbackStorageRouteError(error: unknown, mode: "read" | "write"): BetaFeedbackRouteError | null {
+  if (!(error instanceof BetaFeedbackStorageError)) return null;
+  return mode === "read" ? betaFeedbackDurableReadFailedError() : betaFeedbackDurableWriteFailedError();
 }
 
 function betaFeedbackAdminDeniedCopy(area: BetaFeedbackAdminArea) {
@@ -389,6 +466,9 @@ export async function createBetaFeedback(input: Omit<BetaFeedbackRecord, "id" | 
     storageMode: kvAvailable ? "vercel-kv" : "local-json"
   };
   const wroteKv = kvAvailable ? await writeKvFeedback(record).catch(() => false) : false;
+  if (!wroteKv && kvAvailable && hostedRuntime()) {
+    throw new BetaFeedbackStorageError("Hosted beta feedback durable write failed.");
+  }
   if (!wroteKv) {
     record.storageMode = "local-json";
     const records = await readLocalFeedback();
@@ -420,6 +500,9 @@ export async function createBetaFeedbackFromSubmission(submission: NormalizedBet
 export async function listBetaFeedback() {
   const kvRecords = await readKvFeedback().catch(() => null);
   if (kvRecords) return kvRecords;
+  if (hasVercelKvConfig() && hostedRuntime()) {
+    throw new BetaFeedbackStorageError("Hosted beta feedback durable read failed.");
+  }
   return newestFeedbackWindow(await readLocalFeedback());
 }
 
@@ -537,6 +620,9 @@ export async function patchBetaFeedback(id: string, patch: FeedbackPatch) {
     updatedAt: new Date().toISOString()
   };
   const wroteKv = await writeKvFeedback(next).catch(() => false);
+  if (!wroteKv && hasVercelKvConfig() && hostedRuntime()) {
+    throw new BetaFeedbackStorageError("Hosted beta feedback durable write failed.");
+  }
   if (!wroteKv) {
     const localRecords = await readLocalFeedback();
     await writeLocalFeedback([{ ...next, storageMode: "local-json" }, ...localRecords.filter((record) => record.id !== cleanId)]);
