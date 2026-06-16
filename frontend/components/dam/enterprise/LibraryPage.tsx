@@ -26,7 +26,7 @@ import type { CatalogSort, DemoRole, MediaSourceStatus, StockMediaAsset } from "
 import { assetRecordRef, assetType, displayTitle, sourceNoun } from "@/lib/enterprise-display";
 import { canReview } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
-import { buildLibrarySelectionSummary, reconcileVisibleSelection, selectRangeInVisibleOrder, shouldShowBulkBar, toggleSelectedId, type BulkActionId } from "@/lib/library-bulk-selection";
+import { buildLibraryMetadataCsv, buildLibrarySelectionSummary, reconcileVisibleSelection, selectRangeInVisibleOrder, shouldShowBulkBar, toggleSelectedId, type BulkActionId } from "@/lib/library-bulk-selection";
 import { ActionButton, AssetCard, AssetQuickLookDrawer, DamSegmentedNav, DamToolbar, ErrorCard, InspectorDrawer, LoadingCard, PageHeader, SavedViewPanel, SourcePill } from "./EnterpriseShared";
 
 const PAGE_SIZE_OPTIONS = [15, 30, 60, 120];
@@ -262,18 +262,20 @@ function BulkActionBar({
           const Icon = bulkActionIcons[action.id];
           const disabled = !action.enabled;
           const reason = disabled ? action.disabledReason : action.warning || action.disabledReason;
+          const helper = disabled ? action.disabledReason || action.statusLabel : action.statusLabel;
           return (
             <button
               type="button"
               key={action.id}
               disabled={disabled}
               title={reason}
+              data-disabled-reason={disabled ? action.disabledReason : undefined}
               aria-label={`${action.label}: ${action.statusLabel}${reason ? `. ${reason}` : ""}`}
               onClick={() => onAction(action.id, action.label)}
             >
               {Icon ? <Icon size={15} aria-hidden="true" /> : null}
               <span>{action.label}</span>
-              <small>{action.statusLabel}</small>
+              <small>{helper}</small>
             </button>
           );
         })}
@@ -357,17 +359,19 @@ function SelectionSummaryRail({
         <h3>Available bulk actions</h3>
         {visibleActions.map((action) => {
           const Icon = bulkActionIcons[action.id];
+          const helper = action.enabled ? action.statusLabel : action.disabledReason || action.statusLabel;
           return (
             <button
               type="button"
               key={action.id}
               disabled={!action.enabled}
               title={!action.enabled ? action.disabledReason : action.warning}
+              data-disabled-reason={!action.enabled ? action.disabledReason : undefined}
               onClick={() => onAction(action.id, action.label)}
             >
               {Icon ? <Icon size={15} aria-hidden="true" /> : null}
               <span>{action.label}</span>
-              <small>{action.statusLabel}</small>
+              <small>{helper}</small>
             </button>
           );
         })}
@@ -533,9 +537,29 @@ export function EnterpriseLibraryPage() {
     setSelectionAnchorId(visibleIds[0] || null);
     announceLibraryAction(`${visibleIds.length.toLocaleString()} visible asset${visibleIds.length === 1 ? "" : "s"} selected.`);
   };
+  const exportSelectedMetadataCsv = () => {
+    if (!selectedAssets.length) {
+      announceLibraryAction("Select visible assets before exporting metadata.");
+      return;
+    }
+    const csv = buildLibraryMetadataCsv(selectedAssets);
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `tjc-library-selected-metadata-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    announceLibraryAction(`Export metadata: ${selectedAssets.length.toLocaleString()} role-safe visible asset${selectedAssets.length === 1 ? "" : "s"} exported. Source/original fields were excluded.`);
+  };
   const announceBulkAction = (actionId: BulkActionId, label: string) => {
     const action = buildLibrarySelectionSummary(selectedAssets, role).actions.find((item) => item.id === actionId);
     if (!action) return;
+    if (actionId === "export-metadata" && action.enabled) {
+      exportSelectedMetadataCsv();
+      return;
+    }
     const suffix = action.warning || action.disabledReason || "No files copied and no source/originals exposed.";
     announceLibraryAction(`${label}: ${action.statusLabel}. ${suffix}`);
   };

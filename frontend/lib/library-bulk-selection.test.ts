@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildLibraryMetadataCsv,
   buildLibraryBulkActions,
   buildLibrarySelectionSummary,
   reconcileVisibleSelection,
@@ -75,11 +76,40 @@ describe("library bulk selection helpers", () => {
     const viewerLabels = buildLibraryBulkActions([asset()], "Viewer").map((action) => action.label);
     const contributorLabels = buildLibraryBulkActions([asset()], "Contributor").map((action) => action.label);
 
+    expect(viewerLabels).not.toContain("Send to review");
+    expect(viewerLabels).not.toContain("Mark internal-only");
     expect(viewerLabels).not.toContain("Approve");
+    expect(viewerLabels).not.toContain("Reject");
     expect(viewerLabels).not.toContain("Archive");
     expect(contributorLabels).not.toContain("Approve");
+    expect(contributorLabels).not.toContain("Reject");
     expect(contributorLabels).not.toContain("Archive");
     expect(contributorLabels).toContain("Send to review");
+  });
+
+  it("disables unimplemented bulk workflows with helper copy", () => {
+    const actions = buildLibraryBulkActions([asset()], "DAM Admin");
+    const disabledIds = [
+      "add-to-collection",
+      "create-collection",
+      "request-reuse",
+      "send-review",
+      "assign-tags",
+      "mark-internal",
+      "download-approved",
+      "approve",
+      "reject",
+      "archive"
+    ];
+
+    disabledIds.forEach((id) => {
+      const action = actions.find((item) => item.id === id);
+      expect(action?.enabled).toBe(false);
+      expect(action?.disabledReason).toBeTruthy();
+    });
+    const exportAction = actions.find((item) => item.id === "export-metadata");
+    expect(exportAction?.enabled).toBe(true);
+    expect(exportAction?.disabledReason).toBeUndefined();
   });
 
   it("marks mixed bulk download as partial and approved-copy gated", () => {
@@ -103,7 +133,7 @@ describe("library bulk selection helpers", () => {
     const download = actions.find((action) => action.id === "download-approved");
 
     expect(download).toMatchObject({
-      enabled: true,
+      enabled: false,
       eligibleCount: 1,
       totalCount: 2,
       statusLabel: "1 of 2 eligible"
@@ -134,5 +164,31 @@ describe("library bulk selection helpers", () => {
     expect(summary.resourceSpaceIds).toEqual(["1001", "1002"]);
     expect(summary.warnings.join(" ")).toContain("Source/original files are excluded");
     expect(summary.actions.some((action) => action.id === "approve")).toBe(true);
+  });
+
+  it("exports only role-safe selected metadata fields", () => {
+    const csv = buildLibraryMetadataCsv([
+      asset({
+        id: "ready",
+        title: "Comma, quote \"test\"",
+        resourceSpaceId: "1001",
+        sourceAlbumPath: "LM Photos / Private Album",
+        sourcePath: "/Shared Drive/Originals/private.jpg",
+        masterDrivePath: "/Master Archive/private.jpg",
+        originalFilename: "IMG_0001.ORIGINAL.JPG",
+        checksumSha256: "secret-checksum"
+      })
+    ]);
+
+    expect(csv.split("\n")[0]).toBe("\"id\",\"title\",\"status\",\"type\",\"collection\",\"rights\",\"usage-scope\",\"reference\"");
+    expect(csv).toContain("\"Comma, quote \"\"test\"\"\"");
+    expect(csv).toContain("\"Approved Public\"");
+    expect(csv).not.toContain("Private Album");
+    expect(csv).not.toContain("/Shared Drive/Originals");
+    expect(csv).not.toContain("/Master Archive");
+    expect(csv).not.toContain("IMG_0001.ORIGINAL.JPG");
+    expect(csv).not.toContain("secret-checksum");
+    expect(csv).not.toContain("sourceAlbumPath");
+    expect(csv).not.toContain("resourceSpaceUrl");
   });
 });
