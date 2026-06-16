@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const error = assetDetailMalformedIdError();
     return NextResponse.json(error.body, { status: error.status });
   }
-  const { asset, source, related } = await getAssetById(id);
+  const { asset, source, related } = await getAssetById(id, role);
   if (!asset) {
     const error = assetDetailNotFoundError(session, source);
     return NextResponse.json(error.body, { status: error.status });

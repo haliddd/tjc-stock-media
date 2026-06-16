@@ -4,6 +4,8 @@ import {
   betaFeedbackAdminDeniedAuditEvent,
   betaFeedbackAdminDeniedError,
   betaFeedbackPatchValidationError,
+  betaFeedbackStorageRouteError,
+  betaFeedbackStorageUnavailableError,
   betaFeedbackTriagedAuditEvent,
   buildBetaFeedbackPatchResponse,
   patchBetaFeedback,
@@ -22,6 +24,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     appendAuditEvent(betaFeedbackAdminDeniedAuditEvent("update", identity.role, identity.id));
     return NextResponse.json(denied.body, { status: denied.status });
   }
+  const storageUnavailable = betaFeedbackStorageUnavailableError();
+  if (storageUnavailable) {
+    return NextResponse.json(storageUnavailable.body, { status: storageUnavailable.status });
+  }
 
   const id = normalizeFeedbackId((await params).id);
   const input = await readBetaFeedbackPatchInput(request);
@@ -30,7 +36,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json(validationError.body, { status: validationError.status });
   }
 
-  const record = await patchBetaFeedback(id, input.patch);
+  const record = await patchBetaFeedback(id, input.patch).catch((error: unknown) => {
+    const storageError = betaFeedbackStorageRouteError(error, "write");
+    if (storageError) return storageError;
+    throw error;
+  });
+  if (record && "status" in record && "body" in record) {
+    return NextResponse.json(record.body, { status: record.status });
+  }
   if (!record) return NextResponse.json({ error: "Feedback record not found." }, { status: 404 });
 
   appendAuditEvent(betaFeedbackTriagedAuditEvent(record, identity.role, identity.id));
