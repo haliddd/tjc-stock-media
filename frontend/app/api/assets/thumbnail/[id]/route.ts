@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(error.body, { status: error.status });
   }
   const deliveryInput = readThumbnailDeliveryInput(request.nextUrl.searchParams);
-  const { asset, source } = await getAssetRecordById(id);
+  const { asset, source } = await getAssetRecordById(id, role);
   if (!asset) {
     const error = thumbnailNotFoundError(session, source);
     return NextResponse.json(error.body, { status: error.status });

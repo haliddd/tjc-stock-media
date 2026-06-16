@@ -18,6 +18,7 @@ import {
 } from "@/lib/catalog-language";
 import { collectionImageUrl } from "@/lib/presentation";
 import { canReview } from "@/lib/permissions";
+import { assetForRolePayload } from "@/lib/source-redaction";
 import type { CatalogCollection, DemoRole, MetadataHealthSummary, OperationalInsight, SavedViewSummary, StockMediaAsset, ZeroResultInsight } from "@/lib/types";
 
 export function buildSavedViews(assets: StockMediaAsset[]): SavedViewSummary[] {
@@ -77,7 +78,10 @@ export function buildCollections(assets: StockMediaAsset[], role: DemoRole): Cat
       viewId: definition.id,
       images: matching
         .slice(0, 5)
-        .map((asset) => ({ src: collectionImageUrl(asset, role), alt: asset.thumbnailAlt }))
+        .map((asset) => {
+          const payload = assetForRolePayload(role, asset);
+          return { src: collectionImageUrl(payload, role), alt: payload.thumbnailAlt || "Media preview" };
+        })
         .filter((image): image is { src: string; alt: string } => Boolean(image.src))
     };
   });

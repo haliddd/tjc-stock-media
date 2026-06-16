@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing asset id." }, { status: 400 });
   }
 
-  const { asset, source } = await getAssetRecordById(assetId);
+  const { asset, source } = await getAssetRecordById(assetId, role);
   if (!asset) {
     return NextResponse.json({ error: "Asset not found.", ...session.sourceEnvelope(source) }, { status: 404 });
   }

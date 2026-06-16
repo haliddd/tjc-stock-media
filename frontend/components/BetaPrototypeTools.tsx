@@ -69,7 +69,6 @@ export function BetaPrototypeTools() {
   const [actual, setActual] = useState("");
   const [reporterName, setReporterName] = useState("");
   const [screenshotLink, setScreenshotLink] = useState("");
-  const [attachment, setAttachment] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [route, setRoute] = useState("/");
@@ -137,7 +136,6 @@ export function BetaPrototypeTools() {
     form.set("browser", navigator.userAgent);
     form.set("device", navigator.platform || "unknown");
     form.set("viewport", `${window.innerWidth}x${window.innerHeight}`);
-    if (attachment) form.set("attachment", attachment);
     const response = await fetch("/api/beta-feedback", { method: "POST", body: form });
     const payload = await response.json().catch(() => ({}));
     setSubmitting(false);
@@ -149,7 +147,6 @@ export function BetaPrototypeTools() {
     setExpected("");
     setActual("");
     setScreenshotLink("");
-    setAttachment(null);
   }
 
   if (!betaTaskModeEnabled && !betaFeedbackEnabled) return null;
@@ -233,9 +230,8 @@ export function BetaPrototypeTools() {
               <label>Expected<textarea required value={expected} onChange={(event) => setExpected(event.target.value)} placeholder="What should have happened?" /></label>
               <label>Actual<textarea required value={actual} onChange={(event) => setActual(event.target.value)} placeholder="What happened instead?" /></label>
               <label>Name optional<input value={reporterName} onChange={(event) => setReporterName(event.target.value)} placeholder="Your name" /></label>
-              <label>Screenshot or link optional<input value={screenshotLink} onChange={(event) => setScreenshotLink(event.target.value)} placeholder="Paste link to screenshot, Loom, or note" /></label>
-              <label>Attachment optional<input type="file" accept="image/*,.pdf,.txt" onChange={(event) => setAttachment(event.target.files?.[0] || null)} /></label>
-              <section className="beta-report-safety"><AlertTriangle size={16} /><span>No sensitive media or private member info in reports.</span></section>
+              <label>Redacted screenshot or link optional<input value={screenshotLink} onChange={(event) => setScreenshotLink(event.target.value)} placeholder="Paste a redacted screenshot, Loom, or note link" /></label>
+              <section className="beta-report-safety"><AlertTriangle size={16} /><span>No people, minors, source paths, private URLs, or sensitive media in reports. File attachments are disabled for this beta.</span></section>
               {message ? <p className={message.startsWith("Saved") ? "beta-report-success" : "beta-report-error"}>{message.startsWith("Saved") ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}{message}</p> : null}
               <footer>
                 <button type="button" onClick={() => setReportOpen(false)}>Close</button>

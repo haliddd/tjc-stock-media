@@ -144,12 +144,16 @@ export function assetForRolePayload(role: DemoRole, asset: StockMediaAsset): Sto
     eventName,
     rightsNotes,
     tags,
+    thumbnailAlt,
+    title,
     tjcTerms,
     usageTerms
   } = safeAsset;
 
   return {
     ...safeAsset,
+    title: containsScaffoldText(title) || containsOperationalText(title) ? "Media record" : title,
+    thumbnailAlt: containsScaffoldText(thumbnailAlt) || containsOperationalText(thumbnailAlt) ? "Media preview" : thumbnailAlt,
     collection: containsScaffoldText(collection) || containsOperationalText(collection) ? "Media library" : collection,
     eventName: containsScaffoldText(eventName) || containsOperationalText(eventName) ? undefined : eventName,
     tags: safePublicList(tags),

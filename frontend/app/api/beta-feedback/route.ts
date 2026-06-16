@@ -4,7 +4,9 @@ import { betaFeedbackEnabled } from "@/lib/env";
 import {
   betaFeedbackAdminDeniedAuditEvent,
   betaFeedbackAdminDeniedError,
+  betaFeedbackAttachmentValidationError,
   betaFeedbackDisabledError,
+  betaFeedbackStorageRouteError,
   betaFeedbackStorageUnavailableError,
   betaFeedbackSubmissionValidationError,
   betaFeedbackSubmittedAuditEvent,
@@ -45,13 +47,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(storageUnavailable.body, { status: storageUnavailable.status });
   }
   const { fields, file } = await readBetaFeedbackRequestInput(request);
+  const attachmentError = betaFeedbackAttachmentValidationError(file);
+  if (attachmentError) {
+    return NextResponse.json(attachmentError.body, { status: attachmentError.status });
+  }
   const submission = normalizeBetaFeedbackSubmission(fields, request.headers.get("user-agent"));
   const validationError = betaFeedbackSubmissionValidationError(submission);
   if (validationError) {
     return NextResponse.json(validationError.body, { status: validationError.status });
   }
   const identity = requestIdentity(request, submission.rawRole);
-  const record = await createBetaFeedbackFromSubmission(submission, identity, file);
+  const record = await createBetaFeedbackFromSubmission(submission, identity, file).catch((error: unknown) => {
+    const storageError = betaFeedbackStorageRouteError(error, "write");
+    if (storageError) return storageError;
+    throw error;
+  });
+  if ("status" in record && "body" in record) {
+    return NextResponse.json(record.body, { status: record.status });
+  }
 
   appendAuditEvent(betaFeedbackSubmittedAuditEvent(record, identity.role, identity.id));
 

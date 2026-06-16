@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { buildBrandKitResponse, getBrandKitConfig } from "@/lib/brand-kits";
+import { buildCollections } from "@/lib/catalog-summaries";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
+import { scopedCatalogAssetsForRole } from "@/lib/catalog-scope";
+import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
+import { assetForRolePayload } from "@/lib/source-redaction";
 import type { StockMediaAsset } from "@/lib/types";
 
 const originalEnv = { ...process.env };
@@ -143,5 +148,48 @@ describe("metadata schema contract", () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.missing).toEqual(expect.arrayContaining(["rights_status", "reviewed_by", "reviewed_date", "people_visible", "approved_use_copy"]));
+  });
+});
+
+describe("photo-only beta fixture scope", () => {
+  it("keeps normal beta roles in photo-only scope while preserving reviewer diagnostics", () => {
+    const viewerScoped = scopedCatalogAssetsForRole("Viewer", demoFallbackAssets, demoFallbackStatus);
+    const contributorScoped = scopedCatalogAssetsForRole("Contributor", demoFallbackAssets, demoFallbackStatus);
+    const reviewerScoped = scopedCatalogAssetsForRole("Reviewer", demoFallbackAssets, demoFallbackStatus);
+
+    expect(viewerScoped.every((asset) => asset.mediaType === "photo")).toBe(true);
+    expect(contributorScoped.every((asset) => asset.mediaType === "photo")).toBe(true);
+    expect(reviewerScoped.some((asset) => asset.mediaType === "audio")).toBe(true);
+  });
+
+  it("redacts fallback fixture labels from normal role asset payloads", () => {
+    const fixture = demoFallbackAssets.find((asset) => /Hosted Pagination Fixture/i.test(asset.title));
+    expect(fixture).toBeTruthy();
+
+    const payload = assetForRolePayload("Viewer", fixture!);
+    const text = JSON.stringify(payload);
+
+    expect(text).not.toMatch(/Hosted Pagination Fixture|Hosted beta fixture|qa\.fixture|API Smoke|demo-fallback/i);
+    expect(payload.title).toBe("Media record");
+    expect(payload.collection).toBe("Media library");
+  });
+  it("redacts fallback fixture labels from normal role collection thumbnails", () => {
+    const collections = buildCollections(demoFallbackAssets, "Viewer");
+    const text = JSON.stringify(collections);
+
+    expect(text).not.toMatch(/Hosted Pagination Fixture|Hosted beta fixture|qa\.fixture|API Smoke|demo-fallback/i);
+    expect(collections.flatMap((collection) => collection.images).some((image) => image.alt === "Media preview")).toBe(true);
+  });
+
+  it("hides raw media source envelopes from normal role brand kit payloads", async () => {
+    const config = getBrandKitConfig("mvp-2024");
+    expect(config).toBeTruthy();
+
+    const viewer = await buildBrandKitResponse(config!, "Viewer");
+    const reviewer = await buildBrandKitResponse(config!, "Reviewer");
+
+    expect("rawSource" in viewer).toBe(false);
+    expect(JSON.stringify(viewer)).not.toMatch(/demo-fallback|fixture fallback|Hosted pagination fixture/i);
+    expect("rawSource" in reviewer).toBe(true);
   });
 });
