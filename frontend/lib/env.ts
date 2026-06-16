@@ -139,6 +139,10 @@ export function hasVercelBlobConfig() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+export function betaFeedbackAttachmentsEnabled() {
+  return process.env.BETA_FEEDBACK_ATTACHMENTS_ENABLED === "1";
+}
+
 export function runtimeStoreMode() {
   return process.env.RUNTIME_STORE || process.env.PORTAL_RUNTIME_STORE || "local-filesystem";
 }
