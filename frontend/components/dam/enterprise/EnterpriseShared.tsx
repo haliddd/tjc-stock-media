@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -268,7 +268,7 @@ export function AssetCard({
 }: {
   asset: StockMediaAsset;
   selected?: boolean;
-  onSelect?: () => void;
+  onSelect?: (event?: MouseEvent<HTMLButtonElement>) => void;
   onQuickLook?: () => void;
 }) {
   const { role } = useDemoRole();
@@ -288,10 +288,10 @@ export function AssetCard({
           <AssetThumb asset={asset} />
         </button>
         <span className="ed-file-chip">{assetType(asset)}</span>
-        <span className="ed-check">{selected ? <Check size={13} /> : null}</span>
+        <span className="ed-check" aria-hidden="true">{selected ? <Check size={13} /> : null}</span>
         <span className="ed-card-tools" aria-label="Asset quick actions">
-          <button type="button" onClick={onSelect} aria-pressed={selected} aria-label={selected ? `Deselect ${title}` : `Select ${title}`}>
-            <Check size={14} aria-hidden="true" />
+          <button className="ed-card-select-checkbox" type="button" onClick={(event) => onSelect?.(event)} aria-pressed={selected} aria-label={selected ? `Deselect ${title}` : `Select ${title}`}>
+            <span aria-hidden="true">{selected ? <Check size={13} /> : null}</span>
           </button>
           <button type="button" onClick={onQuickLook || onSelect} aria-label={`Preview ${title}`}>
             <Star size={14} aria-hidden="true" />
