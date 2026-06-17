@@ -74,14 +74,15 @@ expectFail("low-disk-remediation-copy", lowDiskResult, "make safe-lane-disk-repo
 const wrongWorktreeResult = runGuard({
   env: { SAFE_LANE_EXPECTED_WORKTREE: makeTempDir("tjc-headroom-wrong-") }
 });
-expectFail("wrong-worktree-hard-stop", wrongWorktreeResult, "only inside isolated worktree");
+expectFail("wrong-worktree-hard-stop", wrongWorktreeResult, "only inside expected checkout");
 
-const tempRepo = makeTempDir("tjc-headroom-shared-");
+const tempRepo = makeTempDir("tjc-headroom-shared-source-");
+const tempWorktree = makeTempDir("tjc-headroom-shared-worktree-");
 spawnSync("git", ["init"], { cwd: tempRepo, encoding: "utf8" });
 const sharedCheckoutResult = runGuard({
   cwd: tempRepo,
   env: {
-    SAFE_LANE_EXPECTED_WORKTREE: tempRepo,
+    SAFE_LANE_EXPECTED_WORKTREE: tempWorktree,
     SAFE_LANE_EXPECTED_SOURCE_CHECKOUT: tempRepo,
     SAFE_LANE_MIN_FREE_GIB: "0",
     SAFE_LANE_HEADROOM_OVERRIDE_REASON: "self-test shared checkout fixture"

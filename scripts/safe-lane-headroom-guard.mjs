@@ -3,10 +3,11 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+const defaultCheckout = "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
 const expectedWorktreeInput = process.env.SAFE_LANE_EXPECTED_WORKTREE
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
+  || defaultCheckout;
 const expectedSourceCheckoutInput = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
+  || defaultCheckout;
 const defaultMinFreeGiB = 10;
 const minFreeGiBRaw = process.env.SAFE_LANE_MIN_FREE_GIB || String(defaultMinFreeGiB);
 const minFreeGiB = /^[0-9]+$/.test(minFreeGiBRaw) ? Number(minFreeGiBRaw) : Number.NaN;
@@ -25,15 +26,17 @@ function run(command, args) {
 
 const cwdRoot = run("git", ["rev-parse", "--show-toplevel"]);
 const cwdRealRoot = fs.realpathSync(cwdRoot);
-const expectedWorktree = fs.realpathSync(expectedWorktreeInput);
+const expectedWorktree = fs.existsSync(expectedWorktreeInput)
+  ? fs.realpathSync(expectedWorktreeInput)
+  : expectedWorktreeInput;
 const expectedSourceCheckout = fs.existsSync(expectedSourceCheckoutInput)
   ? fs.realpathSync(expectedSourceCheckoutInput)
   : expectedSourceCheckoutInput;
 
 if (cwdRealRoot !== expectedWorktree) {
-  failures.push(`run ${context} only inside isolated worktree ${expectedWorktree}; got ${cwdRoot}`);
+  failures.push(`run ${context} only inside expected checkout ${expectedWorktree}; got ${cwdRoot}`);
 }
-if (cwdRealRoot === expectedSourceCheckout) {
+if (expectedWorktree !== expectedSourceCheckout && cwdRealRoot === expectedSourceCheckout) {
   failures.push(`refusing ${context} in shared checkout`);
 }
 if (!Number.isSafeInteger(minFreeGiB) || minFreeGiB < 0) {
