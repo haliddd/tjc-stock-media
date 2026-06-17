@@ -8,7 +8,7 @@ import { useAssetsSearch } from "@/components/dam/useDamApi";
 import { sourceLabel, sourceNoun } from "@/lib/enterprise-display";
 import { routeWithRole } from "@/lib/role-routes";
 import type { CatalogCollection } from "@/lib/types";
-import { ActionButton, ErrorCard, LoadingCard, PageHeader, SourcePill, StatusBadge } from "./EnterpriseShared";
+import { ActionButton, AssetPreviewStrip, ErrorCard, LoadingCard, PageHeader, SourcePill, StatusBadge } from "./EnterpriseShared";
 
 function matchesCollection(collection: CatalogCollection, query: string) {
   if (!query.trim()) return true;
@@ -96,6 +96,12 @@ export function EnterpriseCollectionsPage() {
         {submittedQuery ? <button type="button" onClick={() => { setQuery(""); setSubmittedQuery(""); setSelectedCollectionId(""); }}>Clear</button> : null}
       </form>
       {search.loading ? <LoadingCard label="Loading collection cabinet..." /> : search.error ? <ErrorCard message={search.error} source={search.source} /> : (
+        <>
+        <AssetPreviewStrip
+          assets={search.data?.assets || []}
+          title="Collection preview samples"
+          detail={selectedCollection ? `${selectedCollection.name} opens with preview-backed records where local derivatives exist.` : "Preview-backed records appear first for local beta review."}
+        />
         <div className="ed-library-grid">
           <aside className="ed-panel ed-facet-panel">
             <section>
@@ -159,6 +165,7 @@ export function EnterpriseCollectionsPage() {
             )}
           </aside>
         </div>
+        </>
       )}
     </div>
   );

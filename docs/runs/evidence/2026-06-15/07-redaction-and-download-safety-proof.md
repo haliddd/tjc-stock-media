@@ -51,6 +51,10 @@ Smoke strengthened:
 
 - `scripts/portal-api-smoke.sh` now checks reviewer query role, admin query role, and admin query payload redaction without trusted headers.
 - `scripts/portal-download-ticket-smoke.sh` now uses trusted identity headers for positive Reviewer/Admin proof paths and keeps raw no-header calls only for explicit spoof/Viewer denial probes.
+- `scripts/portal-download-ticket-smoke-test.mjs` now self-tests the smoke contract so role spoof denial, private URL rejection, one-use ticket reuse denial, concurrent one-wins consumption, thumbnail/download blocking, blocked asset denial, audit persistence, and forbidden role override env drift fail before any readiness claim.
+- `scripts/portal-sso-smoke-test.mjs` now self-tests the SSO smoke contract so trusted Reviewer/Admin/Contributor headers, malformed admin denial, query-admin denial, group admin claim, and unsafe-download blocking cannot be removed silently.
+- `scripts/portal-delivery-smoke-test.mjs` now self-tests the delivery smoke contract so Viewer/Contributor redaction, blocked download URL denial, private S3/source leak rejection, and S3 readiness honesty cannot be removed silently.
+- `scripts/portal-package-smoke-test.mjs` now self-tests the package smoke contract so Viewer package denial, Contributor save sanitization, Reviewer list caps, persisted unsafe package normalization, private governance leak rejection, and package-draft storage honesty cannot be removed silently.
 - `frontend/lib/beta-auth.test.ts` checks beta-auth routes strip spoofed beta role and marker headers, then inject both only from a verified session cookie.
 - `frontend/lib/production-hardening.test.ts` checks `requestIdentity` ignores naked beta role headers without the verified marker.
 
@@ -69,7 +73,7 @@ Actual BASE_URL:
 http://localhost:4871
 ```
 
-Latest required rerun: `2026-06-15T12:14:57Z` in isolated worktree.
+Latest required rerun: `2026-06-16T13:46:56Z` in isolated worktree.
 
 Proof commands:
 
@@ -77,18 +81,23 @@ Proof commands:
 |---|---|
 | `BASE_URL=http://localhost:4871 make portal-api-smoke` | PASS |
 | `BASE_URL=http://localhost:4871 make portal-download-ticket-smoke` | PASS |
+| `make portal-download-ticket-smoke-test` | PASS |
 | `BASE_URL=http://localhost:4871 make portal-sso-smoke` | PASS |
+| `make portal-sso-smoke-test` | PASS |
 | `BASE_URL=http://localhost:4871 make portal-delivery-smoke` | PASS |
+| `make portal-delivery-smoke-test` | PASS |
+| `make portal-package-smoke-test` | PASS |
 | `BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke` | PASS |
-| `BASE_URL=http://localhost:4871 PORTAL_QA_TRUSTED_HEADERS=1 node scripts/portal-browser-qa.mjs` | PASS |
+| `BASE_URL=http://localhost:4871 make portal-browser-qa` | PASS current UI/browser QA; 20 pages, six viewports, 32 screenshots, 0 failures at `2026-06-16T16:43:07.114Z` |
+| Historical `BASE_URL=http://localhost:4871 PORTAL_QA_TRUSTED_HEADERS=1 node scripts/portal-browser-qa.mjs` | PASS at `2026-06-16T02:59:06.306Z`; historical proof |
 | `make hosted-smoke-mutation-guard` | PASS |
 | `make portal-hosted-smoke` with default hosted URL and no approval env | EXPECTED FAIL-CLOSED before hosted mutation |
 
 Relevant runtime results:
 
-- Latest required rerun passed at `2026-06-15T12:14:57Z`: `git diff --check`, public/private/env/API/audit/payload/storage/git guards, storage-honesty self-test, typecheck, tests, build, `BASE_URL=http://localhost:4871 make portal-api-smoke`, and `BASE_URL=http://localhost:4871 make portal-download-ticket-smoke`.
-- Latest low-disk-safe guard/readiness rerun passed at `2026-06-15T15:23:11Z`: `git diff --check`, safe-lane/runtime/API identity/payload/audit/private-source/public-env/git-hygiene/storage-honesty/evidence guards and self-tests where requested, plus `make launch-readiness` with warnings still classified. Heavy typecheck/test/build/dev/browser/runtime smoke reruns were intentionally not rerun because local disk was below the 10 GiB headroom threshold.
-- Latest disk-report block-copy hardening and evidence/readiness rerun passed at `2026-06-15T15:30:11Z`; runtime smokes were still intentionally not rerun while latest free-disk checks ranged 0-2 GiB.
+- Latest required rerun passed at `2026-06-16T13:46:56Z`: `git diff --check`, safe-lane/runtime/API identity/payload/private-source/public-env/git-hygiene/storage-honesty/evidence guards and self-tests, `make launch-readiness`, typecheck, tests, build, `BASE_URL=http://localhost:4871 make portal-api-smoke`, and `BASE_URL=http://localhost:4871 make portal-download-ticket-smoke`.
+- Latest runtime smoke rerun passed at `2026-06-16T13:46:56Z`: `portal-api-smoke`, `portal-download-ticket-smoke`, `portal-feedback-smoke`, `portal-package-smoke`, `portal-saved-search-smoke`, and `portal-beta-rehearsal` against explicit `BASE_URL=http://localhost:4871`.
+- Latest launch-readiness reported failures=0 / warnings=2; `.env missing` remains a hosted/durable proof blocker and `.runtime/backups missing` remains a backup/restore proof blocker.
 - `GET /api/assets/thumbnail/644?variant=detail&role=Reviewer` without trusted headers returned blocked.
 - Same reviewer thumbnail request with trusted SSO headers returned allowed where expected.
 - `GET /api/review?role=Reviewer&queue=pending` without trusted headers returned blocked.

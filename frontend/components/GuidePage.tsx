@@ -41,7 +41,7 @@ const gettingStarted = [
 ];
 
 const commonTasks: HelpTask[] = [
-  { id: "find", title: "Find approved media", summary: "Search by use case, event, ministry, topic, or package.", href: "/", icon: Search },
+  { id: "find", title: "How to find approved photos", summary: "Search by use case, event, ministry, topic, or package, then confirm Approved for reuse before using a photo.", href: "/", icon: Search },
   { id: "status", title: "Check approval status", summary: "View approval, rights, usage scope, and expiration.", href: "/", icon: ShieldCheck },
   { id: "download", title: "Download approved copy", summary: "Open the record and download the approved derivative.", href: "/", icon: Download },
   { id: "collection", title: "Use a collection", summary: "Start from a curated ministry collection and confirm each item.", href: "/collections", icon: FolderOpen },
@@ -75,12 +75,20 @@ const policies = [
 
 const helpArticles = [
   {
-    title: "Use approved derivatives",
-    detail: "Download only the approved copy for the intended channel. Source/original access stays restricted."
+    title: "How to find approved photos",
+    detail: "Search the library, open the media record, and confirm Approved for reuse, usage scope, reviewer, and review date before using a photo."
   },
   {
-    title: "Request source access",
-    detail: "Open a request only when approved derivatives are not enough. Include use scope, deadline, and ministry owner."
+    title: "How to request reuse",
+    detail: "Open a reuse request when approval, audience, channel, or derivative access is unclear. Include use scope, deadline, and ministry owner."
+  },
+  {
+    title: "Why source files are restricted",
+    detail: "Source/original files stay restricted to protect custody, consent, rights evidence, and the controlled DAM record."
+  },
+  {
+    title: "What photo-only beta means",
+    detail: "Photos are the controlled beta surface. Non-photo records may appear as reference or review items, but video/audio import remains reserved."
   },
   {
     title: "Report a rights issue",
@@ -110,20 +118,20 @@ const helpArticles = [
 
 const faqs: HelpFaq[] = [
   {
-    question: "What is an approved derivative?",
-    answer: "The approved derivative is the safe copy cleared for distribution. Source/original access is restricted by default."
+    question: "How do I find approved photos?",
+    answer: "Search the library, open the record, and confirm Approved for reuse, usage scope, reviewer, and review date before use."
   },
   {
-    question: "How do I know if I can use this media publicly?",
-    answer: "Open the media record and confirm approval status, usage scope, rights evidence, consent notes, reviewer, and review date. If any part is unclear, request DAM review."
+    question: "How do I request reuse?",
+    answer: "Open a reuse request with the record, intended channel, audience, deadline, and ministry owner. Requests do not approve public use by themselves."
   },
   {
-    question: "What should I do if I need source files?",
-    answer: "Submit a source-file access request. Include the record, ministry use, deadline, and why the approved derivative is not enough."
+    question: "Why are source files restricted?",
+    answer: "Source files remain restricted so custody, consent, rights evidence, and the hosted DAM record stay controlled."
   },
   {
-    question: "How long is media approved for?",
-    answer: "Use the review date and expiration or re-review notes on the media record. If approval looks old or scope changed, request a new review."
+    question: "What does photo-only beta mean?",
+    answer: "The beta supports photo intake and reuse review. Non-photo records can remain reference/review items until later import phases."
   }
 ];
 

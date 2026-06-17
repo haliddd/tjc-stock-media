@@ -1,6 +1,6 @@
 # Team Beta Demo Script
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 ## June 15 Safety Override
 
@@ -9,6 +9,16 @@ Do not use this script to invite testers or imply hosted beta is ready. Current 
 Query role URLs like `?role=Reviewer` are no longer authority. Hosted demo must use trusted beta session/SSO proof when approved. Local QA should use protected trusted-header mode, not query-role spoofing.
 
 Use `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe` for non-mutating hosted checks. Do not run hosted mutation unless `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` and `PORTAL_HOSTED_SMOKE_APPROVED_BY` are set.
+
+## June 16 Internal Demo Readiness
+
+This script is approved for owner-led internal demo or presentation on `http://localhost:4867`.
+
+Say this clearly:
+
+> We have a real internal DAM beta demo: photo-only, governed, source-truth honest, review-first, six-admin scope. Production/public/cloud automation/writeback/video-audio are roadmap gates, not claims today.
+
+If hosted ResourceSpace is green, show hosted DAM behavior. If hosted setup is not stable, show local DAM behavior and say hosted setup is still in progress. The current hosted proof is read-only protection probing only; it does not prove hosted persona access, durable hosted state, live ResourceSpace writeback, or public launch readiness.
 
 Audience: church-internal teammates, reviewers, and ministry operators.
 
@@ -30,7 +40,7 @@ Proof points to use:
 - ResourceSpace remains the DAM/search/review truth.
 - The portal is the role-aware workbench for search, doctrine/sacrament review, hymn rights/channel clearance, minors/RE consent, testimony sensitivity, feedback, and readiness.
 - Latest June 15 evidence shows isolated local protected smokes and browser QA passing, hosted read-only probes denying/redirecting anonymous query-role attempts, and hosted mutating smokes intentionally blocked without owner approval.
-- Latest browser QA covers 17 pages, six viewport widths, 23 screenshots, and reports zero failures, zero warnings, zero console errors, and zero network failures.
+- Latest browser QA covers the DAM route set across desktop, tablet, and mobile widths and must report zero failures, zero warnings, zero console errors, and zero network failures before presentation.
 - Current seed supports preview-only workflow testing. It has zero portal-ready/downloadable assets, so downloads should remain blocked unless a reviewer explicitly approves a safe download test later.
 
 Do not imply:
@@ -48,7 +58,7 @@ Do not imply:
 
 Start on Library as Viewer:
 
-`https://tjc-stock-media.vercel.app/beta-login?returnTo=%2F`
+`http://localhost:4867/`
 
 Say:
 
@@ -120,7 +130,7 @@ Do not say:
 
 Switch to Reviewer:
 
-`https://tjc-stock-media.vercel.app/beta-login?returnTo=%2Freview`
+`http://localhost:4867/review`
 
 Open one review item. Try or describe approval without evidence, then show checklist/note requirements and queued decision truth.
 
@@ -147,7 +157,7 @@ Do not say:
 
 Switch to DAM Admin:
 
-`https://tjc-stock-media.vercel.app/beta-login?returnTo=%2Fadmin`
+`http://localhost:4867/admin`
 
 Show the Admin launch state, integration readiness, feedback inbox, and blockers.
 

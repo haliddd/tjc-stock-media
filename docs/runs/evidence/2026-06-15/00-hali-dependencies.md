@@ -4,7 +4,7 @@ Date: 2026-06-15
 Commit SHA: a22497e96004024928128990f432806b768930a6  
 Repo/branch: `haliddd/tjc-stock-media`, `architecture/production-like-connected-dam-readiness-proof`  
 Environment: local proof run; no external mutation beyond approved Oracle attempt and cancel  
-Base URL: local `http://localhost:4868`; hosted `https://tjc-stock-media.vercel.app`  
+Base URL: local `http://localhost:4871`; hosted `https://tjc-stock-media.vercel.app`
 Role/persona: beta operator  
 Result: BLOCKED ON EXTERNAL PROOF  
 Secrets redacted: yes

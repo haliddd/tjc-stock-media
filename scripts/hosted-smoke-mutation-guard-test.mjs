@@ -85,6 +85,10 @@ expectFail("local-bypass-too-broad", (fixtureRoot) => {
   writeFixture(fixtureRoot, readFixture(fixtureRoot).replace("http://localhost:*|http://127.0.0.1:*|http://[::1]:*) local_runtime_probe=1", "http://*) local_runtime_probe=1"));
 });
 
+expectFail("missing-approved-path-headroom", (fixtureRoot) => {
+  writeFixture(fixtureRoot, readFixture(fixtureRoot).replace(/\(\n  cd "\$ROOT"\n  SAFE_LANE_HEADROOM_CONTEXT="\$\{SAFE_LANE_HEADROOM_CONTEXT:-portal-hosted-smoke\}" node scripts\/safe-lane-headroom-guard\.mjs\n\)\n\n/, ""));
+});
+
 if (failures.length) {
   console.error("Hosted smoke mutation guard self-test failed:");
   for (const failure of failures) console.error(`- ${failure}`);

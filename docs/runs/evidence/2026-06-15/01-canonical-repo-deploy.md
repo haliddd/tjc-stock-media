@@ -4,7 +4,7 @@ Date: 2026-06-15
 Commit SHA: a22497e96004024928128990f432806b768930a6  
 Repo/branch: `haliddd/tjc-stock-media`, `architecture/production-like-connected-dam-readiness-proof`  
 Environment: local proof run; no deploy/env mutation  
-Base URL: local `http://localhost:4868`; hosted candidate `https://tjc-stock-media.vercel.app`  
+Base URL: local `http://localhost:4871`; hosted candidate `https://tjc-stock-media.vercel.app`
 Role/persona: beta operator  
 Result: PARTIAL PASS / HOSTED COMMIT BLOCKED  
 Secrets redacted: yes
@@ -25,11 +25,28 @@ Secrets redacted: yes
 
 | Surface | Command |
 |---|---|
-| Frontend dev | `./node_modules/.bin/next dev --port 4868` from `frontend/` |
+| Frontend dev | `npm --prefix frontend run dev -- --port 4871` |
 | Frontend build | `npm --prefix frontend run build` |
-| API smoke | `BASE_URL=http://localhost:4868 make portal-api-smoke` |
-| Beta rehearsal | `BASE_URL=http://localhost:4868 make portal-beta-rehearsal` |
+| API smoke | `BASE_URL=http://localhost:4871 make portal-api-smoke` |
+| Beta rehearsal | `BASE_URL=http://localhost:4871 make portal-beta-rehearsal` |
 
 ## Decision Impact
 
 Canonical repo and PR branch are proven locally. Hosted URL protection is partially proven by read-only unauthenticated checks, but exact Vercel deployment commit and env values remain blocked because no Vercel dashboard/env mutation was approved.
+
+## Current External-Proof Contract
+
+| Field | Value |
+|---|---|
+| Result | BLOCKED |
+| Secrets redacted | yes |
+| Touched forbidden surfaces | no |
+| Open blocker ID | canonical-deployment |
+| Follow-up | Hali confirms canonical repo, hosted URL, Vercel project, and deployment commit |
+
+| Requirement | Status |
+|---|---|
+| Canonical GitHub repo owner/name | BLOCKED |
+| Hosted URL points to recorded commit | BLOCKED |
+
+Canonical deployment remains unresolved. Local proof does not prove Vercel project ownership, deployed commit, hosted env, or protected beta configuration.

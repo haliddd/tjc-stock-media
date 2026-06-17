@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4871}"
+BASE_URL="${BASE_URL:-http://localhost:4867}"
 CURL_MAX_TIME="${PORTAL_DELIVERY_SMOKE_CURL_MAX_TIME:-30}"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
 TMP_DIR="$(mktemp -d)"

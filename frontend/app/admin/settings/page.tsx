@@ -1,5 +1,5 @@
 import { EnterpriseAdminPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <EnterpriseAdminPage initialModule="integrations" adminOnly />;
+  return <EnterpriseAdminPage initialModule="settings" adminOnly />;
 }

@@ -7,13 +7,14 @@ This baseline was rerun from the isolated worktree only.
 - Source checkout: `/Users/halim4pro/Desktop/MVP/tjc-stock-media`
 - Isolated worktree: `/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run`
 - Branch: `codex/safe-ui-beta-proof-2026-06-15`
-- Start commit: `a22497e96004024928128990f432806b768930a6`
-- Current HEAD commit: `a22497e96004024928128990f432806b768930a6`
+- Start commit: `e88c5722f8e547b24f054633854e36391d670d42`
+- Current HEAD commit: `e88c5722f8e547b24f054633854e36391d670d42`
 - Actual BASE_URL: `http://localhost:4871`
 - Server mode for runtime proof: `SSO_TRUSTED_HEADERS=1 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=0 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=0 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0`
 - Secrets redacted: yes
-- Latest protected rerun: `2026-06-15T12:14:57Z` / `2026-06-15 08:14:57 EDT`
-- Latest protected browser QA rerun: `2026-06-15T13:27:23.819Z`
+- Latest protected rerun: `2026-06-16T13:46:56Z` / `2026-06-16 08:22:54 EDT`
+- Historical protected browser QA PASS: `2026-06-16T02:59:06.306Z`
+- Current browser QA status: **PASS** at `2026-06-16T16:43:07.114Z`; self-owned port-4871 browser QA completed with 20 pages, six viewports, 32 screenshots, 0 failures, 0 console errors, 0 network failures, and 0 warnings.
 - Latest low-disk-safe guard matrix rerun: `2026-06-15T15:23:11Z`
 - Latest evidence/readiness rerun after disk-report copy hardening: `2026-06-15T15:30:11Z`
 
@@ -21,9 +22,9 @@ This baseline was rerun from the isolated worktree only.
 
 The earlier public-env guard blocker is resolved in this isolated worktree. Client-rendered code no longer needs server `NODE_ENV` access for the local beta role switch, and public env exposure remains guarded.
 
-Current heavy rerun status: blocked by `safe-lane-headroom-guard` until local free disk is at least 10 GiB or the threshold is deliberately lowered for a specific safe command. The dev, build, start, and browser QA rows below are the latest valid local proof, not permission to rerun heavy commands while disk remains below the guard threshold.
+Current heavy rerun status: unblocked by safe headroom. Recorded `df -g .` observation reports 24 GiB free, above the configured 10 GiB threshold. `safe-lane-headroom-guard` remains active, so future dev/build/start/browser/smoke/bootstrap/docker/import/media/backup reruns still fail closed if disk drops below threshold or the command runs from the shared checkout.
 
-Latest `df -g .` / launch-readiness checks ranged 0-2 GiB free, and `make safe-lane-disk-report` showed only isolated cleanup candidates: `frontend/.next` (`497M`), `.next` (`4.0K`), and `.runtime/analytics` (`400K`). That is not enough to restore default 10 GiB headroom, so typecheck/test/build/dev/server/browser/runtime smoke reruns remain blocked in this lane.
+Historical low-disk note: earlier `df -g .` / launch-readiness checks ranged 0-2 GiB free, and `make safe-lane-disk-report` showed limited isolated cleanup candidates. That warning is now classified as a local operational follow-up if it recurs, not a current beta blocker.
 
 ## Checks
 
@@ -33,9 +34,12 @@ Latest `df -g .` / launch-readiness checks ranged 0-2 GiB free, and `make safe-l
 | `node scripts/public-env-guard.mjs` | PASS |
 | `make public-env-guard-test` | PASS |
 | `node scripts/private-source-guard.mjs` | PASS |
+| `make live-dam-surface-guard` | PASS |
+| `make live-dam-surface-guard-test` | PASS |
 | `node scripts/api-identity-guard.mjs` | PASS, 19 routes |
 | `node scripts/api-payload-guard.mjs` | PASS |
 | `node scripts/api-audit-guard.mjs` | PASS |
+| `make api-audit-guard-test` | PASS |
 | `node scripts/storage-honesty-guard.mjs` | PASS |
 | `make storage-honesty-guard-test` | PASS |
 | `node scripts/git-hygiene-guard.mjs` | PASS |
@@ -49,9 +53,9 @@ Latest `df -g .` / launch-readiness checks ranged 0-2 GiB free, and `make safe-l
 | `make open-blockers-guard-test` | PASS |
 | `make evidence-packet-guard` | PASS |
 | `make evidence-packet-guard-test` | PASS |
-| `make launch-readiness` | PASS, failures=0 / warnings=3 (`.env missing`, `.runtime/backups missing`, `local free disk below 10 GiB`) |
+| `make launch-readiness` | PASS, failures=0 / warnings=2; warnings=`.env missing`, `.runtime/backups missing` |
 | `npm --prefix frontend run typecheck` | PASS |
-| `npm --prefix frontend test` | PASS, 6 files / 78 tests |
+| `npm --prefix frontend test` | PASS, 9 files / 86 tests |
 | `npm --prefix frontend run build` | PASS, `prebuild` ran `dev-server-build-guard` |
 | `BASE_URL=http://localhost:4871 make portal-api-smoke` | PASS |
 | `BASE_URL=http://localhost:4871 make portal-download-ticket-smoke` | PASS |
@@ -61,9 +65,15 @@ Latest `df -g .` / launch-readiness checks ranged 0-2 GiB free, and `make safe-l
 | `BASE_URL=http://localhost:4871 make portal-saved-search-smoke` | PASS |
 | `BASE_URL=http://localhost:4871 make portal-feedback-smoke` | PASS |
 | `BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke` | PASS |
-| `BASE_URL=http://localhost:4871 make portal-beta-rehearsal` | PASS, `.runtime/beta-rehearsals/20260615T121438Z-48032/summary.json` |
+| `make portal-writeback-guard-smoke-test` | PASS |
+| `make portal-download-ticket-smoke-test` | PASS |
+| `make portal-sso-smoke-test` | PASS |
+| `make portal-delivery-smoke-test` | PASS |
+| `make portal-package-smoke-test` | PASS |
+| `BASE_URL=http://localhost:4871 make portal-beta-rehearsal` | PASS, `.runtime/beta-rehearsals/20260616T052323Z-82430/summary.json` |
 | `BASE_URL=http://localhost:4871 PORTAL_USAGE_LOGGING=1 USAGE_ANALYTICS_DB_PATH=/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run/.runtime/analytics/portal-usage.sqlite make portal-usage-smoke` | PASS |
-| `BASE_URL=http://localhost:4871 PORTAL_QA_TRUSTED_HEADERS=1 node scripts/portal-browser-qa.mjs` | PASS, 17 pages / 6 viewports / 23 screenshots / 0 failures; rerun checked `2026-06-15T13:27:23.819Z` |
+| `BASE_URL=http://localhost:4871 make portal-browser-qa` | PASS, 20 pages / 6 viewports / 32 screenshots / 0 failures; current self-owned rerun checked `2026-06-16T16:43:07.114Z`; report `docs/screenshots/qa/browser-qa-report.json` |
+| Historical `BASE_URL=http://localhost:4871 PORTAL_QA_TRUSTED_HEADERS=1 node scripts/portal-browser-qa.mjs` | PASS, 21 pages / 6 viewports / 27 screenshots / 0 failures; checked `2026-06-16T02:59:06.306Z`; historical proof |
 | `make portal-hosted-smoke` with default hosted URL and no approval env | EXPECTED FAIL-CLOSED, exits before hosted/network mutation |
 
 ## P0 Query-Role Regression
@@ -85,9 +95,9 @@ Patch result:
 
 Regression proof:
 
-- Latest required rerun passed: guards, typecheck, tests, build, `portal-api-smoke`, `portal-download-ticket-smoke`, `portal-feedback-smoke`, `portal-package-smoke`, `portal-saved-search-smoke`, and `portal-beta-rehearsal` on `http://localhost:4871` at `2026-06-15T12:14:57Z`.
+- Latest required rerun passed: guards, typecheck, tests, build, `portal-api-smoke`, `portal-download-ticket-smoke`, `portal-feedback-smoke`, `portal-package-smoke`, `portal-saved-search-smoke`, and `portal-beta-rehearsal` on `http://localhost:4871` at `2026-06-16T13:46:56Z`.
 - Post identity/doc hardening runtime rerun passed at `2026-06-15T12:14Z`: `portal-api-smoke`, `portal-download-ticket-smoke`, `portal-package-smoke`, `portal-saved-search-smoke`, `portal-feedback-smoke`, and `portal-beta-rehearsal`. Earlier protected rerun also covered `portal-sso-smoke`, `portal-delivery-smoke`, `portal-writeback-guard-smoke`, and `portal-usage-smoke`; usage analytics required restarting the isolated local server with `PORTAL_USAGE_LOGGING=1`.
-- Client privileged GET query-role cleanup passed guard/typecheck/test/build and protected browser QA at `2026-06-15T13:27:23.819Z`.
+- Client privileged GET query-role cleanup passed guard/typecheck/test/build and browser QA. Latest self-owned browser QA passed at `2026-06-16T16:43:07.114Z`.
 - `?role=Reviewer` cannot unlock reviewer thumbnail access without trusted identity.
 - `?role=Reviewer` cannot unlock review queue access without trusted identity.
 - `?role=DAM Admin` cannot unlock admin readiness without trusted identity.
@@ -99,4 +109,4 @@ Regression proof:
 
 ## Posture
 
-Local P0 query-role bug class is fixed and smoke/browser-proven. Premium UI maturity pass is locally green. Beta posture remains NO-GO for broader send/launch because hosted protection, canonical deployment, ResourceSpace scope, Google Drive custody, and durable/fail-closed state are not fully proven in this packet.
+Local P0 query-role bug class is fixed and smoke-proven. Current browser QA is green for the local isolated proof lane: the latest self-owned run passed with 20 pages, six viewports, 32 screenshots, and zero failures. Beta posture remains NO-GO for broader send/launch because hosted protection, canonical deployment, ResourceSpace scope, Google Drive custody, durable/fail-closed state, and tester signoff are not fully proven in this packet.

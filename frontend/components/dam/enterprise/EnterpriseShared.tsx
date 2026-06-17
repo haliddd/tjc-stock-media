@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -45,7 +45,16 @@ import { matchesCatalogFilter } from "@/lib/catalog-language";
 import { cn } from "@/lib/ui";
 
 export function StatusBadge({ status }: { status: EnterpriseStatus }) {
-  return <span className={cn("ed-badge", statusToneClass(status))}>{status}</span>;
+  const label = status === "Approved"
+    ? "Approved for reuse"
+    : status === "Missing Consent"
+      ? "Consent needed"
+      : status === "Restricted"
+        ? "Restricted source"
+        : status === "Read-only"
+          ? "Internal only"
+          : status;
+  return <span className={cn("ed-badge", statusToneClass(status))}>{label}</span>;
 }
 
 function primaryBlockerLabel(blockers: ReuseBlocker[] = []) {
@@ -98,11 +107,17 @@ export function BlockedReasonList({
     return <p className="ed-inline-success"><CheckCircle2 size={16} aria-hidden="true" />No active reuse blocker in this role-safe view.</p>;
   }
   return (
-    <div className="ed-decision-reasons" aria-label="Reuse blockers">
+    <ul className="ed-decision-reasons" aria-label="Reuse blockers">
       {visibleBlockers.map((blocker) => (
-        <span key={blocker.code} title={blockerEvidenceHint(blocker)}>{blocker.label}</span>
+        <li key={blocker.code} title={blockerEvidenceHint(blocker)}>
+          <Lock size={14} aria-hidden="true" />
+          <span>
+            <strong>{blocker.label}</strong>
+            <small>{blockerEvidenceHint(blocker)}</small>
+          </span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -436,7 +451,10 @@ function LockedActionNotice({ title = "Download locked", reason }: { title?: str
   return (
     <p className="ed-lock-notice">
       <Lock size={15} aria-hidden="true" />
-      <span><strong>{title}</strong>{reason}</span>
+      <span>
+        <strong>{title} - reviewer action required</strong>
+        <small>{reason}</small>
+      </span>
     </p>
   );
 }
@@ -616,9 +634,9 @@ export function DamToolbar({
 
 function sourceTruthDisplay(source?: MediaSourceStatus | null) {
   const label = sourceLabel(source);
-  if (/fixture|fallback/i.test(label)) return "Fixture fallback";
+  if (/fixture|fallback|demo/i.test(label)) return "Local demo data";
   if (/resourcespace|dam/i.test(label)) return "Hosted DAM instance";
-  if (/local/i.test(label)) return "Local demo fallback";
+  if (/local/i.test(label)) return "Local demo data";
   return label;
 }
 
@@ -634,21 +652,83 @@ export function ErrorCard({ message, source }: { message: string; source?: Media
   return <section className="ed-card ed-empty-state"><AlertTriangle size={24} /><h2>{sourceNoun(source)} data unavailable</h2><p>{message}</p><SourcePill source={source} /></section>;
 }
 
+function assetPreviewUrl(asset: StockMediaAsset, fit: "cover" | "contain") {
+  if (asset.thumbnail) return asset.thumbnail;
+  if (fit === "contain" && asset.preview) return asset.preview;
+  return asset.imageUrls?.small || asset.imageUrls?.detail || asset.preview || "";
+}
+
+function previewFallbackDetail(state: ReturnType<typeof mediaPreviewState>) {
+  if (state === "Preview failed") return "Approved derivative not loaded";
+  if (state === "Preview restricted") return "Source/original remains restricted";
+  if (state === "Unsupported file type") return "Approved derivative not loaded";
+  if (state === "Preview loading") return "Loading preview state";
+  return "Approved derivative not loaded";
+}
+
+function previewFallbackTone(state: ReturnType<typeof mediaPreviewState>) {
+  if (state === "Preview restricted") return "is-restricted";
+  if (state === "Preview failed") return "is-failed";
+  return "is-unavailable";
+}
+
 export function AssetThumb({ asset, className, fit = "cover" }: { asset?: StockMediaAsset; className?: string; fit?: "cover" | "contain" }) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [asset?.thumbnail]);
+  const imageUrl = asset ? assetPreviewUrl(asset, fit) : "";
+  useEffect(() => setFailed(false), [imageUrl]);
   const state = mediaPreviewState(asset, failed);
   if (!asset || state !== "Preview available") {
     return (
-      <div className={cn("ed-doc-thumb", className)}>
-        <strong>{asset ? assetType(asset) : "DAM"}</strong>
-        <span>{state}</span>
-        <small>{mediaPreviewUnavailableReason(state)}</small>
-        {asset ? <small>{recordIdLabel()} {assetRecordRef(asset)}</small> : null}
+      <div className={cn("ed-doc-thumb ed-preview-fallback", previewFallbackTone(state), className)} aria-label={asset ? `Preview unavailable for ${displayTitle(asset)}` : "Preview loading"}>
+        <strong>Preview unavailable</strong>
+        <span>{previewFallbackDetail(state)}</span>
+        <small>{state === "Preview restricted" ? "Approved derivative not loaded" : "Source/original remains restricted"}</small>
+        {asset ? <small>Reference {assetRecordRef(asset)}</small> : <small>{mediaPreviewUnavailableReason(state)}</small>}
       </div>
     );
   }
-  return <img className={cn("ed-thumb", fit === "contain" && "is-contain", className)} src={asset.thumbnail} alt={asset.thumbnailAlt || displayTitle(asset)} onError={() => setFailed(true)} />;
+  return <img className={cn("ed-thumb", fit === "contain" && "is-contain", className)} src={imageUrl} alt={asset.thumbnailAlt || displayTitle(asset)} onError={() => setFailed(true)} />;
+}
+
+export function AssetPreviewStrip({
+  assets,
+  title = "Preview samples",
+  detail,
+  className,
+  limit = 5
+}: {
+  assets: StockMediaAsset[];
+  title?: string;
+  detail?: string;
+  className?: string;
+  limit?: number;
+}) {
+  const { role } = useDemoRole();
+  const visibleAssets = assets.slice(0, limit);
+  if (!visibleAssets.length) return null;
+  return (
+    <section className={cn("ed-preview-sample-strip", className)} aria-label={title}>
+      <header>
+        <div>
+          <span>Role-safe previews</span>
+          <h2>{title}</h2>
+          {detail ? <p>{detail}</p> : null}
+        </div>
+        <strong>{visibleAssets.length.toLocaleString()} visible</strong>
+      </header>
+      <div>
+        {visibleAssets.map((asset) => (
+          <Link href={routeWithRole(`/assets/${asset.id}`, role)} key={asset.id} aria-label={`Open preview record for ${displayTitle(asset)}`}>
+            <AssetThumb asset={asset} />
+            <span>
+              <strong>{displayTitle(asset)}</strong>
+              <small>{assetRecordRef(asset)} · {assetType(asset)}</small>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export function AssetCard({
@@ -659,7 +739,7 @@ export function AssetCard({
 }: {
   asset: StockMediaAsset;
   selected?: boolean;
-  onSelect?: () => void;
+  onSelect?: (event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => void;
   onQuickLook?: () => void;
 }) {
   const { role } = useDemoRole();
@@ -677,8 +757,24 @@ export function AssetCard({
       .filter((tag) => tag && !/^(not provided|unknown|media library)$/i.test(tag))
       .filter((tag) => tag !== cardContext.approvalLabel)
       .slice(0, 3);
+  const handleCardSelect = (event: MouseEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest("button,a,input,select,textarea,[role='button']")) return;
+    onSelect?.(event);
+  };
+  const handleKeySelect = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== " " && event.key !== "Enter") return;
+    event.preventDefault();
+    onSelect?.(event);
+  };
   return (
-    <article className={cn("ed-asset-card", selected && "is-selected")}>
+    <article
+      className={cn("ed-asset-card", selected && "is-selected")}
+      data-asset-id={asset.id}
+      aria-selected={selected}
+      tabIndex={0}
+      onClick={handleCardSelect}
+      onKeyDown={handleKeySelect}
+    >
       <div className="ed-card-media">
         <button className="ed-card-preview-button" type="button" onClick={onQuickLook || onSelect} aria-label={`Open quick look for ${title}`}>
           <AssetThumb asset={asset} />
@@ -686,7 +782,7 @@ export function AssetCard({
         <span className="ed-file-chip">{assetType(asset)}</span>
         <span className="ed-check">{selected ? <Check size={13} /> : null}</span>
         <span className="ed-card-tools" aria-label="Asset quick actions">
-          <button type="button" onClick={onSelect} aria-pressed={selected} aria-label={selected ? `Deselect ${title}` : `Select ${title}`}>
+          <button type="button" onClick={(event) => onSelect?.(event)} aria-pressed={selected} aria-label={selected ? `Deselect ${title}` : `Select ${title}`}>
             <Check size={14} aria-hidden="true" />
           </button>
           <button type="button" onClick={onQuickLook || onSelect} aria-label={`Preview ${title}`}>
@@ -710,8 +806,8 @@ export function AssetCard({
       ) : null}
       <div className="ed-card-footer">
         <StatusBadge status={assetEnterpriseStatus(asset)} />
-        <span className="ed-card-date">{cardContext.betaVisibilityLabel} · {cardContext.reuseAnswerLabel} · {assetDate(asset)}</span>
-        <button className="ed-card-hover-action" type="button" onClick={onQuickLook || onSelect}>Quick look</button>
+        <span className="ed-card-date">{cardContext.reuseAnswerLabel} · {cardContext.betaVisibilityLabel} · {assetDate(asset)}</span>
+        <button className="ed-card-hover-action" type="button" onClick={onQuickLook || onSelect}>View details</button>
       </div>
     </article>
   );
@@ -917,7 +1013,11 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
   const tabRows = inspectorMetadataRows({ asset, tab, source });
   return (
     <aside className="ed-inspector ed-panel">
-      <div className="ed-drawer-top"><span>‹</span><strong>{recordIdLabel(source)} {assetRecordRef(asset)}</strong><span>›</span><button type="button" onClick={() => setMessage("Inspector stays pinned on desktop. Select another record to change context.")}>×</button></div>
+      <header className="ed-inspector-record-header">
+        <span>Selected asset</span>
+        <strong>{recordIdLabel(source)} {assetRecordRef(asset)}</strong>
+        <button type="button" onClick={() => setMessage("Inspector stays pinned on desktop. Select another record to change context.")}>Pinned</button>
+      </header>
       <AssetThumb asset={asset} className="ed-inspector-preview" fit="contain" />
       <section className="ed-inspector-identity" aria-label="Selected asset identity">
         <h2 title={displayTitle(asset)}>{displayTitle(asset)}</h2>
@@ -927,8 +1027,11 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
           <span>{assetDate(asset)}</span>
         </div>
       </section>
-      <div className="ed-meta-line"><StatusBadge status={assetEnterpriseStatus(asset)} /><span>{asset.collection || "Unassigned collection"}</span></div>
-      <SourcePill source={source} live={live} />
+      <div className="ed-inspector-status-row">
+        <StatusBadge status={assetEnterpriseStatus(asset)} />
+        <span>{asset.collection || "Unassigned collection"}</span>
+        <SourcePill source={source} live={live} />
+      </div>
       <TrustAnswerStrip
         visible={betaVisibilityLabel(asset)}
         reuse={reuseAnswerLabel(presentation.packet.reuse.state)}

@@ -65,7 +65,7 @@ if (current.status === 0) {
     "This script deletes nothing",
     "Default heavy-run minimum: 10 GiB",
     "Heavy local reruns:",
-    "shared checkout: /Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15"
+    "shared checkout: /Users/halim4pro/Desktop/MVP/tjc-stock-media"
   ]) {
     if (!current.stdout.includes(expectedText)) failures.push(`current report missing ${expectedText}`);
   }

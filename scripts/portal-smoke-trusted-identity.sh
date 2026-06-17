@@ -35,8 +35,24 @@ portal_smoke_http_code() {
   local curl_args=("$@")
   local trusted_role
   trusted_role="$(portal_smoke_trusted_role "${curl_args[@]}")"
+  portal_smoke_http_code_with_role "$trusted_role" "$output" "${curl_args[@]}"
+}
+
+portal_smoke_http_code_as() {
+  local trusted_role="$1"
+  local output="$2"
+  shift 2
+  portal_smoke_http_code_with_role "$trusted_role" "$output" "$@"
+}
+
+portal_smoke_http_code_with_role() {
+  local trusted_role="$1"
+  local output="$2"
+  shift 2
+  local curl_args=("$@")
   if [ -n "$trusted_role" ]; then
     curl_args=(
+      -H "x-tjc-local-beta-role: $trusted_role"
       -H "x-tjc-role: $trusted_role"
       -H "x-auth-request-email: $(portal_smoke_trusted_email "$trusted_role")"
       "${curl_args[@]}"

@@ -212,6 +212,7 @@ export function trustFacts(asset: StockMediaAsset, role: DemoRole) {
     { label: opsView ? "ResourceSpace status" : "Approval state", value: statusToUserLabel(asset.status) },
     { label: opsView ? "Portal reuse state" : "Use guidance state", value: `${reuse.label} - ${reuse.summary}` },
     { label: "Usage scope", value: usageScopeToUserLabel(asset.usageScope) },
+    { label: "DAM filename", value: asset.damFilenames?.web || asset.damFilenames?.original || "Generated at delivery" },
     { label: "Source / provenance", value: provenance.publicLabel },
     { label: "Reviewer", value: asset.reviewer && asset.reviewedDate ? `${asset.reviewer} - ${asset.reviewedDate}` : "Review pending" },
     { label: "People/minors", value: unknownReviewCopy(asset.peopleRisk) },

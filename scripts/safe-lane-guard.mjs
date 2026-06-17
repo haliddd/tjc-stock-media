@@ -4,13 +4,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 const expectedWorktree = process.env.SAFE_LANE_EXPECTED_WORKTREE
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
 const expectedSourceCheckout = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15";
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
 const expectedBranch = process.env.SAFE_LANE_EXPECTED_BRANCH
-  || "codex/final-stock-media-canonical-2026-06-15";
+  || "codex/safe-ui-beta-proof-2026-06-15";
+const expectedStartCommit = process.env.SAFE_LANE_EXPECTED_START_COMMIT
+  || "e88c5722f8e547b24f054633854e36391d670d42";
 const expectedBaseUrl = process.env.SAFE_LANE_EXPECTED_BASE_URL
-  || "http://localhost:4867";
+  || "http://localhost:4871";
 const ledgerPath = process.env.SAFE_LANE_LEDGER_PATH
   || "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md";
 const failures = [];
@@ -43,11 +45,17 @@ if (!ledger) {
   requireText(ledger, `Source checkout: \`${expectedSourceCheckout}\``, "source checkout path");
   requireText(ledger, `Isolated worktree path: \`${expectedWorktree}\``, "isolated worktree path");
   requireText(ledger, `Branch: \`${expectedBranch}\``, "safe branch");
+  requireText(ledger, `Start commit: \`${expectedStartCommit}\``, "start commit");
   requireText(ledger, `Current HEAD commit: \`${head}\``, "current HEAD commit");
   requireText(ledger, `Actual BASE_URL: \`${expectedBaseUrl}\``, "actual BASE_URL");
   requireText(ledger, "Secrets redacted: yes");
   requireText(ledger, "Runtime/build artifacts isolated under isolated worktree: yes");
   requireText(ledger, "Shared checkout untouched by this build/dev/smoke lane: yes");
+  requireText(ledger, "Source Checkout Artifact Inventory", "source checkout artifact inventory section");
+  requireText(ledger, "inspected read-only", "source checkout read-only inspection note");
+  requireText(ledger, "were not used as proof", "source checkout not-used-as-proof note");
+  requireText(ledger, "This session did not mutate them", "source checkout did-not-mutate note");
+  requireText(ledger, "did not run build/dev/smoke/browser QA from the shared checkout", "shared checkout no build/dev/smoke/browser QA note");
   requireText(ledger, "019ec981-e816-70d0-bac1-759bb7792a12", "sibling session 019ec981");
   requireText(ledger, "019ec84d-5d83-7010-9393-f7df3739e4d9", "sibling session 019ec84d");
   for (const forbidden of [
@@ -67,7 +75,7 @@ if (!ledger) {
 
 const trackedFiles = run("git", ["ls-files"]).split("\n").filter(Boolean);
 const forbiddenTrackedPatterns = [
-  /(^|\/)\.env$/,
+  /(^|\/)\.env(?:\.(?!.*example$)[^/]+)?$/,
   /(^|\/)\.runtime(\/|$)/,
   /(^|\/)\.next(\/|$)/,
   /(^|\/)data\/runtime(\/|$)/,

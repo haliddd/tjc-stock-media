@@ -9,6 +9,7 @@ export type RuntimeStateCategory =
   | "download-tickets"
   | "beta-feedback"
   | "package-drafts"
+  | "intake-batches"
   | "saved-searches"
   | "usage-events"
   | "runtime";
@@ -19,6 +20,7 @@ function categoryForPath(filePath: string): RuntimeStateCategory {
   if (filePath.includes("download-tickets")) return "download-tickets";
   if (filePath.includes("beta-feedback")) return "beta-feedback";
   if (filePath.includes("package-drafts")) return "package-drafts";
+  if (filePath.includes("intake-batches")) return "intake-batches";
   if (filePath.includes("saved-searches")) return "saved-searches";
   if (filePath.includes("usage")) return "usage-events";
   return "runtime";

@@ -4,14 +4,20 @@ import fs from "node:fs";
 import path from "node:path";
 
 const expectedWorktreeInput = process.env.SAFE_LANE_EXPECTED_WORKTREE
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
 const expectedSourceCheckoutInput = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15";
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
 const defaultMinFreeGiB = 10;
-const minFreeGiB = Number.parseInt(process.env.SAFE_LANE_MIN_FREE_GIB || String(defaultMinFreeGiB), 10);
+const minFreeGiBRaw = process.env.SAFE_LANE_MIN_FREE_GIB || String(defaultMinFreeGiB);
+const minFreeGiB = /^[0-9]+$/.test(minFreeGiBRaw) ? Number(minFreeGiBRaw) : Number.NaN;
 const overrideReason = String(process.env.SAFE_LANE_HEADROOM_OVERRIDE_REASON || "").trim();
 const context = process.env.SAFE_LANE_HEADROOM_CONTEXT || "heavy local command";
 const failures = [];
+
+if (process.env.VERCEL === "1") {
+  console.log(`Safe lane headroom guard skipped for ${context}: Vercel build environment.`);
+  process.exit(0);
+}
 
 function run(command, args) {
   return execFileSync(command, args, { encoding: "utf8" }).trim();
@@ -30,16 +36,16 @@ if (cwdRealRoot !== expectedWorktree) {
 if (cwdRealRoot === expectedSourceCheckout) {
   failures.push(`refusing ${context} in shared checkout`);
 }
-if (!Number.isInteger(minFreeGiB) || minFreeGiB < 0) {
+if (!Number.isSafeInteger(minFreeGiB) || minFreeGiB < 0) {
   failures.push("SAFE_LANE_MIN_FREE_GIB must be a non-negative integer");
 }
-if (Number.isInteger(minFreeGiB) && minFreeGiB < defaultMinFreeGiB && !overrideReason) {
+if (Number.isSafeInteger(minFreeGiB) && minFreeGiB < defaultMinFreeGiB && !overrideReason) {
   failures.push(`lowering SAFE_LANE_MIN_FREE_GIB below ${defaultMinFreeGiB} requires SAFE_LANE_HEADROOM_OVERRIDE_REASON`);
 }
 
 const freeKib = Number(run("df", ["-k", expectedWorktree]).split(/\r?\n/)[1].trim().split(/\s+/)[3]);
 const freeGiB = Math.floor(freeKib / 1024 / 1024);
-if (Number.isInteger(minFreeGiB) && freeGiB < minFreeGiB) {
+if (Number.isSafeInteger(minFreeGiB) && freeGiB < minFreeGiB) {
   failures.push(`free disk ${freeGiB} GiB is below required ${minFreeGiB} GiB for ${context}`);
 }
 

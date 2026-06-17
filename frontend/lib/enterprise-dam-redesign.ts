@@ -288,7 +288,6 @@ export const damAssets = [
     id: "TJC-IMG-1002",
     title: "Youth Fellowship Group Photo",
     type: "Image",
-    thumbnailUrl: "https://picsum.photos/seed/tjc-youth-fellowship-group/720/480",
     collectionIds: ["fellowship"],
     ministry: "Youth",
     event: "Youth Fellowship",
@@ -624,22 +623,30 @@ export const governanceRecords: Record<string, GovernanceRecord[]> = {
   rights: [
     { id: "r1", name: "Owner/license evidence missing", status: "Needs Evidence", owner: "Rights reviewer", updated: "2026-06-14", detail: "Youth Fellowship Group Photo requires proof before public use." },
     { id: "r2", name: "Minors consent required", status: "Blocked", owner: "Rights reviewer", updated: "2026-06-14", detail: "Summer Camp Group Photo blocked until minor consent is attached." },
-    { id: "r3", name: "Expiring license review", status: "Expiring Soon", owner: "Music rights", updated: "2026-06-13", detail: "Choir Hymn Audio Reference license recheck due soon." }
+    { id: "r3", name: "Expiring license review", status: "Expiring Soon", owner: "Music rights", updated: "2026-06-13", detail: "Choir Hymn Audio Reference license recheck due soon." },
+    { id: "r4", name: "Download unlock evidence", status: "In Review", owner: "Reviewer desk", updated: "2026-06-12", detail: "Approved derivative request waits on usage-scope note." },
+    { id: "r5", name: "Blocked public use", status: "Restricted", owner: "Policy reviewer", updated: "2026-06-11", detail: "External distribution blocked until release packet is complete." }
   ],
   metadata: [
     { id: "m1", name: "Missing ministry/tags", status: "In Review", owner: "Metadata steward", updated: "2026-06-15", detail: "Review queue includes records requiring field completion." },
     { id: "m2", name: "Duplicate candidates", status: "Submitted", owner: "DAM Admin", updated: "2026-06-14", detail: "Two derivative candidates queued for checksum verification." },
-    { id: "m3", name: "Taxonomy drift", status: "Needs Evidence", owner: "Taxonomy owner", updated: "2026-06-13", detail: "Youth and fellowship tags need consolidation." }
+    { id: "m3", name: "Taxonomy drift", status: "Needs Evidence", owner: "Taxonomy owner", updated: "2026-06-13", detail: "Youth and fellowship tags need consolidation." },
+    { id: "m4", name: "Orphaned records", status: "Submitted", owner: "Metadata steward", updated: "2026-06-12", detail: "Records missing collection or ministry owner need cleanup." },
+    { id: "m5", name: "Required field coverage", status: "In Review", owner: "DAM Admin", updated: "2026-06-11", detail: "Title, ministry, event date, and creator fields under audit." }
   ],
   policy: [
     { id: "p1", name: "Source file restrictions", status: "Portal Ready", owner: "Policy engine", updated: "2026-06-15", detail: "Source files require approved access and audit events." },
     { id: "p2", name: "Public use rules", status: "Portal Ready", owner: "Rights reviewer", updated: "2026-06-15", detail: "Human reviewer, date, usage scope, and notes required." },
-    { id: "p3", name: "Expired rights gate", status: "Blocked", owner: "Policy engine", updated: "2026-06-14", detail: "Expired rights block download and package export." }
+    { id: "p3", name: "Expired rights gate", status: "Blocked", owner: "Policy engine", updated: "2026-06-14", detail: "Expired rights block download and package export." },
+    { id: "p4", name: "Download gates", status: "In Review", owner: "Policy engine", updated: "2026-06-12", detail: "Viewer downloads require approved derivative and role-safe scope." },
+    { id: "p5", name: "Role permissions", status: "Portal Ready", owner: "DAM Admin", updated: "2026-06-11", detail: "Contributor, reviewer, and admin routes remain role-scoped." }
   ],
   integrations: [
     { id: "i1", name: "ResourceSpace sync", status: "In Review", owner: "DAM Admin", updated: "2026-06-15", detail: "Search and review layer active; live writeback remains gated." },
     { id: "i2", name: "Google Shared Drive custody", status: "Portal Ready", owner: "Archive admin", updated: "2026-06-15", detail: "Master source custody remains outside portal package flows." },
-    { id: "i3", name: "Identity provider", status: "Needs Evidence", owner: "Admin", updated: "2026-06-14", detail: "Production SSO role mapping pending." }
+    { id: "i3", name: "Identity provider", status: "Needs Evidence", owner: "Admin", updated: "2026-06-14", detail: "Production SSO role mapping pending." },
+    { id: "i4", name: "Pending write queue", status: "Blocked", owner: "DAM Admin", updated: "2026-06-13", detail: "ResourceSpace writeback remains disabled until adapter proof exists." },
+    { id: "i5", name: "Portal runtime store", status: "Needs Evidence", owner: "Platform", updated: "2026-06-12", detail: "Hosted durability proof still required before broad beta." }
   ]
 };
 

@@ -64,11 +64,30 @@ function expectFail(label, mutate) {
 expectPass("current-external-proof-contract");
 
 expectFail("canonical-overclaims-pass", (targetRoot) => {
-  mutateFile(targetRoot, "docs/runs/evidence/2026-06-15/01-canonical-repo-deploy.md", (source) => source.replace("| Result | BLOCKED for beta readiness |", "| Result | PASS |"));
+  mutateFile(targetRoot, "docs/runs/evidence/2026-06-15/01-canonical-repo-deploy.md", (source) => source.replace("| Result | BLOCKED |", "| Result | PASS |"));
+});
+
+expectFail("canonical-missing-forbidden-surface-row", (targetRoot) => {
+  mutateFile(targetRoot, "docs/runs/evidence/2026-06-15/01-canonical-repo-deploy.md", (source) => source.replace("| Touched forbidden surfaces | no |\n", ""));
+});
+
+expectFail("canonical-missing-open-blocker-id", (targetRoot) => {
+  mutateFile(targetRoot, "docs/runs/evidence/2026-06-15/01-canonical-repo-deploy.md", (source) => source.replace("| Open blocker ID | canonical-deployment |\n", ""));
 });
 
 expectFail("hosted-missing-mutation-boundary", (targetRoot) => {
   mutateFile(targetRoot, "docs/runs/evidence/2026-06-15/03-hosted-access-proof.md", (source) => source.replace("hosted mutating smokes intentionally not run", "hosted checks complete"));
+});
+
+expectFail("hosted-missing-vercel-env-blocker", (targetRoot) => {
+  mutateFile(targetRoot, "docs/runs/evidence/2026-06-15/03-hosted-access-proof.md", (source) => source.replace("| Hosted env values | BLOCKED | No Vercel dashboard/env mutation approval. |\n", ""));
+});
+
+expectFail("matrix-vercel-env-overclaims-partial", (targetRoot) => {
+  const relativePath = "docs/runs/evidence/2026-06-15/open-blockers.json";
+  const matrix = JSON.parse(read(targetRoot, relativePath));
+  matrix.blockers = matrix.blockers.map((blocker) => blocker.id === "vercel-env-confirmation" ? { ...blocker, status: "partial" } : blocker);
+  write(targetRoot, relativePath, `${JSON.stringify(matrix, null, 2)}\n`);
 });
 
 expectFail("resourcespace-overclaims-proof", (targetRoot) => {
@@ -91,6 +110,42 @@ expectFail("matrix-hosted-access-overclaims-pass", (targetRoot) => {
   const relativePath = "docs/runs/evidence/2026-06-15/open-blockers.json";
   const matrix = JSON.parse(read(targetRoot, relativePath));
   matrix.blockers = matrix.blockers.map((blocker) => blocker.id === "hosted-access-protection" ? { ...blocker, status: "blocked" } : blocker);
+  write(targetRoot, relativePath, `${JSON.stringify(matrix, null, 2)}\n`);
+});
+
+expectFail("matrix-canonical-evidence-path-drift", (targetRoot) => {
+  const relativePath = "docs/runs/evidence/2026-06-15/open-blockers.json";
+  const matrix = JSON.parse(read(targetRoot, relativePath));
+  matrix.blockers = matrix.blockers.map((blocker) => blocker.id === "canonical-deployment"
+    ? { ...blocker, evidenceDoc: "docs/runs/evidence/2026-06-15/10-final-qa-summary.md" }
+    : blocker);
+  write(targetRoot, relativePath, `${JSON.stringify(matrix, null, 2)}\n`);
+});
+
+expectFail("matrix-drive-missing-owner", (targetRoot) => {
+  const relativePath = "docs/runs/evidence/2026-06-15/open-blockers.json";
+  const matrix = JSON.parse(read(targetRoot, relativePath));
+  matrix.blockers = matrix.blockers.map((blocker) => blocker.id === "google-drive-custody"
+    ? { ...blocker, owner: "" }
+    : blocker);
+  write(targetRoot, relativePath, `${JSON.stringify(matrix, null, 2)}\n`);
+});
+
+expectFail("matrix-durable-missing-safe-next-step", (targetRoot) => {
+  const relativePath = "docs/runs/evidence/2026-06-15/open-blockers.json";
+  const matrix = JSON.parse(read(targetRoot, relativePath));
+  matrix.blockers = matrix.blockers.map((blocker) => blocker.id === "durable-hosted-state"
+    ? { ...blocker, safeNextStep: "" }
+    : blocker);
+  write(targetRoot, relativePath, `${JSON.stringify(matrix, null, 2)}\n`);
+});
+
+expectFail("matrix-tester-missing-blocks", (targetRoot) => {
+  const relativePath = "docs/runs/evidence/2026-06-15/open-blockers.json";
+  const matrix = JSON.parse(read(targetRoot, relativePath));
+  matrix.blockers = matrix.blockers.map((blocker) => blocker.id === "tester-list-and-signoff"
+    ? { ...blocker, blocks: [] }
+    : blocker);
   write(targetRoot, relativePath, `${JSON.stringify(matrix, null, 2)}\n`);
 });
 

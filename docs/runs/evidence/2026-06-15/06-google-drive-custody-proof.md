@@ -4,7 +4,7 @@ Date: 2026-06-15
 Commit SHA: a22497e96004024928128990f432806b768930a6  
 Repo/branch: `architecture/production-like-connected-dam-readiness-proof`  
 Environment: local proof run; source media untouched  
-Base URL: local `http://localhost:4868`  
+Base URL: local `http://localhost:4871`
 Role/persona: Viewer, Contributor, Reviewer, DAM Admin via local QA simulation  
 Result: RULES PASS / HUMAN CUSTODY PROOF BLOCKED  
 Secrets redacted: yes
@@ -38,3 +38,21 @@ Google Shared Drive remains master-original custody. ResourceSpace is intended t
 ## Decision Impact
 
 Local redaction proof is good. Real custody proof remains blocked until a Drive manager supplies sanitized evidence and hosted ResourceSpace import links can be proven without exposing paths, checksums, private URLs, or originals.
+
+## Current External-Proof Contract
+
+| Field | Value |
+|---|---|
+| Result | BLOCKED |
+| Secrets redacted | yes |
+| Touched forbidden surfaces | no |
+| Open blocker ID | google-drive-custody |
+| Follow-up | Hali supplies sanitized custody manifest or approved read-only custody proof |
+
+| Requirement | Status |
+|---|---|
+| Google Drive originals were not touched | PASS |
+| Sanitized Custody Manifest Format | BLOCKED |
+| external Drive custody not proven | BLOCKED |
+
+Custody remains blocked until approved redacted Drive evidence exists. Local screenshots, fixtures, and ResourceSpace export data do not prove original custody.

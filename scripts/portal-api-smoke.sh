@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BASE_URL="${BASE_URL:-http://localhost:4867}"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 TMP_DIR="$(mktemp -d)"
-API_SMOKE_EXPORT=".runtime/exports/resourcespace-metadata-99999999-999999.csv"
+API_SMOKE_EXPORT=".runtime/exports/zzzzzz-portal-api-smoke-$$.csv"
 BETA_AUTH_MODE="trusted-headers"
 (
   cd "$ROOT"
@@ -209,7 +209,6 @@ http_code() {
   trusted_role="$(trusted_header_role "${curl_args[@]}")"
   if [ -n "$trusted_role" ]; then
     curl_args=(
-      -H "x-tjc-local-beta-role: $trusted_role"
       -H "x-tjc-role: $trusted_role"
       -H "x-auth-request-email: $(trusted_header_email "$trusted_role")"
       "${curl_args[@]}"
@@ -757,7 +756,22 @@ expect_json_status 400 empty-upload-contributor-payload-safe "$normal_user_paylo
   -X POST -F 'role=Contributor' -F 'eventName=No files test' \
   "$BASE_URL/api/upload"
 
-expect_code 400 noncanonical-upload-tags \
+expect_json noncanonical-upload-tags '
+const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+const text = JSON.stringify(data);
+if (data.status !== "needs-review" || data.defaultReviewState !== "Needs Review" || data.defaultUsageScope !== "Do Not Publish") {
+  console.error(`FAIL: noncanonical upload tag intake did not create needs-review batch: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+if (!Array.isArray(data.reviewerTasks) || !data.reviewerTasks.some((task) => /Taxonomy reviewer/i.test(task))) {
+  console.error(`FAIL: noncanonical upload tag did not become taxonomy reviewer task: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+if (data.resourceSpaceWritten !== false) {
+  console.error(`FAIL: upload response claimed ResourceSpace write: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+' \
   -X POST \
   -F 'role=Contributor' \
   -F 'title=Noncanonical tag test' \
@@ -778,7 +792,7 @@ expect_code 400 noncanonical-upload-tags \
   -F 'sourceLink=https://drive.google.com/example' \
   "$BASE_URL/api/upload"
 
-expect_json_status 400 noncanonical-upload-tags-payload-safe "$normal_user_payload_guard" \
+expect_json noncanonical-upload-tags-payload-safe "$normal_user_payload_guard" \
   -X POST \
   -F 'role=Contributor' \
   -F 'title=Noncanonical tag test' \
@@ -802,8 +816,12 @@ expect_json_status 400 noncanonical-upload-tags-payload-safe "$normal_user_paylo
 expect_json unsafe-upload-tags-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (data.status !== "validated" || data.defaultReviewState !== "Needs Review / Do Not Publish") {
-  console.error(`FAIL: unsafe upload tags did not stay non-publishing validated intake: ${text.slice(0, 700)}`);
+if (data.status !== "needs-review" || data.resourceSpaceWritten !== false) {
+  console.error(`FAIL: unsafe upload tags did not create honest needs-review packet: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+if (!Array.isArray(data.reviewerTasks) || !data.reviewerTasks.some((task) => /Taxonomy reviewer/i.test(task))) {
+  console.error(`FAIL: unsafe upload tags did not become taxonomy reviewer task: ${text.slice(0, 700)}`);
   process.exit(1);
 }
 if (text.includes("../private") || /source path|master drive|checksum|[a-f0-9]{32,}/i.test(text)) {
@@ -832,16 +850,17 @@ if (text.includes("../private") || /source path|master drive|checksum|[a-f0-9]{3
 
 expect_json source-link-upload-contributor '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-if (data.status !== "validated" || data.fileCount !== 0 || data.sourceLinkCaptured !== true) {
+if (data.status !== "needs-review" || data.fileCount !== 0 || data.sourceLinkCaptured !== true || data.defaultReviewState !== "Needs Review" || data.defaultUsageScope !== "Do Not Publish") {
   console.error("FAIL: source-link intake was not accepted without local files");
   process.exit(1);
 }
 const text = JSON.stringify(data);
+const operationalText = text.replace(/resourceSpaceWritten/g, "resource_written");
 if (/drive\.google\.com/i.test(text) || Object.prototype.hasOwnProperty.call(data, "sourceLink")) {
   console.error("FAIL: contributor upload response echoed source-link details");
   process.exit(1);
 }
-if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnostics?|metadata health|raw totals?|source[- ]of[- ]truth|field refs?|source path|master drive|master\/original path|master files?|original filename|checksum|raw ResourceSpace|ResourceSpace ID|\bRS\s+\d+\b/i.test(text)) {
+if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnostics?|metadata health|raw totals?|source[- ]of[- ]truth|field refs?|source path|master drive|master\/original path|master files?|original filename|checksum|raw ResourceSpace|ResourceSpace ID|\bRS\s+\d+\b/i.test(operationalText)) {
   console.error("FAIL: contributor upload response leaked operational copy");
   process.exit(1);
 }
@@ -868,7 +887,7 @@ if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnost
 expect_json_status 400 unsafe-source-link-upload-blocked '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!/file|media link/i.test(data.error || "")) {
+if (!/file|source link|media link/i.test(data.error || "")) {
   console.error(`FAIL: unsafe source link did not behave like missing intake evidence: ${text.slice(0, 700)}`);
   process.exit(1);
 }
@@ -899,7 +918,7 @@ if (/javascript:|source path|master drive|checksum|\.\.\/private/i.test(text)) {
 expect_json_status 400 upload-display-fields-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("event name") || !data.missingRequired.includes("source/photographer")) {
+if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("batch/event name") || !data.missingRequired.includes("event date") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
   console.error(`FAIL: unsafe upload display/date fields did not become missing requirements: ${text.slice(0, 700)}`);
   process.exit(1);
 }
@@ -930,7 +949,7 @@ if (text.includes("../private") || /source path|master drive|checksum/i.test(tex
 expect_json_status 400 upload-checksum-display-fields-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("source/photographer")) {
+if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("batch/event name") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
   console.error(`FAIL: checksum-shaped upload display fields did not become missing requirements: ${text.slice(0, 700)}`);
   process.exit(1);
 }

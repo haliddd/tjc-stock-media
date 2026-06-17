@@ -3,6 +3,7 @@ import { searchAssets } from "@/lib/catalog";
 import { readCatalogSearchRequest } from "@/lib/catalog-search-request";
 import { createDamRouteSession } from "@/lib/dam-route-session";
 import { canReview } from "@/lib/permissions";
+import { localBetaRoleOverrideFromRequest } from "@/lib/request-identity";
 import { usageAnalyticsDiagnostics } from "@/lib/usage-analytics";
 import type { SearchResult } from "@/lib/types";
 
@@ -40,7 +41,7 @@ function searchResultForRole(session: ReturnType<typeof createDamRouteSession>, 
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const session = createDamRouteSession(request, params.get("role"));
+  const session = createDamRouteSession(request, localBetaRoleOverrideFromRequest(request));
   const role = session.role;
   const searchRequest = readCatalogSearchRequest(params);
   if (searchRequest.error) {

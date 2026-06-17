@@ -261,6 +261,7 @@ export function inspectorMetadataRows({
     ["Created by", "Media team"],
     ["Capture date", metadataValue(asset.capturedDate)],
     ["Collection", metadataValue(asset.collection)],
+    ["DAM filename", metadataValue(asset.damFilenames?.web || asset.damFilenames?.original)],
     ["Keywords", assetKeywordText(asset)]
   ];
 }
@@ -275,6 +276,7 @@ export function assetDetailMetadataRows(asset: StockMediaAsset, role: DemoRole):
     ["Categories", metadataValue(asset.tjcTerms)],
     ["Keywords", metadataValue(asset.tags)],
     ["Asset ID", metadataValue(assetRecordRef(asset))],
+    ["DAM Filename", metadataValue(asset.damFilenames?.web || asset.damFilenames?.original)],
     ["File Type", assetType(asset)],
     ["Dimensions", metadataValue(asset.imageDimensions)],
     ["File Size", formatBytes(asset.fileSizeBytes)],
@@ -316,6 +318,7 @@ export function reviewMetadataRows({
     ["Capture Date", metadataValue(asset.capturedDate)],
     ["Collection", metadataValue(asset.collection)],
     ["Asset ID", metadataValue(assetRecordRef(asset))],
+    ["DAM Filename", metadataValue(asset.damFilenames?.web || asset.damFilenames?.original)],
     ["File Type", assetType(asset)],
     ["Dimensions", metadataValue(asset.imageDimensions)],
     ["File Size", formatBytes(asset.fileSizeBytes)],

@@ -391,6 +391,7 @@ export function AssetDetailPage({ id }: { id: string }) {
     { label: "Ministry / event", value: asset.eventName || asset.collection },
     { label: "People sensitivity", value: asset.peopleRisk || "Unknown" },
     { label: "Usage scope", value: asset.usageScope },
+    { label: "DAM filename", value: asset.damFilenames?.web || asset.damFilenames?.original || "Generated at delivery" },
     { label: "Review date", value: asset.reviewedDate || "Review pending" },
     { label: referenceLabel, value: referenceCode },
     { label: "Source file", value: verdict.canDownload ? "Approved copy available; source access restricted" : "Request-only" },

@@ -15,11 +15,16 @@ frontend/.next.stale-*/
 frontend/out/
 frontend/*.tsbuildinfo
 .od-skills/
+docs/screenshots/focused-ui-polish-*/
 
 # Never commit church media assets.
 *.jpg
 *.jpeg
 *.png
+!docs/
+!docs/screenshots/
+!docs/screenshots/primitive-proof/
+!docs/screenshots/primitive-proof/*.png
 !frontend/public/
 !frontend/public/brand/
 !frontend/public/brand/*.png
@@ -36,3 +41,4 @@ frontend/*.tsbuildinfo
 *.m4a
 *.aac
 *.flac
+.vercel

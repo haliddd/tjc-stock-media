@@ -28,7 +28,19 @@ const fixtureFiles = [
   "frontend/components/dam/enterprise/ReviewPage.tsx",
   "frontend/app/dam-enterprise.css",
   "frontend/components/RoleProvider.tsx",
-  "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md"
+  "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md",
+  "docs/runs/evidence/2026-06-15/screenshots/README.md",
+  "docs/screenshots/primitive-proof/admin-datatable.png",
+  "docs/screenshots/primitive-proof/appnav-tubelight-desktop.png",
+  "docs/screenshots/primitive-proof/appnav-tubelight-mobile.png",
+  "docs/screenshots/primitive-proof/library-badges-pagination-filterpills.png",
+  "docs/screenshots/primitive-proof/media-preview-panel-document.png",
+  "docs/screenshots/primitive-proof/media-preview-panel-image.png",
+  "docs/screenshots/primitive-proof/review-datatable-inspector.png",
+  "docs/screenshots/primitive-proof/review-hold-confirm-dialog.png",
+  "docs/screenshots/primitive-proof/state-system-empty-error-loading.png",
+  "docs/screenshots/primitive-proof/toast-feedback.png",
+  "docs/screenshots/primitive-proof/upload-dropzone-tags.png"
 ];
 
 function copyFixtureTree(targetRoot) {
@@ -101,6 +113,20 @@ expectFail("client-node-env-regression", (targetRoot) => {
 expectFail("missing-evidence-row", (targetRoot) => {
   const file = "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md";
   write(targetRoot, file, read(targetRoot, file).replace("Review Queue premium workflow/redaction pass", "Review Queue workflow"));
+});
+
+expectFail("missing-primitive-proof-screenshot", (targetRoot) => {
+  fs.rmSync(path.join(targetRoot, "docs/screenshots/primitive-proof/review-hold-confirm-dialog.png"));
+});
+
+expectFail("missing-primitive-proof-index", (targetRoot) => {
+  const file = "docs/runs/evidence/2026-06-15/screenshots/README.md";
+  write(targetRoot, file, read(targetRoot, file).replace("primitive-proof/review-hold-confirm-dialog.png", "primitive-proof/review-dialog.png"));
+});
+
+expectFail("missing-primitive-proof-tracked-safe-classification", (targetRoot) => {
+  const file = "docs/runs/evidence/2026-06-15/screenshots/README.md";
+  write(targetRoot, file, read(targetRoot, file).replace("tracked safe UI proof assets", "local UI proof assets"));
 });
 
 expectFail("requests-help-center-regression", (targetRoot) => {

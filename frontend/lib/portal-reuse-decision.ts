@@ -130,7 +130,7 @@ function meaningfulValue(value?: string) {
 }
 
 const explicitRightsConcernPattern = /rights unclear|concern|not confirmed|needs review|review required|do not use|blocked/i;
-const trustedLmPhotosPattern = /\blm[\s.-]*photos\b|lm\.photos@tjc\.org/i;
+const trustedLmPhotosPattern = /\blm[\s.-]*photos?\b|lm\.photos?@tjc\.org/i;
 
 function isTrustedLmPhotosApprovedAsset(asset: StockMediaAsset) {
   const sourceText = [

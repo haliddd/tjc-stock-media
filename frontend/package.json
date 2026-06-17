@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "predev": "SAFE_LANE_HEADROOM_CONTEXT=dev-server node ../scripts/safe-lane-headroom-guard.mjs",
-    "dev": "PORTAL_ALLOW_BETA_ROLE_OVERRIDE=1 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=1 next dev --port 4867",
+    "dev": "SSO_TRUSTED_HEADERS=1 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=0 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=0 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0 next dev --port 4871",
     "prebuild": "node ../scripts/dev-server-build-guard.mjs && SAFE_LANE_HEADROOM_CONTEXT=production-build node ../scripts/safe-lane-headroom-guard.mjs",
     "build": "next build",
     "prestart": "SAFE_LANE_HEADROOM_CONTEXT=next-start node ../scripts/safe-lane-headroom-guard.mjs",
-    "start": "next start --port 4867",
+    "start": "next start --port 4871",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "npm run typecheck && npm run build"

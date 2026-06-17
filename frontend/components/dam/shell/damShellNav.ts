@@ -9,6 +9,7 @@ import {
   FolderClock,
   Grid3X3,
   HelpCircle,
+  LayoutDashboard,
   Library,
   ListChecks,
   MessageSquareText,
@@ -40,7 +41,7 @@ export type DamShellNavItem = {
 };
 
 export const damShellNavItems: DamShellNavItem[] = [
-  { label: "Library", href: "/library", activeHrefs: ["/"], icon: Library, group: "Media", description: "Search assets, rights, approved derivatives, and source access state." },
+  { label: "Library", href: "/library", icon: Library, group: "Media", description: "Search assets, rights, approved derivatives, and source access state." },
   { label: "Collections", href: "/collections", icon: Grid3X3, group: "Media", description: "Curated ministry asset groups. Collections do not approve assets." },
   { label: "Distribution Sets", href: "/distribution-sets", activeHrefs: ["/packages"], icon: PackageCheck, group: "Media", description: "Build governed packages from approved references." },
   { label: "Upload / Intake", mobileLabel: "Upload", href: "/upload", icon: UploadCloud, roles: ["Contributor", "Reviewer", "DAM Admin"], group: "Workflow", badge: "5", description: "Submit files, metadata, rights evidence, people details, and usage scope." },
@@ -48,11 +49,13 @@ export const damShellNavItems: DamShellNavItem[] = [
   { label: "Review Queue", mobileLabel: "Review", href: "/review", activeHrefs: ["/review?queue=pending"], icon: ShieldAlert, roles: ["Reviewer", "DAM Admin"], group: "Workflow", badge: "7", description: "Evaluate evidence, derivatives, access, restrictions, and approvals." },
   { label: "Requests", href: "/requests", icon: MessageSquareText, group: "Workflow", badge: "6", description: "Review, source access, rights issue, and policy decision requests." },
   { label: "My Tasks", href: "/my-tasks", activeHrefs: ["/tasks", "/requests?view=my-tasks"], icon: Bell, group: "Workflow", badge: "4", description: "Role-scoped tasks needing your action." },
-  { label: "Rights & Consent", href: "/governance/rights-consent", activeHrefs: ["/review?queue=rights-review"], icon: ShieldCheck, roles: ["DAM Admin"], group: "Governance", description: "Evidence, consent, owner/license, minors, and public-use approvals." },
-  { label: "Metadata Health", href: "/governance/metadata-health", activeHrefs: ["/insights?panel=metadata"], icon: ListChecks, roles: ["DAM Admin"], group: "Governance", description: "Required fields, duplicate candidates, taxonomy drift, and orphaned records." },
-  { label: "Policy Center", href: "/governance/policy-center", activeHrefs: ["/help?section=policies#policies", "/guide?section=policies#policies"], icon: ScrollText, roles: ["DAM Admin"], group: "Governance", description: "Download gates, source restrictions, roles, approval, consent, and expiration rules." },
+  { label: "Governance Dashboard", href: "/governance", icon: FolderClock, roles: ["Reviewer", "DAM Admin"], group: "Governance", description: "Approval, evidence, policy, audit, and integration health at a glance." },
+  { label: "Rights & Consent", href: "/governance/rights-consent", activeHrefs: ["/review?queue=rights-review"], icon: ShieldCheck, roles: ["Reviewer", "DAM Admin"], group: "Governance", badge: "3", description: "Evidence, consent, owner/license, minors, and public-use approvals." },
+  { label: "Metadata Health", href: "/governance/metadata-health", activeHrefs: ["/insights?panel=metadata"], icon: ListChecks, roles: ["Reviewer", "DAM Admin"], group: "Governance", badge: "7", description: "Required fields, duplicate candidates, taxonomy drift, and orphaned records." },
+  { label: "Policy Center", href: "/governance/policy-center", activeHrefs: ["/help?section=policies#policies", "/guide?section=policies#policies"], icon: ScrollText, roles: ["Reviewer", "DAM Admin"], group: "Governance", description: "Download gates, source restrictions, roles, approval, consent, and expiration rules." },
   { label: "Audit Log", href: "/governance/audit-log", activeHrefs: ["/admin#audit-logs"], icon: FileCheck2, roles: ["DAM Admin"], group: "Governance", description: "Immutable upload, edit, approval, download, export, and policy events." },
-  { label: "Users & Roles", href: "/admin/users", icon: UserCog, roles: ["DAM Admin"], group: "Admin", description: "Role-safe permissions and user assignments." },
+  { label: "Control Center", href: "/admin", icon: LayoutDashboard, roles: ["DAM Admin"], group: "Admin", description: "Admin launch gate, readiness, policy summaries, and system health." },
+  { label: "Users & Roles", href: "/admin/users", activeHrefs: ["/admin/roles"], icon: UserCog, roles: ["DAM Admin"], group: "Admin", description: "Role-safe permissions and user assignments." },
   { label: "Taxonomy", href: "/admin/taxonomy", icon: Tags, roles: ["DAM Admin"], group: "Admin", description: "Ministry, event, collection, tag, and metadata vocabularies." },
   { label: "Integrations", href: "/governance/integrations", icon: Database, roles: ["DAM Admin"], group: "Admin", description: "ResourceSpace, Google Shared Drive, portal, storage, and identity health." },
   { label: "Settings", href: "/admin/settings", icon: SlidersHorizontal, roles: ["DAM Admin"], group: "Admin", description: "DAM workspace settings and operational controls." },
@@ -98,7 +101,7 @@ export const damShellQuickActions: DamShellNavItem[] = [
 ];
 
 export const damShellWorkspaceCopy: Record<string, { title: string; subtitle: string }> = {
-  "/": { title: "Library", subtitle: "Browse approved and source-tracked media for ministry use." },
+  "/": { title: "Dashboard", subtitle: "Search media, review trust state, and route DAM work." },
   "/library": { title: "Library", subtitle: "Browse approved and reviewable media. Source files remain restricted." },
   "/collections": { title: "Collections", subtitle: "Open curated sets with reuse decisions intact." },
   "/review": { title: "Review Queue", subtitle: "Validate assets before they become broadly available." },

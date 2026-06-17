@@ -4,7 +4,7 @@ Date: 2026-06-15
 Commit SHA: a22497e96004024928128990f432806b768930a6  
 Repo/branch: `architecture/production-like-connected-dam-readiness-proof`  
 Environment: Oracle setup blocked; local/export proof only  
-Base URL: local `http://localhost:4868`  
+Base URL: local `http://localhost:4871`
 Role/persona: Viewer, Reviewer, DAM Admin via local QA role simulation  
 Result: ORACLE BLOCKED / LOCAL EXPORT PATH PASS  
 Secrets redacted: yes
@@ -26,7 +26,7 @@ Local smokes used export/local source behavior, not a live Oracle ResourceSpace 
 
 ## Writeback
 
-`BASE_URL=http://localhost:4868 make portal-writeback-guard-smoke` passed:
+`BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke` passed:
 
 - Review writeback readiness was not live.
 - Incomplete evidence was blocked.
@@ -36,3 +36,21 @@ Local smokes used export/local source behavior, not a live Oracle ResourceSpace 
 ## Decision Impact
 
 Real hosted ResourceSpace VM is NO-GO/BLOCKED until Oracle A1 capacity exists or Hali explicitly approves another free-only path. Local/export proof remains useful for portal safety but cannot be sold as real hosted DAM proof.
+
+## Current External-Proof Contract
+
+| Field | Value |
+|---|---|
+| Result | BLOCKED |
+| Secrets redacted | yes |
+| Touched forbidden surfaces | no |
+| Open blocker ID | resourcespace-scope |
+| Follow-up | Hali confirms read-only ResourceSpace endpoint/API user or declares non-real rehearsal scope |
+
+| Requirement | Status |
+|---|---|
+| Fresh ResourceSpace production read proof was not performed | BLOCKED |
+| did not mutate ResourceSpace production data | PASS |
+| fresh real ResourceSpace read proof not captured | BLOCKED |
+
+No local export or fixture proof can close real ResourceSpace beta scope. It can only support local portal safety regression checks.

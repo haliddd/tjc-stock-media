@@ -14,13 +14,25 @@ const legacyModules = [
 
 const enterpriseRoutes = new Map([
   ["frontend/app/page.tsx", "EnterpriseLibraryPage"],
+  ["frontend/app/library/page.tsx", "EnterpriseLibraryPage"],
   ["frontend/app/collections/page.tsx", "EnterpriseCollectionsPage"],
+  ["frontend/app/collections/[collectionId]/page.tsx", "EnterpriseCollectionsPage"],
   ["frontend/app/packages/page.tsx", "EnterprisePackageBuilderPage"],
+  ["frontend/app/distribution-sets/page.tsx", "EnterprisePackageBuilderPage"],
+  ["frontend/app/distribution-sets/[distributionSetId]/page.tsx", "EnterprisePackageBuilderPage"],
   ["frontend/app/brand-hub/page.tsx", "EnterpriseBrandHubPage"],
   ["frontend/app/insights/page.tsx", "EnterpriseInsightsPage"],
   ["frontend/app/admin/page.tsx", "EnterpriseAdminPage"],
+  ["frontend/app/governance/page.tsx", "EnterpriseAdminPage"],
   ["frontend/app/review/page.tsx", "EnterpriseReviewPage"],
-  ["frontend/app/assets/[id]/page.tsx", "EnterpriseAssetDetailPage"]
+  ["frontend/app/assets/[id]/page.tsx", "EnterpriseAssetDetailPage"],
+  ["frontend/app/library/[assetId]/page.tsx", "EnterpriseAssetDetailPage"],
+  ["frontend/app/upload/page.tsx", "EnterpriseUploadPage"],
+  ["frontend/app/requests/page.tsx", "RequestsPage"],
+  ["frontend/app/requests/[requestId]/page.tsx", "RequestsPage"],
+  ["frontend/app/my-tasks/page.tsx", "MyTasksPage"],
+  ["frontend/app/tasks/page.tsx", "MyTasksPage"],
+  ["frontend/app/recent-uploads/page.tsx", "RecentUploadsPage"]
 ]);
 
 function read(relativePath) {
@@ -55,12 +67,18 @@ for (const [routePath, exportName] of enterpriseRoutes) {
   }
 }
 
-const assetDetailPage = read("frontend/app/assets/[id]/page.tsx");
-if (!assetDetailPage.includes("normalizeAssetId((await params).id)")) {
-  failures.push("asset detail page must normalize path params through normalizeAssetId before rendering the client DAM shell");
-}
-if (!assetDetailPage.includes("notFound()")) {
-  failures.push("asset detail page must render Next 404 for malformed asset ids");
+const assetDetailRoutes = [
+  ["frontend/app/assets/[id]/page.tsx", "id"],
+  ["frontend/app/library/[assetId]/page.tsx", "assetId"]
+];
+for (const [routePath, paramName] of assetDetailRoutes) {
+  const assetDetailPage = read(routePath);
+  if (!assetDetailPage.includes(`normalizeAssetId((await params).${paramName})`)) {
+    failures.push(`${routePath} must normalize path params through normalizeAssetId before rendering the client DAM shell`);
+  }
+  if (!assetDetailPage.includes("notFound()")) {
+    failures.push(`${routePath} must render Next 404 for malformed asset ids`);
+  }
 }
 
 const legacyImportPattern = new RegExp(`@/components/(${legacyModules.join("|")})(?:\\b|["'])`);

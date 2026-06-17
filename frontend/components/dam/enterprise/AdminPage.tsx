@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, Bell, Box, Check, CheckCircle2, ClipboardCheck, Database, Download, FileText, HardDrive, KeyRound, Lock, MessageSquareWarning, Plug, RefreshCw, Settings, Shield, ShieldCheck, Sparkles, Tags, Users, XCircle } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAdminReadiness } from "@/components/dam/useDamApi";
@@ -9,6 +10,7 @@ import { adminNavItems, adminNavLabel, integrationReadinessColumns, integrationS
 import { enterpriseMetadataSchemaRows, metadataSchemaHealthSummary } from "@/lib/enterprise-metadata";
 import type { EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaSourceIsLive } from "@/lib/media-source/truth";
+import { canAccessRoute } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
 import { taxonomyGovernanceTerms, taxonomyHealthSummary } from "@/lib/taxonomy";
 import type { BetaFeedbackRecord, BetaFeedbackSeverity, BetaFeedbackStatus, BetaReadinessFact, DamReadinessResult, IntegrationReadinessItem } from "@/lib/types";
@@ -69,6 +71,18 @@ const adminFocusTargetByHash = new Map<string, string>([
   ["governance-policies-section", "governance-policies-section"],
   ["audit-activity-section", "audit-activity-section"],
   ["system-health-section", "system-health-section"]
+]);
+
+const adminPageIdentityByPath = new Map<string, { title: string; subtitle: string }>([
+  ["/admin", { title: "Control Center", subtitle: "Admin view for source health, audit activity, launch readiness, and policy-sensitive workflows." }],
+  ["/governance/rights-consent", { title: "Rights & Consent", subtitle: "Evidence, consent, owner/license, minors, and public-use approvals." }],
+  ["/governance/metadata-health", { title: "Metadata Health", subtitle: "Required fields, duplicate candidates, taxonomy drift, and orphaned records." }],
+  ["/governance/policy-center", { title: "Policy Center", subtitle: "Download gates, source restrictions, roles, approval, consent, and expiration rules." }],
+  ["/governance/audit-log", { title: "Audit Log", subtitle: "Upload, edit, approval, download, export, and policy events." }],
+  ["/governance/integrations", { title: "Integrations", subtitle: "ResourceSpace, Google Shared Drive, portal, storage, and identity health." }],
+  ["/admin/users", { title: "Users & Roles", subtitle: "Role-safe permissions and user assignments." }],
+  ["/admin/taxonomy", { title: "Taxonomy", subtitle: "Ministry, event, collection, tag, and metadata vocabularies." }],
+  ["/admin/settings", { title: "Settings", subtitle: "DAM workspace settings and operational controls." }]
 ]);
 
 const legacyAdminModuleMap = new Map<string, string>([
@@ -891,7 +905,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNa
         <article><strong>Local</strong><span>beta fallback</span><small>Role switch remains for pilot QA only</small></article>
         <article><strong>SSO-ready</strong><span>not live</span><small>Needs trusted provider headers</small></article>
       </div>
-      <table className="ed-table"><thead><tr><th>Role</th><th>Primary job</th><th>Download</th><th>Upload</th><th>Review</th><th>Admin</th></tr></thead><tbody>{roleRows.map((row) => <tr key={row[0]}>{row.map((cell) => <td key={cell}>{cell}</td>)}</tr>)}</tbody></table>
+      <table className="ed-table"><thead><tr><th>Role</th><th>Primary job</th><th>Download</th><th>Upload</th><th>Review</th><th>Admin</th></tr></thead><tbody>{roleRows.map((row) => <tr key={row[0]}>{row.map((cell, index) => <td key={`${row[0]}-${index}`}>{cell}</td>)}</tr>)}</tbody></table>
     </section>
   );
   if (activeNav === "roles-permissions") return (
@@ -957,9 +971,14 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNa
 
 export function EnterpriseAdminPage({ initialModule, adminOnly = false }: { initialModule?: string; adminOnly?: boolean } = {}) {
   const { role, ready } = useDemoRole();
+  const pathname = usePathname();
   const [activeNav, setActiveNav] = useState(() => normalizeAdminInitialModule(initialModule));
   const admin = useAdminReadiness(role);
   const operatorVerified = false;
+  const pageIdentity = adminPageIdentityByPath.get(pathname) || {
+    title: "Governance",
+    subtitle: "Launch readiness, policies, audit activity, and integration health for the DAM workspace."
+  };
   function selectAdminNav(id: string, options: AdminNavSelectionOptions = {}) {
     const nextNav = adminNavIds.has(id) ? id : DEFAULT_ADMIN_NAV;
     const hash = options.hash || adminHashByNav.get(nextNav) || DEFAULT_ADMIN_HASH;
@@ -972,6 +991,10 @@ export function EnterpriseAdminPage({ initialModule, adminOnly = false }: { init
   useEffect(() => {
     function syncFromHash() {
       const hash = readAdminHash();
+      if (!hash) {
+        setActiveNav(normalizeAdminInitialModule(initialModule));
+        return;
+      }
       const nextNav = adminNavByHash.get(hash) || DEFAULT_ADMIN_NAV;
       const canonicalHash = hash ? canonicalAdminHash(hash, nextNav) : DEFAULT_ADMIN_HASH;
       const focusTargetId = adminFocusTargetByHash.get(canonicalHash) || "admin-active-module-title";
@@ -983,15 +1006,14 @@ export function EnterpriseAdminPage({ initialModule, adminOnly = false }: { init
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
-  }, []);
+  }, [initialModule]);
 
   if (!ready) return <div className="enterprise-page"><LoadingCard label="Loading control center..." /></div>;
-  if (adminOnly && role !== "DAM Admin") return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Governance requires DAM Admin role</h1><p>DAM governance, policies, user access, integrations, and audit controls are restricted to DAM Admins.</p><Link href={routeWithRole("/library", role)}>Return to Asset Library</Link></section></div>;
-  if (role !== "DAM Admin") return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Governance requires DAM Admin role</h1><p>DAM governance, policies, user access, integrations, and audit controls are restricted to DAM Admins.</p><Link href={routeWithRole("/library", role)}>Return to Asset Library</Link></section></div>;
+  if (!canAccessRoute(role, pathname)) return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Governance requires DAM Admin role</h1><p>DAM governance, policies, user access, integrations, and audit controls are restricted to DAM Admins.</p><Link href={routeWithRole("/library", role)}>Return to Asset Library</Link></section></div>;
   const readiness = admin.data;
   return (
     <div className="enterprise-page enterprise-admin-control">
-      <PageHeader title="Governance" subtitle="Launch readiness, policies, audit activity, and integration health for the DAM workspace." />
+      <PageHeader title={pageIdentity.title} subtitle={pageIdentity.subtitle} />
       <section className="ed-admin-mode-banner" aria-label="Admin beta access boundary">
         <div>
           <AdminStatusBadge tone={operatorVerified ? "Healthy" : "Disabled"} label={operatorVerified ? "Beta operator" : "Admin observer"} />

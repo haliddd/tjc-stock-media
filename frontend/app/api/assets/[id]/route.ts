@@ -9,13 +9,14 @@ import {
 import { getAssetById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
 import { canSeeAsset } from "@/lib/permissions";
+import { localBetaRoleOverrideFromRequest } from "@/lib/request-identity";
 import { normalizeAssetId } from "@/lib/request-validation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = normalizeAssetId((await params).id);
-  const session = createDamRouteSession(request, request.nextUrl.searchParams.get("role"));
+  const session = createDamRouteSession(request, localBetaRoleOverrideFromRequest(request));
   const role = session.role;
   if (!id) {
     const error = assetDetailMalformedIdError();

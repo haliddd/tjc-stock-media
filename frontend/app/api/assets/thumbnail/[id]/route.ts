@@ -11,13 +11,14 @@ import {
   thumbnailMalformedIdError,
   thumbnailNotFoundError
 } from "@/lib/media-delivery";
+import { localBetaRoleOverrideFromRequest } from "@/lib/request-identity";
 import { normalizeAssetId } from "@/lib/request-validation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = normalizeAssetId((await params).id);
-  const session = createDamRouteSession(request, request.nextUrl.searchParams.get("role"));
+  const session = createDamRouteSession(request, localBetaRoleOverrideFromRequest(request) || request.nextUrl.searchParams.get("role"));
   const role = session.role;
   if (!id) {
     const error = thumbnailMalformedIdError();
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(error.body, { status: error.status });
   }
 
-  const image = thumbnailImageResponse(readThumbnailDerivativeDelivery(id, deliveryInput.variant));
+  const delivery = readThumbnailDerivativeDelivery(id, deliveryInput.variant);
+  const image = thumbnailImageResponse(delivery.status === "ready" ? delivery : { ...delivery, asset });
   return new NextResponse(image.body, { headers: image.headers });
 }

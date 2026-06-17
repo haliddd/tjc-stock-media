@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CheckCircle2, ChevronDown, Database, Loader2 } from "lucide-react";
+import { DAM_LOCAL_BETA_ROLE_HEADER } from "@/lib/dam-api-client";
 import { routeWithRole } from "@/lib/role-routes";
 import { canAdmin } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -10,7 +11,7 @@ import type { DemoRole, MediaSourceStatus } from "@/lib/types";
 
 type SourceState =
   | { status: "loading"; label: "Checking source"; detail: string; source?: undefined }
-  | { status: "ready"; label: "Live source" | "Export source" | "Fallback data"; detail: string; source: MediaSourceStatus }
+  | { status: "ready"; label: "Live source" | "Export source" | "Local demo data"; detail: string; source: MediaSourceStatus }
   | { status: "unavailable"; label: "Source unavailable"; detail: string; source?: MediaSourceStatus };
 
 type SearchProbePayload = {
@@ -27,7 +28,7 @@ function sourceStateFromPayload(payload: SearchProbePayload): SourceState {
   }
   const live = Boolean(source.live ?? payload.live);
   if (source.adapter === "demo-fallback" || source.sourceKind === "fallback-fixtures") {
-    return { status: "ready", label: "Fallback data", detail: source.detail, source };
+    return { status: "ready", label: "Local demo data", detail: source.detail, source };
   }
   if (live && source.readOnly) return { status: "ready", label: "Export source", detail: source.detail, source };
   if (live && !source.readOnly) return { status: "ready", label: "Live source", detail: source.detail, source };
@@ -44,7 +45,10 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
   useEffect(() => {
     const controller = new AbortController();
     setState({ status: "loading", label: "Checking source", detail: "Checking media-library source state." });
-    fetch(`/api/assets/search?limit=1&role=${encodeURIComponent(role)}`, { signal: controller.signal })
+    fetch("/api/assets/search?limit=1", {
+      headers: { [DAM_LOCAL_BETA_ROLE_HEADER]: role },
+      signal: controller.signal
+    })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.error || "Source check failed.");
@@ -64,7 +68,7 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
   const Icon = useMemo(() => {
     if (state.status === "loading") return Loader2;
     if (state.status === "unavailable") return AlertCircle;
-    if (state.label === "Fallback data") return Database;
+    if (state.label === "Local demo data") return Database;
     return CheckCircle2;
   }, [state.label, state.status]);
   const visibleLabel = state.status === "ready" ? "Source connected" : state.label;
@@ -74,8 +78,8 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
       className={cn(
         "dam-source-status-menu relative max-w-full shrink-0",
         state.status === "loading" && "is-loading",
-        state.status === "ready" && state.label !== "Fallback data" && "is-ready",
-        state.status === "ready" && state.label === "Fallback data" && "is-fallback",
+        state.status === "ready" && state.label !== "Local demo data" && "is-ready",
+        state.status === "ready" && state.label === "Local demo data" && "is-fallback",
         state.status === "unavailable" && "is-unavailable",
         className
       )}

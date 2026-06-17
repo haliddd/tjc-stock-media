@@ -2,6 +2,15 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
+
+execFileSync(process.execPath, ["scripts/safe-lane-headroom-guard.mjs"], {
+  stdio: "inherit",
+  env: {
+    ...process.env,
+    SAFE_LANE_HEADROOM_CONTEXT: process.env.SAFE_LANE_HEADROOM_CONTEXT || "portal-hosted-readonly-probe"
+  }
+});
 
 const base = (process.env.BASE_URL || "https://tjc-stock-media.vercel.app").replace(/\/$/, "");
 const outputPath = process.env.HOSTED_READONLY_PROBE_OUTPUT

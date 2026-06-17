@@ -11,7 +11,9 @@ type UploadRow = {
   mediaType: "Photo" | "Video" | "Graphic";
   contributor: string;
   intakeStatus: string;
-  reviewState: string;
+  distributionGate: string;
+  evidenceState: string;
+  sourceState: string;
   cleanup: string;
   submitted: string;
   nextAction: string;
@@ -24,7 +26,9 @@ const uploads: UploadRow[] = [
     mediaType: "Photo",
     contributor: "Contributor desk",
     intakeStatus: "Submitted",
-    reviewState: "Needs Review / Do Not Publish",
+    distributionGate: "Not published",
+    evidenceState: "Needs Evidence",
+    sourceState: "Source restricted",
     cleanup: "Event context missing",
     submitted: "Today 9:18 AM",
     nextAction: "Add ministry, event date, and people visibility."
@@ -35,7 +39,9 @@ const uploads: UploadRow[] = [
     mediaType: "Graphic",
     contributor: "Education team",
     intakeStatus: "Draft",
-    reviewState: "Needs Review / Do Not Publish",
+    distributionGate: "Not published",
+    evidenceState: "Draft Evidence",
+    sourceState: "Source restricted",
     cleanup: "Derivative request pending",
     submitted: "Yesterday 3:44 PM",
     nextAction: "Finish usage scope and submit for review."
@@ -46,7 +52,9 @@ const uploads: UploadRow[] = [
     mediaType: "Video",
     contributor: "Music ministry",
     intakeStatus: "Submitted",
-    reviewState: "Needs Review / Do Not Publish",
+    distributionGate: "Not published",
+    evidenceState: "Rights Check",
+    sourceState: "Source restricted",
     cleanup: "Music rights check",
     submitted: "Mon 2:10 PM",
     nextAction: "Confirm music and public-use restrictions."
@@ -57,7 +65,9 @@ const uploads: UploadRow[] = [
     mediaType: "Photo",
     contributor: "Fellowship team",
     intakeStatus: "Needs info",
-    reviewState: "Needs Review / Do Not Publish",
+    distributionGate: "Not published",
+    evidenceState: "Needs People/Minors Evidence",
+    sourceState: "Source restricted",
     cleanup: "People/minors status",
     submitted: "Mon 11:02 AM",
     nextAction: "Request people visibility evidence."
@@ -84,7 +94,7 @@ export function RecentUploadsPage() {
         <ShieldAlert size={24} aria-hidden="true" />
         <div>
           <strong>Uploads are intake, not approval</strong>
-          <span>Every recent upload stays Needs Review / Do Not Publish until a reviewer records evidence and scope.</span>
+          <span>Recent uploads stay in intake, remain unpublished, and wait for reviewer evidence before reuse.</span>
         </div>
       </section>
 
@@ -107,7 +117,12 @@ export function RecentUploadsPage() {
                     <strong>{upload.title}</strong>
                     <span>{upload.id} · {upload.mediaType} · {upload.submitted}</span>
                   </div>
-                  <em>{upload.reviewState}</em>
+                  <div className="ed-upload-status-stack" aria-label={`${upload.id} status lanes`}>
+                    <em>Status: {upload.intakeStatus}</em>
+                    <em>Gate: {upload.distributionGate}</em>
+                    <em>Evidence: {upload.evidenceState}</em>
+                    <em>Source: {upload.sourceState}</em>
+                  </div>
                   <button type="button" className="ed-row-open" onClick={() => setSelectedId(upload.id)}>Inspect</button>
                 </article>
               );
@@ -125,7 +140,10 @@ export function RecentUploadsPage() {
           </header>
           <dl className="ed-route-facts">
             <div><dt>Contributor</dt><dd>{selected.contributor}</dd></div>
-            <div><dt>Review state</dt><dd>{selected.reviewState}</dd></div>
+            <div><dt>Workflow status</dt><dd>{selected.intakeStatus}</dd></div>
+            <div><dt>Distribution gate</dt><dd>{selected.distributionGate}</dd></div>
+            <div><dt>Evidence state</dt><dd>{selected.evidenceState}</dd></div>
+            <div><dt>Source state</dt><dd>{selected.sourceState}</dd></div>
             <div><dt>Cleanup needed</dt><dd>{selected.cleanup}</dd></div>
           </dl>
           <section>

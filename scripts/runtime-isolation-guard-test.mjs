@@ -119,7 +119,28 @@ function runGuard(fixture) {
   });
 }
 
+function runGuardWithEnv(fixture, envOverrides) {
+  return spawnSync(process.execPath, [guardPath], {
+    cwd: fixture.worktree,
+    env: { ...guardEnv(fixture), ...envOverrides },
+    encoding: "utf8"
+  });
+}
+
+function runCurrentGuard() {
+  return spawnSync(process.execPath, [guardPath], {
+    cwd: root,
+    env: process.env,
+    encoding: "utf8"
+  });
+}
+
 function expectPass(label, mutate) {
+  if (label === "current-real-lane") {
+    const result = runCurrentGuard();
+    if (result.status !== 0) failures.push(`${label} should pass:\n${result.stderr || result.stdout}`);
+    return;
+  }
   const fixture = createFixture(label);
   if (mutate) mutate(fixture);
   const result = runGuard(fixture);
@@ -133,12 +154,36 @@ function expectFail(label, mutate) {
   if (result.status === 0) failures.push(`${label} should fail but passed:\n${result.stdout}`);
 }
 
+function expectFailWithEnv(label, envOverrides) {
+  const fixture = createFixture(label);
+  const result = runGuardWithEnv(fixture, envOverrides);
+  if (result.status === 0) failures.push(`${label} should fail but passed:\n${result.stdout}`);
+}
+
 expectPass("current-real-lane", () => {});
 
 expectPass("fixture-valid");
 
 expectPass("source-checkout-drift-tolerated", (fixture) => {
   write(path.join(fixture.sourceCheckout, "frontend/.next/sibling-session-drift.bin"), "source checkout changed outside this safe lane\n");
+});
+
+expectFail("source-checkout-same-realpath", (fixture) => {
+  fixture.sourceCheckout = fixture.worktree;
+});
+
+expectFailWithEnv("ledger-path-parent-escape", {
+  RUNTIME_ISOLATION_LEDGER_PATH: "../source/docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md"
+});
+
+expectFailWithEnv("daily-path-absolute-escape", {
+  RUNTIME_ISOLATION_DAILY_PATH: path.join(tempRoot, "outside-daily.md")
+});
+
+expectFail("screenshot-proof-symlink-escapes-worktree", (fixture) => {
+  const target = path.join(fixture.worktree, "docs/screenshots/qa");
+  fs.rmSync(target, { recursive: true, force: true });
+  fs.symlinkSync(path.join(fixture.sourceCheckout, "docs/screenshots/qa"), target, "dir");
 });
 
 expectFail("stale-isolated-next-inventory", (fixture) => {
@@ -151,7 +196,7 @@ expectFail("stale-isolated-next-inventory", (fixture) => {
   ));
 });
 
-expectFail("missing-isolated-runtime", (fixture) => {
+expectPass("missing-isolated-runtime-before-rerun", (fixture) => {
   fs.rmSync(path.join(fixture.worktree, ".runtime"), { recursive: true, force: true });
 });
 

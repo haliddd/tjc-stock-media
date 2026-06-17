@@ -83,11 +83,11 @@ export function UploadPage() {
   }, [sourceLink]);
   const hasFileOrSource = selectedFiles.length > 0 || hasValidSourceLink;
   const tagCount = parseUploadTags(suggestedTags).length;
-  const submitReady = hasFileOrSource && tagCount > 0 && intakeNotes.trim().length > 0;
+  const submitReady = hasFileOrSource && intakeNotes.trim().length > 0;
   const packetItems = [
     { id: "type", label: `Media type selected: ${selectedType.label}`, complete: Boolean(intakeType) },
     { id: "file", label: hasFileOrSource ? "File or source link included" : "File or source link needed", complete: hasFileOrSource },
-    { id: "tags", label: tagCount ? `${tagCount} suggested tags` : "Suggested tags needed", complete: tagCount > 0 },
+    { id: "tags", label: tagCount ? `${tagCount} suggested tags` : "Suggested tags optional", complete: true },
     { id: "notes", label: intakeNotes.trim() ? "Reviewer notes included" : "Reviewer notes needed", complete: intakeNotes.trim().length > 0 },
     { id: "evidence", label: "Rights evidence requested for reviewer", complete: true },
     { id: "blocked", label: "Media stays blocked until review", complete: true }
@@ -134,10 +134,6 @@ export function UploadPage() {
       }
       if (!hasFileOrSource) {
         showIssue(index, "Add a file or source link before continuing.", sourceLinkRef.current);
-        return false;
-      }
-      if (!tagCount) {
-        showIssue(index, "Add at least one suggested tag before continuing.");
         return false;
       }
       if (!intakeNotes.trim()) {
@@ -339,12 +335,12 @@ export function UploadPage() {
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={labelClass}>
-              <span className="flex items-center justify-between gap-2">Date {requiredHint}</span>
-              <input className={inputClass} name="eventDate" type="date" defaultValue={today} required />
+              <span>Date</span>
+              <input className={inputClass} name="eventDate" type="date" defaultValue={today} />
             </label>
             <label className={labelClass}>
-              <span className="flex items-center justify-between gap-2">Ministry/team {requiredHint}</span>
-              <input className={inputClass} name="ministry" placeholder="Internet Ministry" required />
+              <span>Ministry/team</span>
+              <input className={inputClass} name="ministry" placeholder="Internet Ministry" />
             </label>
           </div>
           <label className={labelClass}>
@@ -352,9 +348,9 @@ export function UploadPage() {
             <input className={inputClass} name="source" placeholder="Volunteer name, media team, source owner..." required />
           </label>
           <label className={labelClass}>
-            <span className="flex items-center justify-between gap-2">Source class {requiredHint}</span>
-            <select className={inputClass} name="sourceClass" defaultValue="" required>
-              <option value="" disabled>Choose one</option>
+            <span>Source class</span>
+            <select className={inputClass} name="sourceClass" defaultValue="">
+              <option value="">Choose one</option>
               <option>Church photographer / TJC-created</option>
               <option>Existing media archive record</option>
               <option>Existing media library record</option>
@@ -433,27 +429,27 @@ export function UploadPage() {
           </label>
           <div className="grid gap-4 sm:grid-cols-3">
             <label className={labelClass}>
-              <span className="flex items-center justify-between gap-2">Doctrine/sacrament sensitivity {requiredHint}</span>
-              <select className={inputClass} name="doctrineSacramentSensitive" defaultValue="" required>
-                <option value="" disabled>Choose one</option>
+              <span>Doctrine/sacrament sensitivity</span>
+              <select className={inputClass} name="doctrineSacramentSensitive" defaultValue="">
+                <option value="">Choose one</option>
                 <option>No</option>
                 <option>Yes</option>
                 <option>Unknown - reviewer must check</option>
               </select>
             </label>
             <label className={labelClass}>
-              <span className="flex items-center justify-between gap-2">Testimony/pastoral sensitivity {requiredHint}</span>
-              <select className={inputClass} name="testimonyPastoralSensitive" defaultValue="" required>
-                <option value="" disabled>Choose one</option>
+              <span>Testimony/pastoral sensitivity</span>
+              <select className={inputClass} name="testimonyPastoralSensitive" defaultValue="">
+                <option value="">Choose one</option>
                 <option>No</option>
                 <option>Yes</option>
                 <option>Unknown - reviewer must check</option>
               </select>
             </label>
             <label className={labelClass}>
-              <span className="flex items-center justify-between gap-2">Hymn/music present {requiredHint}</span>
-              <select className={inputClass} name="hymnMusicPresent" defaultValue="" required>
-                <option value="" disabled>Choose one</option>
+              <span>Hymn/music present</span>
+              <select className={inputClass} name="hymnMusicPresent" defaultValue="">
+                <option value="">Choose one</option>
                 <option>No</option>
                 <option>Yes - future rights route</option>
                 <option>Unknown - reviewer must check</option>
@@ -479,10 +475,9 @@ export function UploadPage() {
             label="Suggested tags"
             value={suggestedTags}
             onChange={setSuggestedTags}
-            required
             placeholder="Bible, fellowship, welcome, youth..."
             suggestions={uploadTagSuggestions}
-            helperText="Use visible-content or TJC terms. Reviewers approve final tags."
+            helperText="Optional. Use visible-content or TJC terms. Reviewers approve final tags."
           />
           <label className={labelClass}>
             <span className="flex items-center justify-between gap-2">Reviewer notes {requiredHint}</span>
@@ -558,7 +553,7 @@ export function UploadPage() {
       >
         <EvidenceChecklist items={packetItems} />
         <div className="rounded-xl border border-[#ead6a8] bg-[#fff8e8] p-3 text-sm font-black leading-relaxed text-[#71500f]">
-          New media remains Needs Review / Do Not Publish. Missing proof blocks public/external download.
+          New media remains Status: Submitted, Gate: Not published. Missing proof blocks public/external download.
         </div>
       </PacketSummary>
       </div>

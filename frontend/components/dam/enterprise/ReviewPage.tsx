@@ -15,7 +15,7 @@ import { routeWithRole } from "@/lib/role-routes";
 import type { ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
 import { normalizeReviewQueueId, reviewGovernanceGroupsForAsset, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
 import { cn } from "@/lib/ui";
-import { ActionButton, AssetThumb, ErrorCard, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
+import { ActionButton, AssetPreviewStrip, AssetThumb, ErrorCard, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
 
 const reviewQueuePageSizeOptions = [8, 12, 20];
 const evidenceRequiredBeforeCompletion = new Set<keyof ReviewEvidenceChecklist>([
@@ -45,7 +45,7 @@ export function EnterpriseReviewPage() {
   const pendingWritesByAssetId = review.data?.pendingWrites || {};
   const [pageSize, setPageSize] = useState(12);
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
+  const [sortOrder, setSortOrder] = useState<"preview" | "oldest" | "newest">("preview");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingDecisionById, setPendingDecisionById] = useState<Record<string, PendingReviewDecisionSummary>>({});
   const [comment, setComment] = useState("");
@@ -56,9 +56,11 @@ export function EnterpriseReviewPage() {
   const [reviewSignalQuery, setReviewSignalQuery] = useState("");
   const [activeWorkbenchTab, setActiveWorkbenchTab] = useState(reviewWorkbenchTabs[0]);
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
   const downloadGate = useDownloadGate(selectedId || "", role);
   const queue = useMemo(() => {
     const dateValue = (asset: (typeof rawQueue)[number]) => Date.parse(asset.importDate || asset.capturedDate || asset.reviewedDate || "") || 0;
+    if (sortOrder === "preview") return rawQueue;
     return [...rawQueue].sort((left, right) => sortOrder === "oldest" ? dateValue(left) - dateValue(right) : dateValue(right) - dateValue(left));
   }, [rawQueue, sortOrder]);
   const filteredQueue = useMemo(() => {
@@ -108,6 +110,7 @@ export function EnterpriseReviewPage() {
     setComment("");
     setDecisionMessage("");
     setActiveWorkbenchTab(reviewWorkbenchTabs[0]);
+    setMoreActionsOpen(false);
   }, [queue, selectedId]);
 
   if (!ready) return <div className="enterprise-page"><LoadingCard label="Loading role..." /></div>;
@@ -202,6 +205,18 @@ export function EnterpriseReviewPage() {
     }
     setDecisionMessage(payload.message || payload.reason || "Download gate blocked this request.");
   };
+  const runMoreAction = (action: "details" | "rights" | "download-gate") => {
+    setMoreActionsOpen(false);
+    if (action === "details") {
+      setActiveWorkbenchTab("Details");
+      return;
+    }
+    if (action === "rights") {
+      setActiveWorkbenchTab("Rights");
+      return;
+    }
+    void requestGatedDownload();
+  };
   return (
     <div className="enterprise-page enterprise-review">
       <div className="ed-review-grid">
@@ -239,6 +254,12 @@ export function EnterpriseReviewPage() {
               <p>Next safe action: {nextSafeAction}.</p>
             </article>
           </div>
+          <AssetPreviewStrip
+            assets={filteredQueue}
+            title="Review preview samples"
+            detail="Preview-backed review records stay first for local beta; source files remain hidden."
+            limit={4}
+          />
         </section>
         <aside className="ed-review-list ed-panel">
           <header className="ed-review-list-head">
@@ -304,7 +325,8 @@ export function EnterpriseReviewPage() {
           {reviewListMessage ? <p className="ed-inline-success">{reviewListMessage}</p> : null}
           <div className="ed-review-list-tools" aria-label="Review queue paging controls">
             <span>Sort by</span>
-            <button className="ed-sort" type="button" onClick={() => { setSortOrder((order) => order === "oldest" ? "newest" : "oldest"); setCurrentPage(1); }}>{sortOrder === "oldest" ? "Oldest first" : "Newest first"} <ChevronDown size={14} /></button>
+            <button className="ed-sort" type="button" onClick={() => { setSortOrder((order) => order === "preview" ? "oldest" : order === "oldest" ? "newest" : "preview"); setCurrentPage(1); }}>{sortOrder === "preview" ? "Preview first" : sortOrder === "oldest" ? "Oldest first" : "Newest first"} <ChevronDown size={14} /></button>
+            <button type="button" aria-label="Sort preview first" onClick={() => { setSortOrder("preview"); setCurrentPage(1); }}><Grid3X3 size={14} /></button>
             <button type="button" aria-label="Sort ascending" onClick={() => { setSortOrder("oldest"); setCurrentPage(1); }}><ArrowUp size={14} /></button>
             <button type="button" aria-label="Sort descending" onClick={() => { setSortOrder("newest"); setCurrentPage(1); }}><ArrowDown size={14} /></button>
             <label className="ed-page-size">
@@ -341,12 +363,24 @@ export function EnterpriseReviewPage() {
                 <div className="ed-review-title-row">
                   <div>
                     <h1 title={displayTitle(selectedAsset)}>{displayTitle(selectedAsset)}</h1>
-                    <span className="ed-file-soft">{selectedStatus} · {selectedAsset.usageScope || "Do Not Publish"} · {(selectedAsset.fileExtension || assetType(selectedAsset)).toUpperCase()}</span>
+                    <span className="ed-file-soft">{selectedStatus} · {selectedAsset.usageScope || "Not published"} · {(selectedAsset.fileExtension || assetType(selectedAsset)).toUpperCase()}</span>
                   </div>
                   <div className="ed-detail-actions">
                     <ActionButton tone="primary" icon={Save} onClick={() => queuePortalNote("Reviewer progress saved")}>Save progress</ActionButton>
                     <ActionButton icon={ArrowRight} onClick={selectNextAsset}>Next asset</ActionButton>
-                    <ActionButton icon={MoreVertical} onClick={() => queuePortalNote("More reviewer actions opened")}>More actions</ActionButton>
+                    <div className="ed-review-more-menu">
+                      <button className="ed-action" type="button" aria-haspopup="menu" aria-expanded={moreActionsOpen} onClick={() => setMoreActionsOpen((open) => !open)}>
+                        <MoreVertical size={16} aria-hidden="true" />
+                        More actions
+                      </button>
+                      {moreActionsOpen ? (
+                        <div className="ed-review-more-popover" role="menu" aria-label="More reviewer actions">
+                          <button type="button" role="menuitem" onClick={() => runMoreAction("details")}>Open details tab</button>
+                          <button type="button" role="menuitem" onClick={() => runMoreAction("rights")}>Review rights tab</button>
+                          <button type="button" role="menuitem" onClick={() => runMoreAction("download-gate")}>Check download gate</button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </header>
@@ -456,9 +490,9 @@ export function EnterpriseReviewPage() {
                   <ActionButton icon={FileText} onClick={() => queuePortalNote("Submission package review requested")}>View details</ActionButton>
                 </div>
                 <nav className="ed-review-decision-actions" aria-label="Review decision actions">
-                  <button type="button" disabled={Boolean(publicDisabledReason)} title={publicDisabledReason || "Evidence complete for decision queueing."} onClick={() => decide("Approved", "Approve Public")}>Queue decision</button>
-                  <button type="button" disabled={Boolean(requestInfoDisabledReason)} title={requestInfoDisabledReason || "Evidence complete for request decision."} onClick={() => decide("Needs Review", "Request More Info")}>Queue evidence request</button>
-                  <button type="button" disabled={Boolean(restrictDisabledReason)} title={restrictDisabledReason || "Evidence complete for restriction decision."} onClick={() => decide("Restricted", "Do Not Use")}>Queue restriction</button>
+                  <button type="button" disabled={Boolean(publicDisabledReason)} title={publicDisabledReason || "Evidence complete for decision queueing."} onClick={() => decide("Approved", "Approve Public")}>Approve</button>
+                  <button type="button" disabled={Boolean(requestInfoDisabledReason)} title={requestInfoDisabledReason || "Evidence complete for request decision."} onClick={() => decide("Needs Review", "Request More Info")}>Needs evidence</button>
+                  <button type="button" disabled={Boolean(restrictDisabledReason)} title={restrictDisabledReason || "Evidence complete for restriction decision."} onClick={() => decide("Restricted", "Do Not Use")}>Reject</button>
                 </nav>
                 <p className="ed-action-disabled-reason">{publicDisabledReason || "Public approval evidence checks are complete; ResourceSpace still remains final truth."}</p>
               </section>

@@ -24,6 +24,20 @@ function requireNoText(relativePath, text, label = text) {
   if (source.includes(text)) failures.push(`${relativePath} must not contain ${label}`);
 }
 
+function pngDimensions(relativePath) {
+  const fullPath = path.join(root, relativePath);
+  if (!fs.existsSync(fullPath)) {
+    failures.push(`missing PNG proof asset: ${relativePath}`);
+    return null;
+  }
+  const buffer = fs.readFileSync(fullPath);
+  if (buffer.length < 24 || buffer.toString("ascii", 1, 4) !== "PNG") {
+    failures.push(`invalid PNG proof asset: ${relativePath}`);
+    return null;
+  }
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
 const library = read("frontend/components/dam/enterprise/LibraryPage.tsx");
 if (library) {
   if (library.includes("Quick lookSelected") || library.includes("Quick look{") || library.includes("Quick look</button><button")) {
@@ -95,6 +109,32 @@ requireText("docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md", "Fixed `Qu
 requireText("docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md", "Review Queue premium workflow/redaction pass", "Review Queue premium evidence row");
 requireText("docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md", "DEV role switch hidden outside explicit local dev mode", "DEV role switch evidence row");
 
+const requiredProofScreenshots = [
+  ["docs/screenshots/primitive-proof/appnav-tubelight-desktop.png", 1200, 600],
+  ["docs/screenshots/primitive-proof/appnav-tubelight-mobile.png", 300, 600],
+  ["docs/screenshots/primitive-proof/library-badges-pagination-filterpills.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/admin-datatable.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/review-datatable-inspector.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/media-preview-panel-image.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/media-preview-panel-document.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/upload-dropzone-tags.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/toast-feedback.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/review-hold-confirm-dialog.png", 1200, 800],
+  ["docs/screenshots/primitive-proof/state-system-empty-error-loading.png", 1200, 800]
+];
+
+for (const [relativePath, minWidth, minHeight] of requiredProofScreenshots) {
+  const dimensions = pngDimensions(relativePath);
+  if (dimensions && (dimensions.width < minWidth || dimensions.height < minHeight)) {
+    failures.push(`PNG proof asset too small: ${relativePath} ${dimensions.width}x${dimensions.height}, expected at least ${minWidth}x${minHeight}`);
+  }
+}
+requireText("docs/runs/evidence/2026-06-15/screenshots/README.md", "Primitive proof screenshots:", "primitive proof screenshot index");
+requireText("docs/runs/evidence/2026-06-15/screenshots/README.md", "tracked safe UI proof assets", "primitive proof screenshot tracked-safe classification");
+for (const [relativePath] of requiredProofScreenshots) {
+  requireText("docs/runs/evidence/2026-06-15/screenshots/README.md", relativePath.replace("docs/screenshots/", ""), `screenshot README index for ${relativePath}`);
+}
+
 const routeIdentitySpecs = [
   {
     label: "Requests",
@@ -149,7 +189,25 @@ if (sidebar) {
 }
 
 if (routeIdentity) {
-  for (const text of ["/requests", "/my-tasks", "/tasks", "/help", "/guide", "/recent-uploads"]) {
+  for (const text of [
+    "/requests",
+    "/my-tasks",
+    "/tasks",
+    "/help",
+    "/guide",
+    "/recent-uploads",
+    "/governance",
+    "/governance/rights-consent",
+    "/governance/metadata-health",
+    "/governance/policy-center",
+    "/governance/audit-log",
+    "/governance/integrations",
+    "/admin",
+    "/admin/users",
+    "/admin/roles",
+    "/admin/taxonomy",
+    "/admin/settings"
+  ]) {
     if (!routeIdentity.includes(text)) failures.push(`dam-route-identity helper missing ${text}`);
   }
 }
@@ -162,6 +220,15 @@ if (routeIdentityTest) {
     "/help",
     "/guide",
     "/recent-uploads",
+    "/governance/rights-consent",
+    "/governance/metadata-health",
+    "/governance/policy-center",
+    "/governance/audit-log",
+    "/governance/integrations",
+    "/admin/users",
+    "/admin/roles",
+    "/admin/taxonomy",
+    "/admin/settings",
     "activeLabels"
   ]) {
     if (!routeIdentityTest.includes(text)) failures.push(`dam-route-identity test missing ${text}`);

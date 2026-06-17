@@ -29,7 +29,7 @@ export function toastUploadComplete(action?: ToastAction) {
   toast.dismiss("upload-intake-started");
   return toast.success("Intake received", {
     id: "upload-intake-complete",
-    description: "Media remains Needs Review / Do Not Publish until reviewer approval.",
+    description: "Media remains submitted, unpublished, and gated until reviewer approval.",
     action: actionConfig(action),
     icon: <CheckCircle2 size={16} strokeWidth={1.8} aria-hidden="true" />
   });

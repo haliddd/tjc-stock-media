@@ -37,6 +37,11 @@ function listenOnRandomPort() {
 const passResult = runGuard({ DEV_SERVER_BUILD_GUARD_PORTS: "1" });
 if (passResult.status !== 0) failures.push(`free-port fixture should pass:\n${passResult.stderr || passResult.stdout}`);
 
+const currentRealLaneResult = runGuard();
+if (currentRealLaneResult.status !== 0) {
+  failures.push(`current-real-lane default 4871 guard should pass when no safe-lane dev server is running:\n${currentRealLaneResult.stderr || currentRealLaneResult.stdout}`);
+}
+
 function outputFor(result) {
   return `${result.stdout || ""}\n${result.stderr || ""}`;
 }

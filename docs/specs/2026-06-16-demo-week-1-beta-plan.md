@@ -1,7 +1,7 @@
 # June 16 Demo + Week-1 Controlled Team Beta Plan
 
-Date: 2026-06-15
-Status: Approved design for implementation planning
+Date: 2026-06-16
+Status: Approved implementation plan and local demo readiness contract
 Audience: Core TJC media team demo on Tuesday, 2026-06-16
 
 Approved as: demo + controlled team beta plan.
@@ -12,7 +12,7 @@ Not approved as: production launch, public launch, church-wide rollout, paid clo
 TJC Stock Media needs an operational DAM behavior demo tomorrow and a controlled team beta this week. The selected approach is a two-lane plan:
 
 1. Use the current local ResourceSpace-backed portal with the existing 181-photo MVP batch as the fallback demo path.
-2. Build a hosted ResourceSpace instance on Azure Student credit, connect the hosted portal to it, import a small photo-only sample under 10GB, and use it for team beta if verification passes.
+2. Try a hosted ResourceSpace instance on Azure Student credit, connect the hosted portal to it, import a small photo-only sample under 10GB, and use it for team beta only if verification passes.
 
 This design keeps the demo credible without risking source media, public exposure, or June cash spend. It treats hosted ResourceSpace as the DAM/search/review source of truth and keeps Google Shared Drive as master-original custody.
 
@@ -25,7 +25,7 @@ This spec outcome is the June 16 demo plus Week-1 controlled team beta plan. Do 
 - Host ResourceSpace in cloud so the portal can view Hosted DAM instance photos and previews.
 - Keep the first beta photo-only with a couple hundred assets at most.
 - Leave visible room for future video and audio intake without importing video or audio now.
-- Use Azure Student credit only. Do not create any cash charge in June.
+- Use Azure Student credit or true free-tier paths only. Do not create any cash charge in June.
 
 ## Non-Goals
 
@@ -40,13 +40,38 @@ This spec outcome is the June 16 demo plus Week-1 controlled team beta plan. Do 
 - No live ResourceSpace writeback unless field mapping and smoke proof pass.
 - No paid cloud plan or out-of-credit spend in June.
 
+## June 16 Current Recommendation
+
+Recommended for tomorrow:
+
+1. Show the 4867 local portal as the real internal DAM beta demo if hosted ResourceSpace is not verified.
+2. Show hosted readonly protection with `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe`.
+3. Say hosted ResourceSpace remains in progress unless Azure Student setup is green with no paid upgrade.
+
+Recommended free-tier setup sequence under 10GB:
+
+1. Azure for Students VM for real ResourceSpace, only if the subscription credit/spending limit remains active and no paid upgrade is required.
+2. Oracle Always Free VM only if Ampere capacity is available and no paid/PAYG upgrade is required.
+3. Cloudflare Pages plus R2 only for readonly approved photo derivatives and portal preview plumbing. This is not a full ResourceSpace DAM and does not enable writeback.
+4. Vercel existing hosted portal remains useful for login/protection probes, but do not use it as media storage or proof of durable DAM state.
+
+Stop before any paid prompt, card charge, spending-limit removal, production env mutation, DNS change, or public publishing.
+
+Official references to re-check before account work:
+
+- Azure for Students: https://azure.microsoft.com/en-us/free/students/
+- Azure spending limit: https://learn.microsoft.com/en-us/azure/cost-management-billing/manage/spending-limit
+- Oracle Cloud Free Tier: https://www.oracle.com/cloud/free/
+- Cloudflare R2 pricing/free allowance: https://developers.cloudflare.com/r2/pricing/
+- Vercel limits/pricing: https://vercel.com/pricing
+
 ## Selected Approach
 
-Use Approach B: Azure hosted ResourceSpace with local fallback.
+Use Approach B: Azure hosted ResourceSpace with local fallback. For June 16 demo readiness, treat local 4867 as the primary proven path and Azure as the free-hosted path to continue only under the billing gate.
 
 ### Why This Approach
 
-The team wants to see and use a Hosted DAM instance, not only a local prototype. Azure Student is active and provides credit without immediate cash spend. A single VM is a better fit than free app platforms because ResourceSpace needs a LAMP-style host, MariaDB/MySQL, PHP extensions, local filestore, and media tooling.
+The team wants to see and use a Hosted DAM instance, not only a local prototype. Azure Student is the best-fit no-cash path if Hali's student subscription and spending limit are active. A single VM is a better fit than free app platforms because ResourceSpace needs a LAMP-style host, MariaDB/MySQL, PHP extensions, local filestore, and media tooling.
 
 Local ResourceSpace remains the fallback because cloud setup, DNS, imports, previews, API keys, and field mapping can fail close to demo time. The demo should not depend on a brand-new VM being perfect by tomorrow.
 

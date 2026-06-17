@@ -62,6 +62,26 @@ export type MasterCustodyPathStatus = "verified" | "planned" | "missing" | "not-
 
 export type WithdrawalStatus = "active" | "withdrawn" | "takedown-requested" | "embargoed" | "expired";
 
+export type DamRendition = "orig" | "web" | "social" | "thumb" | "print";
+
+export type DamFilenameDateSource = "captured_date" | "event_date" | "file_modified_date" | "import_date" | "undated";
+
+export type DamGeneratedFilenames = {
+  baseName: string;
+  original: string;
+  web: string;
+  social: string;
+  thumb: string;
+  print: string;
+  datePart: string;
+  dateSource: DamFilenameDateSource;
+  collectionSlug: string;
+  sequence: string;
+  originalExtension: string;
+  derivativeExtension: string;
+  subjectSlug?: string;
+};
+
 export type StockMediaAsset = {
   id: string;
   title: string;
@@ -93,6 +113,7 @@ export type StockMediaAsset = {
   eventSeries?: string;
   eventDate?: string;
   capturedDate?: string;
+  fileModifiedDate?: string;
   importDate?: string;
   imageDimensions?: string;
   rightsStatus?: string;
@@ -118,6 +139,7 @@ export type StockMediaAsset = {
   masterDrivePath?: string;
   masterCustodyPathStatus?: MasterCustodyPathStatus;
   originalFilename?: string;
+  damFilenames?: DamGeneratedFilenames;
   fileExtension?: string;
   fileSizeBytes?: number;
   tags?: string[];

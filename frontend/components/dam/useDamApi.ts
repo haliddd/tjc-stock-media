@@ -19,15 +19,6 @@ export type ApiEnvelope<T> = {
   refresh: () => void;
 };
 
-function withRoleParam(url: string, role?: DemoRole) {
-  if (!role) return url;
-  const [path, query = ""] = url.split("?");
-  const params = new URLSearchParams(query);
-  params.set("role", role);
-  const queryString = params.toString();
-  return `${path}${queryString ? `?${queryString}` : ""}`;
-}
-
 export type AssetDetailResponse = {
   asset: StockMediaAsset;
   source: MediaSourceStatus;
@@ -112,7 +103,7 @@ function useJsonApi<T extends DamApiPayload>(url: string | null, role?: DemoRole
   const [version, setVersion] = useState(0);
 
   const refresh = useCallback(() => setVersion((current) => current + 1), []);
-  const requestUrl = useMemo(() => (url ? withRoleParam(url, role) : null), [role, url]);
+  const requestUrl = useMemo(() => url, [url]);
 
   useEffect(() => {
     if (!requestUrl) {
@@ -127,7 +118,7 @@ function useJsonApi<T extends DamApiPayload>(url: string | null, role?: DemoRole
     setLoading(true);
     setError(null);
 
-    fetchDamJson<T>(requestUrl)
+    fetchDamJson<T>(requestUrl, { role })
       .then((payload) => {
         if (cancelled) return;
         setData(payload);
@@ -146,7 +137,7 @@ function useJsonApi<T extends DamApiPayload>(url: string | null, role?: DemoRole
     return () => {
       cancelled = true;
     };
-  }, [requestUrl, version]);
+  }, [requestUrl, role, version]);
 
   const sourceKind = useMemo(() => mediaSourceKind(source), [source]);
 
@@ -239,10 +230,15 @@ export function useDownloadGate(id: string, role: DemoRole) {
     reason?: string;
     variant?: string;
   } = {}) => {
-    const response = await fetch(`/api/download/${encodeURIComponent(id)}`, {
+    const params = new URLSearchParams({ role });
+    const response = await fetch(`/api/download/${encodeURIComponent(id)}?${params.toString()}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ role, termsAccepted, usageChannel, reason, variant })
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "x-tjc-local-beta-role": role
+      },
+      body: JSON.stringify({ termsAccepted, usageChannel, reason, variant })
     });
     const payload = await response.json().catch(() => ({ allowed: false, reason: `Download gate failed with ${response.status}` }));
     return payload as DownloadGateResponse;

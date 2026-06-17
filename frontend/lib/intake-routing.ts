@@ -75,9 +75,13 @@ function splitSuggestionTags(value?: string) {
     .filter(Boolean);
 }
 
-export function fileRequiresAdminIntake(file: Pick<File, "name" | "size" | "type">) {
+export function fileIsVideoOrAudio(file: Pick<File, "name" | "type">) {
   const name = file.name.toLowerCase();
-  return file.size > LARGE_MEDIA_LIMIT_BYTES || /^video\//i.test(file.type) || /^audio\//i.test(file.type) || /\.(mov|mp4|m4v|avi|mkv|mp3|wav|m4a|aac|flac)$/i.test(name);
+  return /^video\//i.test(file.type) || /^audio\//i.test(file.type) || /\.(mov|mp4|m4v|avi|mkv|mp3|wav|m4a|aac|flac)$/i.test(name);
+}
+
+export function fileRequiresAdminIntake(file: Pick<File, "name" | "size" | "type">) {
+  return file.size > LARGE_MEDIA_LIMIT_BYTES || fileIsVideoOrAudio(file);
 }
 
 export function intakeDefaultsToNeedsReview() {

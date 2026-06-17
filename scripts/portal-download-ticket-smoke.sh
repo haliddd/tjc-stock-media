@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4871}"
+BASE_URL="${BASE_URL:-http://localhost:4867}"
 CURL_MAX_TIME="${PORTAL_DOWNLOAD_TICKET_CURL_MAX_TIME:-30}"
 TMP_DIR="$(mktemp -d)"
 SMOKE_EXPORT=".runtime/exports/zzzz-download-ticket-smoke-$$.csv"
@@ -13,7 +13,7 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
-REVIEWER_HEADERS=(-H 'x-tjc-role: Reviewer' -H "x-auth-request-email: $(portal_smoke_trusted_email "Reviewer")")
+REVIEWER_HEADERS=(-H 'x-tjc-local-beta-role: Reviewer' -H 'x-tjc-role: Reviewer' -H "x-auth-request-email: $(portal_smoke_trusted_email "Reviewer")")
 local_runtime_probe=0
 case "$BASE_URL" in
   http://localhost:*|http://127.0.0.1:*) local_runtime_probe=1 ;;

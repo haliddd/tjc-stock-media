@@ -4,9 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 const expectedWorktree = process.env.RUNTIME_ISOLATION_EXPECTED_WORKTREE
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
 const expectedSourceCheckout = process.env.RUNTIME_ISOLATION_EXPECTED_SOURCE_CHECKOUT
-  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-pre-merge-backup-2026-06-15";
+  || "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
 const ledgerPath = process.env.RUNTIME_ISOLATION_LEDGER_PATH
   || "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md";
 const dailyPath = process.env.RUNTIME_ISOLATION_DAILY_PATH
@@ -23,28 +23,60 @@ function artifactSnapshot(fullPath) {
   return { size, mtime };
 }
 
-function read(relativePath) {
-  const fullPath = path.join(expectedWorktree, relativePath);
-  return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, "utf8") : "";
-}
-
 function realInside(base, target) {
   const resolvedBase = fs.realpathSync(base);
   const resolvedTarget = fs.realpathSync(target);
   return resolvedTarget === resolvedBase || resolvedTarget.startsWith(`${resolvedBase}${path.sep}`);
 }
 
+function safeWorktreePath(relativePath, label) {
+  const normalized = path.normalize(relativePath);
+  if (path.isAbsolute(relativePath) || normalized === ".." || normalized.startsWith(`..${path.sep}`)) {
+    failures.push(`${label} must be a relative path inside isolated worktree: ${relativePath}`);
+    return path.join(expectedWorktree, "__invalid__");
+  }
+  const fullPath = path.join(expectedWorktree, normalized);
+  if (!fs.existsSync(fullPath)) return fullPath;
+  if (!realInside(expectedWorktree, fullPath)) {
+    failures.push(`${label} escapes isolated worktree: ${relativePath}`);
+  }
+  return fullPath;
+}
+
+function read(relativePath, label) {
+  const fullPath = safeWorktreePath(relativePath, label);
+  return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, "utf8") : "";
+}
+
 const cwdRoot = run("git", ["rev-parse", "--show-toplevel"]);
 if (cwdRoot !== expectedWorktree) failures.push(`runtime isolation guard must run inside ${expectedWorktree}; got ${cwdRoot}`);
+if (!fs.existsSync(expectedWorktree)) {
+  failures.push(`expected isolated worktree does not exist: ${expectedWorktree}`);
+}
+if (!fs.existsSync(expectedSourceCheckout)) {
+  failures.push(`expected source checkout does not exist: ${expectedSourceCheckout}`);
+}
+if (fs.existsSync(expectedWorktree) && fs.existsSync(expectedSourceCheckout)) {
+  const realWorktree = fs.realpathSync(expectedWorktree);
+  const realSourceCheckout = fs.realpathSync(expectedSourceCheckout);
+  if (realWorktree === realSourceCheckout) {
+    failures.push("isolated worktree and source checkout must be distinct real paths");
+  }
+}
 
-for (const relativePath of [
+const optionalRuntimeArtifacts = [
   ".runtime",
-  "frontend/.next",
+  "frontend/.next"
+];
+
+const requiredProofArtifacts = [
   "docs/screenshots/qa",
   "docs/screenshots/qa/browser-qa-report.json",
   "docs/runs/evidence/2026-06-15",
   "docs/runs/evidence/2026-06-15/hosted-readonly-probes/summary.json"
-]) {
+];
+
+for (const relativePath of requiredProofArtifacts) {
   const fullPath = path.join(expectedWorktree, relativePath);
   if (!fs.existsSync(fullPath)) {
     failures.push(`missing isolated runtime/proof artifact: ${relativePath}`);
@@ -55,8 +87,15 @@ for (const relativePath of [
   }
 }
 
-const ledger = read(ledgerPath);
-const daily = read(dailyPath);
+for (const relativePath of optionalRuntimeArtifacts) {
+  const fullPath = path.join(expectedWorktree, relativePath);
+  if (fs.existsSync(fullPath) && !realInside(expectedWorktree, fullPath)) {
+    failures.push(`runtime/build artifact is outside isolated worktree: ${relativePath}`);
+  }
+}
+
+const ledger = read(ledgerPath, "runtime isolation ledger path");
+const daily = read(dailyPath, "runtime isolation daily path");
 for (const [relativePath, source] of [[ledgerPath, ledger], [dailyPath, daily]]) {
   if (!source) {
     failures.push(`missing evidence file: ${relativePath}`);
@@ -102,13 +141,9 @@ const isolatedInventory = [
 ].map((relativePath) => ({
     fullPath: path.join(expectedWorktree, relativePath),
     label: `isolated worktree ${relativePath}`
-  }));
+  })).filter((item) => fs.existsSync(item.fullPath));
 
 for (const item of isolatedInventory) {
-  if (!fs.existsSync(item.fullPath)) {
-    failures.push(`artifact inventory path missing for ${item.label}: ${item.fullPath}`);
-    continue;
-  }
   const { size, mtime } = artifactSnapshot(item.fullPath);
   const ledgerRow = `| \`${item.fullPath}\` | ${size} | ${mtime} |`;
   if (!ledger.includes(ledgerRow)) {

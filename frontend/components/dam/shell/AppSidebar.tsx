@@ -145,7 +145,7 @@ function SidebarUserCard() {
     <div className="dam-sidebar-user">
       <div className="dam-sidebar-avatar" aria-hidden="true">LC</div>
       <div className="min-w-0">
-        <strong>{betaLocked ? "Internal beta access" : "Leanne Chu"}</strong>
+        <strong>{betaLocked ? "Internal beta access" : "admin"}</strong>
         <span>{role}</span>
       </div>
       {betaLocked ? (

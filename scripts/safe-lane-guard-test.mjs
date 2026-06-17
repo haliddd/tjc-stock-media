@@ -7,8 +7,9 @@ import path from "node:path";
 const root = process.cwd();
 const guardPath = path.join(root, "scripts/safe-lane-guard.mjs");
 const tempRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "tjc-safe-lane-guard-")));
-const safeBranch = "codex/safe-ui-beta-proof-2026-06-15";
+const safeBranch = "codex/final-beta-blockers-2026-06-15";
 const baseUrl = "http://localhost:4871";
+const realStartCommit = "e88c5722f8e547b24f054633854e36391d670d42";
 const ledgerRelativePath = "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md";
 const failures = [];
 process.on("exit", () => fs.rmSync(tempRoot, { recursive: true, force: true }));
@@ -30,18 +31,25 @@ function write(filePath, source) {
   fs.writeFileSync(filePath, source);
 }
 
-function makeLedger({ sourceCheckout, worktree, branch, head, actualBaseUrl = baseUrl }) {
+function makeLedger({ sourceCheckout, worktree, branch, startCommit, head, actualBaseUrl = baseUrl }) {
+  const recordedStartCommit = startCommit || head;
   return [
     "# Safe Lane",
     "",
     `Source checkout: \`${sourceCheckout}\``,
     `Isolated worktree path: \`${worktree}\``,
     `Branch: \`${branch}\``,
+    `Start commit: \`${recordedStartCommit}\``,
     `Current HEAD commit: \`${head}\``,
     `Actual BASE_URL: \`${actualBaseUrl}\``,
     "Secrets redacted: yes",
     "Runtime/build artifacts isolated under isolated worktree: yes",
     "Shared checkout untouched by this build/dev/smoke lane: yes",
+    "",
+    "## Source Checkout Artifact Inventory",
+    "",
+    "The source checkout artifacts were inspected read-only. They were not used as proof. This session did not mutate them and did not run build/dev/smoke/browser QA from the shared checkout.",
+    "",
     "Sibling sessions: 019ec981-e816-70d0-bac1-759bb7792a12, 019ec84d-5d83-7010-9393-f7df3739e4d9",
     "",
     "Forbidden surfaces not touched:",
@@ -81,11 +89,12 @@ function createFixture(label) {
 function guardEnv(fixture) {
   return {
     ...process.env,
-    SAFE_LANE_EXPECTED_WORKTREE: fixture.worktree,
-    SAFE_LANE_EXPECTED_SOURCE_CHECKOUT: fixture.sourceCheckout,
-    SAFE_LANE_EXPECTED_BRANCH: safeBranch,
-    SAFE_LANE_EXPECTED_BASE_URL: baseUrl,
-    SAFE_LANE_LEDGER_PATH: ledgerRelativePath
+    ...(fixture.worktree ? { SAFE_LANE_EXPECTED_WORKTREE: fixture.worktree } : {}),
+    ...(fixture.sourceCheckout ? { SAFE_LANE_EXPECTED_SOURCE_CHECKOUT: fixture.sourceCheckout } : {}),
+    SAFE_LANE_EXPECTED_BRANCH: fixture.branch || safeBranch,
+    SAFE_LANE_EXPECTED_START_COMMIT: fixture.startCommit || fixture.head || realStartCommit,
+    SAFE_LANE_EXPECTED_BASE_URL: fixture.baseUrl || baseUrl,
+    SAFE_LANE_LEDGER_PATH: fixture.ledgerPath || ledgerRelativePath
   };
 }
 
@@ -99,7 +108,7 @@ function runGuard(cwd, fixture) {
 
 function expectPass(label, mutate) {
   if (label === "current-real-lane") {
-    const result = runGuard(root);
+    const result = runGuard(root, { startCommit: realStartCommit });
     if (result.status !== 0) failures.push(`${label} should pass:\n${result.stderr || result.stdout}`);
     return;
   }
@@ -137,9 +146,46 @@ expectFail("wrong-base-url", (fixture) => {
   ));
 });
 
+expectFail("wrong-start-commit", (fixture) => {
+  const ledgerPath = path.join(fixture.worktree, ledgerRelativePath);
+  fs.writeFileSync(ledgerPath, fs.readFileSync(ledgerPath, "utf8").replace(
+    `Start commit: \`${fixture.head}\``,
+    "Start commit: `0000000000000000000000000000000000000000`"
+  ));
+});
+
+expectFail("missing-readonly-source-inventory", (fixture) => {
+  const ledgerPath = path.join(fixture.worktree, ledgerRelativePath);
+  fs.writeFileSync(ledgerPath, fs.readFileSync(ledgerPath, "utf8").replace(
+    "## Source Checkout Artifact Inventory",
+    "## Missing Inventory"
+  ));
+});
+
+expectFail("missing-shared-checkout-no-run-note", (fixture) => {
+  const ledgerPath = path.join(fixture.worktree, ledgerRelativePath);
+  fs.writeFileSync(ledgerPath, fs.readFileSync(ledgerPath, "utf8").replace(
+    "and did not run build/dev/smoke/browser QA from the shared checkout",
+    "and reused shared checkout proof"
+  ));
+});
+
+expectFail("missing-forbidden-surface", (fixture) => {
+  const ledgerPath = path.join(fixture.worktree, ledgerRelativePath);
+  fs.writeFileSync(ledgerPath, fs.readFileSync(ledgerPath, "utf8").replace(
+    "- Google Drive originals\n",
+    ""
+  ));
+});
+
 expectFail("tracked-env-artifact", (fixture) => {
   write(path.join(fixture.worktree, ".env"), "SECRET=do-not-track\n");
   run("git", ["add", ".env"], { cwd: fixture.worktree });
+});
+
+expectFail("tracked-env-local-artifact", (fixture) => {
+  write(path.join(fixture.worktree, ".env.local"), "SECRET=do-not-track\n");
+  run("git", ["add", ".env.local"], { cwd: fixture.worktree });
 });
 
 expectFail("tracked-source-media", (fixture) => {

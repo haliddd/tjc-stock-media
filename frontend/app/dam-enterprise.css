@@ -9997,13 +9997,6 @@ body:has(.dam-packet-workbench) .beta-report-button {
   border-color: #0b4b42;
 }
 
-.beta-invite-hint {
-  font-size: 12px;
-  line-height: 1.35;
-  font-weight: 800;
-  color: #68776f;
-}
-
 .beta-login-submit {
   display: inline-flex;
   align-items: center;
@@ -13382,7 +13375,7 @@ button:disabled,
 
 .damx-stepper {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 8px;
 }
 
@@ -13463,6 +13456,217 @@ button:disabled,
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+
+.damx-upload-actions-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, auto) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.damx-folder-picker {
+  position: relative;
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid var(--damx-line);
+  border-radius: 9px;
+  background: var(--damx-surface-soft);
+  color: var(--damx-ink);
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.damx-folder-picker input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.damx-missing-chips,
+.damx-confidence-row,
+.damx-review-task-list {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.damx-missing-chips span,
+.damx-confidence-row span,
+.damx-review-task-list span {
+  max-width: 100%;
+  border: 1px solid #e3c577;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #71500f;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.damx-scan-summary,
+.damx-auto-explain,
+.damx-folder-helper,
+.damx-submission-state,
+.damx-submit-receipt,
+.damx-custody-card,
+.damx-requested-use {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--damx-line);
+  border-radius: 10px;
+  background: var(--damx-surface-soft);
+  padding: 14px;
+}
+
+.damx-scan-summary > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.damx-scan-summary > div:first-child span,
+.damx-folder-helper strong,
+.damx-requested-use h3,
+.damx-review-task-list h3,
+.damx-custody-card strong {
+  margin: 0;
+  color: var(--damx-ink);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.damx-scan-summary > div:first-child strong {
+  color: var(--damx-ink);
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.damx-scan-summary > div:first-child small,
+.damx-requested-use p,
+.damx-folder-helper span,
+.damx-folder-helper small,
+.damx-custody-card span,
+.damx-step-copy {
+  color: var(--damx-muted);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.damx-scan-summary dl,
+.damx-submission-state,
+.damx-submit-receipt dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.damx-scan-summary dl div,
+.damx-submission-state div,
+.damx-submit-receipt dl div {
+  min-width: 0;
+  border: 1px solid var(--damx-line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px;
+}
+
+.damx-scan-summary dt,
+.damx-submission-state strong,
+.damx-submit-receipt dt {
+  color: var(--damx-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.damx-scan-summary dd,
+.damx-submission-state span,
+.damx-submit-receipt dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--damx-ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.damx-auto-explain {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.damx-auto-explain article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.damx-auto-explain strong {
+  color: var(--damx-ink);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.damx-auto-explain span {
+  color: var(--damx-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.damx-folder-helper code {
+  display: block;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--damx-line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  color: var(--damx-ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.damx-review-task-list {
+  display: flex;
+}
+
+.damx-review-task-list h3 {
+  flex-basis: 100%;
+}
+
+.damx-submit-receipt {
+  grid-template-columns: auto minmax(0, 1fr);
+  border-color: #b9d8c6;
+  background: #eef8f2;
+  color: #194f34;
+}
+
+.damx-submit-receipt h3,
+.damx-submit-receipt p {
+  margin: 0;
+}
+
+.damx-submit-receipt p {
+  color: #315c43;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.damx-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .damx-file-list > div {
@@ -13799,6 +14003,10 @@ button:disabled,
   backdrop-filter: blur(10px);
 }
 
+.damx-upload-page .damx-sticky-actions {
+  display: flex;
+}
+
 .damx-blocker-line {
   border: 1px solid rgba(183, 121, 31, .24);
   border-radius: 8px;
@@ -13998,6 +14206,23 @@ button:disabled,
     padding: 12px;
   }
 
+  .damx-upload-actions-row,
+  .damx-scan-summary dl,
+  .damx-auto-explain,
+  .damx-submission-state,
+  .damx-submit-receipt,
+  .damx-submit-receipt dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .damx-folder-picker {
+    width: 100%;
+  }
+
+  .damx-summary-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .damx-saved-views,
   .damx-module-nav {
     flex-wrap: nowrap;
@@ -14080,13 +14305,14 @@ button:disabled,
   }
 
   .damx-stepper {
-    display: flex;
-    overflow-x: auto;
-    padding-bottom: 2px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: visible;
+    padding-bottom: 0;
   }
 
   .damx-stepper button {
-    flex: 0 0 min(72vw, 220px);
+    width: 100%;
   }
 
   .damx-dropzone {

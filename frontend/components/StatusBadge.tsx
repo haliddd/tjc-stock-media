@@ -32,7 +32,7 @@ const usageLabels: Record<StockMediaAsset["usageScope"], string> = {
   Internal: "Internal ministry use",
   "Public and Internal": "Church-wide and internal",
   "Archive Only": "Archive only",
-  "Do Not Publish": "Do not publish yet",
+  "Do Not Publish": "Not published",
   "Do Not Use": "Do not use"
 };
 

@@ -25,7 +25,7 @@ import {
 } from "@/lib/catalog-summaries";
 import { assetResourceRef } from "@/lib/asset-refs";
 import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery, resolveDiscoveryQuery } from "@/lib/catalog-discovery";
-import { getActiveMediaSource } from "@/lib/media-source";
+import { findFilestoreDerivative, getActiveMediaSource } from "@/lib/media-source";
 import { listPendingReviewWrites } from "@/lib/pending-review-writes";
 import { safeBoundedInt } from "@/lib/persisted-record-safety";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
@@ -70,6 +70,14 @@ function statusWeight(asset: StockMediaAsset) {
   return 5;
 }
 
+function localPreviewWeight(asset: StockMediaAsset) {
+  return findFilestoreDerivative(asset.id, "small") || findFilestoreDerivative(asset.id, "card") || findFilestoreDerivative(asset.id, "detail") ? 1 : 0;
+}
+
+function previewFirstCompare(a: StockMediaAsset, b: StockMediaAsset) {
+  return localPreviewWeight(b) - localPreviewWeight(a);
+}
+
 function sortCatalogAssets(assets: StockMediaAsset[], sort?: string) {
   const normalized = normalizeCatalogSort(sort);
   const sorted = [...assets];
@@ -87,8 +95,12 @@ function sortCatalogAssets(assets: StockMediaAsset[], sort?: string) {
   if (normalized === "Recently approved") {
     return sorted.sort((a, b) => (b.reviewedDate || "").localeCompare(a.reviewedDate || ""));
   }
-  sorted.sort((a, b) => statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a) || a.title.localeCompare(b.title));
-  return diversifyAssets(sorted);
+  sorted.sort((a, b) => localPreviewWeight(b) - localPreviewWeight(a) || statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a) || a.title.localeCompare(b.title));
+  const diversified = diversifyAssets(sorted);
+  return [
+    ...diversified.filter((asset) => localPreviewWeight(asset)),
+    ...diversified.filter((asset) => !localPreviewWeight(asset))
+  ];
 }
 
 function curatedWeight(asset: StockMediaAsset) {
@@ -258,7 +270,7 @@ export function getRelatedAssets(assets: StockMediaAsset[], id: string) {
     .filter((item) => item.id !== id)
     .filter(assetIsApproved)
     .filter((item) => item.collection === asset.collection || includesAny(item, [...(asset.tags || []), ...(asset.tjcTerms || [])].slice(0, 4)))
-    .sort((a, b) => statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a))
+    .sort((a, b) => previewFirstCompare(a, b) || statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a))
     .slice(0, 8);
 }
 
@@ -277,7 +289,7 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
   const reviewable = canReview
     ? assets
         .filter((asset) => hasPendingReviewWrite(asset) || reviewQueues.some((queue) => assetMatchesReviewQueue(asset, queue.id, duplicateGroupCounts)))
-        .sort((a, b) => reviewRiskFlags(b, duplicateGroupCounts).length - reviewRiskFlags(a, duplicateGroupCounts).length || statusWeight(a) - statusWeight(b) || a.title.localeCompare(b.title))
+        .sort((a, b) => previewFirstCompare(a, b) || reviewRiskFlags(b, duplicateGroupCounts).length - reviewRiskFlags(a, duplicateGroupCounts).length || statusWeight(a) - statusWeight(b) || a.title.localeCompare(b.title))
     : [];
   const selected = reviewable.filter((asset) => matchesQueue(asset, queueId));
   const reviewCounts = countAssetGovernance(reviewable);

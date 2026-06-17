@@ -594,7 +594,7 @@ async function deliverCopy(
     });
   }
 
-  const delivery = deps.readApprovedCopyDelivery(id, asset.title, source);
+  const delivery = deps.readApprovedCopyDelivery(id, asset, source);
   if (delivery.status !== "ready") {
     const reasonCode = delivery.status === "missing-derivative" ? "approved-derivative-missing" : "approved-derivative-unavailable";
     const audit = auditBlockedAttempt({

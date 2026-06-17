@@ -50,6 +50,9 @@ expectFail("lower-threshold-requires-reason", missingReasonResult, "SAFE_LANE_HE
 const invalidMinimumResult = runGuard({ env: { SAFE_LANE_MIN_FREE_GIB: "not-a-number" } });
 expectFail("invalid-minimum-hard-stop", invalidMinimumResult, "SAFE_LANE_MIN_FREE_GIB must be a non-negative integer");
 
+const malformedMinimumResult = runGuard({ env: { SAFE_LANE_MIN_FREE_GIB: "10abc" } });
+expectFail("malformed-minimum-hard-stop", malformedMinimumResult, "SAFE_LANE_MIN_FREE_GIB must be a non-negative integer");
+
 const passResult = runGuard({
   env: {
     SAFE_LANE_MIN_FREE_GIB: "0",
@@ -57,6 +60,12 @@ const passResult = runGuard({
   }
 });
 expectPass("zero-minimum-current-worktree-with-reason", passResult);
+
+const vercelResult = runGuard({ cwd: os.tmpdir(), env: { VERCEL: "1" } });
+expectPass("vercel-build-skips-local-worktree-guard", vercelResult);
+if (!`${vercelResult.stdout}\n${vercelResult.stderr}`.includes("Vercel build environment")) {
+  failures.push("vercel-build-skips-local-worktree-guard missing skip copy");
+}
 
 const lowDiskResult = runGuard({ env: { SAFE_LANE_MIN_FREE_GIB: "99999" } });
 expectFail("low-disk-hard-stop", lowDiskResult, "free disk");

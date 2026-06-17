@@ -8,11 +8,12 @@ import {
   getDamReadiness
 } from "@/lib/dam-readiness";
 import { canAdmin } from "@/lib/permissions";
+import { localBetaRoleOverrideFromRequest } from "@/lib/request-identity";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const session = createDamRouteSession(request, request.nextUrl.searchParams.get("role"));
+  const session = createDamRouteSession(request, localBetaRoleOverrideFromRequest(request));
   const role = session.role;
   if (!canAdmin(role)) {
     const error = damReadinessDeniedError();

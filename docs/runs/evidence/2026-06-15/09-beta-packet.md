@@ -18,6 +18,18 @@ Follow-up: Hali confirms tester names/roles, hosted URL/protection, real/non-rea
 
 Draft only. Do not send invites.
 
+## Current External-Proof Contract
+
+| Field | Value |
+|---|---|
+| Result | BLOCKED / NO-GO |
+| Secrets redacted | yes |
+| Touched forbidden surfaces | no |
+| Open blocker ID | tester-list-and-signoff |
+| Follow-up | Hali confirms tester list, roles, durable feedback path, and final invite decision |
+
+Current June 15 posture: NO-GO. Team Beta human signoff record is current NO-GO after June 15 P0. Do not send this invite copy from Codex. Names remain placeholders until Hali confirms.
+
 ## Tester Role Matrix
 
 | Tester | Role | Status | Notes |

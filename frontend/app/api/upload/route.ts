@@ -4,8 +4,8 @@ import { canUpload } from "@/lib/permissions";
 import { requestIdentity } from "@/lib/request-identity";
 import { readFormData } from "@/lib/request-validation";
 import {
-  buildUploadIntakeResponse,
   normalizeUploadIntake,
+  submitUploadIntakeBatch,
   uploadIntakeDeniedAuditEvent,
   uploadIntakeRoleDeniedError,
   uploadIntakeSubmittedAuditEvent,
@@ -31,6 +31,6 @@ export async function POST(request: NextRequest) {
   }
 
   appendAuditEvent(uploadIntakeSubmittedAuditEvent(intake, role, identity.id));
-
-  return NextResponse.json(buildUploadIntakeResponse(intake));
+  const submitted = await submitUploadIntakeBatch(intake, role, identity.id);
+  return NextResponse.json(submitted.body, { status: submitted.status });
 }

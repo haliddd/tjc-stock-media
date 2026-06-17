@@ -56,15 +56,15 @@ Do not fill as GO until June 15 evidence blockers close and Hali renews approval
 Final decision: NO-GO
 Decision owner: Codex safety evidence update, pending Hali + Enoch renewed approval
 Decision timestamp: 2026-06-15T07:29:52Z
-Named tester count: 6
-Named testers: Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang
-Roles assigned: Viewer, Contributor, Reviewer, DAM Admin QA roles as needed for assigned beta tasks
+Named tester count: pending renewed Hali confirmation; historical list had 6
+Named testers: pending renewed Hali confirmation; historical list was Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang
+Roles assigned: pending renewed Hali confirmation; historical QA roles included Viewer, Contributor, Reviewer, and DAM Admin as needed for assigned beta tasks
 Invite copy source: docs/team-beta-internal-test-packet.md
-Stable URL only confirmed: Yes
+Stable URL only confirmed: No - canonical deployment and hosted env proof remain blocked
 Preview URL sharing blocked: Yes
 Stop-test rule included: Yes
-Feedback watch window: First 24 hours after invite
-Next-batch review time: 24 hours after first invite
+Feedback watch window: pending renewed invite decision; proposed first 24 hours after invite
+Next-batch review time: pending renewed invite decision; proposed 24 hours after first invite
 ```
 
 ## Fast Final Reply Template

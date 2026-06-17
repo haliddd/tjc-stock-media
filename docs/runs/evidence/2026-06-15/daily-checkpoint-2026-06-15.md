@@ -1,45 +1,17 @@
-# Codex Daily Checkpoint - 2026-06-15
+# Historical Checkpoint Snapshot - Superseded
 
-## Work Completed
+This file is a historical evidence-folder snapshot from the early June 15 run. It is not the active daily checkpoint for the isolated safe-lane proof.
 
-- Returned checkout to target branch `architecture/production-like-connected-dam-readiness-proof`.
-- Canceled current OCI VM create page; Oracle console now on Instances list.
-- Recorded Oracle A1 capacity blocker: VCN created, no VM, no paid prompt accepted, A1 2 OCPU / 12 GB failed in all Ashburn ADs.
-- Proved hosted anonymous beta gate read-only: root/search/admin redirect to beta login; beta session enabled and unauthenticated.
-- Ran target-branch local build/test/guard suite and local beta smokes.
-- Updated evidence bundle and production-like readiness report.
+Active daily checkpoint:
 
-## Checks Run
+- `docs/runs/daily-checkpoint-2026-06-15.md`
 
-- `git diff --check`: pass.
-- `npm --prefix frontend run typecheck`: pass after build-generated types stabilized.
-- `npm --prefix frontend test`: pass, 72 tests.
-- `npm --prefix frontend run build`: pass.
-- Private/public/env/API/audit/storage/git/live-DAM guards: pass.
-- `make launch-readiness`: pass, 0 failures, 1 `.env` placeholder warning.
-- `portal-api-smoke`: pass.
-- `portal-delivery-smoke`: pass.
-- `portal-writeback-guard-smoke`: pass.
-- `portal-feedback-smoke`: pass local.
-- `portal-package-smoke`: pass local.
-- `portal-saved-search-smoke`: pass local.
-- `portal-beta-rehearsal`: pass.
-- `portal-download-ticket-smoke`: blocked because no reviewer-visible downloadable asset exists.
+Current proof pointers:
 
-## Blockers
+- Current local protected proof: `2026-06-16T13:46:56Z`
+- Current local browser QA proof: `2026-06-16T16:43:07.114Z`
+- Current BASE_URL: `http://localhost:4871`
+- Current worktree: `/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run`
+- Current decision: NO-GO
 
-- Oracle A1 capacity unavailable in AD-1, AD-2, AD-3.
-- Hosted ResourceSpace install/import/API proof not started.
-- Vercel persona/env/commit proof not captured.
-- Hosted durable store not proven.
-- Google Shared Drive sanitized custody proof not supplied.
-- Download ticket proof blocked by zero downloadable/portal-ready seed assets.
-- Tester invites not approved and not sent.
-
-## Current Decision
-
-NO-GO for real hosted ResourceSpace-backed teammate beta.
-
-## Next Safe Step
-
-Retry OCI A1 later/off-hours, optionally with a smaller free-only A1 shape if Hali approves. If still capacity blocked, keep ResourceSpace hosted install as NO-GO and continue local/export evidence only.
+Current local proof lane is green for safety smokes, build/typecheck/tests, browser QA, and evidence guards. Overall beta remains NO-GO because hosted/canonical deployment, Vercel env, ResourceSpace scope, Google Drive custody, durable hosted state/backups, and tester signoff are still blocked or partial in `docs/runs/evidence/2026-06-15/open-blockers.json`.

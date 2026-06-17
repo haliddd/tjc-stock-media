@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4871}"
+BASE_URL="${BASE_URL:-http://localhost:4867}"
 CURL_MAX_TIME="${PORTAL_WRITEBACK_GUARD_SMOKE_CURL_MAX_TIME:-30}"
 MARKER="writeback-guard-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 SMOKE_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
@@ -19,6 +19,13 @@ http_code() {
   portal_smoke_http_code "$output" "$@"
 }
 
+http_code_as() {
+  local role="$1"
+  local output="$2"
+  shift 2
+  portal_smoke_http_code_as "$role" "$output" "$@"
+}
+
 expect_json_status() {
   local expected="$1"
   local label="$2"
@@ -27,6 +34,24 @@ expect_json_status() {
   shift 3
   local code
   code="$(http_code "$output" "$@")"
+  if [ "$code" != "$expected" ]; then
+    echo "FAIL: $label expected $expected got $code"
+    cat "$output"
+    exit 1
+  fi
+  node -e "$script" < "$output"
+  echo "PASS: $label"
+}
+
+expect_json_status_as() {
+  local role="$1"
+  local expected="$2"
+  local label="$3"
+  local script="$4"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  shift 4
+  local code
+  code="$(http_code_as "$role" "$output" "$@")"
   if [ "$code" != "$expected" ]; then
     echo "FAIL: $label expected $expected got $code"
     cat "$output"
@@ -62,6 +87,33 @@ select_json_value() {
   printf '%s\n' "$value"
 }
 
+select_json_value_as() {
+  local role="$1"
+  local label="$2"
+  local script="$3"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  shift 3
+  local code
+  code="$(http_code_as "$role" "$output" "$@")"
+  if [ "$code" != "200" ]; then
+    echo "FAIL: $label expected 200 got $code" >&2
+    cat "$output" >&2
+    return 1
+  fi
+  local value
+  if ! value="$(node -e "$script" < "$output")"; then
+    cat "$output" >&2
+    return 1
+  fi
+  if [ -z "$value" ]; then
+    echo "FAIL: $label returned an empty value" >&2
+    cat "$output" >&2
+    return 1
+  fi
+  echo "PASS: selected $label=$value" >&2
+  printf '%s\n' "$value"
+}
+
 review_asset_id_script='
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const asset = (Array.isArray(data.assets) ? data.assets : []).find((item) => item && item.id);
@@ -72,10 +124,10 @@ if (!asset) {
 console.log(asset.id);
 '
 
-REVIEW_ASSET_ID="$(select_json_value review-writeback-guard-asset-id "$review_asset_id_script" \
-  "$BASE_URL/api/review?role=Reviewer&queue=pending")"
+REVIEW_ASSET_ID="$(select_json_value_as Reviewer review-writeback-guard-asset-id "$review_asset_id_script" \
+  "$BASE_URL/api/review?queue=pending")"
 
-expect_json_status 200 writeback-readiness-not-live '
+expect_json_status_as "DAM Admin" 200 writeback-readiness-not-live '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const item = (data.integrationReadiness || []).find((entry) => entry.id === "review-writes");
 if (!item) {
@@ -90,7 +142,7 @@ if (!/pending-sync|disabled|not configured|field refs|field map|credentials|writ
   console.error(`FAIL: review-writes readiness detail does not explain blocked writeback: ${JSON.stringify(item)}`);
   process.exit(1);
 }
-' "$BASE_URL/api/admin/readiness?role=DAM%20Admin"
+' "$BASE_URL/api/admin/readiness"
 
 expect_json_status 400 writeback-incomplete-evidence-blocked '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
@@ -239,7 +291,7 @@ fs.appendFileSync(path.join(auditDir, `${month}.jsonl`), `${JSON.stringify({
 NODE
 fi
 
-expect_json_status 200 writeback-pending-queue-visible '
+expect_json_status_as "DAM Admin" 200 writeback-pending-queue-visible '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const item = (data.integrationReadiness || []).find((entry) => entry.id === "pending-review-writes");
 if (!item) {
@@ -267,7 +319,7 @@ if (normalizedAudit && (normalizedAudit.role !== "Viewer" || normalizedAudit.sta
   console.error(`FAIL: unsafe audit line was not normalized: ${JSON.stringify(normalizedAudit)}`);
   process.exit(1);
 }
-' "$BASE_URL/api/admin/readiness?role=DAM%20Admin"
+' "$BASE_URL/api/admin/readiness"
 
 if [ "$local_runtime_probe" = "1" ]; then
   SMOKE_STARTED_AT="$SMOKE_STARTED_AT" node <<'NODE'

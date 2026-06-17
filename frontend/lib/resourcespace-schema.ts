@@ -1,4 +1,5 @@
 import { safeNonNegativeInt } from "@/lib/persisted-record-safety";
+import { buildDamFilenames } from "@/lib/dam-filenames";
 import type {
   ApprovedChannel,
   DomainReviewer,
@@ -151,7 +152,7 @@ const usageLabels: Record<UsageScope, string> = {
   Internal: "Internal ministry use",
   "Public and Internal": "Church-wide and internal",
   "Archive Only": "Archive only",
-  "Do Not Publish": "Do not publish yet",
+  "Do Not Publish": "Not published",
   "Do Not Use": "Do not use"
 };
 
@@ -491,7 +492,7 @@ export function normalizeResourceSpaceRecord(row: ResourceSpaceRecord): StockMed
   const fileSizeBytes = safeNonNegativeInt(value(row, "file_size", "original_file_size_bytes")) || undefined;
   const peopleRisk = normalizePeopleRisk(row);
 
-  return {
+  const asset: StockMediaAsset = {
     id,
     title,
     thumbnail: imageUrls.small,
@@ -514,6 +515,7 @@ export function normalizeResourceSpaceRecord(row: ResourceSpaceRecord): StockMed
     eventSeries: value(row, "event_series") || undefined,
     eventDate: value(row, "event_date") || undefined,
     capturedDate: value(row, "captured_date") || undefined,
+    fileModifiedDate: value(row, "file_modified_date", "modified_date", "mtime") || undefined,
     importDate: value(row, "import_date") || undefined,
     imageDimensions: value(row, "image_dimensions") || undefined,
     rightsStatus: normalizeRightsStatus(row),
@@ -579,5 +581,9 @@ export function normalizeResourceSpaceRecord(row: ResourceSpaceRecord): StockMed
     language: value(row, "language") || undefined,
     versionOrEdition: value(row, "version_or_edition", "edition") || undefined,
     duplicateSimilarityHint: value(row, "duplicate_similarity_hint", "near_duplicate_hint") || undefined
+  };
+  return {
+    ...asset,
+    damFilenames: buildDamFilenames(asset)
   };
 }

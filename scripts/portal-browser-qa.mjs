@@ -410,40 +410,33 @@ async function saveFullPageScreenshot(page, screenshotPath) {
 }
 
 async function fillUploadContextStep(page, prefix = "Browser QA") {
-  await page.getByLabel("Title").fill(`${prefix} intake`);
-  await page.getByLabel("Event").fill("Sabbath media QA");
+  await page.getByLabel("Batch / event name").fill(`${prefix} intake`);
   await page.getByLabel("Date").fill("2026-06-06");
-  await page.getByLabel("Ministry/team").fill("Internet Ministry");
-  await page.getByLabel("Source / photographer").fill("QA reviewer");
-  await page.getByLabel("Source class").selectOption("Church photographer / TJC-created");
+  await page.getByLabel("Ministry / team").fill("Internet Ministry");
+  await page.getByLabel("Source / photographer / uploader").fill("QA reviewer");
 }
 
 async function fillUploadRightsStep(page) {
-  await page.getByLabel("People visible").selectOption("No");
-  await page.getByLabel("Children/youth visible").selectOption("No");
-  await page.getByLabel("Usage rights").selectOption("TJC-owned / permission confirmed");
-  await page.getByLabel("Suggested approval direction").selectOption("Likely internal ministry use only");
-  await page.getByLabel("Consent/restrictions").fill("No consent restrictions; no people visible.");
-  await page.getByLabel("Doctrine/sacrament sensitivity").selectOption("No");
-  await page.getByLabel("Testimony/pastoral sensitivity").selectOption("No");
-  await page.getByLabel("Hymn/music present").selectOption("No");
+  await page.getByLabel("Suggested tags").fill("Bible, worship");
+  await page.getByLabel("Notes").fill("Browser QA intake note for reviewer packet.");
 }
 
 async function clickUploadNext(page) {
-  const actionBar = page.locator('[aria-label="Send actions"]').first();
-  await actionBar.waitFor({ state: "visible", timeout: 30000 });
-  const next = actionBar.getByRole("button", { name: /^Next$/ }).first();
+  const next = page.locator(".damx-sticky-actions button:visible", { hasText: "Next" }).last();
   await next.waitFor({ state: "visible", timeout: 30000 });
   await next.scrollIntoViewIfNeeded().catch(() => {});
   await next.click();
 }
 
+async function clickUploadAction(page, label) {
+  const action = page.locator(".damx-sticky-actions button:visible", { hasText: label }).last();
+  await action.waitFor({ state: "visible", timeout: 30000 });
+  await action.scrollIntoViewIfNeeded().catch(() => {});
+  await action.click();
+}
+
 async function advanceUploadToFiles(page, prefix = "Browser QA") {
-  await clickUploadNext(page);
-  await fillUploadContextStep(page, prefix);
-  await clickUploadNext(page);
-  await fillUploadRightsStep(page);
-  await clickUploadNext(page);
+  void prefix;
 }
 
 async function fillReviewEvidence(page, note) {
@@ -537,7 +530,7 @@ async function inspectPage(page, expected) {
     hasBlockedDownload: visibleText.includes("Download unavailable") || visibleText.includes("Downloads blocked") || visibleText.includes("Download blocked") || visibleText.includes("Needs review") || visibleText.includes("Review required before use") || visibleText.includes("Source file restricted") || visibleText.includes("Request DAM review") || visibleText.includes("Request-only") || visibleText.includes("Preview protected"),
       hasReviewBlocker: visibleText.includes("Decision locked") || visibleText.includes("Complete required evidence before approval"),
       hasViewerReviewBlock: visibleText.includes("Review inbox requires reviewer access"),
-      hasViewerUploadBlock: visibleText.includes("Send media requires Contributor access"),
+      hasViewerUploadBlock: visibleText.includes("Create intake batch requires Contributor access"),
       hasAdminBlock: visibleText.includes("Governance requires DAM Admin role"),
       hasOriginalFilenameOnCard: [...document.querySelectorAll('[aria-label="Source metadata"]')].some((el) => (el.textContent || "").includes("Original:")),
       missingTabControls: [...document.querySelectorAll('[role="tab"][aria-controls]')]
@@ -862,33 +855,26 @@ if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Browser QA");
-  if ((await page.getByText("Drop files here or browse").count()) < 1) failures.push("upload file dropzone: drop/browse affordance missing");
-  await page.getByText("Drop files here or browse").evaluate((node) => {
-    const label = node.closest("label");
-    if (!label) throw new Error("upload dropzone label missing");
+  if ((await page.getByText("Drop photos, folders, or paste a Google Drive folder link.").count()) < 1) failures.push("upload file dropzone: batch affordance missing");
+  await page.getByText("Drop photos, folders, or paste a Google Drive folder link.").evaluate((node) => {
+    const dropzone = node.closest(".damx-dropzone");
+    if (!dropzone) throw new Error("upload dropzone missing");
     const transfer = new DataTransfer();
     transfer.items.add(new File([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], "qa-drop.jpg", { type: "image/jpeg" }));
-    label.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    dropzone.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
   });
   if ((await page.getByLabel("Selected file preview").getByText("qa-drop.jpg").count()) < 1) failures.push("upload file dropzone: dropped file missing from preview");
-  await page.getByLabel("Selected file preview").getByRole("button", { name: "Clear files" }).click();
-  await page.getByLabel("Files").setInputFiles([{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await page.getByLabel("Selected file preview").getByRole("button", { name: "Remove" }).first().click();
+  await page.getByLabel("Browse files").setInputFiles([{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }]);
   if ((await page.getByLabel("Selected file preview").getByText("qa-photo.png").count()) < 1) failures.push("upload file preview: selected file missing");
-  await page.getByLabel("Selected file preview").getByRole("button", { name: "Clear files" }).click();
-  await page.getByLabel("Existing media-team link").fill("https://media.tjc.example/review-source");
-  if ((await page.getByLabel("Suggested tags suggestions", { exact: true }).getByRole("button", { name: "Bible" }).count()) < 1) failures.push("upload tag input: taxonomy suggestions missing");
-  await page.getByLabel("Suggested tags", { exact: true }).fill("qa");
-  await page.keyboard.press("Enter");
-  if ((await page.getByRole("button", { name: "Remove qa" }).count()) > 0) failures.push("upload tag input: non-canonical typed tag became canonical chip");
-  if ((await page.getByText("not in the current taxonomy").count()) < 1) failures.push("upload tag input: non-canonical tag warning missing");
-  await page.getByLabel("Suggested tags", { exact: true }).fill("Bible, worship");
-  await page.keyboard.press("Enter");
-  if ((await page.getByRole("button", { name: "Remove Bible" }).count()) < 1) failures.push("upload tag input: canonical typed tag chip missing");
-  await page.getByLabel("Reviewer notes").fill("Browser QA no-file intake with source link only.");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Reviewer packet").count()) < 1) failures.push("upload contributor packet: review packet step missing");
-  await page.getByRole("button", { name: "Submit for DAM review" }).click();
-  await page.waitForSelector("text=Intake received");
+  await page.getByLabel("Google Drive or source link").fill("https://media.tjc.example/review-source");
+  await clickUploadNext(page);
+  await fillUploadContextStep(page, "Browser QA");
+  await fillUploadRightsStep(page);
+  await clickUploadNext(page);
+  if ((await page.getByText("Review packet summary").count()) < 1) failures.push("upload contributor packet: review packet step missing");
+  await page.getByRole("button", { name: "Submit batch for DAM review" }).last().click();
+  await page.waitForSelector("text=Batch submitted");
   if ((await page.getByText("Needs Review / Do Not Publish").count()) < 1) failures.push("upload contributor receipt: default review state missing");
   await closeContext(context);
 }
@@ -897,7 +883,7 @@ if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Contributor", 320, 900);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Mobile file preview QA");
-  await page.getByLabel("Files").setInputFiles([{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }]);
+  await page.getByLabel("Browse files").setInputFiles([{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }]);
   if ((await page.getByLabel("Selected file preview").getByText("qa-mobile-photo-with-a-long-name.png").count()) < 1) failures.push("upload mobile file preview: selected file missing");
   const mobileUploadOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   if (mobileUploadOverflow) failures.push("upload mobile file preview: horizontal overflow after file selection");
@@ -907,11 +893,11 @@ if (hasViewerDetailAsset()) {
 {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
-  if ((await page.getByText("What are you sending?").count()) < 1) failures.push("upload desktop wizard: template-first prompt missing");
-  if ((await page.getByText(/Send never publishes/).count()) < 1) failures.push("upload desktop wizard: never-publishes safety copy missing");
+  if ((await page.getByText("Create intake batch").count()) < 1) failures.push("upload desktop wizard: batch title missing");
+  if ((await page.getByText(/Submission creates a review packet/).count()) < 1) failures.push("upload desktop wizard: non-publishing safety copy missing");
   if ((await page.locator('[data-component="UploadBottomActionBar"]').count()) > 0) failures.push("upload desktop rail: detached bottom submit bar still present");
-  if ((await page.getByText("Step 1 of 5").count()) < 1) failures.push("upload desktop wizard: step indicator missing");
-  await page.getByRole("button", { name: "Save draft" }).click();
+  if ((await page.getByText("Add media").count()) < 1 || (await page.getByText("What happens next").count()) < 1) failures.push("upload desktop wizard: batch stepper/next panel missing");
+  await clickUploadAction(page, "Save draft");
   if ((await page.getByText("Draft saved locally").count()) < 1) failures.push("upload desktop wizard: save draft state missing");
   await closeContext(context);
 }
@@ -919,30 +905,17 @@ if (hasViewerDetailAsset()) {
 {
   const { page, context } = await newRolePage("Contributor", 320, 900);
   await gotoAndSettle(page, `${base}/upload`);
-  if ((await page.getByText("Step 1 of 5").count()) < 1) failures.push("contributor-upload-stepper: step 1 indicator missing");
-  await page.getByRole("button", { name: "Next" }).click();
-  const contextStepBox = await page.locator('[data-send-step="1"]:visible').boundingBox();
-  const actionBox = await page.getByLabel("Send actions").boundingBox();
-  if (contextStepBox && actionBox && actionBox.y < contextStepBox.y + contextStepBox.height - 2) {
-    failures.push("contributor-upload-stepper: mobile action controls appear before required step fields");
-  }
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Complete Where is this from? before continuing.").count()) < 1) failures.push("contributor-upload-stepper: context validation missing");
+  if ((await page.getByText("Add media").count()) < 1) failures.push("contributor-upload-stepper: step 1 indicator missing");
+  await clickUploadNext(page);
+  if ((await page.getByText("Add photos, a folder, or a source link").count()) < 1) failures.push("contributor-upload-stepper: add media validation missing");
+  await page.getByLabel("Google Drive or source link").fill("https://media.tjc.example/mobile-stepper-qa");
+  await clickUploadNext(page);
+  if ((await page.getByText("Confirm batch details").count()) < 1) failures.push("contributor-upload-stepper: confirm batch step missing");
   await fillUploadContextStep(page, "Mobile stepper QA");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Who appears and what permission is known?").count()) < 1) failures.push("contributor-upload-stepper: step 2 did not appear");
   await fillUploadRightsStep(page);
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Files, link, and reviewer notes").count()) < 1) failures.push("contributor-upload-stepper: step 3 did not appear");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Add a file or source link before continuing.").count()) < 1) failures.push("contributor-upload-stepper: file/source validation missing");
-  await page.getByLabel("Existing media-team link").fill("https://media.tjc.example/mobile-stepper-qa");
-  await page.getByLabel("Suggested tags", { exact: true }).fill("Bible, worship");
-  await page.keyboard.press("Enter");
-  await page.getByLabel("Reviewer notes").fill("Mobile QA source-link intake ready for reviewer packet.");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Reviewer packet").count()) < 1) failures.push("contributor-upload-stepper: review step did not appear");
-  await page.getByRole("button", { name: "Save draft" }).click();
+  await clickUploadNext(page);
+  if ((await page.getByText("Review packet summary").count()) < 1) failures.push("contributor-upload-stepper: review step did not appear");
+  await clickUploadAction(page, "Save draft");
   if ((await page.getByText("Draft saved locally").count()) < 1) failures.push("contributor-upload-stepper: draft local state missing");
   await closeContext(context);
 }
@@ -1082,17 +1055,15 @@ await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/h
 
 await captureProof("upload-dropzone-tags.png", "Contributor", 1440, 1000, "/upload", async (page) => {
   await advanceUploadToFiles(page, "Primitive proof");
-  await page.getByLabel("Files").setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
-  await page.waitForFunction(() => {
-    const img = document.querySelector('[aria-label="Selected file preview"] img');
-    return img && img.complete && img.naturalWidth > 0;
-  });
+  await page.getByLabel("Browse files").setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await page.getByLabel("Google Drive or source link").fill("https://media.tjc.example/primitive-proof");
+  await page.getByLabel("Selected file preview").getByText("primitive-proof-photo.png").waitFor({ state: "visible", timeout: 30000 });
+  await clickUploadNext(page);
   await page.getByLabel("Suggested tags", { exact: true }).fill("Bible, worship");
-  await page.keyboard.press("Enter");
 });
 
 await captureProof("toast-feedback.png", "Contributor", 1440, 900, "/upload", async (page) => {
-  await page.getByRole("button", { name: "Save draft" }).click();
+  await clickUploadAction(page, "Save draft");
   await page.waitForTimeout(500);
 });
 

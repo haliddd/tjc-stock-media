@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Archive, CheckCircle2, ChevronLeft, ChevronRight, Filter, Folder, Grid3X3, List, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { AlertTriangle, Archive, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Download, FileText, Filter, Folder, FolderPlus, Grid3X3, Inbox, List, Search, ShieldCheck, SlidersHorizontal, Tags, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/components/hooks/use-pagination";
 import { useDemoRole } from "@/components/RoleProvider";
@@ -29,9 +29,138 @@ import { canReview } from "@/lib/permissions";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
 import { betaVisibilityLabel, reuseAnswerLabel } from "@/lib/portal-context-presenters";
 import { routeWithRole } from "@/lib/role-routes";
+import {
+  buildLibraryBulkActions,
+  buildLibrarySelectionSummary,
+  reconcileVisibleSelection,
+  selectRangeInVisibleOrder,
+  shouldShowBulkBar,
+  toggleSelectedId,
+  type BulkActionId,
+  type LibraryBulkAction,
+  type LibrarySelectionSummary
+} from "@/lib/library-bulk-selection";
 import { ActionButton, AssetCard, AssetQuickLookDrawer, AssetThumb, DamSegmentedNav, DamToolbar, ErrorCard, InspectorDrawer, LoadingCard, PageHeader, SavedViewPanel, SourcePill, StatusBadge } from "./EnterpriseShared";
 
 const PAGE_SIZE_OPTIONS = [15, 30, 60, 120];
+
+const bulkActionIcons: Record<BulkActionId, typeof FolderPlus> = {
+  "add-to-collection": FolderPlus,
+  "create-collection": Folder,
+  "request-reuse": Inbox,
+  "send-review": ShieldCheck,
+  "assign-tags": Tags,
+  "mark-internal": CheckSquare,
+  "download-approved": Download,
+  "export-metadata": FileText,
+  approve: CheckCircle2,
+  reject: X,
+  archive: Archive
+};
+
+function BulkActionButton({ action, onRun }: { action: LibraryBulkAction; onRun: (action: LibraryBulkAction) => void }) {
+  const Icon = bulkActionIcons[action.id];
+  return (
+    <button
+      type="button"
+      className={cn(action.enabled && "is-enabled", !action.enabled && "is-disabled")}
+      disabled={!action.enabled}
+      title={!action.enabled ? action.disabledReason : action.warning || action.statusLabel}
+      data-disabled-reason={!action.enabled ? action.disabledReason : undefined}
+      onClick={() => onRun(action)}
+    >
+      <Icon size={15} aria-hidden="true" />
+      <span>{action.label}</span>
+      <em>{action.statusLabel}</em>
+    </button>
+  );
+}
+
+function LibraryBulkActionBar({
+  selectedCount,
+  actions,
+  onClear,
+  onSelectVisible,
+  onRunAction
+}: {
+  selectedCount: number;
+  actions: LibraryBulkAction[];
+  onClear: () => void;
+  onSelectVisible: () => void;
+  onRunAction: (action: LibraryBulkAction) => void;
+}) {
+  if (!shouldShowBulkBar(selectedCount)) return null;
+  return (
+    <section className="ed-library-bulk-command" aria-label="Selected asset bulk actions">
+      <div className="ed-library-bulk-count">
+        <CheckCircle2 size={18} aria-hidden="true" />
+        <span><strong>{selectedCount.toLocaleString()}</strong> selected</span>
+      </div>
+      <div className="ed-library-bulk-actions">
+        {actions.map((action) => <BulkActionButton key={action.id} action={action} onRun={onRunAction} />)}
+      </div>
+      <div className="ed-library-bulk-end">
+        <button type="button" onClick={onSelectVisible}>Select all visible</button>
+        <button type="button" onClick={onClear}><X size={14} aria-hidden="true" />Clear</button>
+      </div>
+    </section>
+  );
+}
+
+function CountBreakdown({ title, rows }: { title: string; rows: Array<[string, number]> }) {
+  return (
+    <section className="ed-selection-breakdown">
+      <h3>{title}</h3>
+      {rows.slice(0, 5).map(([label, count]) => (
+        <p key={label}><span>{label}</span><strong>{count}</strong></p>
+      ))}
+    </section>
+  );
+}
+
+function SelectionSummaryPanel({ summary }: { summary: LibrarySelectionSummary }) {
+  return (
+    <aside className="ed-inspector ed-panel ed-selection-summary-panel" aria-label="Selection summary">
+      <header className="ed-inspector-record-header">
+        <span>Multi-select summary</span>
+        <strong>{summary.count.toLocaleString()} selected</strong>
+      </header>
+      <div className="ed-selection-summary-hero">
+        <CheckSquare size={22} aria-hidden="true" />
+        <h2>{summary.count.toLocaleString()} assets selected</h2>
+        <p>Bulk actions stay role-aware. Approved-copy downloads exclude source/original files.</p>
+      </div>
+      <CountBreakdown title="Status" rows={summary.statusBreakdown} />
+      <CountBreakdown title="Type" rows={summary.typeBreakdown} />
+      <CountBreakdown title="Rights / consent" rows={summary.rightsBreakdown} />
+      <section className="ed-selection-breakdown">
+        <h3>Shared tags</h3>
+        {summary.sharedTags.length ? (
+          <div className="ed-selection-tags">{summary.sharedTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+        ) : <p><span>No shared tags across all selected assets</span></p>}
+      </section>
+      <section className="ed-selection-breakdown">
+        <h3>Selected references</h3>
+        <p><span>{summary.references.join(", ") || "No references"}</span></p>
+        {summary.resourceSpaceIds.length ? <small>ResourceSpace IDs: {summary.resourceSpaceIds.join(", ")}</small> : null}
+      </section>
+      <section className="ed-selection-breakdown">
+        <h3>Available actions</h3>
+        {summary.actions.map((action) => (
+          <p key={action.id} className={!action.enabled ? "is-disabled" : undefined}>
+            <span>{action.label}</span>
+            <strong>{action.statusLabel}</strong>
+          </p>
+        ))}
+      </section>
+      {summary.warnings.length ? (
+        <div className="ed-selection-warnings">
+          {summary.warnings.map((warning) => <p key={warning}><AlertTriangle size={14} aria-hidden="true" />{warning}</p>)}
+        </div>
+      ) : null}
+    </aside>
+  );
+}
 
 function AppliedFilterBar({
   query,
@@ -233,23 +362,49 @@ function LibraryResultList({
   assets: StockMediaAsset[];
   role: DemoRole;
   selectedIds: string[];
-  onSelect: (asset: StockMediaAsset) => void;
+  onSelect: (asset: StockMediaAsset, event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => void;
   onQuickLook: (asset: StockMediaAsset) => void;
 }) {
+  const shouldIgnoreRowClick = (target: EventTarget | null) => target instanceof HTMLElement && Boolean(target.closest("button,a,input,select,textarea,[role='button']"));
   return (
     <>
       <div className="ed-mobile-card-list" aria-label="Library results">
         {assets.map((asset) => {
           const packet = buildPortalReuseDecision(asset, role);
+          const selected = selectedIds.includes(asset.id);
           return (
-            <article key={asset.id}>
+            <article
+              key={asset.id}
+              className={cn(selected && "is-selected")}
+              data-asset-id={asset.id}
+              aria-selected={selected}
+              tabIndex={0}
+              onClick={(event) => {
+                if (shouldIgnoreRowClick(event.target)) return;
+                onSelect(asset, event);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== " " && event.key !== "Enter") return;
+                event.preventDefault();
+                onSelect(asset, event);
+              }}
+            >
               <header>
+                <label className="ed-selection-check" onClick={(event) => event.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={(event) => onSelect(asset, event as unknown as MouseEvent<HTMLElement>)}
+                    aria-label={selected ? `Deselect ${displayTitle(asset)}` : `Select ${displayTitle(asset)}`}
+                  />
+                  <span>{selected ? <Check size={13} aria-hidden="true" /> : null}</span>
+                </label>
                 <strong>{displayTitle(asset)}</strong>
                 <StatusBadge status={assetEnterpriseStatus(asset)} />
               </header>
               <p>{betaVisibilityLabel(asset)} · {reuseAnswerLabel(packet.reuse.state)} · {assetType(asset)}</p>
               <span>{assetRecordRef(asset)} · {formatBytes(asset.fileSizeBytes)}</span>
-              <button type="button" onClick={() => onQuickLook(asset)}>Quick look</button>
+              <button type="button" onClick={() => onQuickLook(asset)}>View details</button>
             </article>
           );
         })}
@@ -258,8 +413,8 @@ function LibraryResultList({
         <thead>
           <tr>
             <th>Media</th>
-            <th>Beta visibility</th>
-            <th>Reuse/download</th>
+            <th>Primary status</th>
+            <th>Rights / consent</th>
             <th>Usage / people</th>
             <th>Type</th>
             <th>Reference</th>
@@ -270,24 +425,49 @@ function LibraryResultList({
           {assets.map((asset) => {
             const packet = buildPortalReuseDecision(asset, role);
             const primaryBlocker = packet.reuse.blockers[0]?.label || "None";
+            const selected = selectedIds.includes(asset.id);
             return (
-              <tr key={asset.id} className={selectedIds.includes(asset.id) ? "is-active" : undefined}>
+              <tr
+                key={asset.id}
+                className={selected ? "is-active" : undefined}
+                aria-selected={selected}
+                data-asset-id={asset.id}
+                tabIndex={0}
+                onClick={(event) => {
+                  if (shouldIgnoreRowClick(event.target)) return;
+                  onSelect(asset, event);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== " " && event.key !== "Enter") return;
+                  event.preventDefault();
+                  onSelect(asset, event);
+                }}
+              >
                 <td>
                   <div className="ed-row-media">
+                    <label className="ed-selection-check" onClick={(event) => event.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(event) => onSelect(asset, event as unknown as MouseEvent<HTMLElement>)}
+                        aria-label={selected ? `Deselect ${displayTitle(asset)}` : `Select ${displayTitle(asset)}`}
+                      />
+                      <span>{selected ? <Check size={13} aria-hidden="true" /> : null}</span>
+                    </label>
                     <AssetThumb asset={asset} />
-                    <span><strong>{displayTitle(asset)}</strong><small>{formatBytes(asset.fileSizeBytes)}</small></span>
+                    <span><strong>{displayTitle(asset)}</strong><small>{assetRecordRef(asset)} · {formatBytes(asset.fileSizeBytes)}</small></span>
                   </div>
                 </td>
-                <td><strong className="ed-table-answer">{betaVisibilityLabel(asset)}</strong><small>Controlled photo beta</small></td>
-                <td><StatusBadge status={assetEnterpriseStatus(asset)} /> <small>{reuseAnswerLabel(packet.reuse.state)}</small></td>
-                <td>{asset.usageScope || "Pending"}<br /><small>{asset.peopleRisk || "People/minors unknown"}</small></td>
-                <td>{assetType(asset)}</td>
-                <td>{assetRecordRef(asset)}<br /><small>{primaryBlocker === "None" ? "Evidence clear in current role view" : primaryBlocker}</small></td>
+                <td><StatusBadge status={assetEnterpriseStatus(asset)} /><small>{reuseAnswerLabel(packet.reuse.state)}</small></td>
+                <td><span className="ed-table-pill is-beta">{betaVisibilityLabel(asset)}</span><small>{primaryBlocker === "None" ? "Evidence clear" : primaryBlocker}</small></td>
+                <td><span className="ed-table-primary">{asset.usageScope || "Pending"}</span><small>{asset.peopleRisk || "People/minors unknown"}</small></td>
+                <td><span className="ed-table-pill">{assetType(asset)}</span></td>
+                <td><strong className="ed-row-ref">Reference {assetRecordRef(asset)}</strong><small>{primaryBlocker === "None" ? "Evidence clear" : primaryBlocker}</small></td>
                 <td>
                   <div className="ed-library-row-actions">
-                    <button className="ed-row-open" type="button" onClick={() => onQuickLook(asset)}>Open</button>
-                    <button className={cn("ed-row-select", selectedIds.includes(asset.id) && "is-selected")} type="button" aria-pressed={selectedIds.includes(asset.id)} onClick={() => onSelect(asset)}>
-                      {selectedIds.includes(asset.id) ? <><CheckCircle2 size={13} aria-hidden="true" />Selected</> : "Select"}
+                    <button className="ed-row-open" type="button" aria-label={`View details for ${displayTitle(asset)}`} onClick={() => onQuickLook(asset)}>Open</button>
+                    <button className={cn("ed-row-select", selected && "is-selected")} type="button" aria-pressed={selected} onClick={(event) => onSelect(asset, event)}>
+                      {selected ? <><CheckCircle2 size={13} aria-hidden="true" />Selected</> : "Select"}
                     </button>
                   </div>
                 </td>
@@ -307,17 +487,21 @@ export function EnterpriseLibraryPage() {
   const [view, setView] = useState("");
   const [collection, setCollection] = useState("");
   const [filters, setFilters] = useState<string[]>([]);
-  const [sort, setSort] = useState<CatalogSort>("Newest");
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [sort, setSort] = useState<CatalogSort>("Approved first");
+  const [viewMode, setViewMode] = useState<"grid" | "table" | "review">("grid");
   const [limit, setLimit] = useState(30);
   const [offset, setOffset] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null);
   const [quickLookId, setQuickLookId] = useState<string | null>(null);
   const [libraryMessage, setLibraryMessage] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [marquee, setMarquee] = useState<{ active: boolean; additive: boolean; startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const search = useAssetsSearch({ role, query, filters, view: view || undefined, collection: collection || undefined, intent: intent || undefined, sort, limit, offset });
   const assets = search.data?.assets || [];
+  const visibleIds = useMemo(() => assets.map((asset) => asset.id), [assets]);
   const discovery = search.data?.discovery;
   const noResultHelp = discovery?.noResultHelp;
   const savedViewLabel = search.data?.savedViews?.find((item) => item.id === view)?.label;
@@ -331,7 +515,6 @@ export function EnterpriseLibraryPage() {
     if (!assets[0]) return;
     if (!selectedId) {
       setSelectedId(assets[0].id);
-      setSelectedIds([assets[0].id]);
       return;
     }
     if (!assets.some((asset) => asset.id === selectedId)) {
@@ -339,23 +522,146 @@ export function EnterpriseLibraryPage() {
     }
   }, [assets, selectedId]);
   useEffect(() => {
+    if (!selectedIds.length) return;
+    const reconciled = reconcileVisibleSelection(selectedIds, visibleIds);
+    if (!reconciled.hiddenCount) return;
+    setSelectedIds(reconciled.nextIds);
+    setSelectionAnchorId(reconciled.nextIds[reconciled.nextIds.length - 1] || null);
+    setLibraryMessage(`${reconciled.hiddenCount.toLocaleString()} hidden selected asset${reconciled.hiddenCount === 1 ? "" : "s"} cleared after page, filter, sort, or role change.`);
+  }, [selectedIds, visibleIds]);
+  useEffect(() => {
+    const clearOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || !selectedIds.length) return;
+      setSelectedIds([]);
+      setSelectionAnchorId(null);
+      setLibraryMessage("Selection cleared.");
+    };
+    window.addEventListener("keydown", clearOnEscape);
+    return () => window.removeEventListener("keydown", clearOnEscape);
+  }, [selectedIds.length]);
+  useEffect(() => {
     setOffset(0);
     setSelectedId(null);
     setSelectedIds([]);
+    setSelectionAnchorId(null);
   }, [query, intent, filters, view, collection, sort, role]);
-  const selected = assets.find((asset) => asset.id === selectedId) || assets[0];
+  const selectedAssets = useMemo(() => selectedIds.map((id) => assets.find((asset) => asset.id === id)).filter((asset): asset is StockMediaAsset => Boolean(asset)), [assets, selectedIds]);
+  const selected = selectedAssets.length === 1 ? selectedAssets[0] : assets.find((asset) => asset.id === selectedId) || assets[0];
+  const selectionSummary = useMemo(() => selectedAssets.length > 1 ? buildLibrarySelectionSummary(selectedAssets, role) : null, [role, selectedAssets]);
+  const bulkActions = useMemo(() => buildLibraryBulkActions(selectedAssets, role), [role, selectedAssets]);
   const quickLookAsset = assets.find((asset) => asset.id === quickLookId) || null;
   const pagination = search.data?.pagination;
-  const toggleAsset = (asset: StockMediaAsset) => {
+  const toggleAsset = (asset: StockMediaAsset, event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
+    const shiftKey = Boolean(event && "shiftKey" in event && event.shiftKey);
+    const additive = Boolean(event && "metaKey" in event && (event.metaKey || event.ctrlKey));
     setSelectedId(asset.id);
-    setSelectedIds((current) => current.includes(asset.id) ? current.filter((id) => id !== asset.id) : [...current, asset.id]);
+    setSelectedIds((current) => shiftKey
+      ? selectRangeInVisibleOrder({ currentIds: current, visibleIds, anchorId: selectionAnchorId || selectedId, targetId: asset.id, additive })
+      : toggleSelectedId(current, asset.id));
+    setSelectionAnchorId(asset.id);
   };
   const openQuickLook = (asset: StockMediaAsset) => {
     setSelectedId(asset.id);
-    setSelectedIds((current) => current.includes(asset.id) ? current : [...current, asset.id]);
     setQuickLookId(asset.id);
   };
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setSelectionAnchorId(null);
+    announceLibraryAction("Selection cleared.");
+  };
+  const selectAllVisible = () => {
+    setSelectedIds(visibleIds);
+    setSelectionAnchorId(visibleIds[0] || null);
+    if (visibleIds[0]) setSelectedId(visibleIds[0]);
+    announceLibraryAction(`${visibleIds.length.toLocaleString()} visible asset${visibleIds.length === 1 ? "" : "s"} selected.`);
+  };
   const announceLibraryAction = (message: string) => setLibraryMessage(message);
+  const exportSelectedMetadata = () => {
+    const escapeCsv = (value: string | number | undefined) => `"${String(value || "").replace(/"/g, '""')}"`;
+    const headers = ["id", "title", "status", "usageScope", "mediaType", "collection", "reference"];
+    const rows = selectedAssets.map((asset) => [
+      asset.id,
+      displayTitle(asset),
+      asset.status,
+      asset.usageScope,
+      asset.mediaType,
+      asset.collection,
+      assetRecordRef(asset)
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `library-selected-metadata-${selectedAssets.length}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    announceLibraryAction(`Exported safe metadata for ${selectedAssets.length.toLocaleString()} selected asset${selectedAssets.length === 1 ? "" : "s"}. Source paths and originals were not included.`);
+  };
+  const runBulkAction = (action: LibraryBulkAction) => {
+    if (!action.enabled) {
+      announceLibraryAction(action.disabledReason || `${action.label} is not available for current selection.`);
+      return;
+    }
+    if (action.id === "export-metadata") {
+      exportSelectedMetadata();
+      return;
+    }
+    if (action.id === "download-approved") {
+      announceLibraryAction(`Download approved copies: ${action.statusLabel}. Use existing approved-copy gate per eligible asset; source/original files stay restricted.`);
+      return;
+    }
+    if (action.id === "request-reuse") {
+      announceLibraryAction(`Reuse request draft ready for ${action.statusLabel}. Rights-unclear items stay flagged for reviewer evidence.`);
+      return;
+    }
+    if (action.id === "add-to-collection" || action.id === "create-collection") {
+      announceLibraryAction(`${action.label} prepared locally for ${action.statusLabel}. No source files were copied.`);
+      return;
+    }
+    announceLibraryAction(`${action.label}: ${action.statusLabel}. Safe beta workflow visible; live writeback not performed.`);
+  };
+  const marqueeRect = (state: NonNullable<typeof marquee>) => ({
+    left: Math.min(state.startX, state.currentX),
+    top: Math.min(state.startY, state.currentY),
+    width: Math.abs(state.currentX - state.startX),
+    height: Math.abs(state.currentY - state.startY)
+  });
+  const idsInsideMarquee = (state: NonNullable<typeof marquee>) => {
+    const rect = marqueeRect(state);
+    const right = rect.left + rect.width;
+    const bottom = rect.top + rect.height;
+    const cards = Array.from(gridRef.current?.querySelectorAll<HTMLElement>("[data-asset-id]") || []);
+    return cards
+      .filter((card) => {
+        const cardRect = card.getBoundingClientRect();
+        return cardRect.left <= right && cardRect.right >= rect.left && cardRect.top <= bottom && cardRect.bottom >= rect.top;
+      })
+      .map((card) => card.dataset.assetId)
+      .filter((id): id is string => Boolean(id));
+  };
+  const startMarquee = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (viewMode !== "grid" || event.pointerType !== "mouse" || event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button,a,input,select,textarea,[role='button']")) return;
+    if (!target.closest(".ed-asset-card")) return;
+    setMarquee({ active: true, additive: event.metaKey || event.ctrlKey, startX: event.clientX, startY: event.clientY, currentX: event.clientX, currentY: event.clientY });
+  };
+  const moveMarquee = (event: ReactPointerEvent<HTMLDivElement>) => {
+    setMarquee((current) => {
+      if (!current?.active) return current;
+      const next = { ...current, currentX: event.clientX, currentY: event.clientY };
+      if (Math.abs(next.currentX - next.startX) < 6 && Math.abs(next.currentY - next.startY) < 6) return next;
+      const ids = idsInsideMarquee(next);
+      setSelectedIds((existing) => next.additive ? Array.from(new Set([...existing, ...ids])) : ids);
+      setSelectionAnchorId(ids[ids.length - 1] || selectionAnchorId);
+      if (ids[ids.length - 1]) setSelectedId(ids[ids.length - 1]);
+      return next;
+    });
+  };
+  const endMarquee = () => {
+    setMarquee(null);
+  };
   const updateSearchQuery = (value: string) => {
     setQuery(value);
     setIntent("");
@@ -441,9 +747,10 @@ export function EnterpriseLibraryPage() {
       {libraryMessage ? <p className="ed-inline-success">{libraryMessage}</p> : null}
       <section className="ed-approved-banner"><CheckCircle2 size={24} /><div><strong>{search.live ? `Showing ${sourceNoun(search.source)}-backed records` : `${sourceNoun(search.source)} disconnected or read-only`}</strong><span>{search.source?.detail || "Source connection pending where noted. Unavailable media stays clearly marked. Source files remain restricted."}</span></div><SourcePill source={search.source} live={search.live} /></section>
       <section className="ed-trust-answer-strip ed-library-answer-strip" aria-label="Library trust model">
-        <span><small>Beta visibility</small><strong>Visible in beta</strong></span>
+        <span><small>Beta scope</small><strong>Photo-only beta</strong></span>
         <span><small>Reuse/download</small><strong>Item evidence decides</strong></span>
-        <span><small>Source truth</small><strong>{search.live ? "Hosted DAM instance" : "Local demo fallback"}</strong></span>
+        <span><small>Status language</small><strong>Approved for reuse / Needs review</strong></span>
+        <span><small>Source truth</small><strong>{search.live ? "Hosted DAM instance" : "Local demo data"}</strong></span>
       </section>
       <DamSegmentedNav
         label="Library workspace views"
@@ -464,10 +771,17 @@ export function EnterpriseLibraryPage() {
         onOpenFilters={() => setFiltersOpen(true)}
         filterCount={activeFilterCount}
         selectedCount={selectedIds.length}
-        sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className={viewMode === "list" ? "is-active" : ""} aria-label="List view" onClick={() => setViewMode("list")}><List size={15} aria-hidden="true" /></button><button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-label="Grid view" onClick={() => setViewMode("grid")}><Grid3X3 size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
-        quickFilters={[{ id: "portal ready", label: "Reuse approved" }, { id: "needs review", label: "Needs evidence" }, { id: "rights review", label: "Rights review" }, { id: "people unknown", label: "People/minors" }, { id: "photo", label: "Images" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
+        sortControl={<div className="ed-library-view-controls"><div className="ed-view-toggle" aria-label="Asset view mode"><button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-label="Grid view" onClick={() => setViewMode("grid")}><Grid3X3 size={15} aria-hidden="true" /></button><button type="button" className={viewMode === "table" ? "is-active" : ""} aria-label="Table view" onClick={() => setViewMode("table")}><List size={15} aria-hidden="true" /></button><button type="button" className={viewMode === "review" ? "is-active" : ""} aria-label="Review list view" onClick={() => setViewMode("review")}><ShieldCheck size={15} aria-hidden="true" /></button></div><label><span className="sr-only">Sort assets</span><select className="ed-input" value={sort} onChange={(event) => setSort(event.target.value as CatalogSort)}><option>Approved first</option><option>Recently approved</option><option>Newest</option><option>A-Z</option></select></label></div>}
+        quickFilters={[{ id: "portal ready", label: "Approved for reuse" }, { id: "needs review", label: "Needs evidence" }, { id: "rights review", label: "Rights review" }, { id: "people unknown", label: "People/minors" }, { id: "photo", label: "Photos" }, { id: "internal", label: "Internal-only" }].map((item) => ({ id: item.id, label: item.label, active: filters.includes(item.id), onClick: () => toggleFilter(item.id) }))}
       />
-      <p className="ed-action-helper">Collection, package, saved view, tag, and metric context never grants reuse permission. Each result separates beta visibility from reuse/download approval.</p>
+      <p className="ed-action-helper">Photo beta only. Non-photo records remain reference/review items; reuse and download still require item evidence.</p>
+      <div className="ed-selection-utility-row">
+        <button type="button" onClick={selectAllVisible} disabled={!visibleIds.length}>
+          <CheckSquare size={15} aria-hidden="true" />
+          Select all visible
+        </button>
+        {selectedIds.length ? <span>{selectedIds.length.toLocaleString()} selected across current visible results</span> : <span>Use checkbox, Cmd/Ctrl-click, Shift-click, or grid drag select.</span>}
+      </div>
       {discovery ? (
         <section className="ed-smart-discovery" aria-label="Smart discovery packet">
           <div>
@@ -489,7 +803,7 @@ export function EnterpriseLibraryPage() {
             ))}
           </nav>
           {discovery.expandedTerms.length ? (
-            <p><strong>Expanded terms</strong> {discovery.expandedTerms.slice(0, 8).join(", ")}</p>
+            <p className="ed-discovery-terms"><strong>Expanded terms</strong> {discovery.expandedTerms.slice(0, 8).join(", ")}</p>
           ) : null}
           {discovery.suggestedFilters.length ? (
             <nav aria-label="Suggested discovery filters">
@@ -505,8 +819,11 @@ export function EnterpriseLibraryPage() {
               ))}
             </nav>
           ) : null}
-          <p><strong>Ranking</strong> {discovery.rankingExplanation.map((item) => item.label).join(" -> ")}. {discovery.scoreHint}</p>
-          <p>{discovery.safetyNote}</p>
+          <details className="ed-discovery-notes">
+            <summary>Discovery notes</summary>
+            <p><strong>Ranking</strong> {discovery.rankingExplanation.map((item) => item.label).join(" -> ")}. {discovery.scoreHint}</p>
+            <p>{discovery.safetyNote}</p>
+          </details>
         </section>
       ) : null}
       <AppliedFilterBar
@@ -521,6 +838,13 @@ export function EnterpriseLibraryPage() {
         onRemoveFilter={toggleFilter}
         onClearAll={clearAll}
         onOpenFilters={() => setFiltersOpen(true)}
+      />
+      <LibraryBulkActionBar
+        selectedCount={selectedAssets.length}
+        actions={bulkActions}
+        onClear={clearSelection}
+        onSelectVisible={selectAllVisible}
+        onRunAction={runBulkAction}
       />
       {pagination ? (
         <LibraryPaginationControls
@@ -540,17 +864,30 @@ export function EnterpriseLibraryPage() {
         <div className="ed-library-grid">
           <div className="ed-desktop-filter-rail">{filterPanel}</div>
           <main className="ed-asset-workspace">
-            {assets.length && viewMode === "list" ? (
+            {assets.length && viewMode !== "grid" ? (
               <LibraryResultList assets={assets} role={role} selectedIds={selectedIds} onSelect={toggleAsset} onQuickLook={openQuickLook} />
-            ) : assets.length ? <div className="ed-grid">{assets.map((asset) => (
+            ) : assets.length ? <div
+              className="ed-grid ed-marquee-grid"
+              ref={gridRef}
+              onPointerDown={startMarquee}
+              onPointerMove={moveMarquee}
+              onPointerUp={endMarquee}
+              onPointerCancel={endMarquee}
+            >
+              {assets.map((asset) => (
               <AssetCard
                 asset={asset}
                 selected={selectedIds.includes(asset.id)}
-                onSelect={() => toggleAsset(asset)}
+                onSelect={(event) => toggleAsset(asset, event)}
                 onQuickLook={() => openQuickLook(asset)}
                 key={asset.id}
               />
-            ))}</div> : (
+            ))}
+              {marquee?.active ? (() => {
+                const rect = marqueeRect(marquee);
+                return <span className="ed-selection-marquee" style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }} aria-hidden="true" />;
+              })() : null}
+            </div> : (
               <section className="ed-empty-state ed-empty-search is-quiet">
                 <span className="ed-empty-icon"><Search size={24} /></span>
                 <p className="ed-empty-eyebrow">{sourceNoun(search.source)} discovery</p>
@@ -593,7 +930,7 @@ export function EnterpriseLibraryPage() {
               />
             ) : null}
           </main>
-          <InspectorDrawer asset={selected} source={search.source} live={search.live} />
+          {selectionSummary ? <SelectionSummaryPanel summary={selectionSummary} /> : <InspectorDrawer asset={selected} source={search.source} live={search.live} />}
         </div>
       )}
       <AssetQuickLookDrawer

@@ -22,7 +22,7 @@ import { LARGE_MEDIA_LIMIT_BYTES, routeAssetForReview } from "@/lib/intake-routi
 export const LARGE_MEDIA_BYTES = LARGE_MEDIA_LIMIT_BYTES;
 
 export const uploadDefaultState = {
-  status: "Needs Review / Do Not Publish",
+  status: "Submitted",
   message: "New media starts in review. A reviewer approves it before anyone can reuse it.",
   largeMediaMessage:
     "Video/audio and files over 100 MB use the large-media intake path. They still need review before reuse."

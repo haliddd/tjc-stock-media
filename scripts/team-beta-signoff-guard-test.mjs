@@ -67,6 +67,12 @@ const validGo = baseRecord
   .replaceAll("renewed proof still required after June 15 P0", "renewed proof captured")
   .replaceAll("renewed assignment still required before invite", "renewed assignment captured")
   .replace("Final decision: NO-GO", "Final decision: GO")
+  .replace(/^Named tester count:.*$/m, "Named tester count: 6")
+  .replace(/^Named testers:.*$/m, "Named testers: Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang")
+  .replace(/^Roles assigned:.*$/m, "Roles assigned: Viewer, Contributor, Reviewer, DAM Admin QA roles as needed for assigned beta tasks")
+  .replace(/^Stable URL only confirmed:.*$/m, "Stable URL only confirmed: Yes")
+  .replace(/^Feedback watch window:.*$/m, "Feedback watch window: First 24 hours after invite")
+  .replace(/^Next-batch review time:.*$/m, "Next-batch review time: 24 hours after first invite")
   .replace("Current status: **NO-GO for teammate invite batch until June 15 evidence blockers close.**", "Current status: **GO for tiny internal Team Beta invite batch. Production remains blocked.**");
 
 const incompleteGo = validGo
@@ -79,11 +85,20 @@ const partialGoWithFinalBlock = validGo
     "| Seed/media safety | Hali/requester partial consent | 2026-06-11T21:23:01Z | Human response captured; final reviewer evidence still required. | Partial; final invite GO not approved | Preview-only consent captured; reviewer evidence fields still need final send approval. |"
   );
 
+const noGoWithSendReadyTesterList = baseRecord
+  .replace(/^Named tester count:.*$/m, "Named tester count: 6")
+  .replace(/^Named testers:.*$/m, "Named testers: Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang");
+
+const noGoWithStableUrlConfirmed = baseRecord
+  .replace(/^Stable URL only confirmed:.*$/m, "Stable URL only confirmed: Yes");
+
 expectPass("current-record", baseRecord);
 expectPass("no-go-record", noGoRecord);
 expectPass("valid-go", validGo);
 expectFail("incomplete-go", incompleteGo);
 expectFail("partial-go-with-final-block", partialGoWithFinalBlock);
+expectFail("no-go-with-send-ready-tester-list", noGoWithSendReadyTesterList);
+expectFail("no-go-with-stable-url-confirmed", noGoWithStableUrlConfirmed);
 
 if (failures.length) {
   console.error("Team Beta signoff guard self-test failed:");

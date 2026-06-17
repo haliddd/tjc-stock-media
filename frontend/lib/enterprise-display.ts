@@ -37,7 +37,7 @@ export function sourceLabel(source?: MediaSourceStatus | null) {
   if (!source) return "ResourceSpace disconnected";
   if (source.adapter === "resourcespace-api") return source.readOnly ? "Read-only ResourceSpace" : "Live ResourceSpace";
   if (source.adapter === "exported-metadata") return "Read-only ResourceSpace export";
-  if (source.adapter === "demo-fallback") return "Fixture fallback";
+  if (source.adapter === "demo-fallback") return "Local demo data";
   return "Media library";
 }
 

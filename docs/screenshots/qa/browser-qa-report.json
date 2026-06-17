@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-06-15T13:27:23.819Z",
+  "checkedAt": "2026-06-16T16:43:07.114Z",
   "viewports": [
     1440,
     1280,
@@ -8,7 +8,7 @@
     390,
     320
   ],
-  "pages": 17,
+  "pages": 20,
   "qaAsset": {
     "detail": {
       "id": "368",
@@ -44,9 +44,18 @@
     "admin-desktop.png",
     "admin-mobile-320.png",
     "admin-mobile-390.png",
-    "guide-desktop.png",
-    "guide-mobile-320.png",
-    "guide-mobile-390.png"
+    "requests-desktop.png",
+    "requests-mobile-320.png",
+    "requests-mobile-390.png",
+    "my-tasks-desktop.png",
+    "my-tasks-mobile-320.png",
+    "my-tasks-mobile-390.png",
+    "help-desktop.png",
+    "help-mobile-320.png",
+    "help-mobile-390.png",
+    "recent-uploads-desktop.png",
+    "recent-uploads-mobile-320.png",
+    "recent-uploads-mobile-390.png"
   ],
   "consoleErrors": [],
   "expectedDeniedConsole": [

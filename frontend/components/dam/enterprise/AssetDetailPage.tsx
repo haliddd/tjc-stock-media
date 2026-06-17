@@ -35,9 +35,9 @@ function isLowResolution(dimensions: ReturnType<typeof parseDimensions>) {
 
 function assetSourceTruth(source: Parameters<typeof sourceLabel>[0]) {
   const label = sourceLabel(source);
-  if (/fixture|fallback/i.test(label)) return "Fixture fallback";
+  if (/fixture|fallback|demo/i.test(label)) return "Local demo data";
   if (/resourcespace|dam/i.test(label)) return "Hosted DAM instance";
-  if (/local/i.test(label)) return "Local demo fallback";
+  if (/local/i.test(label)) return "Local demo data";
   return label;
 }
 
@@ -191,10 +191,21 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
           />
           <MetadataGroup title="Approved channels and scope" description="Channel permission is separate from tags, collections, and package membership." rows={[
             ["Usage scope", asset.usageScope],
+            ["Download filename", asset.damFilenames?.web || "Generated at delivery"],
             ["Approved channels", approvedChannels],
             ["Required notice", asset.requiredNotice || "Not recorded"],
             ["Reuse tier", asset.reuseTier || "Not recorded"]
           ]} />
+          {role === "DAM Admin" ? (
+            <MetadataGroup title="Filename automation" description="The DAM automatically generates filenames from available metadata. Date and rendition are auto-applied. Event or collection is preferred but not required. Subject is optional and can be added later. If metadata is missing, the DAM uses a safe fallback such as needs-triage or shared-import. Users should not manually type technical filenames. Display titles and DAM filenames are generated metadata. Source files and ResourceSpace IDs stay untouched." rows={[
+              ["Original filename", asset.originalFilename || "Preserved when exported"],
+              ["DAM original filename", asset.damFilenames?.original || "Generated at import"],
+              ["DAM web filename", asset.damFilenames?.web || "Generated at delivery"],
+              ["Human title", displayTitle(asset)],
+              ["Date source", asset.damFilenames?.dateSource?.replace(/_/g, " ") || "Generated from best available metadata"],
+              ["Sequence", asset.damFilenames?.sequence || "Permanent DAM sequence"]
+            ]} />
+          ) : null}
           {!approved ? <MetadataGroup title="Primary blocker" rows={[
             ["Blocker", reusePacket.reuse.blockers[0]?.label || "Review evidence needed"],
             ["Evidence needed", reusePacket.viewerVerdict.reason],
@@ -216,6 +227,8 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             ["Pending write", asset.pendingReviewWrite?.syncState || "None"]
           ]} />
           {hasVersionData ? <AdminDiagnosticCard role={role} title="Version diagnostics" rows={[
+            ["DAM original filename", asset.damFilenames?.original || "Generated at import"],
+            ["DAM web filename", asset.damFilenames?.web || "Generated at delivery"],
             ["Original file", asset.originalFilename || "Not provided"],
             ["Duplicate role", asset.duplicateRole || "Not provided"],
             ["Duplicate group", asset.duplicateGroup || "Not provided"]

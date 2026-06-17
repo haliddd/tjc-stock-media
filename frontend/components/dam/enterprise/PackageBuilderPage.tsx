@@ -32,7 +32,7 @@ import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
 import { routeWithRole } from "@/lib/role-routes";
 import { matchesCatalogFilter } from "@/lib/catalog-language";
 import { cn } from "@/lib/ui";
-import { ActionButton, AssetThumb, DistributionReadinessCard, ErrorCard, LoadingCard } from "./EnterpriseShared";
+import { ActionButton, AssetPreviewStrip, AssetThumb, DistributionReadinessCard, ErrorCard, LoadingCard } from "./EnterpriseShared";
 
 export function EnterprisePackageBuilderPage() {
   const router = useRouter();
@@ -55,6 +55,7 @@ export function EnterprisePackageBuilderPage() {
     view: sourceCollectionId ? undefined : "approved-church-wide",
     collection: sourceCollectionId || undefined,
     filters: packageFilters,
+    sort: "Approved first",
     limit: sourceCollectionId ? 72 : 18
   });
   const assets = search.data?.assets || [];
@@ -298,6 +299,13 @@ export function EnterprisePackageBuilderPage() {
       {packageMessage ? <p className="ed-inline-success">{packageMessage}</p> : null}
 
       {search.loading ? <LoadingCard /> : search.error ? <ErrorCard message={search.error} source={search.source} /> : (
+        <>
+        <AssetPreviewStrip
+          assets={activeAvailableAssets}
+          title="Distribution preview candidates"
+          detail={`Approved ${sourceScopeLabel} references available for ${activeSectionTitle}.`}
+          limit={4}
+        />
         <div className="ed-builder-grid">
           <aside className="ed-package-left-rail" aria-label="Package outline">
             <section className="ed-panel ed-package-outline" aria-labelledby="package-outline-title">
@@ -524,6 +532,7 @@ export function EnterprisePackageBuilderPage() {
             </details>
           </aside>
         </div>
+        </>
       )}
     </div>
   );

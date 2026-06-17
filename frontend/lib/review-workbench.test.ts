@@ -7,7 +7,7 @@ import { buildBrandKitGovernance } from "@/lib/brand-kit-governance";
 import { buildDeliveryReadinessManifest } from "@/lib/delivery-readiness";
 import { derivativeIndexDiagnostics, governedRenditionPolicyForVariant, originalMasterRenditionPolicy, thumbnailVariantCanSatisfyApprovedCopy } from "@/lib/derivative-index";
 import { auditCoverageMetrics, buildGovernanceMetrics, usageHealthMetrics } from "@/lib/dam-governance-metrics";
-import { fileRequiresAdminIntake, intakeDefaultsToNeedsReview, routeAssetForReview, routeUploadIntakeForReview } from "@/lib/intake-routing";
+import { fileIsVideoOrAudio, fileRequiresAdminIntake, intakeDefaultsToNeedsReview, routeAssetForReview, routeUploadIntakeForReview } from "@/lib/intake-routing";
 import { resolvePackageSections } from "@/lib/package-drafts";
 import { buildPackageGovernance } from "@/lib/package-governance";
 import { packageStorageReadiness } from "@/lib/package-store";
@@ -235,6 +235,9 @@ describe("Phase 1B intake routing primitives", () => {
     });
 
     expect(defaults).toEqual({ status: "Needs Review", usageScope: "Do Not Publish", publishable: false });
+    expect(fileIsVideoOrAudio({ name: "choir-service.mp4", type: "video/mp4" })).toBe(true);
+    expect(fileIsVideoOrAudio({ name: "sabbath-choir.m4a", type: "" })).toBe(true);
+    expect(fileIsVideoOrAudio({ name: "sabbath-photo.jpg", type: "image/jpeg" })).toBe(false);
     expect(fileRequiresAdminIntake({ name: "choir-service.mp4", size: 42_000_000, type: "video/mp4" })).toBe(true);
     expect(reasons.map((reason) => reason.id)).toEqual(expect.arrayContaining([
       "large-media-admin-intake",

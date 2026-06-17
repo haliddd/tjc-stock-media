@@ -4,7 +4,7 @@ Date: 2026-06-15
 Commit SHA: a22497e96004024928128990f432806b768930a6  
 Repo/branch: `architecture/production-like-connected-dam-readiness-proof`  
 Environment: local runtime plus hosted anonymous read-only checks  
-Base URL: local `http://localhost:4868`; hosted `https://tjc-stock-media.vercel.app`  
+Base URL: local `http://localhost:4871`; hosted `https://tjc-stock-media.vercel.app`
 Role/persona: anonymous hosted; local Viewer/Reviewer/Admin simulation  
 Result: LOCAL PASS / HOSTED REAL DATA BLOCKED  
 Secrets redacted: yes

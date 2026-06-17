@@ -12,7 +12,7 @@ import { buildInsightsCommandCenter } from "@/lib/insights-command-center";
 import { insightHealthRows } from "@/lib/insights-dashboard";
 import { routeWithRole } from "@/lib/role-routes";
 import type { SearchResult, StockMediaAsset } from "@/lib/types";
-import { ActionButton, AssetThumb, ErrorCard, LoadingCard, PageHeader, StatusBadge } from "./EnterpriseShared";
+import { ActionButton, AssetPreviewStrip, AssetThumb, ErrorCard, LoadingCard, PageHeader, StatusBadge } from "./EnterpriseShared";
 
 type MetricRow = {
   label: string;
@@ -692,7 +692,7 @@ export function EnterpriseInsightsPage() {
   const [activePeriod, setActivePeriod] = useState<InsightPeriodId>("current-export");
   const [filters, setFilters] = useState<InsightFilterState>(defaultInsightFilters);
   const [exportStatus, setExportStatus] = useState("");
-  const insights = useAssetsSearch({ role, limit: 5 });
+  const insights = useAssetsSearch({ role, sort: "Approved first", limit: 5 });
   const counts = insights.data?.counts;
   const usage = insights.data?.usageAnalytics;
   const hasUsageRows = Boolean(usage?.topSearches.length || usage?.topAssets.length);
@@ -749,6 +749,11 @@ export function EnterpriseInsightsPage() {
       {exportStatus ? <p className="ed-inline-success ed-insight-status">{exportStatus}</p> : null}
       <section className={operationalView ? "ed-approved-banner" : "ed-role-safe-banner"}>{operationalView ? <Database size={22} /> : <Info size={22} />}<div><strong>{operationalView ? sourceLabel(insights.source) : "Role-safe insights"}</strong><span>{operationalView ? (insights.source?.detail || "Media library source unavailable.") : "These insights reflect only the content you can view based on your role and permissions."}</span></div><span>{operationalView ? (hasUsageRows ? "Usage rows from portal analytics" : "Usage analytics not connected") : "Operational details are hidden for this role."}</span></section>
       {insights.loading ? <LoadingCard /> : insights.error ? <ErrorCard message={insights.error} source={insights.source} /> : <>
+        <AssetPreviewStrip
+          assets={insights.data?.assets || []}
+          title={operationalView ? "Insights preview samples" : "Recently visible media"}
+          detail={operationalView ? "Preview-backed assets are shown before operational panels for local beta review." : "Role-safe media visible to this account."}
+        />
         {operationalView
           ? metadataPanel
             ? <MetadataHealthDashboard counts={counts!} assets={insights.data?.assets || []} result={insights.data || undefined} sourceText={sourceLabel(insights.source)} hasUsageRows={hasUsageRows} />

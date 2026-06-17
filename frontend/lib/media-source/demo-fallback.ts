@@ -1,14 +1,15 @@
 import type { MediaSourceStatus, StockMediaAsset } from "@/lib/types";
+import { buildDamFilenames } from "@/lib/dam-filenames";
 import { imageUrlsForResource } from "@/lib/resourcespace-schema";
 
 export const demoFallbackStatus: MediaSourceStatus = {
   adapter: "demo-fallback",
-  label: "Read-only media index",
-  detail: "Media export not found. These records are read-only fallback entries behind the server route contract.",
+  label: "Local demo data",
+  detail: "Hosted ResourceSpace export not connected in this environment. Records are read-only local demo data; source files remain restricted.",
   readOnly: true
 };
 
-export const demoFallbackAssets: StockMediaAsset[] = [
+const demoFallbackAssetRecords: StockMediaAsset[] = [
   {
     id: "367",
     title: "Bible Teaching Background",
@@ -83,7 +84,7 @@ export const demoFallbackAssets: StockMediaAsset[] = [
     id: "644",
     title: "2012 Photo 644",
     thumbnail: imageUrlsForResource("644").small,
-    thumbnailAlt: "2012 review fixture",
+    thumbnailAlt: "2012 review sample",
     preview: imageUrlsForResource("644").detail,
     imageUrls: imageUrlsForResource("644"),
     mediaType: "photo",
@@ -136,7 +137,7 @@ export const demoFallbackAssets: StockMediaAsset[] = [
     consentStatus: "not applicable",
     reviewer: "ResourceSpace admin",
     reviewedDate: "2026-06-04",
-    rightsNotes: "Trusted lm.photos import fixture. Public-approved stock-safe default for discovery testing.",
+    rightsNotes: "Trusted LM Photos import sample. Public-approved stock-safe default for local beta discovery.",
     usageGuidance: "Approved for public ministry website, slides, and newsletter reuse.",
     downloadPolicy: "approved-copy-allowed",
     tags: ["Bible", "book", "classroom", "warm", "stock-safe"],
@@ -160,7 +161,7 @@ export const demoFallbackAssets: StockMediaAsset[] = [
     peopleRisk: "No people",
     sourcePlatform: "ResourceSpace",
     sourceSystem: "Read-only sample record",
-    sourceAccount: "qa.fixture@tjc.example",
+    sourceAccount: "qa.sample@tjc.example",
     sourceAlbum: "Internal Ministry",
     sourceAlbumMemberships: ["Internal Ministry"],
     resourceSpaceId: "9105",
@@ -198,7 +199,7 @@ export const demoFallbackAssets: StockMediaAsset[] = [
     consentStatus: "not applicable",
     reviewer: "ResourceSpace admin",
     reviewedDate: "2026-06-04",
-    rightsNotes: "Trusted lm.photos import fixture. No people visible.",
+    rightsNotes: "Trusted LM Photos import sample. No people visible.",
     usageGuidance: "Approved for public worship detail, newsletter, and slide background reuse.",
     downloadPolicy: "approved-copy-allowed",
     tags: ["flower", "plant", "seasonal", "warm", "stock-safe"],
@@ -257,7 +258,7 @@ export const demoFallbackAssets: StockMediaAsset[] = [
     resourceSpaceId: "9104",
     rightsStatus: "hymn rights review required",
     consentStatus: "unknown",
-    sensitiveContext: "music rights archive-only fixture.",
+    sensitiveContext: "Music rights archive-only sample.",
     rightsNotes: "Archive-only reference. Do not use for public publishing.",
     usageGuidance: "Archive-only; request music rights review before any channel reuse.",
     downloadPolicy: "not-downloadable",
@@ -273,21 +274,21 @@ export const demoFallbackAssets: StockMediaAsset[] = [
     const id = `92${String(index).padStart(2, "0")}`;
     return {
       id,
-      title: `Hosted Pagination Fixture ${index + 1}`,
+      title: `Beta Library Sample ${index + 1}`,
       thumbnail: imageUrlsForResource(id).small,
-      thumbnailAlt: `Hosted pagination fixture ${index + 1}`,
+      thumbnailAlt: `Beta library sample ${index + 1}`,
       preview: imageUrlsForResource(id).detail,
       imageUrls: imageUrlsForResource(id),
       mediaType: "photo" as const,
-      collection: "Hosted Beta Pagination",
+      collection: "Beta Library Samples",
       status: "Approved Public" as const,
       usageScope: "Public" as const,
       peopleRisk: "No people" as const,
       sourcePlatform: "ResourceSpace",
       sourceSystem: "Read-only sample record",
       sourceAccount: "media.library@tjc.example",
-      sourceAlbum: "Hosted Beta Pagination",
-      sourceAlbumMemberships: ["Hosted Beta Pagination"],
+      sourceAlbum: "Beta Library Samples",
+      sourceAlbumMemberships: ["Beta Library Samples"],
       resourceSpaceId: id,
       imageDimensions: "1800 x 1200",
       rightsStatus: "Rights approved",
@@ -303,3 +304,8 @@ export const demoFallbackAssets: StockMediaAsset[] = [
     };
   })
 ];
+
+export const demoFallbackAssets: StockMediaAsset[] = demoFallbackAssetRecords.map((asset) => ({
+  ...asset,
+  damFilenames: buildDamFilenames(asset)
+}));

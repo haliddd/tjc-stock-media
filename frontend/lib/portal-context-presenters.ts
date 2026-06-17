@@ -53,9 +53,9 @@ function safeCollection(asset: StockMediaAsset) {
 
 function safeSourceLabel(source?: MediaSourceStatus | null) {
   const label = sourceLabel(source);
-  if (/fixture|fallback/i.test(label)) return "Fixture fallback";
+  if (/fixture|fallback|demo/i.test(label)) return "Local demo data";
   if (/resourcespace|live dam|dam/i.test(label)) return "Hosted DAM instance";
-  if (/local/i.test(label)) return "Local demo fallback";
+  if (/local/i.test(label)) return "Local demo data";
   return label;
 }
 

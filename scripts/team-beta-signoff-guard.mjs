@@ -210,6 +210,26 @@ if (decision === "GO") {
   if (finalFields.get("Invite copy source") !== "docs/team-beta-internal-test-packet.md") {
     failures.push(`${recordPath} GO requires invite copy source to remain docs/team-beta-internal-test-packet.md`);
   }
+} else if (decision === "NO-GO") {
+  const finalFields = parseFinalApprovalBlock();
+  if ((finalFields.get("Final decision") || "").toUpperCase() !== "NO-GO") {
+    failures.push(`${recordPath} NO-GO requires Final decision: NO-GO`);
+  }
+  if ((finalFields.get("Stable URL only confirmed") || "").toLowerCase() === "yes") {
+    failures.push(`${recordPath} NO-GO must not claim stable URL is confirmed for sending`);
+  }
+  const testerCount = finalFields.get("Named tester count") || "";
+  if (/^\d+$/.test(testerCount)) {
+    failures.push(`${recordPath} NO-GO tester count must be marked pending/historical, not send-ready`);
+  }
+  const testerList = finalFields.get("Named testers") || "";
+  if (testerList && !/pending|historical/i.test(testerList)) {
+    failures.push(`${recordPath} NO-GO tester list must be marked pending or historical`);
+  }
+  const rolesAssigned = finalFields.get("Roles assigned") || "";
+  if (rolesAssigned && !/pending|historical/i.test(rolesAssigned)) {
+    failures.push(`${recordPath} NO-GO roles assigned must be marked pending or historical`);
+  }
 }
 
 if (failures.length) {

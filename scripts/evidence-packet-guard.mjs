@@ -1,11 +1,53 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const root = process.cwd();
 const evidenceDir = path.join("docs", "runs", "evidence", "2026-06-15");
 const failures = [];
-const latestLocalProofStamp = "2026-06-15T12:14:57Z";
+const latestLocalProofStamp = "2026-06-16T13:46:56Z";
+let latestBrowserQaPassStamp = "__missing_browser_qa_checkedAt__";
+let latestBrowserQaAttemptStamp = latestBrowserQaPassStamp;
+const diskParts = execFileSync("df", ["-k", root], { encoding: "utf8" }).trim().split(/\r?\n/)[1].trim().split(/\s+/);
+const diskTotalGiB = Math.floor(Number(diskParts[1]) / 1024 / 1024);
+const minSafeDiskGiB = 10;
+let latestHostedReadOnlyProofStamp = "";
+let browserQaReport = null;
+const expectedBrowserQaScreenshots = [
+  "library-desktop.png",
+  "library-mobile-320.png",
+  "library-mobile-390.png",
+  "collections-desktop.png",
+  "collections-mobile-320.png",
+  "collections-mobile-390.png",
+  "packages-desktop.png",
+  "packages-mobile-320.png",
+  "upload-desktop.png",
+  "upload-mobile-320.png",
+  "upload-mobile-390.png",
+  "review-desktop.png",
+  "review-mobile-320.png",
+  "review-mobile-390.png",
+  "asset-detail-desktop.png",
+  "detail-mobile-320.png",
+  "detail-mobile-390.png",
+  "admin-desktop.png",
+  "admin-mobile-320.png",
+  "admin-mobile-390.png",
+  "requests-desktop.png",
+  "requests-mobile-320.png",
+  "requests-mobile-390.png",
+  "my-tasks-desktop.png",
+  "my-tasks-mobile-320.png",
+  "my-tasks-mobile-390.png",
+  "help-desktop.png",
+  "help-mobile-320.png",
+  "help-mobile-390.png",
+  "recent-uploads-desktop.png",
+  "recent-uploads-mobile-320.png",
+  "recent-uploads-mobile-390.png"
+];
 const localRuntimeSmokeHeadroomContexts = [
   "portal-api-smoke",
   "portal-sso-smoke",
@@ -94,6 +136,26 @@ function requireNoText(relativePath, text, label = text) {
   if (source.includes(text)) failures.push(`${relativePath} must not contain stale/disallowed text: ${label}`);
 }
 
+function parseGiB(value) {
+  const match = String(value || "").match(/^(\d+) GiB$/);
+  return match ? Number(match[1]) : null;
+}
+
+function requireSafeDiskObservation(relativePath, label) {
+  const source = read(relativePath);
+  if (!source) return;
+  const matches = [...source.matchAll(/(?:reports|reported) (\d+) GiB free/g)];
+  if (!matches.length) {
+    failures.push(`${relativePath} missing ${label}`);
+    return;
+  }
+  for (const match of matches) {
+    const value = Number(match[1]);
+    if (value < minSafeDiskGiB) failures.push(`${relativePath} ${label} below ${minSafeDiskGiB} GiB: ${value} GiB`);
+    if (value > diskTotalGiB) failures.push(`${relativePath} ${label} exceeds filesystem total ${diskTotalGiB} GiB: ${value} GiB`);
+  }
+}
+
 function requireNoActiveOldLocalPorts(relativePath) {
   const source = read(relativePath);
   if (!source) return;
@@ -109,19 +171,40 @@ function requireNoActiveOldLocalPorts(relativePath) {
   }
 }
 
-for (const file of requiredDocs) read(path.join(evidenceDir, file));
+for (const file of requiredDocs) {
+  const evidencePath = path.join(evidenceDir, file);
+  read(evidencePath);
+  requireNoActiveOldLocalPorts(evidencePath);
+}
 read("docs/runs/daily-checkpoint-2026-06-15.md");
+requireText(".gitignore", "docs/screenshots/focused-ui-polish-*/", "focused UI scratch output ignore rule");
+requireText(".gitignore", "!docs/screenshots/primitive-proof/*.png", "primitive proof screenshot allow rule");
 const browserQaSource = read("docs/screenshots/qa/browser-qa-report.json");
+if (browserQaSource) {
+  try {
+    browserQaReport = JSON.parse(browserQaSource);
+    if (!browserQaReport.checkedAt || typeof browserQaReport.checkedAt !== "string") {
+      failures.push("docs/screenshots/qa/browser-qa-report.json must include checkedAt");
+    } else {
+      latestBrowserQaPassStamp = browserQaReport.checkedAt;
+      latestBrowserQaAttemptStamp = browserQaReport.checkedAt;
+    }
+  } catch (error) {
+    failures.push(`docs/screenshots/qa/browser-qa-report.json must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 read(path.join(evidenceDir, "screenshots", "README.md"));
 
-requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "PASS, 6 files / 78 tests", "current 78-test proof");
+requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "PASS, 9 files / 86 tests", "current 86-test proof");
 requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), `Latest protected rerun: \`${latestLocalProofStamp}\``, "latest protected rerun stamp");
+requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), `Current browser QA status: **PASS** at \`${latestBrowserQaAttemptStamp}\``, "current browser QA pass stamp");
 requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "public-env-guard-test", "public env guard self-test proof");
 requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "BASE_URL=http://localhost:4871 make portal-api-smoke");
 requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "BASE_URL=http://localhost:4871 make portal-download-ticket-smoke");
 requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "make hosted-smoke-mutation-guard");
 requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "EXPECTED FAIL-CLOSED");
-requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "Current heavy rerun status: blocked by `safe-lane-headroom-guard`", "local baseline current heavy rerun headroom block");
+requireText(path.join(evidenceDir, "02-local-baseline-checks.md"), "Current heavy rerun status: unblocked by safe headroom", "local baseline safe headroom status");
+requireSafeDiskObservation(path.join(evidenceDir, "02-local-baseline-checks.md"), "local baseline safe disk observation");
 requireText(path.join(evidenceDir, "03-hosted-access-proof.md"), "make hosted-readonly-probe-guard");
 requireText(path.join(evidenceDir, "03-hosted-access-proof.md"), "make hosted-smoke-mutation-guard");
 requireText(path.join(evidenceDir, "03-hosted-access-proof.md"), "hosted mutating smokes intentionally not run");
@@ -138,7 +221,34 @@ requireText(path.join(evidenceDir, "10-final-qa-summary.md"), "make hosted-smoke
 requireText(path.join(evidenceDir, "10-final-qa-summary.md"), "make evidence-packet-guard-test", "final QA evidence packet guard self-test row");
 requireText(path.join(evidenceDir, "10-final-qa-summary.md"), `Latest required local rerun: \`${latestLocalProofStamp}\``, "latest final QA local rerun stamp");
 requireText(path.join(evidenceDir, "10-final-qa-summary.md"), `Latest required smoke rerun: \`${latestLocalProofStamp}\``, "latest final QA smoke rerun stamp");
-requireText(path.join(evidenceDir, "10-final-qa-summary.md"), "future `make frontend-dev`, `npm --prefix frontend run dev`, `npm --prefix frontend run build`, `npm --prefix frontend run start`, `frontend-check`, ResourceSpace bootstrap/docker targets, import/media/backup Make targets, local runtime smoke Make targets, and `portal-browser-qa` now fail closed", "final QA current heavy rerun headroom block");
+requireText(path.join(evidenceDir, "10-final-qa-summary.md"), `Current browser QA status: **PASS** at \`${latestBrowserQaAttemptStamp}\``, "final QA current browser QA pass stamp");
+requireText(path.join(evidenceDir, "10-final-qa-summary.md"), "Final verdict: **Not beta ready**.", "final QA exact final verdict");
+for (const currentDoc of [
+  path.join(evidenceDir, "02-local-baseline-checks.md"),
+  path.join(evidenceDir, "10-final-qa-summary.md"),
+  path.join(evidenceDir, "11-friday-readiness-report.md"),
+  path.join(evidenceDir, "12-safe-30-40h-ui-run.md"),
+  path.join(evidenceDir, "daily-checkpoint-2026-06-15.md"),
+  "docs/runs/daily-checkpoint-2026-06-15.md"
+]) {
+  for (const stale of [
+    "Current self-owned browser QA is FAIL",
+    "FAIL current browser QA",
+    "current browser QA fails",
+    "current browser QA follow-up",
+    "Current browser QA is not green",
+    "latest self-owned run fails with UI/harness assertions",
+    "current browser QA green proof are not fully proven",
+    "- Failures: 44"
+  ]) {
+    requireNoText(currentDoc, stale, `${currentDoc} stale current browser QA failure marker ${stale}`);
+  }
+}
+requireText(path.join(evidenceDir, "daily-checkpoint-2026-06-15.md"), "Historical Checkpoint Snapshot - Superseded", "evidence-folder daily checkpoint superseded marker");
+requireText(path.join(evidenceDir, "daily-checkpoint-2026-06-15.md"), `Current local protected proof: \`${latestLocalProofStamp}\``, "evidence-folder daily current protected proof stamp");
+requireText(path.join(evidenceDir, "daily-checkpoint-2026-06-15.md"), `Current local browser QA proof: \`${latestBrowserQaAttemptStamp}\``, "evidence-folder daily current browser QA proof stamp");
+requireText(path.join(evidenceDir, "daily-checkpoint-2026-06-15.md"), "Current decision: NO-GO", "evidence-folder daily current decision");
+requireText(path.join(evidenceDir, "10-final-qa-summary.md"), "Future `make frontend-dev`, `npm --prefix frontend run dev`, `npm --prefix frontend run build`, `npm --prefix frontend run start`, `frontend-check`, ResourceSpace bootstrap/docker targets, import/media/backup Make targets, local runtime smoke Make targets, and `portal-browser-qa` still run `safe-lane-headroom-guard`", "final QA current heavy rerun headroom block");
 requireText(path.join(evidenceDir, "10-final-qa-summary.md"), "SAFE_LANE_HEADROOM_OVERRIDE_REASON", "final QA headroom override reason boundary");
 requireText(path.join(evidenceDir, "10-final-qa-summary.md"), "Overall beta posture remains NO-GO");
 requireText(path.join(evidenceDir, "09-beta-packet.md"), "Team Beta human signoff record is current NO-GO after June 15 P0", "beta packet current NO-GO signoff proof");
@@ -149,17 +259,21 @@ requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "Warning classi
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "| `.env missing` | blocker for hosted/durable beta proof |", "durable proof .env warning blocker classification");
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "| `.runtime/backups missing` | blocker for backup/restore proof |", "durable proof backups warning blocker classification");
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "| `local free disk below 10 GiB` | operational follow-up for long local lane |", "durable proof local disk warning classification");
+requireSafeDiskObservation(path.join(evidenceDir, "08-durable-state-proof.md"), "durable proof safe disk observation");
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "`make safe-lane-disk-report` is report-only and deletes nothing", "durable proof safe disk report boundary");
-requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "safe isolated cleanup alone is not enough to restore the default 10 GiB headroom", "durable proof safe cleanup insufficiency");
+requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "safe isolated cleanup may not be enough to restore the default 10 GiB headroom", "durable proof safe cleanup insufficiency");
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "`make safe-lane-disk-report-test` proves shared-checkout refusal", "durable proof safe disk report self-test boundary");
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "`make safe-lane-headroom-guard-test` proves heavy local dev/build/start/browser/bootstrap/docker paths fail closed", "durable proof safe headroom guard self-test boundary");
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "SAFE_LANE_HEADROOM_OVERRIDE_REASON", "durable proof headroom override reason boundary");
 requireText(path.join(evidenceDir, "08-durable-state-proof.md"), "Creating fake env/config files would weaken the proof", "durable proof no fake env/config warning");
 requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "Decision recommendation: NO-GO");
 requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), `Latest local rerun: \`${latestLocalProofStamp}\``, "latest readiness report local rerun stamp");
+requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), `Current browser QA status: **PASS** at \`${latestBrowserQaAttemptStamp}\``, "readiness report current browser QA pass stamp");
+requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "Final verdict: **Not beta ready**", "readiness report exact final verdict");
 requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "Prior tiny-beta signoff superseded", "readiness report superseded signoff blocker");
 requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "Backup/restore proof missing", "readiness report backup blocker");
-requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "Current heavy rerun status: blocked by `safe-lane-headroom-guard`", "readiness report current heavy rerun headroom block");
+requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "Current heavy rerun status: unblocked by safe headroom", "readiness report safe headroom status");
+requireSafeDiskObservation(path.join(evidenceDir, "11-friday-readiness-report.md"), "readiness report safe disk observation");
 requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "SAFE_LANE_HEADROOM_OVERRIDE_REASON", "readiness report headroom override reason boundary");
 requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "make evidence-packet-guard-test", "readiness report evidence packet guard self-test row");
 requireText(path.join(evidenceDir, "11-friday-readiness-report.md"), "NO-GO\n\nLocal proof is useful");
@@ -177,10 +291,17 @@ requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "safe-lane-disk-
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "safe-lane-disk-report-test");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "safe-lane-headroom-guard");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "safe-lane-headroom-guard-test");
-requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "long-local-dev-build-start-browser-reruns", "safe ledger low-disk block scope");
-requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "heavy dev/build/start/browser/smoke/bootstrap/docker/import/media/backup reruns", "safe ledger low-disk import/media/backup block scope");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "dev/build/start/browser/smoke/bootstrap/docker/import/media/backup reruns", "safe ledger low-disk block scope");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "if low disk recurs", "safe ledger low-disk recurrence scope");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "dev-server-build-guard");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "dev-server-build-guard-test");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "portal-browser-qa-with-server.mjs", "safe ledger browser QA owned server wrapper");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "portal-browser-qa-with-server-test", "safe ledger browser QA owned server wrapper self-test");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "required browser QA owned-server wrapper files must be tracked by Git", "safe ledger tracked browser QA wrapper boundary");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "screenshot PNGs under `docs/screenshots/`", "safe ledger browser QA screenshot path boundary");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "focused UI polish output as ignored local scratch", "safe ledger focused UI scratch boundary");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "focused UI scratch ignore rule", "safe ledger focused UI scratch ignore rule");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "primitive-proof/*.png` as safe UI proof screenshots", "safe ledger primitive proof screenshot tracking");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "ui-maturity-guard");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "ui-maturity-guard-test");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "completion-audit-guard");
@@ -190,17 +311,22 @@ requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "evidence-packet
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "external-proof-contract-guard");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "external-proof-contract-guard-test");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "route-level `searchParams.get(\"role\")` reads", "safe ledger query role guard hardening");
-requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "Current heavy rerun status: blocked by `safe-lane-headroom-guard`", "safe ledger current heavy rerun headroom block");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), `Current browser QA status: **PASS** at \`${latestBrowserQaAttemptStamp}\``, "safe ledger current browser QA pass stamp");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "Final verdict: **Not beta ready**.", "safe ledger exact final verdict");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "Current heavy rerun status: unblocked by safe headroom", "safe ledger safe headroom status");
+requireSafeDiskObservation(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "safe ledger safe disk observation");
 requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "SAFE_LANE_HEADROOM_OVERRIDE_REASON", "safe ledger headroom override reason boundary");
-requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "safe isolated cleanup alone is not enough to restore default headroom", "safe ledger safe cleanup insufficiency");
+requireText(path.join(evidenceDir, "12-safe-30-40h-ui-run.md"), "safe isolated cleanup may not be enough for default headroom", "safe ledger safe cleanup insufficiency");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "Do not recommend GO");
-requireText("docs/runs/daily-checkpoint-2026-06-15.md", "Current heavy rerun status: blocked by `safe-lane-headroom-guard`", "daily current heavy rerun headroom block");
-requireText("docs/runs/daily-checkpoint-2026-06-15.md", "long-local-dev-build-start-browser-reruns", "daily low-disk block scope");
-requireText("docs/runs/daily-checkpoint-2026-06-15.md", "heavy dev/build/start/browser/smoke/bootstrap/docker/import/media/backup work", "daily low-disk import/media/backup block scope");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "Current heavy rerun status: unblocked by safe headroom", "daily safe headroom status");
+requireSafeDiskObservation("docs/runs/daily-checkpoint-2026-06-15.md", "daily safe disk observation");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "if disk drops again", "daily low-disk recurrence scope");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "npm dev/build/start, browser, smoke, bootstrap/docker, import/media, and backup work fail closed", "daily low-disk import/media/backup scope");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "SAFE_LANE_HEADROOM_OVERRIDE_REASON", "daily headroom override reason boundary");
-requireText("docs/runs/daily-checkpoint-2026-06-15.md", "safe isolated cleanup alone is not enough to restore default 10 GiB headroom", "daily safe cleanup insufficiency");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "safe isolated cleanup may not be enough for default headroom", "daily safe cleanup insufficiency");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", `Latest protected rerun: \`${latestLocalProofStamp}\``, "latest daily protected rerun stamp");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", `Latest required guard/typecheck/test/build/API/download-ticket/runtime smoke rerun passed at \`${latestLocalProofStamp}\``, "latest daily checkpoint local proof stamp");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", `Current browser QA status: **PASS** at \`${latestBrowserQaAttemptStamp}\``, "daily current browser QA pass stamp");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "Source checkout artifact inventory");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "old June 11 six-person GO is superseded", "daily checkpoint superseded signoff note");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "Backup/restore proof", "daily checkpoint backup blocker");
@@ -209,6 +335,9 @@ requireText("docs/runs/daily-checkpoint-2026-06-15.md", "api-identity-guard-test
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "api-payload-guard-test", "daily checkpoint API payload guard self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "private-source-guard-test", "daily checkpoint private source guard self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "git-hygiene-guard-test", "daily checkpoint git hygiene guard self-test");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "required browser QA owned-server wrapper files must be tracked by Git", "daily checkpoint tracked browser QA wrapper boundary");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "browser QA screenshot PNGs under `docs/screenshots/`", "daily checkpoint browser QA screenshot path boundary");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "focused UI scratch ignore rule", "daily checkpoint focused UI scratch ignore rule");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "storage-honesty-guard-test", "daily checkpoint storage honesty guard self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "open-blockers-guard-test", "daily checkpoint open blockers self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "ui-maturity-guard", "daily checkpoint UI maturity guard");
@@ -218,6 +347,7 @@ requireText("docs/runs/daily-checkpoint-2026-06-15.md", "completion-audit-guard-
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "safe-lane-guard-test", "daily checkpoint safe lane guard self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "runtime-isolation-guard-test", "daily checkpoint runtime isolation guard self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "dev-server-build-guard-test", "daily checkpoint dev server build guard self-test");
+requireText("docs/runs/daily-checkpoint-2026-06-15.md", "portal-browser-qa-with-server-test", "daily checkpoint browser QA owned server wrapper self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "hosted-readonly-probe-guard-test", "daily checkpoint hosted read-only probe guard self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "hosted-smoke-mutation-guard-test", "daily checkpoint hosted smoke mutation guard self-test");
 requireText("docs/runs/daily-checkpoint-2026-06-15.md", "evidence-packet-guard-test", "daily checkpoint evidence packet guard self-test");
@@ -232,30 +362,53 @@ function pngDimensions(relativePath) {
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }
 
-if (browserQaSource) {
-  try {
-    const report = JSON.parse(browserQaSource);
-    if (report.checkedAt !== "2026-06-15T13:27:23.819Z") failures.push("browser QA report checkedAt changed without evidence doc update");
-    if (report.pages !== 17) failures.push(`browser QA report pages expected 17 got ${report.pages}`);
-    if ((report.screenshots || []).length !== 23) failures.push(`browser QA report screenshots expected 23 got ${(report.screenshots || []).length}`);
-    for (const key of ["failures", "consoleErrors", "networkFailures", "warnings"]) {
-      if ((report[key] || []).length !== 0) failures.push(`browser QA report has ${key}: ${(report[key] || []).length}`);
+if (browserQaReport) {
+  if (browserQaReport.pages !== 20) failures.push(`browser QA report pages expected 20 got ${browserQaReport.pages}`);
+  if ((browserQaReport.screenshots || []).length !== 32) failures.push(`browser QA report screenshots expected 32 got ${(browserQaReport.screenshots || []).length}`);
+  if ((browserQaReport.failures || []).length !== 0) failures.push(`browser QA report failures expected 0 got ${(browserQaReport.failures || []).length}`);
+  for (const key of ["consoleErrors", "networkFailures", "warnings"]) {
+    if ((browserQaReport[key] || []).length !== 0) failures.push(`browser QA report has ${key}: ${(browserQaReport[key] || []).length}`);
+  }
+  for (const width of [1440, 1280, 1024, 768, 390, 320]) {
+    if (!(browserQaReport.viewports || []).includes(width)) failures.push(`browser QA report missing viewport ${width}`);
+  }
+  const screenshotNames = browserQaReport.screenshots || [];
+  const screenshotNameSet = new Set(screenshotNames);
+  if (screenshotNameSet.size !== screenshotNames.length) failures.push("browser QA report contains duplicate screenshot names");
+  for (const expectedName of expectedBrowserQaScreenshots) {
+    if (!screenshotNameSet.has(expectedName)) failures.push(`browser QA report missing expected screenshot: ${expectedName}`);
+  }
+  for (const name of browserQaReport.screenshots || []) {
+    if (typeof name !== "string" || name !== path.basename(name) || !/^[a-z0-9-]+\.png$/.test(name)) {
+      failures.push(`browser QA screenshot name must be a safe basename PNG: ${String(name)}`);
+      continue;
     }
-    for (const width of [1440, 1280, 1024, 768, 390, 320]) {
-      if (!(report.viewports || []).includes(width)) failures.push(`browser QA report missing viewport ${width}`);
+    if (!expectedBrowserQaScreenshots.includes(name)) {
+      failures.push(`browser QA report contains unexpected screenshot: ${name}`);
     }
-    for (const name of report.screenshots || []) {
-      const relativePath = path.join("docs", "screenshots", name);
-      const dimensions = pngDimensions(relativePath);
-      if (!dimensions) {
-        failures.push(`browser QA screenshot missing or invalid PNG: ${relativePath}`);
-      } else if (dimensions.width < 300 || dimensions.height < 600) {
-        failures.push(`browser QA screenshot too small: ${relativePath} ${dimensions.width}x${dimensions.height}`);
+    const relativePath = path.join("docs", "screenshots", name);
+    const dimensions = pngDimensions(relativePath);
+    if (!dimensions) {
+      failures.push(`browser QA screenshot missing or invalid PNG: ${relativePath}`);
+    } else if (dimensions.width < 300 || dimensions.height < 600) {
+      failures.push(`browser QA screenshot too small: ${relativePath} ${dimensions.width}x${dimensions.height}`);
+    }
+  }
+  requireText(path.join(evidenceDir, "screenshots", "README.md"), browserQaReport.checkedAt, "screenshot README browser QA timestamp");
+  requireText(path.join(evidenceDir, "screenshots", "README.md"), "- Failures: 0", "screenshot README current zero-failure summary");
+  const focusedPolishReportPath = "docs/screenshots/focused-ui-polish-2026-06-16/focused-ui-polish-report.json";
+  if (fs.existsSync(path.join(root, focusedPolishReportPath))) {
+    const focusedSource = read(focusedPolishReportPath);
+    try {
+      const focusedReport = JSON.parse(focusedSource);
+      if ((focusedReport.failures || []).length > 0) {
+        requireText(path.join(evidenceDir, "screenshots", "README.md"), "non-authoritative scratch output", "focused UI scratch classification");
+        requireText(path.join(evidenceDir, "screenshots", "README.md"), "ignored local focused-UI-polish output", "focused UI ignored local scratch classification");
+        requireText(path.join(evidenceDir, "screenshots", "README.md"), "superseded by the current self-owned `portal-browser-qa` report", "focused UI superseded classification");
       }
+    } catch (error) {
+      failures.push(`${focusedPolishReportPath} must be valid JSON when present: ${error instanceof Error ? error.message : String(error)}`);
     }
-    requireText(path.join(evidenceDir, "screenshots", "README.md"), report.checkedAt, "screenshot README browser QA timestamp");
-  } catch (error) {
-    failures.push(`docs/screenshots/qa/browser-qa-report.json must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -282,14 +435,13 @@ requireText("Makefile", "node scripts/team-beta-signoff-guard-test.mjs", "Team B
 requireText("docs/team-beta-go-no-go-packet.md", "Tiny teammate invite batch | NO-GO until human gates close", "current packet invite NO-GO");
 requireText("docs/team-beta-go-no-go-packet.md", "Current final call: **NO-GO for teammate invite batch", "current packet final NO-GO");
 requireText("docs/team-beta-go-no-go-packet.md", "Owner-led internal dry run | PASS local only", "current packet dry run PASS local");
-requireText("docs/team-beta-go-no-go-packet.md", "`warnings=3`", "current packet launch-readiness warning count");
-requireText("docs/team-beta-go-no-go-packet.md", "`local free disk below 10 GiB`", "current packet launch-readiness disk warning");
+requireText("docs/team-beta-go-no-go-packet.md", "`failures=0`, `warnings=2`", "current packet launch-readiness failure and warning count");
 requireText("docs/team-beta-go-no-go-packet.md", "Do not convert this block to GO", "current packet no premature GO instruction");
 requireText("docs/team-beta-go-no-go-packet.md", "BASE_URL=http://localhost:4871 make portal-feedback-smoke", "current packet actual feedback smoke BASE_URL");
 requireText("docs/team-beta-go-no-go-packet.md", "BASE_URL=http://localhost:4871 make portal-beta-rehearsal", "current packet actual beta rehearsal BASE_URL");
 requireText("docs/team-beta-go-no-go-packet.md", "BASE_URL=http://localhost:4871 make portal-browser-qa", "current packet actual browser QA BASE_URL");
 requireNoText("docs/team-beta-go-no-go-packet.md", "Fill this block before sending teammate invites", "current packet stale send-ready signoff wording");
-requireNoText("docs/team-beta-go-no-go-packet.md", "warnings=2", "current packet stale warning count");
+requireNoText("docs/team-beta-go-no-go-packet.md", "warnings=3", "current packet stale warning count");
 requireText("docs/team-beta-internal-test-packet.md", "Packet status: draft / blocked after June 15 P0.", "internal packet draft blocked");
 requireText("docs/team-beta-internal-test-packet.md", "Invite status: NO-GO", "internal packet invite NO-GO");
 requireText("docs/teammate-beta-invite-pack.md", "Current status: **NO-GO for sending teammate invites.**", "invite pack current NO-GO");
@@ -317,6 +469,7 @@ requireText("Makefile", "SAFE_LANE_HEADROOM_CONTEXT=resourcespace-smoke", "Makef
 requireText("Makefile", "SAFE_LANE_HEADROOM_CONTEXT=frontend-check", "Makefile frontend-check headroom guard");
 requireText("Makefile", "SAFE_LANE_HEADROOM_CONTEXT=frontend-dev", "Makefile frontend-dev headroom guard");
 requireText("Makefile", "SAFE_LANE_HEADROOM_CONTEXT=portal-browser-qa", "Makefile portal-browser-qa headroom guard");
+requireText("Makefile", "SAFE_LANE_HEADROOM_CONTEXT=portal-hosted-readonly-probe", "Makefile hosted read-only probe headroom guard");
 requireText("frontend/package.json", '"predev": "SAFE_LANE_HEADROOM_CONTEXT=dev-server node ../scripts/safe-lane-headroom-guard.mjs"', "frontend package predev headroom guard");
 requireText("frontend/package.json", '"prebuild": "node ../scripts/dev-server-build-guard.mjs && SAFE_LANE_HEADROOM_CONTEXT=production-build node ../scripts/safe-lane-headroom-guard.mjs"', "frontend package prebuild headroom guard");
 requireText("frontend/package.json", '"prestart": "SAFE_LANE_HEADROOM_CONTEXT=next-start node ../scripts/safe-lane-headroom-guard.mjs"', "frontend package prestart headroom guard");
@@ -325,6 +478,58 @@ for (const context of riskyMakeHeadroomContexts) {
 }
 requireText("scripts/frontend-check.sh", 'SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-frontend-check}"', "frontend-check script headroom guard");
 requireText("scripts/bootstrap-official-docker.sh", 'SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-resourcespace-bootstrap}"', "ResourceSpace bootstrap headroom guard");
+requireText("Makefile", "node scripts/portal-browser-qa-with-server.mjs", "browser QA owned-server Make target");
+requireText("Makefile", "live-dam-surface-guard-test:", "live DAM surface guard self-test Make target");
+requireText("Makefile", "portal-browser-qa-with-server-test:", "browser QA owned-server self-test Make target");
+requireText("Makefile", "portal-writeback-guard-smoke-test:", "portal writeback guard smoke self-test Make target");
+requireText("Makefile", "portal-download-ticket-smoke-test:", "portal download ticket smoke self-test Make target");
+requireText("Makefile", "portal-sso-smoke-test:", "portal SSO smoke self-test Make target");
+requireText("Makefile", "portal-delivery-smoke-test:", "portal delivery smoke self-test Make target");
+requireText("Makefile", "portal-package-smoke-test:", "portal package smoke self-test Make target");
+requireText("Makefile", "api-audit-guard-test:", "API audit guard self-test Make target");
+requireText("scripts/launch-readiness.sh", "scripts/live-dam-surface-guard-test.mjs", "launch readiness live DAM surface guard self-test");
+requireText("scripts/launch-readiness.sh", "scripts/portal-browser-qa-with-server-test.mjs", "launch readiness browser QA owned-server self-test");
+requireText("scripts/launch-readiness.sh", "scripts/portal-writeback-guard-smoke-test.mjs", "launch readiness writeback guard smoke self-test");
+requireText("scripts/launch-readiness.sh", "scripts/portal-download-ticket-smoke-test.mjs", "launch readiness download ticket smoke self-test");
+requireText("scripts/launch-readiness.sh", "scripts/portal-sso-smoke-test.mjs", "launch readiness SSO smoke self-test");
+requireText("scripts/launch-readiness.sh", "scripts/portal-delivery-smoke-test.mjs", "launch readiness delivery smoke self-test");
+requireText("scripts/launch-readiness.sh", "scripts/portal-package-smoke-test.mjs", "launch readiness package smoke self-test");
+requireText("scripts/launch-readiness.sh", "scripts/api-audit-guard-test.mjs", "launch readiness API audit guard self-test");
+requireText("scripts/launch-readiness.sh", "RUN_TMP_DIR=\"$(mktemp -d /tmp/\"\"tjc-launch-readiness.XXXXXX)\"", "launch readiness per-run temp dir");
+requireText("scripts/launch-readiness.sh", "launch-readiness uses per-run temp dir for guard output", "launch readiness temp-dir self-check pass copy");
+requireText("scripts/launch-readiness.sh", "launch-readiness uses fixed shared /tmp paths instead of per-run temp dir", "launch readiness temp-dir self-check fail copy");
+requireNoText("scripts/launch-readiness.sh", ">/tmp/tjc-", "launch readiness fixed stdout temp path");
+requireNoText("scripts/launch-readiness.sh", " /tmp/tjc-", "launch readiness fixed argument temp path");
+requireText("scripts/portal-browser-qa-with-server.mjs", "Refusing to run browser QA", "browser QA wrapper refuses pre-existing listener");
+requireText("scripts/portal-browser-qa-with-server.mjs", "process.kill(-server.pid", "browser QA wrapper kills process group");
+requireText("scripts/portal-browser-qa-with-server.mjs", "PORTAL_QA_TRUSTED_HEADERS", "browser QA wrapper sets trusted local QA headers");
+requireText("scripts/portal-browser-qa-with-server.mjs", "scripts/safe-lane-headroom-guard.mjs", "browser QA wrapper runs direct safe-lane headroom guard");
+requireText("scripts/portal-browser-qa-with-server-test.mjs", "direct-headroom fixture should fail", "browser QA wrapper self-test direct headroom fixture");
+requireText("scripts/portal-browser-qa-with-server-test.mjs", "occupied-port fixture should fail", "browser QA wrapper self-test occupied-port fixture");
+requireText("scripts/portal-browser-qa-with-server-test.mjs", "Invalid PORTAL_BROWSER_QA_PORT", "browser QA wrapper self-test invalid-port fixture");
+requireText("scripts/portal-writeback-guard-smoke-test.mjs", "missing-live-success-rejection", "writeback smoke self-test live success fixture");
+requireText("scripts/portal-writeback-guard-smoke-test.mjs", "missing-persisted-audit-check", "writeback smoke self-test persisted audit fixture");
+requireText("scripts/portal-writeback-guard-smoke-test.mjs", "accidental-live-writeback-env", "writeback smoke self-test live writeback env fixture");
+requireText("scripts/portal-download-ticket-smoke-test.mjs", "missing-body-role-spoof-denial", "download ticket smoke self-test body spoof fixture");
+requireText("scripts/portal-download-ticket-smoke-test.mjs", "missing-ticket-reuse-denial", "download ticket smoke self-test reuse fixture");
+requireText("scripts/portal-download-ticket-smoke-test.mjs", "missing-concurrent-consume-proof", "download ticket smoke self-test concurrent consume fixture");
+requireText("scripts/portal-download-ticket-smoke-test.mjs", "accidental-role-override-env", "download ticket smoke self-test role override fixture");
+requireText("scripts/portal-sso-smoke-test.mjs", "missing-query-admin-denial", "SSO smoke self-test query admin fixture");
+requireText("scripts/portal-sso-smoke-test.mjs", "missing-group-admin-fixture", "SSO smoke self-test group admin fixture");
+requireText("scripts/portal-sso-smoke-test.mjs", "missing-unsafe-download-block", "SSO smoke self-test unsafe download fixture");
+requireText("scripts/portal-sso-smoke-test.mjs", "accidental-role-override-env", "SSO smoke self-test role override fixture");
+requireText("scripts/portal-delivery-smoke-test.mjs", "missing-viewer-download-block", "delivery smoke self-test viewer block fixture");
+requireText("scripts/portal-delivery-smoke-test.mjs", "missing-reviewer-blocked-post", "delivery smoke self-test reviewer blocked POST fixture");
+requireText("scripts/portal-delivery-smoke-test.mjs", "s3-readiness-overclaim-not-checked", "delivery smoke self-test S3 overclaim fixture");
+requireText("scripts/portal-delivery-smoke-test.mjs", "accidental-role-override-env", "delivery smoke self-test role override fixture");
+requireText("scripts/portal-package-smoke-test.mjs", "missing-viewer-list-denial", "package smoke self-test viewer list fixture");
+requireText("scripts/portal-package-smoke-test.mjs", "missing-viewer-save-denial", "package smoke self-test viewer save fixture");
+requireText("scripts/portal-package-smoke-test.mjs", "missing-list-cap", "package smoke self-test list cap fixture");
+requireText("scripts/portal-package-smoke-test.mjs", "accidental-role-override-env", "package smoke self-test role override fixture");
+requireText("scripts/portal-hosted-readonly-probe.mjs", "SAFE_LANE_HEADROOM_CONTEXT", "hosted read-only probe direct headroom guard");
+requireText("scripts/portal-hosted-readonly-probe.mjs", "portal-hosted-readonly-probe", "hosted read-only probe context");
+requireText("scripts/hosted-smoke-mutation-guard.mjs", "approved hosted fixture should fail under impossible headroom", "hosted smoke approved-path headroom fixture");
+requireText("scripts/hosted-smoke-mutation-guard-test.mjs", "missing-approved-path-headroom", "hosted smoke mutation self-test missing headroom fixture");
 for (const guard of directScriptHeadroomGuards) {
   requireText(guard.path, `SAFE_LANE_HEADROOM_CONTEXT="\${SAFE_LANE_HEADROOM_CONTEXT:-${guard.context}}"`, `${guard.path} direct headroom guard`);
 }
@@ -333,12 +538,20 @@ for (const guard of pythonHeadroomGuards) {
   requireText(guard.path, `run_headroom_guard("${guard.context}")`, `${guard.path} Python ${guard.context} headroom call`);
 }
 for (const testPath of [
+  "scripts/live-dam-surface-guard-test.mjs",
   "scripts/api-identity-guard-test.mjs",
+  "scripts/api-audit-guard-test.mjs",
   "scripts/api-payload-guard-test.mjs",
   "scripts/private-source-guard-test.mjs",
   "scripts/public-env-guard-test.mjs",
   "scripts/git-hygiene-guard-test.mjs",
   "scripts/runtime-isolation-guard-test.mjs",
+  "scripts/portal-browser-qa-with-server-test.mjs",
+  "scripts/portal-writeback-guard-smoke-test.mjs",
+  "scripts/portal-download-ticket-smoke-test.mjs",
+  "scripts/portal-sso-smoke-test.mjs",
+  "scripts/portal-delivery-smoke-test.mjs",
+  "scripts/portal-package-smoke-test.mjs",
   "scripts/hosted-readonly-probe-guard-test.mjs",
   "scripts/hosted-smoke-mutation-guard-test.mjs",
   "scripts/safe-lane-guard-test.mjs",
@@ -512,6 +725,7 @@ if (hostedSummarySource) {
       if (result.status === 0) failures.push(`${hostedSummaryPath} request failed for ${result.id}`);
     }
     if (summary.checkedAt) {
+      latestHostedReadOnlyProofStamp = summary.checkedAt;
       for (const doc of [
         path.join(evidenceDir, "03-hosted-access-proof.md"),
         path.join(evidenceDir, "10-final-qa-summary.md"),
@@ -534,13 +748,21 @@ if (blockerMatrixSource) {
     const matrix = JSON.parse(blockerMatrixSource);
     if (matrix.schema !== "tjc-stock-media-beta-open-blockers.v1") failures.push(`${blockerMatrixPath} has wrong schema`);
     if (matrix.decision !== "NO-GO") failures.push(`${blockerMatrixPath} decision must stay NO-GO`);
+    if (matrix.finalVerdict !== "Not beta ready") failures.push(`${blockerMatrixPath} finalVerdict must stay Not beta ready`);
     if (matrix.checkedAt !== latestLocalProofStamp) failures.push(`${blockerMatrixPath} checkedAt must match latest protected proof timestamp`);
     if (matrix.latestLocalProtectedProofAt !== latestLocalProofStamp) failures.push(`${blockerMatrixPath} latestLocalProtectedProofAt must match latest protected proof timestamp`);
-    if (matrix.latestLocalBrowserQaProofAt !== "2026-06-15T13:27:23.819Z") failures.push(`${blockerMatrixPath} latestLocalBrowserQaProofAt must match latest browser QA proof timestamp`);
-    if (matrix.latestHostedReadOnlyProofAt !== "2026-06-15T11:52:56.617Z") failures.push(`${blockerMatrixPath} latestHostedReadOnlyProofAt must match latest hosted read-only proof timestamp`);
+    if (matrix.latestLocalBrowserQaProofAt !== latestBrowserQaPassStamp) failures.push(`${blockerMatrixPath} latestLocalBrowserQaProofAt must match latest browser QA proof timestamp`);
+    if (matrix.latestLocalBrowserQaAttemptAt !== latestBrowserQaAttemptStamp) failures.push(`${blockerMatrixPath} latestLocalBrowserQaAttemptAt must match latest browser QA attempt timestamp`);
+    if (matrix.latestHostedReadOnlyProofAt !== latestHostedReadOnlyProofStamp) failures.push(`${blockerMatrixPath} latestHostedReadOnlyProofAt must match latest hosted read-only proof timestamp`);
     if (matrix.worktree !== "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run") failures.push(`${blockerMatrixPath} worktree must be isolated safe lane path`);
     if (matrix.branch !== "codex/safe-ui-beta-proof-2026-06-15") failures.push(`${blockerMatrixPath} branch must be safe lane branch`);
     if (matrix.baseUrl !== "http://localhost:4871") failures.push(`${blockerMatrixPath} BASE_URL must be local isolated proof URL`);
+    if (matrix.localProofSummary?.launchReadiness?.failures !== 0) failures.push(`${blockerMatrixPath} localProofSummary.launchReadiness.failures must be 0`);
+    if (matrix.localProofSummary?.launchReadiness?.warnings !== 2) failures.push(`${blockerMatrixPath} localProofSummary.launchReadiness.warnings must be 2`);
+    if (matrix.localProofSummary?.browserQa?.checkedAt !== latestBrowserQaPassStamp) failures.push(`${blockerMatrixPath} localProofSummary.browserQa.checkedAt must match latest browser QA proof timestamp`);
+    if (matrix.localProofSummary?.browserQa?.failures !== 0) failures.push(`${blockerMatrixPath} localProofSummary.browserQa.failures must be 0`);
+    if (matrix.localProofSummary?.frontend?.testCount !== 86) failures.push(`${blockerMatrixPath} localProofSummary.frontend.testCount must be 86`);
+    if (matrix.localProofSummary?.runtimeSmokes?.baseUrl !== "http://localhost:4871") failures.push(`${blockerMatrixPath} localProofSummary.runtimeSmokes.baseUrl must be safe-lane BASE_URL`);
     if (!Array.isArray(matrix.forbiddenSurfacesNotTouched)) failures.push(`${blockerMatrixPath} must list forbidden surfaces not touched`);
     for (const surface of ["Vercel prod env", "ResourceSpace prod data", "Google Drive originals", "live writeback", "tester invites", "public launch", "source media"]) {
       if (!(matrix.forbiddenSurfacesNotTouched || []).includes(surface)) failures.push(`${blockerMatrixPath} missing forbidden surface: ${surface}`);
@@ -550,10 +772,14 @@ if (blockerMatrixSource) {
       failures.push(`${blockerMatrixPath} missing safe-lane-disk-headroom operational follow-up`);
     } else {
       if (diskFollowUp.status !== "follow-up") failures.push(`${blockerMatrixPath} safe-lane-disk-headroom must remain follow-up`);
-      if (diskFollowUp.currentSignal !== "local free disk below 10 GiB") failures.push(`${blockerMatrixPath} safe-lane-disk-headroom current signal drifted`);
+      if (diskFollowUp.currentSignal !== "local free disk at least 10 GiB") failures.push(`${blockerMatrixPath} safe-lane-disk-headroom current signal drifted`);
+      const observedDiskGiB = parseGiB(diskFollowUp.latestObserved);
+      if (observedDiskGiB === null) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom latestObserved must be recorded in GiB`);
+      if (observedDiskGiB !== null && observedDiskGiB < minSafeDiskGiB) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom latestObserved must be at least ${minSafeDiskGiB} GiB`);
+      if (observedDiskGiB !== null && observedDiskGiB > diskTotalGiB) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom latestObserved must not exceed filesystem total ${diskTotalGiB} GiB`);
       if (!String(diskFollowUp.safeNextStep || "").includes("never clean shared checkout")) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom missing shared-checkout cleanup boundary`);
       if (!String(diskFollowUp.safeNextStep || "").includes("evidence artifacts")) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom missing evidence-artifact cleanup boundary`);
-      if (!String(diskFollowUp.safeNextStep || "").includes("not enough for default 10 GiB headroom")) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom missing cleanup-insufficiency boundary`);
+      if (!String(diskFollowUp.safeNextStep || "").includes("safe isolated cleanup may not be enough")) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom missing cleanup-insufficiency boundary`);
       if (!String(diskFollowUp.safeNextStep || "").includes("SAFE_LANE_HEADROOM_OVERRIDE_REASON")) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom missing override-reason boundary`);
       if (!(diskFollowUp.blocks || []).includes("long-local-dev-build-start-browser-reruns")) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom missing dev/build/start/browser block scope`);
       if (!(diskFollowUp.blocks || []).includes("long-local-dev-build-start-browser-smoke-reruns")) failures.push(`${blockerMatrixPath} safe-lane-disk-headroom missing dev/build/start/browser/smoke block scope`);
@@ -629,16 +855,17 @@ if (prd) {
       "trusted beta session/SSO hosted entry paths",
       "backup/restore blocked",
       "route-level searchParams.get",
-      "2026-06-15T11:52:56.617Z",
-      "2026-06-15T13:27:23.819Z",
+      latestHostedReadOnlyProofStamp,
+      "2026-06-16T13:37:58.461Z",
       "Client privileged GET paths no longer append query-role authority",
-      "78 tests",
+      "86 tests",
       "beta role/marker"
     ]) {
       if (!storyText.includes(text)) failures.push(`prd.json US-025 missing freshness marker: ${text}`);
     }
     if (storyText.includes("73 tests")) failures.push("prd.json US-025 contains stale 73-test count");
     if (storyText.includes("76 tests")) failures.push("prd.json US-025 contains stale 76-test count");
+    if (storyText.includes("78 tests")) failures.push("prd.json US-025 contains stale 78-test count");
   }
 }
 
@@ -654,16 +881,17 @@ for (const text of [
   "trusted beta session/SSO hosted entry paths",
   "backup/restore blocked",
   "route-level `searchParams.get(\"role\")`",
-  "2026-06-15T11:52:56.617Z",
-  "2026-06-15T13:27:23.819Z",
+  latestHostedReadOnlyProofStamp,
+  "2026-06-16T13:37:58.461Z",
   "Client privileged GET paths no longer append query-role authority",
-  "78 tests",
+  "86 tests",
   "beta role/marker"
 ]) {
   if (!ralphStory.includes(text)) failures.push(`tasks/prd-premium-enterprise-dam-architecture.md missing freshness marker: ${text}`);
 }
 if (ralphStory.includes("73 tests")) failures.push("tasks/prd-premium-enterprise-dam-architecture.md contains stale 73-test count");
 if (ralphStory.includes("76 tests")) failures.push("tasks/prd-premium-enterprise-dam-architecture.md contains stale 76-test count");
+if (ralphStory.includes("78 tests")) failures.push("tasks/prd-premium-enterprise-dam-architecture.md contains stale 78-test count");
 if (prd.includes("with role links") || prd.includes("role links, missions")) failures.push("prd.json contains stale role links wording");
 if (ralphStory.includes("with role links") || ralphStory.includes("role links, missions")) failures.push("tasks/prd-premium-enterprise-dam-architecture.md contains stale role links wording");
 if (ralphStory.includes("share-ready teammate invite packet")) failures.push("tasks/prd-premium-enterprise-dam-architecture.md contains stale share-ready invite wording");

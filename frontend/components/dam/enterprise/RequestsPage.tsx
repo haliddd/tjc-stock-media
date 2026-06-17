@@ -212,15 +212,15 @@ export function RequestsPage() {
               <tbody>
                 {filteredRows.map((row) => (
                   <tr key={row.id} className={row.id === selected.id ? "is-active" : undefined}>
-                    <td><strong>{row.id}</strong></td>
-                    <td>{row.type}</td>
-                    <td>{row.relatedAsset}</td>
-                    <td>{row.requestedBy}</td>
-                    <td><span className={cn("ed-route-status", statusClass(row.status))}>{row.status}</span></td>
-                    <td>{row.blocker}</td>
-                    <td>{row.assignedTo}</td>
-                    <td>{row.updated}</td>
-                    <td><button className="ed-row-open" type="button" onClick={() => setSelectedId(row.id)}>Open</button></td>
+                    <td data-label="Request ID"><strong>{row.id}</strong></td>
+                    <td data-label="Type">{row.type}</td>
+                    <td data-label="Related asset">{row.relatedAsset}</td>
+                    <td data-label="Requested by">{row.requestedBy}</td>
+                    <td data-label="Status"><span className={cn("ed-route-status", statusClass(row.status))}>{row.status}</span></td>
+                    <td data-label="Blocker">{row.blocker}</td>
+                    <td data-label="Assigned to">{row.assignedTo}</td>
+                    <td data-label="Updated">{row.updated}</td>
+                    <td data-label="Action"><button className="ed-row-open" type="button" onClick={() => setSelectedId(row.id)}>Open</button></td>
                   </tr>
                 ))}
               </tbody>

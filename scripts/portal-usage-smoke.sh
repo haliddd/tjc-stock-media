@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4871}"
+BASE_URL="${BASE_URL:-http://localhost:4867}"
 USAGE_ANALYTICS_DB_PATH="${USAGE_ANALYTICS_DB_PATH:-$(pwd)/.runtime/analytics/portal-usage.sqlite}"
 CURL_MAX_TIME="${PORTAL_USAGE_SMOKE_CURL_MAX_TIME:-30}"
 MARKER="usage-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"

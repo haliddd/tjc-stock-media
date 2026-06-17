@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4871}"
+BASE_URL="${BASE_URL:-http://localhost:4867}"
 CURL_MAX_TIME="${PORTAL_FEEDBACK_SMOKE_CURL_MAX_TIME:-30}"
 MARKER="feedback-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
@@ -343,7 +343,7 @@ if (data.ok !== true || data.feedback?.id !== id || data.feedback?.status !== "a
   console.error(`FAIL: feedback patch did not persist triage fields: ${JSON.stringify(data).slice(0, 500)}`);
   process.exit(1);
 }
-if (!/smoke triage note/i.test(data.feedback.notes || "")) {
+if (!/workflow triage note/i.test(data.feedback.notes || "")) {
   console.error(`FAIL: feedback patch did not persist notes: ${JSON.stringify(data.feedback).slice(0, 500)}`);
   process.exit(1);
 }

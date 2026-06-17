@@ -1,6 +1,6 @@
 # Team Beta GO/NO-GO Packet
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 Purpose: one canonical decision packet for the TJC Stock Media internal Team Beta test round. This packet is the final place to check whether the current build is ready for owner-led dry run, teammate invite batch, or production launch.
 
@@ -18,12 +18,12 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 
 | Area | Evidence | Status |
 |---|---|---|
-| Core local readiness | `make launch-readiness` passes with `failures=0`, `warnings=3`; warnings are `.env` missing, `.runtime/backups` missing, and `local free disk below 10 GiB`. | PASS local with operational rerun blocker |
+| Core local readiness | `make launch-readiness` currently passes with `failures=0`, `warnings=2`; warnings are `.env` missing and `.runtime/backups` missing. | PASS local proof / warnings remain |
 | Type safety | `npm --prefix frontend run typecheck` passes. | PASS local |
 | API payload safety | `node scripts/api-payload-guard.mjs` passes. | PASS local |
 | API audit coverage | `node scripts/api-audit-guard.mjs` passes. | PASS local |
 | Storage honesty | `node scripts/storage-honesty-guard.mjs` passes. | PASS local |
-| Browser QA | `docs/screenshots/qa/browser-qa-report.json` covers 17 pages, 6 viewport widths, 23 screenshots, zero failures, zero warnings, zero console errors, and zero network failures. | PASS local |
+| Browser QA | `docs/screenshots/qa/browser-qa-report.json` covers 20 pages, 6 viewport widths, 32 screenshots, zero failures, zero warnings, zero console errors, and zero network failures. | PASS local |
 | Local beta rehearsal | `.runtime/beta-rehearsals/20260615T064029Z-43364/summary.json` passes Viewer search/open/download-block/review-block, Reviewer evidence lock, honest queued write, and Admin readiness. | PASS local |
 | Seed/media signoff packet | `docs/team-beta-seed-media-signoff.md` includes counts, sample searches, fail conditions, research-derived categories, and signoff text. | Signed for preview-only tiny internal beta |
 | Hosted access/env packet | `docs/team-beta-hosted-access-proof.md` defines required hosted env, private URL policy, smoke safety, fail conditions, and owner signoff text. | Signed for queued/disabled writeback |
@@ -97,9 +97,9 @@ BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe
 Recommended before widening beyond owner-led dry run:
 
 ```bash
-BASE_URL=http://localhost:4871 make portal-feedback-smoke
-BASE_URL=http://localhost:4871 make portal-beta-rehearsal
-BASE_URL=http://localhost:4871 make portal-browser-qa
+BASE_URL=http://localhost:4867 make portal-feedback-smoke
+BASE_URL=http://localhost:4867 make portal-beta-rehearsal
+BASE_URL=http://localhost:4867 make portal-browser-qa
 ```
 
 Do not run hosted mutating smokes without owner approval. `portal-hosted-smoke` writes beta feedback storage, and `portal-writeback-guard-smoke` posts review decisions.

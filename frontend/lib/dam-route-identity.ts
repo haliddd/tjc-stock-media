@@ -12,8 +12,21 @@ export const damRouteIdentityPaths = [
   "/tasks",
   "/help",
   "/guide",
-  "/recent-uploads"
+  "/recent-uploads",
+  "/governance",
+  "/governance/rights-consent",
+  "/governance/metadata-health",
+  "/governance/policy-center",
+  "/governance/audit-log",
+  "/governance/integrations",
+  "/admin",
+  "/admin/users",
+  "/admin/roles",
+  "/admin/taxonomy",
+  "/admin/settings"
 ] as const;
+
+const exactTopLevelRoutes = new Set(["/admin", "/governance"]);
 
 function hasParams(params: URLSearchParams) {
   return Array.from(params.keys()).length > 0;
@@ -23,12 +36,30 @@ function normalizedHash(hash = "") {
   return hash.replace(/^#/, "");
 }
 
+function currentQueryBelongsToSiblingNav(pathname: string, params: URLSearchParams, hash: string) {
+  if ((pathname === "/help" || pathname === "/guide") && params.get("section") === "policies" && (!hash || hash === "policies")) {
+    return true;
+  }
+  if (pathname === "/library" && params.get("view") === "recent-uploads") {
+    return true;
+  }
+  if (pathname === "/requests" && params.get("view") === "my-tasks") {
+    return true;
+  }
+  if (pathname === "/review" && params.get("queue") === "rights-review") {
+    return true;
+  }
+  return false;
+}
+
 function routeCandidateIsActive(pathname: string, currentSearch: string, currentHash: string, href: string) {
   const target = new URL(href, "http://tjc.local");
   const targetPathname = target.pathname || "/";
   const pathMatches = targetPathname === "/"
     ? pathname === "/"
-    : pathname === targetPathname || pathname.startsWith(`${targetPathname}/`);
+    : exactTopLevelRoutes.has(targetPathname)
+      ? pathname === targetPathname
+      : pathname === targetPathname || pathname.startsWith(`${targetPathname}/`);
 
   if (!pathMatches) return false;
 
@@ -41,14 +72,14 @@ function routeCandidateIsActive(pathname: string, currentSearch: string, current
     for (const [key, value] of targetParams) {
       if (currentParams.get(key) !== value) return false;
     }
-  } else if (hasParams(currentParams)) {
+  } else if (hasParams(currentParams) && currentQueryBelongsToSiblingNav(targetPathname, currentParams, normalizedHash(currentHash))) {
     return false;
   }
 
   const targetHash = normalizedHash(target.hash);
   const activeHash = normalizedHash(currentHash);
   if (targetHash) return activeHash === targetHash;
-  return !activeHash;
+  return true;
 }
 
 export function isDamShellRouteActive({

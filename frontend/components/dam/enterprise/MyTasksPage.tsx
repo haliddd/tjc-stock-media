@@ -80,7 +80,7 @@ const taskCards: TaskCard[] = [
     related: "Upload session UP-887",
     assignedReason: "You started the contributor intake draft.",
     nextAction: "Add event date, ministry, people visibility, and usage scope.",
-    safetyState: "Needs Review / Do Not Publish"
+    safetyState: "Submitted, not published"
   },
   {
     id: "TASK-227",

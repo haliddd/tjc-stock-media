@@ -24,7 +24,7 @@ const missions: Record<DemoRole, BetaMission[]> = {
   Contributor: [
     { label: "Submit harmless intake", detail: "Use a safe test image/link and complete intake metadata." },
     { label: "Trigger missing context", detail: "Leave one required review field blank and confirm validation explains it." },
-    { label: "Queue reviewer handoff", detail: "Submit complete intake and confirm it stays Needs Review / Do Not Publish." }
+    { label: "Queue reviewer handoff", detail: "Submit complete intake and confirm it stays submitted, unpublished, and gated for reviewer evidence." }
   ],
   Reviewer: [
     { label: "Try approve without evidence", detail: "Confirm approval stays disabled until evidence and note are complete." },
