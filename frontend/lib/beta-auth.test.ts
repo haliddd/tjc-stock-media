@@ -8,6 +8,7 @@ import {
   BETA_SESSION_ROLE_HEADER,
   BETA_SESSION_VERIFIED_HEADER,
   betaChurchInviteCodeMatches,
+  betaChurchInviteCodeDiagnostics,
   betaChurchInviteCodeRequired,
   betaChurchInviteCodesConfigured,
   betaLoginPathForReturn,
@@ -73,6 +74,26 @@ describe("beta auth", () => {
     expect(betaChurchInviteCodeMatches("queens-contributor-token")?.churchLocation).toBe("Queens NY");
     expect(betaChurchInviteCodeMatches("brooklyn-contributor-token")?.churchLocation).toBe("Brooklyn NY");
     expect(betaChurchInviteCodeMatches("wrong-code")).toBeNull();
+  });
+
+  it("reports church invitation readiness without exposing code values", () => {
+    configureBetaEnv();
+    vi.stubEnv("BETA_CHURCH_INVITE_CODES_JSON", JSON.stringify({
+      "Queens NY": ["queens-contributor-token", "queens-reviewer-token"],
+      "Brooklyn NY": "brooklyn-contributor-token"
+    }));
+
+    const diagnostics = betaChurchInviteCodeDiagnostics();
+    const serialized = JSON.stringify(diagnostics);
+
+    expect(diagnostics).toEqual({
+      configured: true,
+      locationCount: 2,
+      codeCount: 3
+    });
+    expect(serialized).not.toContain("queens-contributor-token");
+    expect(serialized).not.toContain("queens-reviewer-token");
+    expect(serialized).not.toContain("brooklyn-contributor-token");
   });
 
   it("creates Viewer sessions without church location and Contributor sessions with location", async () => {

@@ -427,12 +427,12 @@ for (const currentDoc of [
   requireText(currentDoc, "PORTAL_HOSTED_SMOKE_ALLOW_MUTATION", `${currentDoc} hosted mutation approval flag`);
 }
 requireText("docs/team-beta-signoff-record.md", "Decision: NO-GO", "current signoff NO-GO");
-requireText("docs/team-beta-signoff-record.md", "Current status: **NO-GO for teammate invite batch until June 15 evidence blockers close.**", "current signoff status NO-GO");
-requireText("docs/team-beta-signoff-record.md", "Do not fill as GO until June 15 evidence blockers close", "current signoff no premature GO instruction");
+requireText("docs/team-beta-signoff-record.md", "Current status: **NO-GO for teammate invite batch until June 17 hosted/current beta gates close.**", "current signoff status NO-GO");
+requireText("docs/team-beta-signoff-record.md", "Do not fill as GO until June 17 hosted/current beta gates close", "current signoff no premature GO instruction");
 requireNoText("docs/team-beta-signoff-record.md", "Fill only when ready to send", "current signoff stale ready-to-send wording");
 requireText("Makefile", "team-beta-signoff-guard-test:", "Team Beta signoff guard Make target");
 requireText("Makefile", "node scripts/team-beta-signoff-guard-test.mjs", "Team Beta signoff guard self-test Make command");
-requireText("docs/team-beta-go-no-go-packet.md", "Tiny teammate invite batch | NO-GO until human gates close", "current packet invite NO-GO");
+requireText("docs/team-beta-go-no-go-packet.md", "Tiny teammate invite batch | NO-GO until hosted/current gates close", "current packet invite NO-GO");
 requireText("docs/team-beta-go-no-go-packet.md", "Current final call: **NO-GO for teammate invite batch", "current packet final NO-GO");
 requireText("docs/team-beta-go-no-go-packet.md", "Owner-led internal dry run | PASS local only", "current packet dry run PASS local");
 requireText("docs/team-beta-go-no-go-packet.md", "`failures=0`, `warnings=2`", "current packet launch-readiness failure and warning count");

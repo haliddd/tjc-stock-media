@@ -73,7 +73,7 @@ const validGo = baseRecord
   .replace(/^Stable URL only confirmed:.*$/m, "Stable URL only confirmed: Yes")
   .replace(/^Feedback watch window:.*$/m, "Feedback watch window: First 24 hours after invite")
   .replace(/^Next-batch review time:.*$/m, "Next-batch review time: 24 hours after first invite")
-  .replace("Current status: **NO-GO for teammate invite batch until June 15 evidence blockers close.**", "Current status: **GO for tiny internal Team Beta invite batch. Production remains blocked.**");
+  .replace("Current status: **NO-GO for teammate invite batch until June 17 hosted/current beta gates close.**", "Current status: **GO for tiny internal Team Beta invite batch. Production remains blocked.**");
 
 const incompleteGo = validGo
   .replace(/^Named tester count:.*$/m, "Named tester count:")

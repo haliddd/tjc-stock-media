@@ -190,7 +190,7 @@ function generatedLocalBetaPreviewSvg(asset: Pick<StockMediaAsset, "id" | "title
   <circle cx="428" cy="164" r="34" fill="${ink}" opacity=".24"/>
   <text x="320" y="330" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="800" fill="${ink}" letter-spacing="1.5">${type} PREVIEW</text>
   ${titleLines.map((line, index) => `<text x="320" y="${lineStart + index * 42}" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="800" fill="#10251f">${svgText(line)}</text>`).join("\n  ")}
-  <text x="320" y="360" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700" fill="#43564f">ResourceSpace ID ${ref} · ${dimensions}</text>
+  <text x="320" y="360" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700" fill="#43564f">Reference code ${ref} · ${dimensions}</text>
   <text x="320" y="386" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" fill="#6b766f">Generated local beta preview. Original/source remains restricted.</text>
 </svg>`;
 }

@@ -110,6 +110,16 @@ export function betaChurchInviteCodesConfigured() {
   return betaChurchInviteLocations().length > 0;
 }
 
+export function betaChurchInviteCodeDiagnostics() {
+  const entries = betaChurchInviteCodeEntries();
+  const codeCount = entries.reduce((sum, entry) => sum + entry.codes.length, 0);
+  return {
+    configured: entries.length > 0,
+    locationCount: entries.length,
+    codeCount
+  };
+}
+
 export function betaChurchInviteCodeMatches(invitationCode: string) {
   const candidate = normalizeInviteCode(invitationCode);
   if (!candidate) return null;

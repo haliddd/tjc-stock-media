@@ -11,7 +11,7 @@ const requiredSnippets = [
   { label: "safe shell mode", text: "set -euo pipefail" },
   { label: "trusted identity helper", text: "portal-smoke-trusted-identity.sh" },
   { label: "trusted curl wrapper", text: "portal_smoke_http_code" },
-  { label: "trusted Reviewer headers", text: "REVIEWER_HEADERS=(-H 'x-tjc-role: Reviewer'" },
+  { label: "trusted Reviewer headers", text: "-H 'x-tjc-role: Reviewer'" },
   { label: "local runtime branch", text: 'if [ "$local_runtime_probe" = "1" ]; then' },
   { label: "search payload download field rejection", text: "search payload exposed imageUrls.download" },
   { label: "detail payload download field rejection", text: "approved-detail-hides-download-url" },
@@ -77,7 +77,7 @@ expectFail(
   source.replace('source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"', "# helper removed"),
   "trusted identity helper"
 );
-expectFail("missing-trusted-reviewer-headers", source.replace("REVIEWER_HEADERS=(-H 'x-tjc-role: Reviewer'", "REVIEWER_HEADERS=(-H 'x-tjc-role: Viewer'"), "trusted Reviewer headers");
+expectFail("missing-trusted-reviewer-headers", source.replace("-H 'x-tjc-role: Reviewer'", "-H 'x-tjc-role: Viewer'"), "trusted Reviewer headers");
 expectFail("missing-direct-get-denial", source.replace("direct-approved-get-denied", "direct-approved-get-allowed"), "direct GET denied");
 expectFail("missing-body-role-spoof-denial", source.replace("body-role-spoof-denied-without-trusted-header", "body-role-spoof-minted-ticket"), "body role spoof denied locally");
 expectFail("missing-private-url-rejection", source.replace(/signedUrl\|originalUrl\|s3:\\\/\\\//g, "publicUrl"), "private delivery URL rejection");

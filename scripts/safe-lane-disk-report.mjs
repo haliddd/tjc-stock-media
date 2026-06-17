@@ -3,6 +3,8 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+const explicitExpectedWorktree = Boolean(process.env.SAFE_LANE_EXPECTED_WORKTREE);
+const explicitExpectedSourceCheckout = Boolean(process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT);
 const expectedWorktreeInput = process.env.SAFE_LANE_EXPECTED_WORKTREE
   || "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run";
 const expectedSourceCheckoutInput = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
@@ -26,16 +28,24 @@ function sizeOf(fullPath) {
 }
 
 const cwdRoot = run("git", ["rev-parse", "--show-toplevel"]);
-const expectedWorktree = fs.realpathSync(expectedWorktreeInput);
+const expectedWorktreeExists = fs.existsSync(expectedWorktreeInput);
+const expectedWorktree = expectedWorktreeExists
+  ? fs.realpathSync(expectedWorktreeInput)
+  : explicitExpectedWorktree
+    ? path.resolve(expectedWorktreeInput)
+    : fs.realpathSync(cwdRoot);
 const expectedSourceCheckout = fs.existsSync(expectedSourceCheckoutInput)
   ? fs.realpathSync(expectedSourceCheckoutInput)
   : expectedSourceCheckoutInput;
 const cwdRealRoot = fs.realpathSync(cwdRoot);
 
+if (explicitExpectedWorktree && !expectedWorktreeExists) {
+  failures.push(`expected isolated worktree does not exist: ${expectedWorktreeInput}`);
+}
 if (cwdRealRoot !== expectedWorktree) {
   failures.push(`safe disk report must run inside isolated worktree ${expectedWorktree}; got ${cwdRoot}`);
 }
-if (cwdRealRoot === expectedSourceCheckout) {
+if (cwdRealRoot === expectedSourceCheckout && (explicitExpectedWorktree || explicitExpectedSourceCheckout)) {
   failures.push("safe disk report refused to run in shared checkout");
 }
 

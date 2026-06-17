@@ -136,6 +136,28 @@ beta_password_for_role() {
   fi
 }
 
+beta_invite_code_for_role() {
+  case "$1" in
+    Contributor|Reviewer|"DAM Admin") ;;
+    *) return 0 ;;
+  esac
+  node -e '
+const raw = process.env.BETA_CHURCH_INVITE_CODES_JSON || "";
+try {
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) process.exit(0);
+  for (const value of Object.values(parsed)) {
+    const codes = Array.isArray(value) ? value : [value];
+    const code = codes.find((item) => typeof item === "string" && item.trim());
+    if (code) {
+      process.stdout.write(code.trim());
+      process.exit(0);
+    }
+  }
+} catch {}
+'
+}
+
 role_url() {
   local role="$1"
   local path="$2"
@@ -195,6 +217,31 @@ expect_json_status_role() {
   expect_json_status "$expected" "$label" "$script" ${role_args[@]+"${role_args[@]}"} "$@" "$url"
 }
 
+expect_json_status_any_role() {
+  local expected_codes="$1"
+  local label="$2"
+  local role="$3"
+  local path="$4"
+  local script="$5"
+  shift 5
+  local url
+  url="$(role_url "$role" "$path")"
+  read_role_curl_args "$role"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  local code
+  code="$(http_code "$output" ${role_args[@]+"${role_args[@]}"} "$@" "$url")"
+  case " $expected_codes " in
+    *" $code "*) ;;
+    *)
+      echo "FAIL: $label expected one of $expected_codes got $code"
+      cat "$output"
+      exit 1
+      ;;
+  esac
+  node -e "$script" < "$output"
+  echo "PASS: $label ($code)"
+}
+
 select_json_value_role() {
   local label="$1"
   local role="$2"
@@ -218,8 +265,13 @@ if node -e 'const fs=require("fs"); let data={}; try{data=JSON.parse(fs.readFile
       echo "FAIL: beta auth is enabled at $BASE_URL but ${role} password env is missing for portal-hosted-smoke"
       exit 1
     fi
+    invitation_code="$(beta_invite_code_for_role "$role")"
+    if [ "$role" != "Viewer" ] && [ -z "$invitation_code" ]; then
+      echo "FAIL: beta auth is enabled at $BASE_URL but ${role} invite code env is missing for portal-hosted-smoke"
+      exit 1
+    fi
     payload="$TMP_DIR/login-${role// /-}.json"
-    ROLE="$role" PASSWORD="$password" node -e 'process.stdout.write(JSON.stringify({role:process.env.ROLE,password:process.env.PASSWORD,returnTo:"/"}))' > "$payload"
+    ROLE="$role" PASSWORD="$password" INVITATION_CODE="$invitation_code" node -e 'process.stdout.write(JSON.stringify({role:process.env.ROLE,password:process.env.PASSWORD,invitationCode:process.env.INVITATION_CODE || undefined,returnTo:"/"}))' > "$payload"
     expect_json_status 200 "beta-login-${role// /-}" '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 if (data.ok !== true || !data.role) {
@@ -288,7 +340,7 @@ if (!Array.isArray(data.feedback) || typeof data.count !== "number") {
 
 BLOCKED_DOWNLOAD_ID="$(select_json_value_role hosted-blocked-download-id Reviewer "/api/assets/search?view=needs-review&limit=25" "$blocked_asset_id_script")"
 
-expect_json_status_role 403 hosted-viewer-download-blocked Viewer "/api/download/$BLOCKED_DOWNLOAD_ID" '
+expect_json_status_any_role "403 503" hosted-viewer-download-blocked Viewer "/api/download/$BLOCKED_DOWNLOAD_ID" '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const forbiddenKeys = new Set([
   "downloadUrl",
@@ -342,6 +394,10 @@ if (leaks.length) {
 }
 if (!data.error && !data.reason) {
   console.error(`FAIL: blocked Viewer download missing reason/error: ${JSON.stringify(data).slice(0, 500)}`);
+  process.exit(1);
+}
+if (data.reasonCode && data.reasonCode !== "audit-required" && data.reasonCode !== "not-downloadable") {
+  console.error(`FAIL: blocked Viewer download returned unexpected reasonCode: ${JSON.stringify(data).slice(0, 500)}`);
   process.exit(1);
 }
 '

@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_URL="${BASE_URL:-http://localhost:4871}"
 TMP_DIR="$(mktemp -d)"
-API_SMOKE_EXPORT=".runtime/exports/zzzzzz-portal-api-smoke-$$.csv"
+API_SMOKE_EXPORT=".runtime/exports/resourcespace-metadata-99999999-$(printf "%06d" "$(($$ % 1000000))").csv"
 BETA_AUTH_MODE="trusted-headers"
 (
   cd "$ROOT"
@@ -131,8 +131,8 @@ const rows = [
     checksum_sha256: "3683683683683683683683683683683683683683683683683683683683683683"
   }),
   row({
-    resource_id: "644",
-    title: "2012 Photo 644",
+    resource_id: "380",
+    title: "2012 Photo 380",
     publish_status: "Needs Review",
     usage_scope: "Do Not Publish",
     source_album: "Incoming Fellowship",
@@ -146,7 +146,7 @@ const rows = [
     tjc_terms: "Fellowship|Testimony",
     usage_terms: "context-safe|internal review",
     approval_notes: "Needs reviewer approval before reuse",
-    original_filename: "api_workflow_644.jpg",
+    original_filename: "api_workflow_380.jpg",
     checksum_sha256: "6446446446446446446446446446446446446446446446446446446446446446"
   })
 ];
@@ -211,6 +211,9 @@ http_code() {
     curl_args=(
       -H "x-tjc-role: $trusted_role"
       -H "x-auth-request-email: $(trusted_header_email "$trusted_role")"
+      -H "cf-access-jwt-assertion: portal-api-smoke-placeholder-token"
+      -H "cf-access-authenticated-user-email: $(trusted_header_email "$trusted_role")"
+      -H "cf-access-groups: $trusted_role"
       "${curl_args[@]}"
     )
     if [ "$BETA_AUTH_MODE" = "beta-session" ]; then
@@ -392,6 +395,21 @@ establish_beta_api_sessions() {
   local probe="$TMP_DIR/beta-auth-session-probe.json"
   local code
   code="$(http_code_without_trusted_headers "$probe" "$BASE_URL/api/beta-auth/session" || true)"
+  BUILD_CONTRACT="small-team-beta-readiness-2026-06-17" node -e '
+const fs = require("fs");
+let data = {};
+try { data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); } catch {}
+const build = data.build || {};
+if (build.app !== "tjc-stock-media" || build.readinessContract !== process.env.BUILD_CONTRACT) {
+  console.error(`FAIL: beta session build contract missing or stale: ${JSON.stringify(build).slice(0, 500)}`);
+  process.exit(1);
+}
+const serialized = JSON.stringify(build);
+if (/BETA_|SECRET|TOKEN|PASSWORD|INVITE|real-code|private-code/i.test(serialized)) {
+  console.error(`FAIL: beta session build contract leaked secret-shaped text: ${serialized.slice(0, 500)}`);
+  process.exit(1);
+}
+' "$probe"
   if ! node -e 'const fs=require("fs"); let data={}; try{data=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch{} process.exit(data.enabled===true ? 0 : 1)' "$probe"; then
     BETA_AUTH_MODE="trusted-headers"
     return
@@ -589,10 +607,10 @@ if (data.source && (data.source.label !== "Media library" || data.source.adapter
 }
 '
 
-expect_json_status 403 unsafe-thumbnail-viewer-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/thumbnail/644?variant=detail"
-expect_query_role_not_trusted reviewer-query-role-not-trusted "$BASE_URL/api/assets/thumbnail/644?variant=detail&role=Reviewer"
-expect_code 200 unsafe-thumbnail-reviewer "$BASE_URL/api/assets/thumbnail/644?variant=detail&role=Reviewer"
-expect_code 403 unsafe-download-variant-reviewer "$BASE_URL/api/assets/thumbnail/644?variant=download&role=Reviewer"
+expect_json_status 403 unsafe-thumbnail-viewer-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/thumbnail/380?variant=detail"
+expect_query_role_not_trusted reviewer-query-role-not-trusted "$BASE_URL/api/assets/thumbnail/380?variant=detail&role=Reviewer"
+expect_code 200 unsafe-thumbnail-reviewer "$BASE_URL/api/assets/thumbnail/380?variant=detail&role=Reviewer"
+expect_code 403 unsafe-download-variant-reviewer "$BASE_URL/api/assets/thumbnail/380?variant=download&role=Reviewer"
 expect_json_any_status "403 503" blocked-approved-download-viewer "$normal_user_payload_guard
 if (data.downloadUrl || data.url || data.signedUrl || data.originalUrl) {
   console.error(\`FAIL: blocked download exposed URL: \${JSON.stringify(data).slice(0, 500)}\`);
@@ -608,8 +626,8 @@ expect_query_role_not_trusted admin-query-role-not-trusted "$BASE_URL/api/admin/
 expect_query_role_not_trusted plain-admin-query-role-not-trusted "$BASE_URL/api/admin/readiness?role=Admin"
 expect_json_status_without_trusted_headers 200 admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=DAM%20Admin"
 expect_json_status_without_trusted_headers 200 plain-admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Admin"
-expect_code 400 malformed-asset-detail "$BASE_URL/api/assets/%2E%2E644?role=Reviewer"
-expect_code 400 malformed-thumbnail "$BASE_URL/api/assets/thumbnail/%2E%2E644?variant=detail&role=Reviewer"
+expect_code 400 malformed-asset-detail "$BASE_URL/api/assets/%2E%2E380?role=Reviewer"
+expect_code 400 malformed-thumbnail "$BASE_URL/api/assets/thumbnail/%2E%2E380?variant=detail&role=Reviewer"
 expect_code 400 malformed-download "$BASE_URL/api/download/%2E%2E368?role=Viewer"
 expect_code 400 checksum-asset-detail "$BASE_URL/api/assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?role=Reviewer"
 expect_code 400 checksum-thumbnail "$BASE_URL/api/assets/thumbnail/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb?variant=detail&role=Reviewer"
@@ -649,12 +667,12 @@ if (data.appliedIntent?.rawQuery || text.includes("../private") || /source path|
 
 expect_code 400 bad-review-action \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","id":"644","action":"Made Up"}' \
+  -d '{"role":"Reviewer","id":"380","action":"Made Up"}' \
   "$BASE_URL/api/review"
 
 expect_code 400 malformed-review-asset \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","id":"../644","action":"Approve Public"}' \
+  -d '{"role":"Reviewer","id":"../380","action":"Approve Public"}' \
   "$BASE_URL/api/review"
 
 expect_code 404 missing-review-asset \
@@ -664,7 +682,7 @@ expect_code 404 missing-review-asset \
 
 expect_json_status 403 review-action-viewer-denied-payload-safe "$normal_user_payload_guard" \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Viewer","id":"644","action":"Request More Info","notes":"Viewer should not review."}' \
+  -d '{"role":"Viewer","id":"380","action":"Request More Info","notes":"Viewer should not review."}' \
   "$BASE_URL/api/review"
 
 expect_json_status 400 review-action-missing-evidence '
@@ -680,11 +698,11 @@ if (/updated through the live API|synced_to_resourcespace/i.test(JSON.stringify(
 }
 ' \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","id":"644","action":"Approve Public","notes":"short","checklist":{}}' \
+  -d '{"role":"Reviewer","id":"380","action":"Approve Public","notes":"short","checklist":{}}' \
   "$BASE_URL/api/review"
 
 RUNTIME_STORE_WRITE_MODE="$(runtime_store_write_mode)"
-review_action_sync_payload='{"role":"Reviewer","id":"644","action":"Request More Info","notes":"QA review workflow decision with complete minimum evidence.","checklist":{"sourceConfirmed":true,"rightsConfirmed":true,"peopleVisibilityConfirmed":true,"childrenYouthChecked":true,"usageScopeSelected":true},"reviewerName":"API Workflow Reviewer"}'
+review_action_sync_payload='{"role":"Reviewer","id":"380","action":"Request More Info","notes":"QA review workflow decision with complete minimum evidence.","checklist":{"sourceConfirmed":true,"rightsConfirmed":true,"peopleVisibilityConfirmed":true,"childrenYouthChecked":true,"usageScopeSelected":true},"reviewerName":"API Workflow Reviewer"}'
 
 if [ "$RUNTIME_STORE_WRITE_MODE" = "blocked" ]; then
 expect_json_status 503 review-action-runtime-store-required '
@@ -990,12 +1008,12 @@ if (!/reviewer access/i.test(data.error || "")) {
 }
 ' \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Viewer","action":"request-review","assetIds":["644"]}' \
+  -d '{"role":"Viewer","action":"request-review","assetIds":["380"]}' \
   "$BASE_URL/api/batch"
 
 expect_code 400 batch-malformed-asset \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","action":"request-review","assetIds":["../644"]}' \
+  -d '{"role":"Reviewer","action":"request-review","assetIds":["../380"]}' \
   "$BASE_URL/api/batch"
 
 expect_code 400 batch-checksum-asset \
@@ -1026,7 +1044,7 @@ if (data.ok !== false || data.count !== 1 || !/Sharing stays paused/.test(data.m
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","action":"request-review","assetIds":["644"]}' \
+  -d '{"role":"Reviewer","action":"request-review","assetIds":["380"]}' \
   "$BASE_URL/api/batch"
 
 expect_code 403 collection-viewer \
@@ -1041,7 +1059,7 @@ expect_code 400 collection-malformed-asset \
 
 expect_code 403 collection-hidden-asset-contributor \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Contributor","assetIds":["644"],"title":"Unsafe collection"}' \
+  -d '{"role":"Contributor","assetIds":["380"],"title":"Unsafe collection"}' \
   "$BASE_URL/api/collections"
 
 expect_json_status 404 collection-missing-asset-payload-safe '
@@ -1111,10 +1129,10 @@ if (data.expiry !== "2026-06-30") {
   -d '{"role":"Contributor","assetIds":["368"],"title":"Expiry test","expiry":"2026-06-30","audience":"Internal ministry"}' \
   "$BASE_URL/api/collections"
 
-expect_json public-portal-collection-gate '
+expect_json_status 403 public-portal-collection-gate '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-if (data.ok !== false || data.sharingBlocked !== true || !data.reuseReadiness?.blockedReferences?.includes("368")) {
-  console.error("FAIL: public portal draft did not block non-portal-ready approved asset");
+if (!/cannot add|selected assets|collection draft/i.test(data.error || "")) {
+  console.error("FAIL: public portal draft did not block non-portal-ready asset explicitly");
   process.exit(1);
 }
 const text = JSON.stringify(data);
@@ -1123,7 +1141,7 @@ if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|public g
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Contributor","assetIds":["368"],"title":"Public candidate","audience":"Public-approved portal"}' \
+  -d '{"role":"Contributor","assetIds":["380"],"title":"Public candidate","audience":"Public-approved portal"}' \
   "$BASE_URL/api/collections"
 
 expect_json reviewer-admin-links-blocked '
@@ -1277,7 +1295,7 @@ if (/sourcePath|masterDrivePath|sourceAlbumPath|sourceAlbumMemberships|originalF
 }
 ' -X POST -H 'Content-Type: application/json' \
   -d '{"role":"Viewer","termsAccepted":true,"variant":"../private-source-path","usageChannel":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reason":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}' \
-  "$BASE_URL/api/download/368"
+  "$BASE_URL/api/download/380"
 else
 expect_json_status 403 download-gate-metadata-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
@@ -1288,7 +1306,7 @@ if (data.downloadUrl || text.includes("../private") || /source path|master drive
 }
 ' -X POST -H 'Content-Type: application/json' \
   -d '{"role":"Viewer","termsAccepted":true,"variant":"../private-source-path","usageChannel":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reason":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}' \
-  "$BASE_URL/api/download/368"
+  "$BASE_URL/api/download/380"
 fi
 
 expect_json rights-status-not-publish-status '

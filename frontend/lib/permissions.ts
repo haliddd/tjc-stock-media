@@ -1,5 +1,6 @@
 import type { DemoRole, StockMediaAsset } from "@/lib/types";
 import { decideAccess } from "@/lib/access-decisions";
+import { routeAccessForPathname, routePathname } from "@/lib/dam/enterprise-route-surface";
 
 export const roles: DemoRole[] = ["Viewer", "Contributor", "Reviewer", "DAM Admin"];
 export type ReviewRole = "Reviewer" | "DAM Admin";
@@ -60,20 +61,18 @@ export function canOpenResourceSpace(role: DemoRole) {
   return decideAccess(role, "viewResourceSpaceAdminLink").allowed;
 }
 
-function routePathname(route: string) {
-  if (/^[a-z][a-z0-9+.-]*:/i.test(route) || route.startsWith("#")) return route;
-  const withoutHash = route.split("#", 1)[0] || "/";
-  return withoutHash.split("?", 1)[0] || "/";
-}
-
 export function canAccessRoute(role: DemoRole, route: string) {
-  const pathname = routePathname(route);
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) return canAdmin(role);
-  if (pathname === "/governance" || pathname.startsWith("/governance/")) return canAdmin(role);
-  if (pathname === "/review" || pathname.startsWith("/review/")) return canReview(role);
-  if (pathname === "/upload" || pathname.startsWith("/upload/")) return canUpload(role);
-  if (pathname === "/recent-uploads" || pathname.startsWith("/recent-uploads/")) return canUpload(role);
-  return true;
+  switch (routeAccessForPathname(routePathname(route))) {
+    case "admin":
+      return canAdmin(role);
+    case "review":
+      return canReview(role);
+    case "upload":
+      return canUpload(role);
+    case "public":
+    default:
+      return true;
+  }
 }
 
 export function canSeeAsset(role: DemoRole, asset: StockMediaAsset) {

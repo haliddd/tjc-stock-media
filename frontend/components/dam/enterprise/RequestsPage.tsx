@@ -199,6 +199,7 @@ export function RequestsPage() {
               <thead>
                 <tr>
                   <th>Request ID</th>
+                  <th>Action</th>
                   <th>Type</th>
                   <th>Related asset</th>
                   <th>Requested by</th>
@@ -206,13 +207,13 @@ export function RequestsPage() {
                   <th>Blocker</th>
                   <th>Assigned to</th>
                   <th>Updated</th>
-                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.map((row) => (
                   <tr key={row.id} className={row.id === selected.id ? "is-active" : undefined}>
                     <td data-label="Request ID"><strong>{row.id}</strong></td>
+                    <td data-label="Action"><button className="ed-row-open" type="button" onClick={() => setSelectedId(row.id)}>Open</button></td>
                     <td data-label="Type">{row.type}</td>
                     <td data-label="Related asset">{row.relatedAsset}</td>
                     <td data-label="Requested by">{row.requestedBy}</td>
@@ -220,7 +221,6 @@ export function RequestsPage() {
                     <td data-label="Blocker">{row.blocker}</td>
                     <td data-label="Assigned to">{row.assignedTo}</td>
                     <td data-label="Updated">{row.updated}</td>
-                    <td data-label="Action"><button className="ed-row-open" type="button" onClick={() => setSelectedId(row.id)}>Open</button></td>
                   </tr>
                 ))}
               </tbody>

@@ -4,7 +4,7 @@ set -euo pipefail
 BASE_URL="${BASE_URL:-http://localhost:4867}"
 CURL_MAX_TIME="${PORTAL_DOWNLOAD_TICKET_CURL_MAX_TIME:-30}"
 TMP_DIR="$(mktemp -d)"
-SMOKE_EXPORT=".runtime/exports/zzzz-download-ticket-smoke-$$.csv"
+SMOKE_EXPORT=".runtime/exports/resourcespace-metadata-99999998-$(printf "%06d" "$(($$ % 1000000))").csv"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portal-smoke-trusted-identity.sh"
 cleanup() {
   rm -rf "$TMP_DIR"
@@ -13,13 +13,26 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
-REVIEWER_HEADERS=(-H 'x-tjc-local-beta-role: Reviewer' -H 'x-tjc-role: Reviewer' -H "x-auth-request-email: $(portal_smoke_trusted_email "Reviewer")")
+REVIEWER_HEADERS=(
+  -H 'x-tjc-local-beta-role: Reviewer'
+  -H 'x-tjc-role: Reviewer'
+  -H "x-auth-request-email: $(portal_smoke_trusted_email "Reviewer")"
+  -H 'cf-access-jwt-assertion: portal-smoke-placeholder-token'
+  -H "cf-access-authenticated-user-email: $(portal_smoke_trusted_email "Reviewer")"
+  -H 'cf-access-groups: Reviewer'
+)
 local_runtime_probe=0
 case "$BASE_URL" in
   http://localhost:*|http://127.0.0.1:*) local_runtime_probe=1 ;;
 esac
 
 http_code() {
+  local output="$1"
+  shift
+  portal_smoke_http_code "$output" "$@"
+}
+
+raw_http_code() {
   local output="$1"
   shift
   curl --max-time "$CURL_MAX_TIME" -sS -o "$output" -w '%{http_code}' "$@"
@@ -66,7 +79,7 @@ const rows = [
     "file_extension"
   ],
   [
-    "ticket-approved-001",
+    "999999980",
     "Approved Copy Gate Fixture Approved",
     "Approved Internal",
     "Internal",
@@ -83,7 +96,7 @@ const rows = [
     "jpg"
   ],
   [
-    "ticket-blocked-001",
+    "999999981",
     "Approved Copy Gate Fixture Blocked",
     "Needs Review",
     "Do Not Publish",
@@ -160,7 +173,7 @@ expect_json_status_without_trusted_headers() {
   local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
   shift 3
   local code
-  code="$(http_code "$output" "$@")"
+  code="$(raw_http_code "$output" "$@")"
   if [ "$code" != "$expected" ]; then
     echo "FAIL: $label expected $expected got $code"
     cat "$output"

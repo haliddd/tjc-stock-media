@@ -6,31 +6,12 @@ import path from "node:path";
 
 const root = process.cwd();
 const guardPath = path.join(root, "scripts/live-dam-surface-guard.mjs");
+const routeSurfacePath = "frontend/lib/dam/enterprise-route-surface.json";
+const routeSurface = JSON.parse(fs.readFileSync(path.join(root, routeSurfacePath), "utf8"));
 const tempRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "tjc-live-dam-surface-guard-")));
 const failures = [];
 
-const enterpriseRoutes = new Map([
-  ["frontend/app/page.tsx", "EnterpriseLibraryPage"],
-  ["frontend/app/library/page.tsx", "EnterpriseLibraryPage"],
-  ["frontend/app/collections/page.tsx", "EnterpriseCollectionsPage"],
-  ["frontend/app/collections/[collectionId]/page.tsx", "EnterpriseCollectionsPage"],
-  ["frontend/app/packages/page.tsx", "EnterprisePackageBuilderPage"],
-  ["frontend/app/distribution-sets/page.tsx", "EnterprisePackageBuilderPage"],
-  ["frontend/app/distribution-sets/[distributionSetId]/page.tsx", "EnterprisePackageBuilderPage"],
-  ["frontend/app/brand-hub/page.tsx", "EnterpriseBrandHubPage"],
-  ["frontend/app/insights/page.tsx", "EnterpriseInsightsPage"],
-  ["frontend/app/admin/page.tsx", "EnterpriseAdminPage"],
-  ["frontend/app/governance/page.tsx", "EnterpriseAdminPage"],
-  ["frontend/app/review/page.tsx", "EnterpriseReviewPage"],
-  ["frontend/app/assets/[id]/page.tsx", "EnterpriseAssetDetailPage"],
-  ["frontend/app/library/[assetId]/page.tsx", "EnterpriseAssetDetailPage"],
-  ["frontend/app/upload/page.tsx", "EnterpriseUploadPage"],
-  ["frontend/app/requests/page.tsx", "RequestsPage"],
-  ["frontend/app/requests/[requestId]/page.tsx", "RequestsPage"],
-  ["frontend/app/my-tasks/page.tsx", "MyTasksPage"],
-  ["frontend/app/tasks/page.tsx", "MyTasksPage"],
-  ["frontend/app/recent-uploads/page.tsx", "RecentUploadsPage"]
-]);
+const enterpriseRoutes = routeSurface.routes.filter((route) => route.routeFile && route.pageExport);
 
 function cleanup() {
   fs.rmSync(tempRoot, { recursive: true, force: true });
@@ -55,7 +36,10 @@ export default async function Page({ params }) {
 
 function writeValidFixture(targetRoot) {
   write(targetRoot, "frontend/components/dam/EnterpriseDamPages.tsx", "export const marker = true;\n");
-  for (const [routePath, exportName] of enterpriseRoutes) {
+  write(targetRoot, routeSurfacePath, `${JSON.stringify(routeSurface, null, 2)}\n`);
+  for (const route of enterpriseRoutes) {
+    const routePath = route.routeFile;
+    const exportName = route.pageExport;
     const extra = routePath.includes("assets/[id]")
       ? "const id = normalizeAssetId((await params).id); if (!id) notFound();"
       : routePath.includes("library/[assetId]")
@@ -141,6 +125,13 @@ export default function Page() {
 }
 `);
 }, "frontend/app/library/page.tsx must import EnterpriseLibraryPage from EnterpriseDamPages");
+
+expectFail("route-surface-page-export-drift", (targetRoot) => {
+  const driftedSurface = structuredClone(routeSurface);
+  const reviewRoute = driftedSurface.routes.find((route) => route.routeFile === "frontend/app/review/page.tsx");
+  reviewRoute.pageExport = "EnterpriseLibraryPage";
+  write(targetRoot, routeSurfacePath, `${JSON.stringify(driftedSurface, null, 2)}\n`);
+}, "frontend/app/review/page.tsx must import EnterpriseLibraryPage from EnterpriseDamPages");
 
 expectFail("asset-detail-missing-normalization", (targetRoot) => {
   write(targetRoot, "frontend/app/assets/[id]/page.tsx", routeSource("EnterpriseAssetDetailPage", "const id = (await params).id; if (!id) notFound();"));

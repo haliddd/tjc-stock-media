@@ -1,5 +1,5 @@
-import { UploadPage } from "@/components/UploadPage";
+import { EnterpriseUploadPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <UploadPage />;
+  return <EnterpriseUploadPage />;
 }

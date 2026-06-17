@@ -19,6 +19,7 @@ const fixtureFiles = [
   "frontend/lib/dam-route-identity.test.ts",
   "frontend/components/dam/shell/AppSidebar.tsx",
   "frontend/components/dam/shell/damShellNav.ts",
+  "frontend/lib/dam/enterprise-route-surface.json",
   "frontend/components/GuidePage.tsx",
   "frontend/components/dam/enterprise/LibraryPage.tsx",
   "frontend/components/dam/enterprise/EnterpriseShared.tsx",
@@ -142,6 +143,8 @@ expectFail("my-tasks-help-center-regression", (targetRoot) => {
 expectFail("requests-nav-href-regression", (targetRoot) => {
   const file = "frontend/components/dam/shell/damShellNav.ts";
   write(targetRoot, file, read(targetRoot, file).replace('href: "/requests"', 'href: "/help#request-review"'));
+  const routeSurface = "frontend/lib/dam/enterprise-route-surface.json";
+  write(targetRoot, routeSurface, read(targetRoot, routeSurface).replace('"href": "/requests"', '"href": "/help#request-review"'));
 });
 
 expectFail("active-route-helper-regression", (targetRoot) => {

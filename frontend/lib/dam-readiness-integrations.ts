@@ -1,4 +1,5 @@
 import { auditLogDiagnostics } from "@/lib/audit-log";
+import { betaAuthEnabled, betaChurchInviteCodeDiagnostics } from "@/lib/beta-auth";
 import { betaFeedbackDiagnostics } from "@/lib/beta-feedback";
 import {
   brandKitCollectionId,
@@ -40,6 +41,7 @@ export function buildIntegrationReadiness({
   const feedback = betaFeedbackDiagnostics();
   const packages = packageDraftDiagnostics();
   const savedSearches = savedSearchDiagnostics();
+  const inviteCodes = betaChurchInviteCodeDiagnostics();
   const writebackFieldMap = resourceSpaceWritebackFieldMapDiagnostics();
   const runtimeStore = runtimeStoreDiagnostics();
   const derivativeIndex = derivativeIndexDiagnostics();
@@ -138,6 +140,18 @@ export function buildIntegrationReadiness({
       detail: ssoConfigured && trustedSsoHeadersEnabled()
         ? "Trusted-header SSO shim is enabled. Production still needs real IdP header/group claim verification."
         : "SSO-ready shim is implemented, but local role selection remains beta fallback until trusted IdP headers are enabled."
+    },
+    {
+      id: "church-invite-codes",
+      label: "Church invite codes configured",
+      ready: !betaAuthEnabled() || inviteCodes.configured,
+      owner: "DAM Admin",
+      state: !betaAuthEnabled() ? "Pending setup" : inviteCodes.configured ? "Operational" : "Blocked",
+      detail: betaAuthEnabled()
+        ? inviteCodes.configured
+          ? `${inviteCodes.locationCount.toLocaleString()} church/location entr${inviteCodes.locationCount === 1 ? "y" : "ies"} configured for beta invite checks. Raw code values are never shown.`
+          : "Beta auth is enabled, but no church/location invite code entries are configured for Contributor, Reviewer, or DAM Admin login."
+        : "Beta auth is not enabled in this runtime. Configure beta auth and church/location invite entries before real team login."
     },
     {
       id: "role-gates",

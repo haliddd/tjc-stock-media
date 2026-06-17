@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-06-16T16:43:07.114Z",
+  "checkedAt": "2026-06-17T07:47:09.105Z",
   "viewports": [
     1440,
     1280,
@@ -57,78 +57,24 @@
     "recent-uploads-mobile-320.png",
     "recent-uploads-mobile-390.png"
   ],
-  "consoleErrors": [],
+  "consoleErrors": [
+    {
+      "role": "Contributor",
+      "width": 1440,
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "role": "Viewer",
+      "width": 1440,
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "role": "Viewer",
+      "width": 1440,
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    }
+  ],
   "expectedDeniedConsole": [
-    {
-      "role": "Viewer",
-      "width": 1440,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 1440,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 1280,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 1280,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 1024,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 1024,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 768,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 768,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 390,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 390,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 320,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 320,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 1440,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
-    {
-      "role": "Viewer",
-      "width": 1440,
-      "text": "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-    },
     {
       "role": "Viewer",
       "width": 1440,
@@ -137,5 +83,8 @@
   ],
   "networkFailures": [],
   "warnings": [],
-  "failures": []
+  "failures": [
+    "blocked approved download browser fetch status 503",
+    "unsafe download browser fetch status 503"
+  ]
 }

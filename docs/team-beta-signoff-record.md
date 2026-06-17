@@ -1,6 +1,6 @@
 # Team Beta Signoff Record
 
-Last updated: 2026-06-15
+Last updated: 2026-06-17
 
 Use this file as the human-owned record before sending any teammate invite links. The current default is **NO-GO**. Change the decision to GO only after every required gate below has an owner, timestamp, evidence, and decision.
 
@@ -10,19 +10,19 @@ This record does not approve production launch, public sharing, live ResourceSpa
 
 Decision: NO-GO
 
-Decision timestamp: 2026-06-15T07:29:52Z
+Decision timestamp: 2026-06-17T19:29:57Z
 
-Decision owner: Codex safety evidence update, pending Hali + Enoch renewed approval
+Decision owner: Codex recovery execution update, pending Hali + Enoch renewed approval
 
-Decision notes: June 15 P0 query-role fix is locally proven, but hosted teammate invites remain blocked until canonical deployment, hosted authenticated protection, ResourceSpace scope, Google Drive custody, durable/fail-closed hosted state, and renewed tester approval are proven. Prior June 11 tiny Team Beta approval is superseded for send/invite decisions.
+Decision notes: June 17 local route/auth smoke improved, and hosted/current plus real beta-session auth now pass after production deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND`. Latest browser QA remains red on download audit probes that fail closed without durable runtime storage. Hosted feedback persistence and blocked-download fail-closed behavior pass. Hosted content remains demo fallback, not the expected real beta content, so Joanna/team invites remain blocked until real content is configured or Hali explicitly scopes Joanna to demo-fallback workflow testing only. Prior June 11 tiny Team Beta approval is superseded for send/invite decisions.
 
 ## Required Gates
 
 | Gate | Owner | Timestamp | Evidence | Decision | Notes |
 |---|---|---|---|---|---|
 | Seed/media safety | Enoch Liu primary; Hali Ding backup | 2026-06-11T21:36:44Z; renewed proof still required after June 15 P0 | Historical preview-only owner values exist, but June 15 packet still needs renewed seed/media approval before any hosted invite. | NO-GO pending renewed approval | No public reuse or download approval. Official TJC websites are the authority source for doctrine, hymn, RE/minors, testimony, and taxonomy gates. |
-| Access/private URL | Enoch Liu | 2026-06-11T21:36:44Z; renewed proof still required after June 15 P0 | Historical six-tester list exists, but canonical deployment/protection and invite approval are not current. | NO-GO pending canonical hosted proof | Stakeholders/supervisors: Jackie, Alan, Joanna, Richard. |
-| Hosted env/writeback | Hali Ding | 2026-06-11T21:36:44Z; renewed proof still required after June 15 P0 | Historical values exist; June 15 run did not verify Vercel env, durable state, authenticated hosted redaction/download, or hosted writeback behavior. | NO-GO pending hosted proof | No secrets or full env dumps recorded. Live ResourceSpace writeback is not approved. |
+| Access/private URL | Enoch Liu | 2026-06-17T20:04:00Z; renewed owner proof still required | Stable URL is current/protected and real beta-session auth passed for Viewer, Contributor, Reviewer, and DAM Admin. Named tester list and invite send approval are still not renewed. | NO-GO pending renewed owner approval | Stakeholders/supervisors: Jackie, Alan, Joanna, Richard. Credentials live in Vercel env and `.runtime/beta-credentials-2026-06-17.env`, not Git/docs/logs/chat. |
+| Hosted env/writeback | Hali Ding | 2026-06-17T20:04:00Z; renewed owner proof still required | Hosted current marker passes. Hosted feedback persistence/Admin visibility passes. Hosted blocked download fails closed with `503 audit-required`. Hosted content source is demo fallback, and upload/review persistence against real beta content remains unproven. | NO-GO pending real content source or explicit demo-fallback scope | No secrets or full env dumps recorded. Live ResourceSpace writeback is not approved. Recommended recovery default keeps hosted downloads fail-closed for Joanna. |
 | Feedback triage | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z; renewed assignment still required before invite | Historical triage assignment exists, but no June 15 send window or renewed tester approval exists. | NO-GO pending renewed approval | Next-batch review happens only after a renewed approved first invite. |
 | Stop-test response | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z; renewed assignment still required before invite | Stop-test rule exists, but hosted invite is blocked until current P0 and external evidence gates close. | NO-GO pending renewed approval | P0 stops active testing. |
 
@@ -50,17 +50,17 @@ Research-authority response captured: official TJC websites are the authority so
 
 ## Final Send Approval
 
-Do not fill as GO until June 15 evidence blockers close and Hali renews approval. Current record remains NO-GO:
+Do not fill as GO until June 17 hosted/current beta gates close and Hali renews approval. Current record remains NO-GO:
 
 ```text
 Final decision: NO-GO
 Decision owner: Codex safety evidence update, pending Hali + Enoch renewed approval
-Decision timestamp: 2026-06-15T07:29:52Z
+Decision timestamp: 2026-06-17T19:29:57Z
 Named tester count: pending renewed Hali confirmation; historical list had 6
 Named testers: pending renewed Hali confirmation; historical list was Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang
 Roles assigned: pending renewed Hali confirmation; historical QA roles included Viewer, Contributor, Reviewer, and DAM Admin as needed for assigned beta tasks
 Invite copy source: docs/team-beta-internal-test-packet.md
-Stable URL only confirmed: No - canonical deployment and hosted env proof remain blocked
+Stable URL only confirmed: Yes - stable URL is protected and exposes the June 17+ build marker
 Preview URL sharing blocked: Yes
 Stop-test rule included: Yes
 Feedback watch window: pending renewed invite decision; proposed first 24 hours after invite
@@ -113,4 +113,4 @@ Next-batch review time:
 Final decision: <GO or NO-GO>
 ```
 
-Current status: **NO-GO for teammate invite batch until June 15 evidence blockers close.**
+Current status: **NO-GO for teammate invite batch until June 17 hosted/current beta gates close.**

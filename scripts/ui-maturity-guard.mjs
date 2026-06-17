@@ -179,6 +179,8 @@ const routeIdentitySpecs = [
 ];
 
 const nav = read("frontend/components/dam/shell/damShellNav.ts");
+const navSurface = read("frontend/lib/dam/enterprise-route-surface.json");
+const navTruth = `${nav || ""}\n${navSurface || ""}`;
 const sidebar = read("frontend/components/dam/shell/AppSidebar.tsx");
 const routeIdentity = read("frontend/lib/dam-route-identity.ts");
 const routeIdentityTest = read("frontend/lib/dam-route-identity.test.ts");
@@ -244,7 +246,10 @@ for (const spec of routeIdentitySpecs) {
     }
     if (component.includes(spec.forbiddenH1)) failures.push(`${spec.componentFile} must not masquerade as ${spec.forbiddenH1}`);
   }
-  if (nav && !nav.includes(spec.navHref)) failures.push(`DAM shell nav missing ${spec.label} canonical href ${spec.navHref}`);
+  const navHrefJson = spec.navHref.replace("href: ", '"href": ');
+  if (navTruth && !navTruth.includes(spec.navHref) && !navTruth.includes(navHrefJson)) {
+    failures.push(`DAM shell nav missing ${spec.label} canonical href ${spec.navHref}`);
+  }
 }
 
 if (failures.length) {

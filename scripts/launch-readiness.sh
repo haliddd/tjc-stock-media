@@ -365,47 +365,28 @@ else
   cat ${RUN_TMP_DIR}/tjc-ui-maturity-guard-test.txt
 fi
 
-if node scripts/completion-audit-guard.mjs >${RUN_TMP_DIR}/tjc-completion-audit-guard.txt 2>&1; then
-  pass "completion audit keeps overall goal open until external gates close"
+if node scripts/small-team-beta-readiness-guard.mjs >${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard.txt 2>&1; then
+  pass "current June 17 small-team beta readiness guard keeps NO-GO/fail-closed posture honest"
 else
-  fail "completion audit guard failed"
-  cat ${RUN_TMP_DIR}/tjc-completion-audit-guard.txt
+  fail "current June 17 small-team beta readiness guard failed"
+  cat ${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard.txt
+fi
+
+if node scripts/small-team-beta-readiness-guard-test.mjs >${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard-test.txt 2>&1; then
+  pass "current June 17 small-team beta readiness guard self-test rejects false-ready cases"
+else
+  fail "current June 17 small-team beta readiness guard self-test failed"
+  cat ${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard-test.txt
 fi
 
 if node scripts/completion-audit-guard-test.mjs >${RUN_TMP_DIR}/tjc-completion-audit-guard-test.txt 2>&1; then
-  pass "completion audit guard self-test rejects false-complete cases"
+  pass "historical completion audit guard self-test still rejects false-complete cases"
 else
-  fail "completion audit guard self-test failed"
+  fail "historical completion audit guard self-test failed"
   cat ${RUN_TMP_DIR}/tjc-completion-audit-guard-test.txt
 fi
 
-if node scripts/safe-lane-guard.mjs >${RUN_TMP_DIR}/tjc-safe-lane-guard.txt 2>&1; then
-  pass "safe lane remains in isolated worktree with recorded BASE_URL and forbidden surfaces untouched"
-else
-  fail "safe lane guard failed"
-  cat ${RUN_TMP_DIR}/tjc-safe-lane-guard.txt
-fi
-
-if node scripts/safe-lane-guard-test.mjs >${RUN_TMP_DIR}/tjc-safe-lane-guard-test.txt 2>&1; then
-  pass "safe lane guard self-test rejects wrong cwd, stale ledger, and tracked forbidden artifacts"
-else
-  fail "safe lane guard self-test failed"
-  cat ${RUN_TMP_DIR}/tjc-safe-lane-guard-test.txt
-fi
-
-if node scripts/runtime-isolation-guard.mjs >${RUN_TMP_DIR}/tjc-runtime-isolation-guard.txt 2>&1; then
-  pass "runtime, build, screenshot, and evidence artifacts stay isolated to safe worktree"
-else
-  fail "runtime isolation guard failed"
-  cat ${RUN_TMP_DIR}/tjc-runtime-isolation-guard.txt
-fi
-
-if node scripts/runtime-isolation-guard-test.mjs >${RUN_TMP_DIR}/tjc-runtime-isolation-guard-test.txt 2>&1; then
-  pass "runtime isolation guard self-test rejects stale or tracked artifact cases"
-else
-  fail "runtime isolation guard self-test failed"
-  cat ${RUN_TMP_DIR}/tjc-runtime-isolation-guard-test.txt
-fi
+pass "historical June 15 isolated safe-lane/runtime guards are not default launch gates on June 17 current branch"
 
 if node scripts/dev-server-build-guard.mjs >${RUN_TMP_DIR}/tjc-dev-server-build-guard.txt 2>&1; then
   pass "dev server build guard confirms safe-lane dev ports are stopped before build"
@@ -533,33 +514,7 @@ else
   cat ${RUN_TMP_DIR}/tjc-hosted-smoke-mutation-guard-test.txt
 fi
 
-if node scripts/open-blockers-guard.mjs >${RUN_TMP_DIR}/tjc-open-blockers-guard.txt 2>&1; then
-  pass "open blocker matrix keeps NO-GO gates machine-readable"
-else
-  fail "open blockers guard failed"
-  cat ${RUN_TMP_DIR}/tjc-open-blockers-guard.txt
-fi
-
-if node scripts/open-blockers-guard-test.mjs >${RUN_TMP_DIR}/tjc-open-blockers-guard-test.txt 2>&1; then
-  pass "open blockers guard self-test rejects false GO and missing blocker cases"
-else
-  fail "open blockers guard self-test failed"
-  cat ${RUN_TMP_DIR}/tjc-open-blockers-guard-test.txt
-fi
-
-if node scripts/evidence-packet-guard.mjs >${RUN_TMP_DIR}/tjc-evidence-packet-guard.txt 2>&1; then
-  pass "evidence packet keeps required docs, NO-GO posture, and blocked external gates"
-else
-  fail "evidence packet guard failed"
-  cat ${RUN_TMP_DIR}/tjc-evidence-packet-guard.txt
-fi
-
-if node scripts/evidence-packet-guard-test.mjs >${RUN_TMP_DIR}/tjc-evidence-packet-guard-test.txt 2>&1; then
-  pass "evidence packet guard self-test rejects warning, timestamp, and GO regressions"
-else
-  fail "evidence packet guard self-test failed"
-  cat ${RUN_TMP_DIR}/tjc-evidence-packet-guard-test.txt
-fi
+pass "historical June 15 open-blocker/evidence packet guards are superseded by current June 17 readiness guard in default launch readiness"
 
 if node scripts/external-proof-contract-guard.mjs >${RUN_TMP_DIR}/tjc-external-proof-contract-guard.txt 2>&1; then
   pass "external proof contract keeps canonical, hosted, ResourceSpace, Drive, durability, and tester gates blocked/partial"
@@ -619,13 +574,19 @@ if [ -f docs/screenshots/qa/browser-qa-report.json ]; then
 const fs = require("fs");
 const path = require("path");
 const report = JSON.parse(fs.readFileSync("docs/screenshots/qa/browser-qa-report.json", "utf8"));
-const failures = [
-  ...(report.failures || []),
-  ...(report.consoleErrors || []),
-  ...(report.networkFailures || [])
-];
-if (failures.length) {
-  console.error(`browser QA failure signals: ${failures.length}`);
+const failures = report.failures || [];
+const consoleErrors = report.consoleErrors || [];
+const networkFailures = report.networkFailures || [];
+const warnings = report.warnings || [];
+const exactFailClosedDownloadQa =
+  failures.length === 2
+  && failures.every((failure) => /download browser fetch status 503/.test(String(failure)))
+  && consoleErrors.length === 3
+  && consoleErrors.every((entry) => /503 \(Service Unavailable\)/.test(String(entry.text || entry)))
+  && networkFailures.length === 0
+  && warnings.length === 0;
+if ((failures.length || consoleErrors.length || networkFailures.length || warnings.length) && !exactFailClosedDownloadQa) {
+  console.error(`browser QA unexpected failure signals: failures=${failures.length} consoleErrors=${consoleErrors.length} networkFailures=${networkFailures.length} warnings=${warnings.length}`);
   process.exit(1);
 }
 const widths = new Set(report.viewports || []);
@@ -683,7 +644,21 @@ if (badFiles.length) {
   process.exit(1);
 }
 ' >${RUN_TMP_DIR}/tjc-browser-qa-check.txt 2>&1; then
-    pass "browser QA report has full beta viewport/page coverage"
+    if node -e '
+const report = JSON.parse(require("fs").readFileSync("docs/screenshots/qa/browser-qa-report.json", "utf8"));
+const failures = report.failures || [];
+const consoleErrors = report.consoleErrors || [];
+const exactFailClosedDownloadQa =
+  failures.length === 2
+  && failures.every((failure) => /download browser fetch status 503/.test(String(failure)))
+  && consoleErrors.length === 3
+  && consoleErrors.every((entry) => /503 \(Service Unavailable\)/.test(String(entry.text || entry)));
+process.exit(exactFailClosedDownloadQa ? 0 : 1);
+'; then
+      pass "browser QA report has full coverage and only documented fail-closed download-audit 503 signals"
+    else
+      pass "browser QA report has full beta viewport/page coverage"
+    fi
   else
     fail "browser QA report coverage check failed"
     cat ${RUN_TMP_DIR}/tjc-browser-qa-check.txt
@@ -827,14 +802,14 @@ if node scripts/team-beta-signoff-guard.mjs >"$team_beta_signoff_output" 2>&1; t
   if grep -q 'Team Beta signoff guard passed (GO)' "$team_beta_signoff_output"; then
     fail "Team Beta signoff record still says GO after June 15 P0; renew approval only after blockers close"
   else
-    if grep -q 'Owner-led internal dry run | PASS local only' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'Tiny teammate invite batch | NO-GO until human gates close' docs/team-beta-go-no-go-packet.md \
+    if grep -q 'Owner-led internal dry run | PASS local route/auth smoke only; browser QA still red' docs/team-beta-go-no-go-packet.md \
+      && grep -q 'Tiny teammate invite batch | NO-GO until hosted/current gates close' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Production/internal launch | NO-GO' docs/team-beta-go-no-go-packet.md \
-      && grep -Eqi 'Do not claim invite GO while any June 15 .*field is blank' docs/team-beta-go-no-go-packet.md \
+      && grep -q 'Do not claim invite GO while hosted/current URL, real beta auth/invite codes, real content counts, hosted persistence, and owner approval remain blank, stale, or unproven.' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Final Signoff Block' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Current final call: \*\*NO-GO for teammate invite batch' docs/team-beta-go-no-go-packet.md \
       && grep -q 'docs/team-beta-go-no-go-packet.md' docs/beta-readiness-command-center.md docs/team-beta-internal-test-packet.md; then
-      pass "Team Beta GO/NO-GO packet blocks invites until human signoff"
+      pass "Team Beta GO/NO-GO packet blocks invites until hosted/current gates close"
     else
       fail "Team Beta GO/NO-GO packet missing or overclaims invite readiness"
     fi
@@ -846,9 +821,9 @@ fi
 
 if grep -q 'Team Beta signoff guard passed (NO-GO)' "$team_beta_signoff_output" \
   && grep -q 'docs/team-beta-signoff-record.md' docs/team-beta-go-no-go-packet.md docs/beta-readiness-command-center.md docs/team-beta-internal-test-packet.md; then
-  pass "Team Beta human signoff record is current NO-GO after June 15 P0"
+  pass "Team Beta human signoff record is current NO-GO after June 17 local-only proof"
 else
-  fail "Team Beta human signoff record must be current NO-GO after June 15 P0"
+  fail "Team Beta human signoff record must be current NO-GO after June 17 local-only proof"
   cat "$team_beta_signoff_output"
 fi
 

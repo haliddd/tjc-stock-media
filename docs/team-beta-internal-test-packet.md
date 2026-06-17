@@ -1,16 +1,18 @@
 # Team Beta Internal Tester Packet
 
-Last updated: 2026-06-15
+Last updated: 2026-06-17
 
-## June 15 Safety Override
+## June 17 Safety Override
 
-Current status: **NO-GO for sending teammate invites.** Use this packet as a draft only until `docs/runs/evidence/2026-06-15/11-friday-readiness-report.md` blockers close and Hali renews approval.
+Current status: **small-team beta not ready, NO-GO for sending teammate invites.** Use this packet as a draft only until production-mode browser QA download failures are explicitly accepted as hosted fail-closed or durable storage is proven, hosted/current access exposes the June 17+ build marker, real login/invite codes work, real content counts are verified, hosted runtime boundaries are documented, and owner approval is renewed.
 
-Reason: June 15 local proof fixed a P0 query-role elevation class, but hosted authenticated protection, canonical deployment, ResourceSpace scope, Google Drive custody, durable/fail-closed hosted state, and renewed tester approval remain unresolved.
+Reason: June 17 local proof improved route surface, invite smoke, and download-ticket safety, but latest production-mode browser QA is red on download audit fail-closed probes. Hosted protection was rechecked read-only, but `/api/beta-auth/session` did not expose the June 17+ build marker. Real team auth, the expected 181 approved photos plus remaining pending/unapproved content, and hosted persistence/fail-closed instructions remain unresolved.
 
 Do not send hosted `?role=` links. Query roles are not authority. Hosted beta must use `/beta-login` or trusted SSO after approval. `portal-hosted-smoke` is mutating and requires `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` plus `PORTAL_HOSTED_SMOKE_APPROVED_BY`; use `portal-hosted-readonly-probe` for non-mutating hosted checks.
 
 Use this packet only after the pre-send gates below are renewed and signed. This is a draft packet for a tiny internal Team Beta workflow test of the TJC internal DAM portal. It is not approval for production launch, public sharing, source media changes, live ResourceSpace writeback, public downloads, or broad archive reuse.
+
+Latest local evidence: `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md`.
 
 Internal beta access update: when `BETA_AUTH_ENABLED=true`, testers must use `/beta-login` and the assigned persona password from Vercel env vars. Role-query URLs are legacy QA shortcuts for beta-off/local rehearsals only and must not be sent as hosted access.
 
@@ -39,7 +41,7 @@ Supporting docs:
 
 Packet status: draft / blocked after June 15 P0.
 
-Invite status: NO-GO until hosted/canonical/custody/durable gates close and Hali renews tester approval.
+Invite status: NO-GO until hosted/current, auth/invite, custody/content, persistence/fail-closed, and owner signoff gates close.
 
 Mature DAM beta boundaries after Phases 0-7:
 
@@ -47,7 +49,7 @@ Mature DAM beta boundaries after Phases 0-7:
 - Google Shared Drive remains master-original custody.
 - Approved folders, approved copies, packages, saved views, and collections are delivery/readiness workflows, not permission truth.
 - Viewer and Contributor paths must not expose originals, source paths, master paths, checksums, signed URLs, ResourceSpace internals, reviewer evidence, or private notes.
-- Viewer downloads are approved-copy gated only. Original/master access remains a separate request-only workflow and is not enabled by this beta.
+- Viewer downloads are approved-copy gated only. For the recommended Joanna recovery path, hosted downloads are intentionally disabled/fail-closed unless Hali separately approves and proves durable hosted audit/ticket storage. Original/master access remains a separate request-only workflow and is not enabled by this beta.
 - Metrics, readiness, audit, package, and usage summaries are diagnostics/accountability evidence only. They do not approve rights, consent, doctrine, minors, hymn/music, public use, or portal readiness.
 - AI/smart suggestions are review debt. Humans approve rights, consent, people/minors, doctrine/sacrament, hymn/music clearance, sensitivity, and public reuse.
 - Brandfolder-inspired search, collections, packages, and saved views are translated into governed TJC workflows: route to review, explain blockers, and never bypass per-asset review.

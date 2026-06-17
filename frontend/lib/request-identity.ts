@@ -107,6 +107,12 @@ export function resolveClientRoleOverride(
     return { ...base, ignored: true, reasonCode: "production-client-role-ignored" };
   }
   if (trustedSsoHeadersEnabled()) {
+    if (options.overridePolicy === "download-gate") {
+      const trustedRole = trustedRoleFromHeaders(request.headers) || "Viewer";
+      if (!isKnownRole(requestedRole) || requestedRole !== trustedRole) {
+        return { ...base, denied: true, reasonCode: "client-role-disabled" };
+      }
+    }
     return { ...base, ignored: true, reasonCode: "trusted-sso-authoritative" };
   }
 

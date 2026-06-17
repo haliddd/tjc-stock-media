@@ -45,12 +45,27 @@ async function probe({ id, method, path: routePath }) {
     const contentType = response.headers.get("content-type") || "";
     const body = method === "HEAD" ? "" : await response.text();
     let jsonKeys = [];
+    let buildContract = null;
+    let buildCommitShort = null;
+    let routeSurface = null;
     let contentShape = "non-json";
     try {
       const parsed = JSON.parse(body);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         jsonKeys = Object.keys(parsed).sort().slice(0, 20);
         contentShape = "json-object";
+        if (parsed.build && typeof parsed.build === "object" && !Array.isArray(parsed.build)) {
+          buildContract = typeof parsed.build.readinessContract === "string" ? parsed.build.readinessContract.slice(0, 80) : null;
+          buildCommitShort = typeof parsed.build.commitShort === "string" ? parsed.build.commitShort.slice(0, 40) : null;
+          routeSurface = parsed.build.routeSurface && typeof parsed.build.routeSurface === "object" && !Array.isArray(parsed.build.routeSurface)
+            ? {
+                routeCount: Number.isFinite(parsed.build.routeSurface.routeCount) ? parsed.build.routeSurface.routeCount : null,
+                navItemCount: Number.isFinite(parsed.build.routeSurface.navItemCount) ? parsed.build.routeSurface.navItemCount : null,
+                homePage: typeof parsed.build.routeSurface.homePage === "string" ? parsed.build.routeSurface.homePage.slice(0, 80) : null,
+                uploadPage: typeof parsed.build.routeSurface.uploadPage === "string" ? parsed.build.routeSurface.uploadPage.slice(0, 80) : null
+              }
+            : null;
+        }
       } else if (Array.isArray(parsed)) {
         contentShape = "json-array";
       }
@@ -73,6 +88,9 @@ async function probe({ id, method, path: routePath }) {
       bodyBytes: Buffer.byteLength(body),
       contentShape,
       jsonKeys,
+      buildContract,
+      buildCommitShort,
+      routeSurface,
       forbiddenPatternFound,
       adminShapeFound,
       reviewShapeFound,

@@ -55,6 +55,9 @@ portal_smoke_http_code_with_role() {
       -H "x-tjc-local-beta-role: $trusted_role"
       -H "x-tjc-role: $trusted_role"
       -H "x-auth-request-email: $(portal_smoke_trusted_email "$trusted_role")"
+      -H "cf-access-jwt-assertion: portal-smoke-placeholder-token"
+      -H "cf-access-authenticated-user-email: $(portal_smoke_trusted_email "$trusted_role")"
+      -H "cf-access-groups: $trusted_role"
       "${curl_args[@]}"
     )
   fi

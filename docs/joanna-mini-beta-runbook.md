@@ -1,6 +1,29 @@
 # Joanna Mini Beta Runbook
 
-Status: beta ready with limitations pending hosted role confirmation.
+Status: small-team beta not ready; hosted/team beta remains NO-GO until production-mode browser QA/download audit behavior is explicitly accepted as hosted fail-closed or durable storage is proven, current hosted URL exposes the June 17+ build marker, real login/invite codes work, real content counts are verified, and durable hosted runtime state or fail-closed tester instructions are documented.
+
+## June 17 Override
+
+Latest local proof is `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md`.
+
+- Local trusted-header route/browser-surface smoke passed on `http://localhost:4871`.
+- Local route, upload, review, library, download-ticket, invite-smoke, typecheck, tests, and build passed.
+- Latest production-mode local browser QA report is red on 2 download audit probes because audit writes fail closed without durable runtime storage.
+- Hosted protected URL was rechecked read-only on 2026-06-17, but `/api/beta-auth/session` did not expose the June 17 build readiness contract, so hosted/current proof failed.
+- Real beta login/invite-code flow was not proven without trusted headers.
+- Real expected content counts, including 181 approved photos plus pending/unapproved media, were not proven.
+- Hosted runtime persistence was not proven.
+
+June 17 16:04 EDT update:
+
+- Hosted/current proof now passes after Vercel production deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND`.
+- Real beta-session login now passes for Viewer, Contributor, Reviewer, and DAM Admin. Contributor and above use the church/location invite-code path.
+- Private owner credential handoff is `.runtime/beta-credentials-2026-06-17.env`; do not commit or paste those values.
+- Hosted feedback persistence/Admin visibility passes.
+- Hosted blocked download fails closed with `503 audit-required`; this is the intended Joanna default unless durable audit/ticket storage is later approved and proven.
+- Hosted content remains demo fallback: 16 total records, 12 raw approved, 2 needs review, 1 archive, 1 portal ready. This is not the expected 181 approved photos plus pending/unapproved beta content.
+
+Do not send Joanna or team invites from this runbook until those hosted gates are renewed.
 
 ## Scope
 
@@ -11,16 +34,18 @@ Photo-only Joanna mini beta. Not public launch. Not broad internal beta. Not ful
 - Candidate hosted URL: `https://tjc-stock-media.vercel.app`
 - Selected no-cash path: existing protected Vercel portal.
 - Cost dependency: existing/free unless Hali changes hosting. No paid VM, DNS, or ResourceSpace Cloud action approved.
-- Current caveat: hosted URL is not proven to contain the newest local portal changes. Redeploy before sharing with Joanna.
+- Current caveat: hosted URL is protected and current, but hosted content source is demo fallback rather than the expected real beta content.
 - Hosted approved-copy downloads require durable audit/ticket storage. Without that storage, production download fails closed with `audit-required`.
+- Recovery default: hosted downloads stay intentionally disabled/fail-closed for Joanna unless Hali approves durable hosted storage and the hosted download-ticket smoke passes. Tester instructions must call this out plainly.
 
 ## Local Start
 
 ```bash
-npm --prefix frontend run dev -- -H 127.0.0.1 -p 4867
+cd frontend
+SSO_TRUSTED_HEADERS=1 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=0 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=0 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0 npm run dev
 ```
 
-Then open `http://localhost:4867`.
+Then open `http://localhost:4871` unless a run-specific command says otherwise.
 
 Local dev mode allows `.runtime/` audit/ticket writes for private beta testing. Use this for download workflow proof.
 
@@ -30,7 +55,7 @@ Local dev mode allows `.runtime/` audit/ticket writes for private beta testing. 
 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=1 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=1 npm --prefix frontend run start -- --port 4869 --hostname 127.0.0.1
 ```
 
-Then open `http://127.0.0.1:4869`.
+Then open the port chosen by the run-specific command.
 
 Production mode blocks local filesystem stateful writes unless durable runtime storage is configured. Browse/search/detail should work; download ticket mint/consume will fail closed without durable audit/ticket storage.
 
@@ -100,7 +125,7 @@ Contributor/reviewer/admin access must come from protected beta auth or trusted 
 Invite code config uses a JSON map:
 
 ```bash
-BETA_CHURCH_INVITE_CODES_JSON='{"Queens NY":"private-code","Brooklyn NY":"private-code"}'
+BETA_CHURCH_INVITE_CODES_JSON='{"Queens NY":"<QUEENS_INVITE_CODE>","Brooklyn NY":"<BROOKLYN_INVITE_CODE>"}'
 ```
 
 Do not commit real invite codes.

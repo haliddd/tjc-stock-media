@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-06-17T23:54:18.078Z",
+  "checkedAt": "2026-06-17T19:58:58.758Z",
   "base": "https://tjc-stock-media.vercel.app",
   "note": "Read-only hosted probes only. No POST, no hosted writeback, no env mutation, no raw bodies or headers stored.",
   "results": [

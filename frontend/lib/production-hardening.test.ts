@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { BETA_SESSION_ROLE_HEADER, BETA_SESSION_VERIFIED_HEADER } from "@/lib/beta-auth";
+import { decideAccess } from "@/lib/access-decisions";
 import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
 import { durableRuntimeStoreConfigured } from "@/lib/env";
@@ -138,6 +139,34 @@ describe("production identity guard", () => {
     expect(identity.sourceSystem).toBe("sso");
   });
 
+  it("denies mismatched download-gate client role overrides in trusted-header mode", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    process.env.SSO_TRUSTED_HEADERS = "1";
+    process.env.DOWNLOAD_GATE_ALLOW_DEMO_ROLES = "0";
+
+    const spoofed = nextRequest("http://localhost:4871/api/download/367");
+    spoofed.headers.set("x-tjc-role", "Viewer");
+    const denied = resolveClientRoleOverride(spoofed, {
+      explicitRole: "Reviewer",
+      overridePolicy: "download-gate",
+      overrideSource: "body"
+    });
+
+    const matching = nextRequest("http://localhost:4871/api/download/367?role=Reviewer");
+    matching.headers.set("x-tjc-role", "Reviewer");
+    const ignored = resolveClientRoleOverride(matching, {
+      explicitRole: "Reviewer",
+      overridePolicy: "download-gate",
+      overrideSource: "query"
+    });
+
+    expect(denied.denied).toBe(true);
+    expect(denied.reasonCode).toBe("client-role-disabled");
+    expect(ignored.denied).toBe(false);
+    expect(ignored.ignored).toBe(true);
+    expect(ignored.reasonCode).toBe("trusted-sso-authoritative");
+  });
+
   it("ignores generic trusted-header role shims in production without Cloudflare Access proof", () => {
     vi.stubEnv("NODE_ENV", "production");
     process.env.SSO_TRUSTED_HEADERS = "1";
@@ -171,6 +200,28 @@ describe("production identity guard", () => {
     expect(identity.role).toBe("Reviewer");
     expect(identity.email).toBe("reviewer@example.org");
     expect(identity.sourceSystem).toBe("sso");
+  });
+});
+
+describe("normal-role preview safety", () => {
+  it("blocks Viewer thumbnails for non-approved review candidates while keeping Reviewer inspection available", () => {
+    const candidate = approvedAsset({
+      id: "needs-review",
+      status: "Needs Review",
+      usageScope: "Do Not Publish",
+      rightsStatus: "Needs review",
+      consentStatus: "Unknown",
+      reviewer: undefined,
+      reviewedDate: undefined
+    });
+
+    expect(decideAccess("Viewer", "viewThumbnail", candidate)).toMatchObject({
+      allowed: false,
+      label: "Preview restricted"
+    });
+    expect(decideAccess("Reviewer", "viewThumbnail", candidate)).toMatchObject({
+      allowed: true
+    });
   });
 });
 

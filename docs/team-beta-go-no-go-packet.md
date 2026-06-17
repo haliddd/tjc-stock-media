@@ -1,6 +1,6 @@
 # Team Beta GO/NO-GO Packet
 
-Last updated: 2026-06-16
+Last updated: 2026-06-17
 
 Purpose: one canonical decision packet for the TJC Stock Media internal Team Beta test round. This packet is the final place to check whether the current build is ready for owner-led dry run, teammate invite batch, or production launch.
 
@@ -10,8 +10,9 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 
 | Scope | Decision | Reason |
 |---|---|---|
-| Owner-led internal dry run | PASS local only | Isolated local technical and browser evidence is green for the covered beta workflow, but it is not hosted invite approval. |
-| Tiny teammate invite batch | NO-GO until human gates close | June 15 P0 query-role fix is locally proven, but hosted/canonical/ResourceSpace/Drive/durable/tester approval gates remain open. |
+| Owner-led internal dry run | PASS local route/auth smoke only; browser QA still red | June 17 local route, role, upload/review/library, invite, redaction, and tests improved, but latest production-mode browser QA is red on download audit safety probes. This is not hosted invite approval. |
+| Joanna mini beta | NO-GO until hosted/current gates close or Hali explicitly accepts hosted downloads fail-closed | Hosted protection exists, but `/api/beta-auth/session` does not expose the June 17 build marker on the stable URL. Real beta login/invite codes, real content counts, hosted persistence/fail-closed boundary, and renewed owner approval remain open. |
+| Tiny teammate invite batch | NO-GO until hosted/current gates close, Joanna feedback lands, and renewed owner signoff exists | Teammate invites require hosted/current proof, Joanna proof first, named tester list, send owner, stop-test owner, and feedback triage owner. |
 | Production/internal launch | NO-GO | Production SSO, durable storage, live ResourceSpace writeback, full rights review, production delivery, and full archive readiness are not proven. |
 
 ## What Is Ready
@@ -23,7 +24,12 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 | API payload safety | `node scripts/api-payload-guard.mjs` passes. | PASS local |
 | API audit coverage | `node scripts/api-audit-guard.mjs` passes. | PASS local |
 | Storage honesty | `node scripts/storage-honesty-guard.mjs` passes. | PASS local |
-| Browser QA | `docs/screenshots/qa/browser-qa-report.json` covers 20 pages, 6 viewport widths, 32 screenshots, zero failures, zero warnings, zero console errors, and zero network failures. | PASS local |
+| Browser QA | `docs/screenshots/qa/browser-qa-report.json` covers 20 pages, 6 viewport widths, and 32 screenshots. Latest report has 2 failures and 3 console errors, both tied to production-mode download audit writes failing closed with `503 audit-required` when no durable runtime store is configured. | FAIL / safe fail-closed |
+| June 17 readiness pass | `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md` records local route, upload, review, library, invite-smoke, typecheck, test, and build proof. It also records browser QA red on download audit probes. | PARTIAL local / hosted gates open |
+| Hosted current marker | `curl https://tjc-stock-media.vercel.app/api/beta-auth/session` after deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND` returns 401 unauthenticated session JSON with `build.readinessContract: small-team-beta-readiness-2026-06-17`. | PASS hosted/current |
+| Real beta auth/invite | Hosted smoke passed beta-session login for Viewer, Contributor, Reviewer, and DAM Admin. Contributor and above used a church/location invite code. Values stay in Vercel env and `.runtime/beta-credentials-2026-06-17.env`, not Git/docs/logs/chat. | PASS private proof |
+| Hosted content counts | Hosted Reviewer count proof returns demo fallback: 16 total, 12 raw approved, 2 needs review, 1 archive, 1 portal ready. Expected real beta source is 181 approved photos plus pending/unapproved records. | FAIL real content source |
+| Hosted persistence/fail-closed | Hosted feedback POST/Admin visibility passed. Hosted blocked download failed closed with `503 audit-required` and no source/original/private/checksum leak. Upload/review persistence still needs scoped proof against real beta content. | PARTIAL |
 | Local beta rehearsal | `.runtime/beta-rehearsals/20260615T064029Z-43364/summary.json` passes Viewer search/open/download-block/review-block, Reviewer evidence lock, honest queued write, and Admin readiness. | PASS local |
 | Seed/media signoff packet | `docs/team-beta-seed-media-signoff.md` includes counts, sample searches, fail conditions, research-derived categories, and signoff text. | Signed for preview-only tiny internal beta |
 | Hosted access/env packet | `docs/team-beta-hosted-access-proof.md` defines required hosted env, private URL policy, smoke safety, fail conditions, and owner signoff text. | Signed for queued/disabled writeback |
@@ -80,7 +86,11 @@ Use `docs/team-beta-internal-test-packet.md` as the send packet. Keep this frami
 
 ## Verification Commands
 
-June 15 override: current decision is **NO-GO** for hosted teammate invites until `docs/runs/evidence/2026-06-15/11-friday-readiness-report.md` blockers are resolved. Prior GO signoff text below is historical and superseded for send/invite decisions.
+June 17 override: current decision is **Small-team beta not ready**. Production-mode local browser QA is red on download audit safety probes, and hosted teammate invites remain **NO-GO** until hosted/current URL, real beta auth/invite codes, real content counts, hosted persistence or explicit fail-closed hosted download instructions, and owner approval are proven.
+
+Hosted download behavior for this recovery pass: use the conservative default from `docs/runs/pm-no-go-recovery-plan-2026-06-17.md`. Hosted approved-copy downloads stay intentionally fail-closed for Joanna unless Hali separately approves and proves durable audit/ticket storage. No audit-required behavior may be loosened to make tests pass.
+
+June 15 override remains historical context; prior GO signoff text below is superseded for send/invite decisions.
 
 Run these before posting a final send decision:
 
@@ -97,9 +107,9 @@ BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe
 Recommended before widening beyond owner-led dry run:
 
 ```bash
-BASE_URL=http://localhost:4867 make portal-feedback-smoke
-BASE_URL=http://localhost:4867 make portal-beta-rehearsal
-BASE_URL=http://localhost:4867 make portal-browser-qa
+BASE_URL=http://localhost:4871 make portal-feedback-smoke
+BASE_URL=http://localhost:4871 make portal-beta-rehearsal
+BASE_URL=http://localhost:4871 make portal-browser-qa
 ```
 
 Do not run hosted mutating smokes without owner approval. `portal-hosted-smoke` writes beta feedback storage, and `portal-writeback-guard-smoke` posts review decisions.
@@ -107,7 +117,7 @@ Do not run hosted mutating smokes without owner approval. `portal-hosted-smoke` 
 
 ## Final Signoff Block
 
-Do not convert this block to GO or use it for teammate invite send until June 15 evidence blockers close and Hali renews approval. `docs/team-beta-signoff-record.md` is the source of truth:
+Do not convert this block to GO or use it for teammate invite send until June 17 hosted/current beta gates close and Hali renews approval. `docs/team-beta-signoff-record.md` is the source of truth:
 
 ```text
 Decision: NO-GO
@@ -120,20 +130,20 @@ Primary feedback triager: Hali Ding
 Backup feedback triager: Enoch Liu
 Incident lead: Hali Ding primary; Enoch Liu backup
 Named tester list: Jackie Yu, Alan Yu, Enoch Liu, Hali Ding, Joanna Chou, Richard Pang
-Stable URL only confirmed: Yes
+Stable URL only confirmed: Yes - stable URL is protected and exposes the June 17 build marker
 Preview URL sharing blocked: Yes
-Seed/media preview-only visibility approved: Yes
-Hosted writeback disabled/queued confirmed: Yes
+Seed/media preview-only visibility approved: Pending renewed approval
+Hosted writeback disabled/queued confirmed: Yes for env posture; hosted downloads remain fail-closed unless durable audit/ticket storage is configured and proven
 Task Mode and Report issue enabled: Yes
 Download demo-role bypass disabled: Yes
 Stop-test rule sent to testers: Yes
-Feedback watch window: First 24 hours after invite
-Next-batch review time: 24 hours after first invite
+Feedback watch window: Pending renewed invite decision; proposed first 24 hours after invite
+Next-batch review time: Pending renewed invite decision; proposed 24 hours after first invite
 Notes: Tiny internal Team Beta only. Production, public launch, public downloads, broad reuse, live ResourceSpace writeback, deploys, commits, staging, source media mutation, and external communications remain out of scope.
 ```
 
 For fastest completion, use the fast final reply template in `docs/team-beta-signoff-record.md` and keep `docs/team-beta-internal-test-packet.md` as the invite copy source.
 
-Do not claim invite GO while any June 15 hosted/canonical/ResourceSpace/Drive/durable/tester approval field is blank, stale, or unproven.
+Do not claim invite GO while hosted/current URL, real beta auth/invite codes, real content counts, hosted persistence, and owner approval remain blank, stale, or unproven.
 
-Current final call: **NO-GO for teammate invite batch until June 15 evidence blockers close.**
+Current final call: **NO-GO for teammate invite batch until June 17 hosted/current beta gates close.**

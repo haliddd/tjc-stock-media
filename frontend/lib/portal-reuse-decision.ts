@@ -291,8 +291,7 @@ export function canDownloadReuse(asset: StockMediaAsset, role: DemoRole) {
 export function canPreviewAsset(asset: StockMediaAsset, role: DemoRole) {
   const decision = buildReuseDecision(asset);
   if (role === "Reviewer" || role === "DAM Admin") return decision.previewTier !== "no-preview";
-  if (decision.previewTier === "reusable-preview") return true;
-  return decision.previewTier === "candidate-preview";
+  return decision.previewTier === "reusable-preview";
 }
 
 export function decideAccess(role: DemoRole, action: AccessAction, asset?: StockMediaAsset): AccessDecision {

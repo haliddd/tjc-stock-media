@@ -1,19 +1,25 @@
 # Joanna Mini Beta Readiness Report
 
-Date: 2026-06-16
+Date: 2026-06-17
 
 ## Final Decision
 
-Current state is locally ready for Joanna content-manager testing with limitations. The formal final decision is the last line of this report.
+Current state is small-team beta not ready. Production-mode local browser QA is red on approved/unsafe download safety probes because audit writes fail closed without durable runtime state. For this recovery pass, the conservative hosted behavior is to keep approved-copy downloads intentionally fail-closed for Joanna unless Hali separately approves and proves durable audit/ticket storage. It is not real Joanna/team beta readiness until hosted protected URL currency, real login/invite codes, real content counts, and hosted runtime persistence or fail-closed instructions are proven. The formal final decision is the last line of this report.
+
+Latest local evidence: `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md`.
 
 ## Hosted URL Status
 
 - Candidate URL: `https://tjc-stock-media.vercel.app`
-- Hosted read-only probe: PASS at `2026-06-16T19:27:18.842Z`.
+- Historical hosted read-only probe: PASS at `2026-06-16T19:27:18.842Z`.
+- June 17 hosted read-only probe: PASS at `2026-06-17T19:29:57.070Z` for anonymous/query-role protection only.
+- June 17 `/api/beta-auth/session` probe: FAIL current-build proof. Stable URL returned 401 unauthenticated session JSON without the expected `build.readinessContract` marker.
+- June 17 16:04 EDT update: PASS current-build proof after Vercel production deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND`. Stable URL `/api/beta-auth/session` exposes `small-team-beta-readiness-2026-06-17`, commit `63474a70e930`, and Enterprise route surface.
+- June 17 16:04 EDT update: PASS real beta-session smoke for Viewer, Contributor, Reviewer, and DAM Admin using private Vercel env credentials plus church/location invite code. Values are kept out of Git/docs/logs/chat; local owner handoff is `.runtime/beta-credentials-2026-06-17.env`.
 - Anonymous/query-role access redirects to beta login or returns unauthenticated session state.
 - Hosted mutating tests were not run because Hali approval is required.
-- Joanna link should be shared only after Hali confirms hosted role credentials out of band.
-- Hosted URL is not proven to contain the newest local Joanna mini-beta changes, including the LM Photos public-release overlay and download fixes.
+- Hali approved hosted proof work after the first recovery update; hosted feedback smoke was run with explicit approval flag.
+- Hosted URL is now proven current for June 17+ route-surface, invite-readiness, and download-ticket fail-closed hardening.
 
 ## Accounts And Roles
 
@@ -68,7 +74,7 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 - `node scripts/storage-honesty-guard.mjs`: PASS.
 - `BASE_URL=http://localhost:4869 make portal-api-smoke`: PASS.
 - `BASE_URL=http://localhost:4869 make portal-beta-rehearsal`: PASS.
-- `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe`: PASS.
+- `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe`: PASS for read-only protection only.
 - `BASE_URL=http://127.0.0.1:4867 make portal-download-ticket-smoke`: PASS.
 - Vercel production deploy: PASS. Stable alias `https://tjc-stock-media.vercel.app` now points to deployment `dpl_46AGWyuAmR99SLGMnqqv8BdNFWUi` / `https://tjc-stock-media-kvy0s5jvn-hali-s-projects1.vercel.app`, created 2026-06-16 18:55 EDT.
 - Hosted anonymous protection: PASS. Root redirects to beta login; query-role API probes do not expose privileged JSON or secret/source fields.
@@ -77,16 +83,22 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 
 ## Failing Or Limited Checks
 
+- June 17 production-mode local browser QA is red: 2 failures and 3 console errors in `docs/screenshots/qa/browser-qa-report.json`, both tied to download audit writes failing closed with `503 audit-required`.
+- June 17 local invite smoke is green with placeholder codes, but real invite codes were not created or tested.
+- June 17 local content proof used local/export-backed data and fixtures, but the expected 181 approved photos plus pending/unapproved set was not proven on hosted/current.
+- Hosted content proof remains blocked: Reviewer search on hosted returned `sourceAdapter: demo-fallback`, `rawTotal: 16`, `approvedRaw: 12`, `needsReview: 2`, `archive: 1`, and `portalReady: 1`, not the expected 181 approved photos plus pending/unapproved beta content.
+- Hosted runtime persistence is partial: feedback POST/Admin visibility passed, blocked download failed closed with `503 audit-required`, and no source/original/private/checksum leak was found. Hosted upload intake and review decision persistence were not separately proven against real beta content.
+
 - First Vercel deploy attempt failed before release because local artifacts/deps were included in the upload. `.vercelignore` now excludes local build/dependency/runtime/media artifacts; retry succeeded.
 - One Vercel build attempt failed before release because local-only safe-lane disk guard expected a git checkout. The guard now skips only in `VERCEL=1`; local guard self-test passes.
 - `make launch-readiness`: FAIL due stale June 15 broad-beta evidence, open-blocker metadata, missing/old screenshot packet, and external durable-state proof language. This is broader than Joanna mini beta.
 - `BASE_URL=http://127.0.0.1:4869` production-mode download POST/GET fails closed with `503 audit-required` because required audit/ticket writes are blocked without durable runtime storage. This is safe, but hosted production needs a durable runtime store before download can work there.
 - `BASE_URL=http://localhost:4869 make portal-browser-qa`: FAIL after producing 20-page / 6-viewport report. Main failures: clipped collection/package/request controls, normal-user detail copy flagged for operational phrases, viewer upload block expectation mismatch, broken preview images for some thumbnails.
-- Hosted authenticated role-path proof remains blocked until Hali provides usable Viewer/Reviewer/Admin credentials or confirms a private credential handoff path. No hosted upload/review/download mutation was run.
+- Hosted authenticated role-path proof remains blocked until Hali provides usable Viewer/Contributor/Reviewer/Admin credentials and real invite codes privately, or confirms Hali will test those roles first. No hosted upload/review/download mutation was run.
 
 ## What Joanna Can Test
 
-- Open hosted beta login page after Hali provides credentials privately.
+- Open hosted beta login page after Hali confirms the stable URL exposes the June 17+ build marker and provides credentials privately.
 - Browse photo library with LM Photos records mostly public-facing.
 - Search sample photos by Bible, worship, fellowship, flowers, and related terms.
 - Open asset detail and inspect review/rights context.
@@ -94,11 +106,12 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 - Open review queue locally/proven by rehearsal.
 - Approve only with evidence, reject, archive, or flag rights issues.
 - Test status filters using the deterministic 10% holdout across Approved Internal, Needs Review, Searchable Archive, Possible Minors, and Do Not Use.
-- Test local approved-copy download workflow if using local dev server; hosted production download remains blocked until durable runtime storage is configured.
+- Test local approved-copy download workflow if using local dev server; hosted production download remains intentionally blocked for Joanna unless durable audit/ticket storage is configured and proven.
 - Give feedback on fields, upload friction, categories, rights uncertainty, and search quality.
 
 ## Known Limitations
 
+- June 17 final call is local-only. Do not invite Joanna or team testers until hosted/current beta gates are proven.
 - Hosted reviewer/admin login was not exercised because usable persona credentials were not available to this run.
 - Hosted mutating upload/review was not run.
 - Hosted deployment has the newest deploy-package/build fixes and LM Photos runtime overlay code from this working tree, but it is a Vercel CLI deploy of a dirty worktree rather than a clean Git commit deployment.
@@ -109,6 +122,8 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 - Approved derivative download works locally in dev with audit/ticket storage; hosted production download fails closed until durable audit/ticket storage exists.
 - Browser QA shows UI overflow/copy issues that should be fixed before a broader team beta.
 - Hosted durable storage/backup/restore remains unproven.
+
+Final decision: Small-team beta not ready; hosted/team beta NO-GO until real hosted content source is configured or Hali explicitly scopes Joanna to demo-fallback workflow testing only, hosted upload/review persistence boundaries are documented, and owner signoff is renewed.
 
 ## Risk Owners
 
@@ -132,8 +147,9 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 
 ## Hali Decisions Needed
 
-- Provide Viewer, Reviewer/Joanna, and DAM Admin persona credentials privately, or confirm Hali will test those roles first.
-- Decide whether to configure durable hosted runtime storage for audit/tickets so hosted download can work, or keep hosted download blocked for this round.
+- Use `.runtime/beta-credentials-2026-06-17.env` for private owner handoff or rotate credentials in Vercel before sharing with Joanna.
+- Configure real hosted content source, or explicitly decide Joanna is testing demo-fallback workflow only.
+- Confirm conservative recovery default: keep hosted downloads blocked for this Joanna round, or override it by configuring durable hosted runtime storage for audit/tickets and proving hosted download-ticket smoke.
 - Decide whether browser QA overflow/copy failures must block Joanna or can wait until after her content feedback.
 
-Beta ready with limitations
+Current owner-ready answer: NO-GO for Joanna/team invite against real beta content. Recommended next owner decision is either configure the hosted real beta content source, or explicitly run a narrower Joanna workflow test against demo fallback with downloads fail-closed.
