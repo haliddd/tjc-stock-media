@@ -1,4 +1,4 @@
-import { assetRecordRef, assetType, displayTitle, formatBytes, recordIdLabel, sourceLabel } from "@/lib/enterprise-display";
+import { assetRecordRef, assetType, displayTitle, formatBytes, recordIdLabel, sourceTruthLabel } from "@/lib/enterprise-display";
 import type { EnterpriseStatus } from "@/lib/enterprise-status";
 import { assetEnterpriseStatus } from "@/lib/enterprise-status";
 import { metadataValue, rightsRestrictionRows, type MetadataRow } from "@/lib/enterprise-metadata";
@@ -49,14 +49,6 @@ function compactValue(value?: string) {
 
 function safeCollection(asset: StockMediaAsset) {
   return compactValue(asset.collection) || "Media library";
-}
-
-function safeSourceLabel(source?: MediaSourceStatus | null) {
-  const label = sourceLabel(source);
-  if (/fixture|fallback|demo/i.test(label)) return "Local demo data";
-  if (/resourcespace|live dam|dam/i.test(label)) return "Hosted DAM instance";
-  if (/local/i.test(label)) return "Local demo data";
-  return label;
 }
 
 export function betaVisibilityLabel(assetOrAllowed?: StockMediaAsset | boolean | null) {
@@ -113,7 +105,7 @@ export function presentAssetDetailContext(asset: StockMediaAsset, role: DemoRole
   const packet = buildPortalReuseDecision(asset, role);
   const approved = packet.viewerVerdict.canDownload;
   const sourceRows: MetadataRow[] = [
-    ["Record source", safeSourceLabel(source)],
+    ["Record source", sourceTruthLabel(source)],
     ["Collection", metadataValue(safeCollection(asset))],
     [recordIdLabel(source), metadataValue(assetRecordRef(asset))]
   ];
@@ -157,7 +149,8 @@ export function presentReviewContext({
   pendingStatus,
   nextBestAction,
   approvalReady,
-  queueLabel
+  queueLabel,
+  source
 }: {
   asset: StockMediaAsset;
   role: DemoRole;
@@ -166,6 +159,7 @@ export function presentReviewContext({
   nextBestAction: string;
   approvalReady: boolean;
   queueLabel: string;
+  source?: MediaSourceStatus | null;
 }): ReviewPresenter {
   const packet = buildPortalReuseDecision(asset, role);
   const nextAction = pendingStatus
@@ -200,7 +194,7 @@ export function presentReviewContext({
     evidenceTableRows: [
       ["Assigned to", queueLabel, "Current status", currentStatus],
       ["Policy", asset.downloadPolicy || "not-downloadable", "Reuse answer", pendingStatus || reuseAnswerLabel(packet.reuse.state)],
-      ["Source truth", "Hosted DAM instance", "Next action", nextAction]
+      ["Source truth", sourceTruthLabel(source), "Next action", nextAction]
     ]
   };
 }

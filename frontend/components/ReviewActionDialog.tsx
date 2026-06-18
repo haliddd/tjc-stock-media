@@ -13,6 +13,7 @@ type ReviewActionDialogProps = {
   portalReuseState: string;
   blockers: string[];
   checklistSummary: string[];
+  reviewEvidence?: string[];
   note: string;
   sourceReadOnly: boolean;
   submitting?: boolean;
@@ -30,6 +31,7 @@ export function ReviewActionDialog({
   portalReuseState,
   blockers,
   checklistSummary,
+  reviewEvidence = [],
   note,
   sourceReadOnly,
   submitting,
@@ -93,12 +95,15 @@ export function ReviewActionDialog({
           <section className="dam-card p-3" aria-label="Evidence checklist summary">
             <h3 className="text-sm font-semibold text-tjc-evergreen">Evidence confirmed</h3>
             <ul className="mt-2 grid gap-1.5 text-sm text-[#4d554d]">
-              {checklistSummary.map((item) => (
+              {[...checklistSummary, ...reviewEvidence].map((item) => (
                 <li className="flex gap-2" key={item}>
                   <ShieldCheck size={15} strokeWidth={1.8} aria-hidden="true" className="mt-0.5 shrink-0 text-tjc-evergreen" />
                   <span>{item}</span>
                 </li>
               ))}
+              {!checklistSummary.length && !reviewEvidence.length ? (
+                <li className="text-sm font-semibold text-[#725216]">No approval evidence captured yet.</li>
+              ) : null}
             </ul>
           </section>
           <section className="dam-card p-3" aria-label="Current blockers">

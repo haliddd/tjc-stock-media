@@ -10,11 +10,12 @@ import { canUpload } from "@/lib/permissions";
 import { toastDraftSaved, toastUploadComplete, toastUploadFailed, toastUploadStarted } from "@/lib/tjc-toasts";
 import { parseUploadTags, uploadTagSuggestions } from "@/lib/upload-tags";
 import { cn } from "@/lib/ui";
-import { LARGE_MEDIA_BYTES, uploadDefaultState } from "@/lib/workflow-policy";
+import { LARGE_MEDIA_BYTES, uploadBetaBoundaries, uploadDefaultState } from "@/lib/workflow-policy";
 
 type UploadReceipt = {
   status?: string;
   defaultReviewState?: string;
+  defaultUsageScope?: string;
   message?: string;
   eventName?: string;
   fileCount?: number;
@@ -275,9 +276,9 @@ export function UploadPage() {
         <dl className="send-command-ledger" aria-label="Send media safety summary">
           {[
             ["Intake", "Review packet"],
-            ["Media scope", "Image intake"],
+            ["Media scope", "Photos/graphics"],
             ["Default", uploadDefaultState.status],
-            ["Publish", "Never from Send"],
+            ["Gate", uploadBetaBoundaries.defaultState.usage],
             ["Truth", "DAM review"]
           ].map(([label, value]) => (
             <div key={label}>
@@ -322,6 +323,26 @@ export function UploadPage() {
             <strong className="text-tjc-evergreen">{selectedType.label}</strong>
           </div>
           <PacketRequirementPanel typeLabel={selectedType.label} items={packetRequirementItems} />
+          <section className="grid gap-3 rounded-[14px] border border-[#c8d7e6] bg-[#f2f7fb] p-4 text-sm font-semibold text-[#27435b]" aria-label="Beta upload boundaries">
+            <div>
+              <h2 className="text-base font-black text-tjc-ink">Beta intake boundaries</h2>
+              <p className="mt-1 leading-relaxed">Send creates reviewer work only. Browser upload is for photos/light graphics and links. Large media uses the admin intake path.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <strong className="text-xs uppercase tracking-[.08em] text-tjc-evergreen">Allowed</strong>
+                <ul className="mt-2 grid gap-1.5">
+                  {uploadBetaBoundaries.allowed.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
+              <div>
+                <strong className="text-xs uppercase tracking-[.08em] text-[#725216]">Not from this page</strong>
+                <ul className="mt-2 grid gap-1.5">
+                  {uploadBetaBoundaries.forbidden.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
+            </div>
+          </section>
         </section>
 
         <section data-send-step="1" className={cn("dam-packet-panel grid gap-4 rounded-[14px] border border-[#e5e7eb] bg-white p-4", step !== 1 && "hidden")}>
@@ -498,6 +519,7 @@ export function UploadPage() {
             <span><strong className="text-tjc-ink">Source link:</strong> {hasValidSourceLink ? "included" : "not included"}</span>
             <span><strong className="text-tjc-ink">Tags:</strong> {tagCount}</span>
             <span><strong className="text-tjc-ink">Public use:</strong> blocked until evidence and DAM review clear</span>
+            <span><strong className="text-tjc-ink">Batch state:</strong> Received / Needs Review / Do Not Publish</span>
           </div>
         </section>
 
@@ -529,9 +551,10 @@ export function UploadPage() {
               </div>
             </div>
             <dl className="grid gap-3 sm:grid-cols-4">
-              <div><dt className="text-xs font-black">Status</dt><dd>{receipt.defaultReviewState || uploadDefaultState.status}</dd></div>
+              <div><dt className="text-xs font-black">Received</dt><dd>Yes</dd></div>
+              <div><dt className="text-xs font-black">Review</dt><dd>{receipt.defaultReviewState || uploadBetaBoundaries.defaultState.review}</dd></div>
+              <div><dt className="text-xs font-black">Gate</dt><dd>{receipt.defaultUsageScope || uploadBetaBoundaries.defaultState.usage}</dd></div>
               <div><dt className="text-xs font-black">Event</dt><dd>{receipt.eventName || "Not provided"}</dd></div>
-              <div><dt className="text-xs font-black">Files</dt><dd>{receipt.fileCount ?? 0}</dd></div>
               <div><dt className="text-xs font-black">Source link</dt><dd>{receipt.sourceLinkCaptured ? "Captured" : "Not provided"}</dd></div>
             </dl>
             {receipt.reviewWarnings?.length ? (

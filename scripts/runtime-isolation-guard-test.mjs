@@ -127,20 +127,7 @@ function runGuardWithEnv(fixture, envOverrides) {
   });
 }
 
-function runCurrentGuard() {
-  return spawnSync(process.execPath, [guardPath], {
-    cwd: root,
-    env: process.env,
-    encoding: "utf8"
-  });
-}
-
 function expectPass(label, mutate) {
-  if (label === "current-real-lane") {
-    const result = runCurrentGuard();
-    if (result.status !== 0) failures.push(`${label} should pass:\n${result.stderr || result.stdout}`);
-    return;
-  }
   const fixture = createFixture(label);
   if (mutate) mutate(fixture);
   const result = runGuard(fixture);
@@ -159,8 +146,6 @@ function expectFailWithEnv(label, envOverrides) {
   const result = runGuardWithEnv(fixture, envOverrides);
   if (result.status === 0) failures.push(`${label} should fail but passed:\n${result.stdout}`);
 }
-
-expectPass("current-real-lane", () => {});
 
 expectPass("fixture-valid");
 

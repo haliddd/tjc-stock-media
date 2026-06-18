@@ -52,6 +52,25 @@ if (library) {
   if (!library.includes("setFiltersOpen(true)") || !library.includes("<Sheet open={filtersOpen}")) {
     failures.push("Enterprise Library must keep long-tail filters in a filter sheet/drawer");
   }
+  for (const text of [
+    'className="ed-library-v3-topbar"',
+    'aria-label="DAM asset browser controls"',
+    "Save view",
+    "No selection",
+    'className={cn("ed-grid ed-marquee-grid"',
+    'density === "compact"'
+  ]) {
+    if (!library.includes(text)) failures.push(`Enterprise Library V3 spine missing ${text}`);
+  }
+  for (const text of [
+    "<PageHeader",
+    "<DamSegmentedNav",
+    "<DamToolbar",
+    'className="ed-approved-banner"',
+    'className="ed-smart-discovery"'
+  ]) {
+    if (library.includes(text)) failures.push(`Enterprise Library must not lead with old shell primitive ${text}`);
+  }
 }
 
 const shared = read("frontend/components/dam/enterprise/EnterpriseShared.tsx");
@@ -70,16 +89,26 @@ if (shared) {
 const review = read("frontend/components/dam/enterprise/ReviewPage.tsx");
 if (review) {
   for (const text of [
-    'className="ed-review-next-action"',
-    'aria-label="Next required review evidence"',
-    "Next required evidence",
-    "View guidance",
     'className="ed-preview-redaction-note"',
     'aria-label="Preview redaction notice"',
     "Role-safe derivative only. Source/original hidden.",
-    'aria-label="Review workbench sections"'
+    'className="ed-review-queue-tabs"',
+    'aria-label="Review queues"',
+    'className="ed-review-proof-notes"',
+    'aria-label="Proofing comments"',
+    "Evidence and next action"
   ]) {
     if (!review.includes(text)) failures.push(`Enterprise Review missing ${text}`);
+  }
+  for (const text of [
+    'className="ed-review-triage"',
+    "Review preview samples",
+    'className="ed-review-taxonomy"',
+    'aria-label="Review workbench sections"',
+    'className="ed-review-cards"',
+    'className="ed-review-next-action"'
+  ]) {
+    if (review.includes(text)) failures.push(`Enterprise Review must not keep old dashboard clutter ${text}`);
   }
 }
 
@@ -87,12 +116,23 @@ const css = read("frontend/app/dam-enterprise.css");
 if (css) {
   for (const selector of [
     ".enterprise-review .ed-preview-redaction-note",
-    ".ed-review-next-action",
     ".ed-lock-notice",
     ".ed-row-open",
     ".ed-row-select"
   ]) {
     if (!css.includes(selector)) failures.push(`Enterprise CSS missing ${selector}`);
+  }
+}
+
+const seniorCss = read("frontend/app/dam-senior-staff.css");
+if (seniorCss) {
+  for (const selector of [
+    ".enterprise-library .ed-library-v3-topbar",
+    ".enterprise-library .ed-inspector-renditions",
+    ".enterprise-review .ed-review-queue-tabs",
+    ".enterprise-review .ed-review-proof-notes"
+  ]) {
+    if (!seniorCss.includes(selector)) failures.push(`Senior staff CSS missing V3 selector ${selector}`);
   }
 }
 

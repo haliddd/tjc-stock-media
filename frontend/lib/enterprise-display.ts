@@ -42,6 +42,19 @@ export function sourceLabel(source?: MediaSourceStatus | null) {
   return "Media library";
 }
 
+export function sourceTruthLabel(source?: MediaSourceStatus | null) {
+  if (!source) return sourceLabel(source);
+  if (source.adapter === "resourcespace-api") return source.readOnly ? "Read-only hosted ResourceSpace" : "Hosted DAM instance";
+  if (source.adapter === "exported-metadata") return "Read-only ResourceSpace export snapshot";
+  if (source.adapter === "bundled-beta-catalog") return "Beta catalog snapshot (local bundle)";
+  if (source.adapter === "demo-fallback") return "Local demo data";
+  if (source.adapter === "media-library") return "Media library";
+
+  const label = sourceLabel(source);
+  if (/fixture|fallback|demo|local/i.test(label)) return "Local demo data";
+  return label;
+}
+
 export function sourceNoun(source?: MediaSourceStatus | null) {
   return source?.adapter === "media-library" ? "media library" : "ResourceSpace";
 }

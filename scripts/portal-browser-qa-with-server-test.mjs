@@ -30,9 +30,12 @@ function listenOnRandomPort() {
 
 for (const [text, label] of [
   ["process.kill(-server.pid", "process-group cleanup"],
+  ["latest.log", "current log pointer"],
+  ["detached: true", "owned server process group"],
   ["Refusing to run browser QA", "pre-existing listener refusal"],
   ["owns the isolated server lifecycle", "isolated lifecycle refusal copy"],
   ["PORTAL_QA_TRUSTED_HEADERS", "trusted local QA headers"],
+  ['SSO_PROVIDER: "cloudflare-access"', "production trusted-header provider"],
   ['SSO_TRUSTED_HEADERS: "1"', "trusted-header server role hydration"],
   ['PORTAL_ALLOW_BETA_ROLE_OVERRIDE: "0"', "server role override disabled"],
   ['NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH: "0"', "public beta role switch disabled"],

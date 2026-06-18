@@ -141,6 +141,7 @@ const publicTextSafety = read("frontend/lib/public-text-safety.ts");
 const sourceRedaction = read("frontend/lib/source-redaction.ts");
 const viewerVerdict = read("frontend/lib/viewer-verdict.ts");
 const betaReadinessFacts = read("frontend/lib/beta-readiness-facts.ts");
+const enterpriseAdmin = read("frontend/components/dam/enterprise/AdminPage.tsx");
 const makefile = read("Makefile");
 const frontendCheck = read("scripts/frontend-check.sh");
 const failures = [];
@@ -617,6 +618,24 @@ if (!betaReadinessFacts.includes('scripts", "git-hygiene-guard.mjs"') || !betaRe
 }
 if (/function allowlistFact\(\)[\s\S]*launch-readiness\.sh/.test(betaReadinessFacts)) {
   failures.push("beta readiness brand PNG allowlist fact must not infer media allowlist from launch-readiness.sh copy");
+}
+if (!runtimeFileStore.includes("function runtimeStateTruthMatrix") || !runtimeFileStore.includes("Audit logs") || !runtimeFileStore.includes("Download tickets") || !runtimeFileStore.includes("Pending ResourceSpace writes") || !runtimeFileStore.includes("Usage events")) {
+  failures.push("runtime file store must expose storage truth matrix for audit logs, tickets, review writes, packages, intake, searches, feedback, and usage events");
+}
+for (const phrase of [
+  "Local prototype only. Not beta-ready.",
+  "Durable state missing.",
+  "Identity not production-proven.",
+  "Hosted proof missing.",
+  "Local rehearsal HOLD"
+]) {
+  if (!enterpriseAdmin.includes(phrase)) failures.push(`admin storage/identity honesty copy missing: ${phrase}`);
+}
+if (/Release ready|Release readiness blocked|Release hold|Go\/no-go evidence|No-go until blockers clear|Team Beta GO|teammate GO/.test(enterpriseAdmin)) {
+  failures.push("admin surface must use local rehearsal/pass/hold wording, not release/go labels");
+}
+if (/Human signoff record says GO|Team Beta stays HOLD until owner evidence changes to GO|Team Beta GO|teammate GO/.test(betaReadinessFacts)) {
+  failures.push("beta readiness facts must not surface teammate GO labels; use local rehearsal/pass/hold wording");
 }
 
 if (!publicTextSafety.includes("function containsOperationalText") || !publicTextSafety.includes("function containsScaffoldText") || !publicTextSafety.includes("function safePublicList")) {

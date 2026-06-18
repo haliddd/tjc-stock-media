@@ -1,0 +1,48 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "grid": {
+    "width": 368,
+    "height": 4439,
+    "left": 11,
+    "right": 379,
+    "display": "grid"
+  },
+  "workspace": {
+    "width": 368,
+    "height": 4439,
+    "left": 11,
+    "right": 379,
+    "display": "grid"
+  },
+  "filterRail": {
+    "width": 0,
+    "height": 0,
+    "left": 0,
+    "right": 0,
+    "display": "none"
+  },
+  "inspector": {
+    "width": 0,
+    "height": 0,
+    "left": 0,
+    "right": 0,
+    "display": "none"
+  },
+  "appliedFilterBar": {
+    "width": 368,
+    "height": 38,
+    "left": 11,
+    "right": 379,
+    "display": "grid"
+  },
+  "visibleCards": 30,
+  "consoleMessages": [
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    }
+  ]
+}

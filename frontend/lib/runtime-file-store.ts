@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { durableRuntimeStoreConfigured, productionRuntime, runtimeStoreMode } from "@/lib/env";
+import { durableRuntimeStoreConfigured, hasVercelBlobConfig, hasVercelKvConfig, productionRuntime, runtimeStoreMode } from "@/lib/env";
 
 export type RuntimeStateCategory =
   | "audit-log"
@@ -13,6 +13,127 @@ export type RuntimeStateCategory =
   | "saved-searches"
   | "usage-events"
   | "runtime";
+
+export type RuntimeStateTruthState = "local-only" | "durable" | "blocked" | "not-implemented";
+
+export type RuntimeStateTruthRow = {
+  id: string;
+  label: string;
+  category: RuntimeStateCategory;
+  state: RuntimeStateTruthState;
+  storage: string;
+  productionTruth: string;
+  blocker: string;
+};
+
+function genericRuntimeTruthState(): RuntimeStateTruthState {
+  const durable = durableRuntimeStoreConfigured();
+  if (productionRuntime() && !durable) return "blocked";
+  return durable ? "durable" : "local-only";
+}
+
+function feedbackTruthState(): RuntimeStateTruthState {
+  if (hasVercelKvConfig() && hasVercelBlobConfig()) return "durable";
+  if (productionRuntime()) return "blocked";
+  return "local-only";
+}
+
+export function runtimeStateTruthMatrix(): RuntimeStateTruthRow[] {
+  const genericState = genericRuntimeTruthState();
+  const genericProductionTruth = genericState === "durable"
+    ? "Durable runtime store configured; still needs backup/restore proof before beta language."
+    : genericState === "blocked"
+      ? "Production write is blocked until durable runtime storage exists."
+      : "Local filesystem/runtime state only. Not hosted durability proof.";
+
+  return [
+    {
+      id: "audit-logs",
+      label: "Audit logs",
+      category: "audit-log",
+      state: genericState,
+      storage: "Runtime JSONL audit files",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs append-only durable audit store, actor integrity, backup, and restore proof."
+    },
+    {
+      id: "download-tickets",
+      label: "Download tickets",
+      category: "download-tickets",
+      state: genericState,
+      storage: "Runtime JSON ticket files",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs durable expiring ticket store with one-time consume proof."
+    },
+    {
+      id: "review-decisions",
+      label: "Review decisions",
+      category: "pending-review-writes",
+      state: genericState,
+      storage: "Portal audit event plus pending review queue",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs durable reviewer decision store; ResourceSpace remains truth."
+    },
+    {
+      id: "pending-resourcespace-writes",
+      label: "Pending ResourceSpace writes",
+      category: "pending-review-writes",
+      state: genericState,
+      storage: "Runtime pending-write JSON files",
+      productionTruth: genericProductionTruth,
+      blocker: "Live ResourceSpace writeback and durable sync state are not proven."
+    },
+    {
+      id: "package-drafts",
+      label: "Package drafts",
+      category: "package-drafts",
+      state: genericState,
+      storage: "Local JSON package draft records",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs durable package/share draft store with audit, expiry, recipients, and revocation."
+    },
+    {
+      id: "intake-batches",
+      label: "Intake batches",
+      category: "intake-batches",
+      state: genericState,
+      storage: "Runtime intake batch JSON and local originals staging",
+      productionTruth: genericProductionTruth,
+      blocker: "Browser file intake is blocked in production without durable storage or admin/Drive intake."
+    },
+    {
+      id: "saved-searches",
+      label: "Saved searches",
+      category: "saved-searches",
+      state: genericState,
+      storage: "Local JSON saved-search records",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs team/user-scoped durable profile storage before persistent saved views are promised."
+    },
+    {
+      id: "feedback",
+      label: "Feedback",
+      category: "beta-feedback",
+      state: feedbackTruthState(),
+      storage: hasVercelKvConfig() ? "Vercel KV feedback records" : "Local JSON feedback records",
+      productionTruth: hasVercelKvConfig()
+        ? `Feedback KV is configured; attachment Blob storage ${hasVercelBlobConfig() ? "is configured" : "is missing"}. This does not prove other runtime stores.`
+        : productionRuntime()
+          ? "Hosted feedback writes are blocked until KV is configured."
+          : "Local feedback JSON only. Not hosted durability proof.",
+      blocker: "Needs durable triage, attachment storage, owner/status audit trail, and export proof."
+    },
+    {
+      id: "usage-events",
+      label: "Usage events",
+      category: "usage-events",
+      state: genericState,
+      storage: "Local SQLite usage events when enabled",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs durable event logging before usage, search, or trend metrics are claimed."
+    }
+  ];
+}
 
 function categoryForPath(filePath: string): RuntimeStateCategory {
   if (filePath.includes("audit-log")) return "audit-log";
@@ -38,13 +159,14 @@ export function runtimeStoreDiagnostics() {
     production,
     statefulWritesAllowed: !production || durable,
     state: production && !durable ? "Blocked" : durable ? "Operational" : "Local beta only",
+    stateMatrix: runtimeStateTruthMatrix(),
     detail: production && !durable
       ? requestedDurableMode
         ? "Production stateful features are blocked because generic runtime writes still use the local filesystem adapter. Vercel KV is implemented for beta feedback only, not audit logs, tickets, package drafts, saved searches, or pending write queues."
         : "Production stateful features require a configured durable runtime store. Local filesystem state is blocked."
       : durable
         ? "Durable runtime store is configured for production readiness checks."
-        : "Local filesystem runtime state is enabled for local/private beta only."
+        : "Local filesystem runtime state is enabled for local rehearsal only; this is not beta or production durability proof."
   };
 }
 

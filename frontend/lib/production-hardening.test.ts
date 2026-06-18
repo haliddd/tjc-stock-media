@@ -9,6 +9,7 @@ import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
 import { durableRuntimeStoreConfigured } from "@/lib/env";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
+import { assetWithRoleImageUrls } from "@/lib/presentation";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
@@ -373,6 +374,18 @@ describe("metadata schema contract", () => {
     expect(serialized).not.toContain("master available");
     expect(serialized).not.toContain("rights guaranteed");
     expect(serialized).not.toContain("reviewer-owned policy");
+  });
+
+  it.each(["Viewer", "Contributor"] as const)("keeps asset detail image payloads derivative-only for %s", (role) => {
+    const payload = assetWithRoleImageUrls(approvedAsset(), role);
+    const text = JSON.stringify(payload);
+
+    expect(payload.imageUrls?.download).toBeUndefined();
+    expect(text).not.toContain("/private/source.jpg");
+    expect(text).not.toContain("/Shared Drives/TJC Stock Media/source.jpg");
+    expect(text).not.toContain("sourcePath");
+    expect(text).not.toContain("masterDrivePath");
+    expect(text).not.toContain("checksumSha256");
   });
 });
 

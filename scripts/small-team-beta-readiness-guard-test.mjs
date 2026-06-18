@@ -12,7 +12,7 @@ const failures = [];
 const fixtureFiles = [
   "docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md",
   "docs/runs/evidence/2026-06-17/open-blockers.json",
-  "docs/runs/evidence/2026-06-17/hosted-readonly-probes/summary.json",
+  "docs/runs/evidence/2026-06-15/hosted-readonly-probes/summary.json",
   "docs/screenshots/qa/browser-qa-report.json",
   "docs/small-team-beta-operations-runbook.md",
   "docs/joanna-mini-beta-runbook.md",
@@ -84,7 +84,7 @@ expectFail("hosted-url-overclaimed", (targetRoot) => {
 
 expectFail("team-packet-go-overclaim", (targetRoot) => {
   const file = "docs/team-beta-internal-test-packet.md";
-  write(targetRoot, file, read(targetRoot, file).replace("small-team beta not ready, NO-GO for sending teammate invites", "Small-team beta ready"));
+  write(targetRoot, file, read(targetRoot, file).replace("Current status: **NO-GO for sending teammate invites.**", "Current status: **Team Beta GO for sending teammate invites.**"));
 });
 
 expectFail("real-content-count-overclaimed", (targetRoot) => {
@@ -114,7 +114,7 @@ expectFail("hosted-invite-overclaimed-go", (targetRoot) => {
 });
 
 expectFail("hosted-readonly-privileged-shape", (targetRoot) => {
-  const file = "docs/runs/evidence/2026-06-17/hosted-readonly-probes/summary.json";
+  const file = "docs/runs/evidence/2026-06-15/hosted-readonly-probes/summary.json";
   const payload = JSON.parse(read(targetRoot, file));
   payload.results = payload.results.map((result) => result.id === "admin-query-role"
     ? { ...result, privilegedShapeFound: true }

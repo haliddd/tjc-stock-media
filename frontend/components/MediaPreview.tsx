@@ -14,6 +14,40 @@ type MediaPreviewProps = {
   loading?: "lazy" | "eager";
 };
 
+const unsafePreviewFragments = [
+  "file:",
+  "/private/",
+  "shared drives",
+  "shared%20drives",
+  "/originals/",
+  "/master archive/",
+  "sourcepath=",
+  "source_path=",
+  "masterdrivepath=",
+  "master_drive_path="
+];
+
+export function isRoleSafePreviewSrc(src?: string) {
+  if (!src) return false;
+  const normalized = src.trim().toLowerCase();
+  if (!normalized) return false;
+  let decoded = normalized;
+  try {
+    decoded = decodeURIComponent(normalized);
+  } catch {
+    decoded = normalized;
+  }
+  if (unsafePreviewFragments.some((fragment) => normalized.includes(fragment) || decoded.includes(fragment))) return false;
+  try {
+    const url = new URL(src, "http://local.tjc");
+    if (url.pathname.startsWith("/api/download/")) return false;
+    if (url.searchParams.get("variant") === "download") return false;
+  } catch {
+    return false;
+  }
+  return true;
+}
+
 function previewVariantClass(seed: string) {
   let hash = 0;
   for (let index = 0; index < seed.length; index += 1) {
@@ -32,12 +66,13 @@ export function MediaPreview({
   loading = "lazy"
 }: MediaPreviewProps) {
   const [failed, setFailed] = useState(false);
+  const safeSrc = isRoleSafePreviewSrc(src) ? src : undefined;
 
-  if (src && !failed) {
+  if (safeSrc && !failed) {
     return (
       <img
         className={cn("h-full w-full object-cover", imgClassName)}
-        src={src}
+        src={safeSrc}
         alt={alt}
         loading={loading}
         decoding="async"

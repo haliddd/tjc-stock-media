@@ -1,0 +1,54 @@
+{
+  "url": "http://localhost:4872/",
+  "checks": [
+    {
+      "name": "desktop top filter controls visible",
+      "pass": true
+    },
+    {
+      "name": "desktop more filters drawer opens",
+      "pass": true
+    },
+    {
+      "name": "desktop no failed requests",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "desktop no 4xx/5xx responses",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "desktop no critical console errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "mobile filter panel opens",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "height": 704,
+        "top": 140,
+        "bottom": 844,
+        "viewportHeight": 844
+      }
+    },
+    {
+      "name": "mobile no failed requests",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "mobile no 4xx/5xx responses",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "mobile no critical console errors",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

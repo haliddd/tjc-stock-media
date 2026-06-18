@@ -222,13 +222,13 @@ do
   require_text "$beta_ui_file" "$phrase" "visible app beta role-switch copy: $phrase"
 done
 
-if grep -q 'Beta Command Center' frontend/components/dam/enterprise/AdminPage.tsx \
-  && grep -q 'Actor audit proof' frontend/components/dam/enterprise/AdminPage.tsx \
-  && grep -q 'Beta coverage gates' frontend/components/dam/enterprise/AdminPage.tsx \
+if grep -q 'ed-beta-command-center' frontend/components/dam/enterprise/AdminPage.tsx \
+  && grep -q 'Actor-backed audit evidence' frontend/components/dam/enterprise/AdminPage.tsx \
+  && grep -q 'Local rehearsal coverage gates' frontend/components/dam/enterprise/AdminPage.tsx \
   && grep -q 'Next actions' frontend/components/dam/enterprise/AdminPage.tsx; then
-  pass "Admin beta command center shows go/no-go, coverage gates, actor audit proof, and next actions"
+  pass "Admin local rehearsal command center shows coverage gates, actor audit proof, and next actions"
 else
-  fail "Admin beta command center proof surface missing"
+  fail "Admin local rehearsal command center proof surface missing"
 fi
 
 if node scripts/live-dam-surface-guard.mjs >${RUN_TMP_DIR}/tjc-live-dam-surface-guard.txt 2>&1; then
@@ -366,14 +366,14 @@ else
 fi
 
 if node scripts/small-team-beta-readiness-guard.mjs >${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard.txt 2>&1; then
-  pass "current June 17 small-team beta readiness guard keeps NO-GO/fail-closed posture honest"
+  pass "current June 18 small-team beta readiness guard keeps NO-GO/fail-closed posture honest"
 else
   fail "current June 17 small-team beta readiness guard failed"
   cat ${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard.txt
 fi
 
 if node scripts/small-team-beta-readiness-guard-test.mjs >${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard-test.txt 2>&1; then
-  pass "current June 17 small-team beta readiness guard self-test rejects false-ready cases"
+  pass "current June 18 small-team beta readiness guard self-test rejects false-ready cases"
 else
   fail "current June 17 small-team beta readiness guard self-test failed"
   cat ${RUN_TMP_DIR}/tjc-small-team-beta-readiness-guard-test.txt
@@ -802,10 +802,11 @@ if node scripts/team-beta-signoff-guard.mjs >"$team_beta_signoff_output" 2>&1; t
   if grep -q 'Team Beta signoff guard passed (GO)' "$team_beta_signoff_output"; then
     fail "Team Beta signoff record still says GO after June 15 P0; renew approval only after blockers close"
   else
-    if grep -q 'Owner-led internal dry run | PASS local route/auth smoke only; browser QA still red' docs/team-beta-go-no-go-packet.md \
+    if grep -q 'Owner-led local dry run: PASS' docs/team-beta-go-no-go-packet.md \
+      && grep -q 'Team Beta invite/send: NO-GO' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Tiny teammate invite batch | NO-GO until hosted/current gates close' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Production/internal launch | NO-GO' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'Do not claim invite GO while hosted/current URL, 181-record beta snapshot proof, hosted persistence/fail-closed instructions, and owner approval remain blank, stale, or unproven.' docs/team-beta-go-no-go-packet.md \
+      && grep -q 'Hosted 181-record catalog proof is not established' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Final Signoff Block' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Current final call: \*\*NO-GO for teammate invite batch' docs/team-beta-go-no-go-packet.md \
       && grep -q 'docs/team-beta-go-no-go-packet.md' docs/beta-readiness-command-center.md docs/team-beta-internal-test-packet.md; then

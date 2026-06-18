@@ -40,7 +40,7 @@ export function packageResourceRef(asset: StockMediaAsset): string {
   return packageAssetRef(asset);
 }
 
-export function createPackageDraft(title = "ResourceSpace Toolkit Draft"): DamPackage {
+export function createPackageDraft(title = "Package Draft"): DamPackage {
   return {
     id: "portal-local-draft",
     title,
@@ -133,7 +133,7 @@ export function seedPackageDraftFromCollection(
   if (!collectionAssets.length) {
     return {
       ...draft,
-      title: `${collection.name} Toolkit Draft`,
+      title: `${collection.name} Package Draft`,
       description: `Started from ${collection.name}. No visible Portal Ready refs were available in this role.`,
       collectionId: collection.id
     };
@@ -142,7 +142,7 @@ export function seedPackageDraftFromCollection(
   return seedPackageDraft(
     {
       ...draft,
-      title: `${collection.name} Toolkit Draft`,
+      title: `${collection.name} Package Draft`,
       description: `Started from ${collection.name}. Contains visible Portal Ready refs only; full archive membership remains in the DAM.`,
       collectionId: collection.id
     },

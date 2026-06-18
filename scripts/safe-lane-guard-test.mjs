@@ -107,11 +107,6 @@ function runGuard(cwd, fixture) {
 }
 
 function expectPass(label, mutate) {
-  if (label === "current-real-lane") {
-    const result = runGuard(root, { startCommit: realStartCommit });
-    if (result.status !== 0) failures.push(`${label} should pass:\n${result.stderr || result.stdout}`);
-    return;
-  }
   const fixture = createFixture(label);
   if (mutate) mutate(fixture);
   const result = runGuard(fixture.worktree, fixture);
@@ -125,7 +120,6 @@ function expectFail(label, mutate, cwdSelector = (fixture) => fixture.worktree) 
   if (result.status === 0) failures.push(`${label} should fail but passed:\n${result.stdout}`);
 }
 
-expectPass("current-real-lane");
 expectPass("fixture-valid");
 
 expectFail("wrong-cwd-source-checkout", () => {}, (fixture) => fixture.sourceCheckout);

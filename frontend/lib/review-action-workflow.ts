@@ -26,6 +26,8 @@ export type ReviewActionRequestBody = {
   notes?: string;
   checklist?: Partial<ReviewEvidenceChecklist>;
   reviewerName?: string;
+  reviewDate?: string;
+  approvalScope?: string;
 };
 
 export type ReviewActionWorkflowResult = {
@@ -76,7 +78,10 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
     actionDefinition: action,
     label: body.label,
     note: body.notes,
-    checklist: body.checklist
+    checklist: body.checklist,
+    reviewerName: body.reviewerName,
+    reviewDate: body.reviewDate,
+    approvalScope: body.approvalScope
   });
   if (packet.blocked) {
     appendAuditEvent(reviewEvidencePacketBlockedAuditEvent(packet, role, identity.id));

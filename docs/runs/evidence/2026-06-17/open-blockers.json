@@ -1,30 +1,30 @@
 {
   "schema": "tjc-stock-media-small-team-beta-open-blockers.v1",
-  "checkedAt": "2026-06-17T07:48:35Z",
-  "latestHostedReadOnlyProofAt": "2026-06-17T19:58:58.758Z",
+  "checkedAt": "2026-06-18T14:33:44Z",
+  "latestHostedReadOnlyProofAt": "2026-06-18T02:28:20.391Z",
   "worktree": "/Users/halim4pro/Desktop/MVP/tjc-stock-media",
-  "branch": "codex/merge-recommended-set-2026-06-17",
-  "head": "63474a70e930687b188d6327f888e677dde3c2d2",
+  "branch": "codex/v2-ui-taste-pass-2026-06-18",
+  "head": "97d39d69a222e3b98abf6bf4ef1f0278266180ee",
   "baseUrl": "http://localhost:4871",
   "classification": "Small-team beta not ready",
   "hostedTeammateInviteDecision": "NO-GO",
-  "decisionReason": "Route/API/build proof improved and hosted/current plus real beta-session auth now pass. Latest production-mode local browser QA is red on approved/unsafe download probes because required audit writes fail closed without durable runtime state. Hosted feedback and blocked-download fail-closed behavior pass. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot before demo fallback, but stable hosted redeploy/count proof is still required.",
+  "decisionReason": "June 18 ORCH local browser QA is green after product fixes. Hosted/current read-only safety shape passes, but unauthenticated hosted probes still do not prove the 181-record beta catalog. Hosted durable audit/ticket storage remains unproven, so hosted downloads must stay fail-closed unless owner-approved durable proof exists. Hali/Enoch final owner signoff and invite/send approval remain missing.",
   "localProofSummary": {
     "browserQa": {
-      "status": "fail",
-      "checkedAt": "2026-06-17T07:47:09.105Z",
+      "status": "pass",
+      "checkedAt": "2026-06-18T14:07:24.337Z",
       "pages": 20,
       "viewports": 6,
-      "screenshots": 32,
-      "failures": 2,
-      "consoleErrors": 3,
+      "screenshots": 33,
+      "failures": 0,
+      "consoleErrors": 0,
       "networkFailures": 0,
       "warnings": 0
     },
     "guards": {
       "liveDamSurface": "pass",
       "uiMaturity": "pass",
-      "smallTeamBetaReadiness": "expected-fail-browser-qa-red",
+      "smallTeamBetaReadiness": "pass-no-go-hosted-blocked",
       "teamBetaSignoff": "pass-no-go",
       "safeLaneGuard": "environment-limited",
       "runtimeIsolationGuard": "environment-limited",
@@ -33,8 +33,8 @@
     "frontend": {
       "typecheck": "pass",
       "tests": "pass",
-      "testFiles": 15,
-      "testCount": 133,
+      "testFiles": 23,
+      "testCount": 172,
       "build": "pass"
     },
     "buildCurrentness": {
@@ -72,16 +72,15 @@
   "blockers": [
     {
       "id": "production-mode-browser-qa-download-audit",
-      "status": "blocked",
+      "status": "complete",
       "owner": "Hali / runtime owner",
       "blocks": [
-        "local-beta-candidate",
         "hosted-teammate-invite",
         "real-small-team-beta"
       ],
       "evidenceDoc": "docs/screenshots/qa/browser-qa-report.json",
-      "requiredProof": "Browser QA must be green or only contain documented stale expectations. Latest production-mode local QA has 2 failures and 3 console errors from deliberate download safety probes returning 503 audit-required because production runtime audit writes are blocked without a durable store.",
-      "safeNextStep": "Prove durable audit/download-ticket runtime storage for production/hosted beta, or keep hosted download workflows fail-closed with clear operator instructions and update QA to test that explicit fail-closed contract. Do not weaken audit-required behavior."
+      "requiredProof": "Complete locally. June 18 ORCH browser QA report records 20 pages, 6 viewport widths, 33 screenshots, 0 failures, 0 console errors, and 0 network failures after product fixes.",
+      "safeNextStep": "Keep hosted download workflows fail-closed unless durable hosted audit/download-ticket storage is proven and owner-approved. Do not weaken audit-required behavior."
     },
     {
       "id": "hosted-protected-url-current",

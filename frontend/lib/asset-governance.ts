@@ -1,4 +1,4 @@
-import type { AssetGovernancePassport, StockMediaAsset } from "@/lib/types";
+import type { AssetGovernancePassport, DemoRole, StockMediaAsset } from "@/lib/types";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
 
 const reviewPlaceholderPattern = /review before sharing|reviewer must approve/i;
@@ -29,6 +29,19 @@ export type AssetMetadataHealth = {
   score: number;
   state: "Complete" | "Needs review" | "Needs metadata";
   missing: string[];
+};
+
+export type AssetLibraryScanSummary = {
+  trustLabel: string;
+  trustDetail: string;
+  trustTone: "ready" | "review" | "restricted" | "blocked" | "internal";
+  reuseTierLabel: string;
+  rightsRiskLabel: string;
+  rightsRiskDetail: string;
+  peopleLabel: string;
+  sourceCustodyLabel: string;
+  nextAction: string;
+  nextActionDetail: string;
 };
 
 export function assetIsApproved(asset: StockMediaAsset) {
@@ -312,6 +325,144 @@ function assetDecision(asset: StockMediaAsset) {
   return "Ask reviewer";
 }
 
+function rightsRiskSummary(asset: StockMediaAsset) {
+  if (assetIsBlocked(asset)) {
+    return {
+      label: "Blocked",
+      detail: "Do Not Use or takedown state blocks reuse."
+    };
+  }
+  if (assetHasChildrenYouthRisk(asset) && !assetHasConsentEvidence(asset)) {
+    return {
+      label: "Youth/consent risk",
+      detail: "People/minors evidence required before reuse."
+    };
+  }
+  if (assetNeedsRightsReview(asset)) {
+    return {
+      label: "Rights review",
+      detail: "Rights, consent, owner, channel, or lifecycle evidence incomplete."
+    };
+  }
+  if (!assetReviewComplete(asset)) {
+    return {
+      label: "Review missing",
+      detail: "Reviewer/date required before clearance."
+    };
+  }
+  return {
+    label: "Evidence clear",
+    detail: "Rights and review signals pass current library checks."
+  };
+}
+
+function reuseTierSummary(asset: StockMediaAsset) {
+  if (assetIsBlocked(asset)) return "Do Not Use";
+  if (assetIsArchiveOnly(asset)) return "Archive/reference";
+  if (asset.reuseTier === "stock-safe") return "Stock-safe";
+  if (asset.reuseTier === "context-safe") return "Context-safe";
+  if (asset.status === "Approved Public") return "Portal-checked record";
+  if (asset.status === "Approved Internal") return "Internal-scope record";
+  return "Review-gated";
+}
+
+function sourceCustodySummary(asset: StockMediaAsset, role: DemoRole = "Viewer") {
+  if (role === "Viewer" || role === "Contributor") return "Source/original restricted";
+  if (!assetHasSourceProvenance(asset)) return "Source trace missing";
+  if (asset.resourceSpaceId) return "ResourceSpace ref";
+  if (asset.sourceSystem) return "Source recorded";
+  return "Custody recorded";
+}
+
+function nextLibraryAction(asset: StockMediaAsset, role: DemoRole = "Viewer") {
+  const canReviewRole = role === "Reviewer" || role === "DAM Admin";
+  if (assetIsPortalReady(asset)) {
+    return {
+      action: "Use approved copy",
+      detail: "Derivative download can proceed through approved-copy gate."
+    };
+  }
+  if (assetIsBlocked(asset)) {
+    return {
+      action: "Do not use",
+      detail: "Keep out of packages and downloads until restriction changes."
+    };
+  }
+  if (assetIsArchiveOnly(asset)) {
+    return {
+      action: "Keep reference-only",
+      detail: "Searchable for context; not cleared for reuse."
+    };
+  }
+  if (assetHasChildrenYouthRisk(asset) && !assetHasConsentEvidence(asset)) {
+    return {
+      action: canReviewRole ? "Verify consent" : "Request DAM review",
+      detail: "Youth/minors evidence needed before reuse."
+    };
+  }
+  if (assetNeedsRightsReview(asset)) {
+    return {
+      action: canReviewRole ? "Complete rights evidence" : "Request DAM review",
+      detail: "Rights, owner, consent, channel, or lifecycle check incomplete."
+    };
+  }
+  if (!assetReviewComplete(asset)) {
+    return {
+      action: canReviewRole ? "Assign reviewer/date" : "Request DAM review",
+      detail: "Reviewer accountability required before reuse."
+    };
+  }
+  if (assetHasRenditionGap(asset)) {
+    return {
+      action: canReviewRole ? "Create approved derivative" : "Open record",
+      detail: "Approved copy is missing; source/original stays restricted."
+    };
+  }
+  return {
+    action: canReviewRole ? "Review record" : "Open guidance",
+    detail: "Open asset record before reuse or package handoff."
+  };
+}
+
+export function assetLibraryScanSummary(asset: StockMediaAsset, role: DemoRole = "Viewer"): AssetLibraryScanSummary {
+  const rights = rightsRiskSummary(asset);
+  const next = nextLibraryAction(asset, role);
+  const portalReady = assetIsPortalReady(asset);
+  const blocked = assetIsBlocked(asset);
+  const archive = assetIsArchiveOnly(asset);
+  const internal = asset.status === "Approved Internal" && rights.label === "Evidence clear";
+  const trustTone: AssetLibraryScanSummary["trustTone"] = portalReady
+    ? "ready"
+    : blocked
+      ? "blocked"
+      : archive
+        ? "restricted"
+        : internal
+          ? "internal"
+          : "review";
+
+  return {
+    trustLabel: portalReady ? "Portal Ready" : blocked ? "Do Not Use" : archive ? "Archive only" : internal ? "Internal ready" : "Needs review",
+    trustDetail: portalReady
+      ? "Approved derivative available; source/original remains protected."
+      : blocked
+        ? "Restriction blocks normal reuse."
+        : archive
+          ? "Reference/search only."
+          : internal
+            ? "Internal ministry use only."
+            : "Evidence required before download or distribution.",
+    trustTone,
+    reuseTierLabel: reuseTierSummary(asset),
+    rightsRiskLabel: rights.label,
+    rightsRiskDetail: rights.detail,
+    peopleLabel: asset.peopleRisk || "People/minors unknown",
+    sourceCustodyLabel: sourceCustodySummary(asset, role),
+    nextAction: next.action,
+    nextActionDetail: next.detail
+  };
+}
+
 export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernancePassport {
   const health = assetMetadataHealth(asset);
   const blockers = assetPortalBlockers(asset);
@@ -343,7 +494,7 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
     evidence: [
       {
         label: "Source",
-        value: assetHasSourceProvenance(asset) ? asset.sourcePath || asset.sourceAlbumPath || asset.sourceSystem || asset.collection : "Missing",
+        value: assetHasSourceProvenance(asset) ? sourceCustodySummary(asset, "Reviewer") : "Missing",
         tone: assetHasSourceProvenance(asset) ? "ok" : "warn"
       },
       {
@@ -363,7 +514,7 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
       },
       {
         label: "Checksum",
-        value: asset.checksumSha256 ? `${asset.checksumSha256.slice(0, 12)}...` : "Not exported",
+        value: asset.checksumSha256 ? "Checksum recorded" : "Not exported",
         tone: asset.checksumSha256 ? "ok" : "info"
       },
       {
@@ -377,7 +528,7 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
         event: "Imported / indexed",
         actor: asset.sourceSystem || "ResourceSpace export",
         date: asset.importDate || asset.capturedDate || asset.eventDate || "Date not exported",
-        detail: asset.sourcePath || asset.sourceAlbumPath || asset.collection || "Source path pending",
+        detail: assetHasSourceProvenance(asset) ? sourceCustodySummary(asset, "Reviewer") : "Source trace pending",
         tone: assetHasSourceProvenance(asset) ? "ok" : "warn"
       },
       {

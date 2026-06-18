@@ -11,8 +11,10 @@ import {
   ShieldCheck,
   UploadCloud
 } from "lucide-react";
+import { useDemoRole } from "@/components/RoleProvider";
 import { PageHeader } from "./EnterpriseShared";
 import { cn } from "@/lib/utils";
+import type { DemoRole } from "@/lib/types";
 
 type TaskPriority = "Critical" | "High" | "Normal";
 
@@ -26,6 +28,7 @@ type TaskCard = {
   assignedReason: string;
   nextAction: string;
   safetyState: string;
+  roleFit: DemoRole[];
 };
 
 const taskSections = [
@@ -47,7 +50,8 @@ const taskCards: TaskCard[] = [
     related: "Asset TJC-IMG-1008",
     assignedReason: "You are listed as reviewer for the current rights packet.",
     nextAction: "Confirm license evidence or keep distribution blocked.",
-    safetyState: "Download locked until decision"
+    safetyState: "Download locked until decision",
+    roleFit: ["Reviewer", "DAM Admin"]
   },
   {
     id: "TASK-214",
@@ -58,18 +62,20 @@ const taskCards: TaskCard[] = [
     related: "Collection Fellowship Lunch Photos",
     assignedReason: "You claimed the people/release review step.",
     nextAction: "Record people visibility and request missing consent if needed.",
-    safetyState: "Public use blocked"
+    safetyState: "Public use blocked",
+    roleFit: ["Reviewer", "DAM Admin"]
   },
   {
     id: "TASK-219",
     section: "Review decisions",
-    title: "Add approved derivative for Bible Study Slide Background",
+    title: "Prepare derivative request for Bible Study Slide Background",
     priority: "Normal",
     dueDate: "Tomorrow",
     related: "Asset Bible Study Slide Background",
-    assignedReason: "The download unlock request needs an approved copy.",
+    assignedReason: "The delivery request needs reviewed derivative evidence.",
     nextAction: "Attach derivative details and send for reviewer confirmation.",
-    safetyState: "Source files restricted"
+    safetyState: "Source files restricted",
+    roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
     id: "TASK-223",
@@ -80,7 +86,8 @@ const taskCards: TaskCard[] = [
     related: "Upload session UP-887",
     assignedReason: "You started the contributor intake draft.",
     nextAction: "Add event date, ministry, people visibility, and usage scope.",
-    safetyState: "Submitted, not published"
+    safetyState: "Submitted, not published",
+    roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
     id: "TASK-227",
@@ -90,21 +97,30 @@ const taskCards: TaskCard[] = [
     dueDate: "Today 4:30 PM",
     related: "Request REQ-1024",
     assignedReason: "Requester reply is waiting on your ministry scope.",
-    nextAction: "Add intended use, deadline, and why approved copy is not enough.",
-    safetyState: "Access not granted"
+    nextAction: "Add intended use, deadline, and why role-safe preview is not enough.",
+    safetyState: "Access not granted",
+    roleFit: ["Viewer", "Contributor", "Reviewer", "DAM Admin"]
   },
   {
     id: "TASK-232",
     section: "Policy acknowledgments",
-    title: "Acknowledge download policy for approved derivatives",
+    title: "Acknowledge delivery request policy for reviewed derivatives",
     priority: "Normal",
     dueDate: "Fri 9:00 AM",
     related: "Distribution Set Draft",
     assignedReason: "You are preparing a governed distribution set.",
     nextAction: "Confirm no public link, ZIP, or source-file copy is created.",
-    safetyState: "Policy confirmation required"
+    safetyState: "Policy confirmation required",
+    roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   }
 ];
+
+const roleTaskGuidance: Record<DemoRole, string> = {
+  Viewer: "Tasks show your context requests and policy replies. Review decisions stay with media reviewers.",
+  Contributor: "Tasks focus on upload cleanup, request evidence, and draft distribution packets.",
+  Reviewer: "Tasks focus on rights decisions, evidence gaps, and delivery blockers.",
+  "DAM Admin": "Tasks include all operational lanes for triage, without changing source custody."
+};
 
 function priorityClass(priority: TaskPriority) {
   if (priority === "Critical") return "is-critical";
@@ -122,33 +138,37 @@ function sectionIcon(section: string) {
 }
 
 export function MyTasksPage() {
+  const { role } = useDemoRole();
   const [activeSection, setActiveSection] = useState("Due now");
   const [selectedId, setSelectedId] = useState(taskCards[0].id);
-  const activeTasks = useMemo(() => taskCards.filter((task) => task.section === activeSection), [activeSection]);
-  const selected = taskCards.find((task) => task.id === selectedId) || activeTasks[0] || taskCards[0];
+  const roleTasks = useMemo(() => taskCards.filter((task) => task.roleFit.includes(role)), [role]);
+  const visibleSections = useMemo(() => taskSections.filter((section) => roleTasks.some((task) => task.section === section)), [roleTasks]);
+  const activeVisibleSection = visibleSections.includes(activeSection) ? activeSection : visibleSections[0] || "Due now";
+  const activeTasks = useMemo(() => roleTasks.filter((task) => task.section === activeVisibleSection), [activeVisibleSection, roleTasks]);
+  const selected = activeTasks.find((task) => task.id === selectedId) || activeTasks[0] || roleTasks[0] || taskCards[0];
 
   return (
     <div className="enterprise-page enterprise-my-tasks route-identity-page" data-route-identity="my-tasks">
       <PageHeader
         title="My Tasks"
-        subtitle="Your assigned DAM work, evidence checks, and review actions."
+        subtitle={roleTaskGuidance[role]}
       />
 
       <section className="ed-task-section-strip" aria-label="Task sections">
-        {taskSections.map((section) => {
+        {visibleSections.map((section) => {
           const Icon = sectionIcon(section);
-          const count = taskCards.filter((task) => task.section === section).length;
+          const count = roleTasks.filter((task) => task.section === section).length;
           return (
             <button
               type="button"
               key={section}
-              className={section === activeSection ? "is-active" : undefined}
+              className={section === activeVisibleSection ? "is-active" : undefined}
               onClick={() => {
                 setActiveSection(section);
-                const firstInSection = taskCards.find((task) => task.section === section);
+                const firstInSection = roleTasks.find((task) => task.section === section);
                 if (firstInSection) setSelectedId(firstInSection.id);
               }}
-              aria-pressed={section === activeSection}
+              aria-pressed={section === activeVisibleSection}
             >
               <Icon size={17} aria-hidden="true" />
               <span>{section}</span>
@@ -162,12 +182,12 @@ export function MyTasksPage() {
         <main className="ed-route-main" data-primary-section="task-work-queue">
           <header className="ed-section-heading">
             <div>
-              <h2>{activeSection}</h2>
+              <h2>{activeVisibleSection}</h2>
               <p>Assigned work only. Tasks explain why you own the step and what safe action comes next.</p>
             </div>
             <span>{activeTasks.length} tasks</span>
           </header>
-          <div className="ed-task-card-grid">
+          {activeTasks.length ? <div className="ed-task-card-grid">
             {activeTasks.map((task) => (
               <article key={task.id} className={cn("ed-task-card", task.id === selected.id && "is-active")}>
                 <header>
@@ -185,7 +205,13 @@ export function MyTasksPage() {
                 <button type="button" className="ed-row-open" onClick={() => setSelectedId(task.id)}>Open task</button>
               </article>
             ))}
-          </div>
+          </div> : (
+            <section className="ed-empty-state is-quiet">
+              <ClipboardList size={24} aria-hidden="true" />
+              <h2>No tasks for {role}</h2>
+              <p>This role has no assigned work in current sample queue. Delivery rights remain closed until reviewer evidence exists.</p>
+            </section>
+          )}
         </main>
 
         <aside className="ed-route-inspector" aria-label="Task inspector">

@@ -1,0 +1,753 @@
+{
+  "base": "http://localhost:4871",
+  "generatedAt": "2026-06-18T19:16:51.458Z",
+  "consoleErrors": [],
+  "networkFailures": [],
+  "captureFailures": [],
+  "screenshots": [
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/upload-initial-desktop.png",
+      "proof": "Upload initial desktop: simple contributor choices first, details hidden."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/upload-initial-mobile.png",
+      "proof": "Upload initial mobile: 320px usable."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/upload-after-source.png",
+      "proof": "Upload after Drive link: details appear, Location and Notes for reviewers present."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/upload-success-state.png",
+      "proof": "Upload success: receipt keeps review-before-public safety copy."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/admin-desktop.png",
+      "proof": "Admin desktop: compact ops console and read-only local prototype truth."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/admin-mobile.png",
+      "proof": "Admin mobile: grid remains readable at 320px."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/library-desktop-1440.png",
+      "proof": "Library desktop loaded: global nav left, no left filter rail, grid gets horizontal space, compact sticky filters visible."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/library-mobile-320.png",
+      "proof": "Library mobile loaded: 320px no overflow, filter trigger/cards readable."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/library-more-filters-desktop.png",
+      "proof": "Library desktop More Filters loaded: right drawer opens without layout overflow."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/library-more-filters-mobile.png",
+      "proof": "Library mobile More Filters loaded: bottom-sheet panel fits 320px viewport."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/library-inspector-collapsed.png",
+      "proof": "Library inspector collapsed loaded: compact right toggle and no stale left filter rail."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/library-selected-inspector-open.png",
+      "proof": "Library selected asset loaded: inspector opens with record information and grid remains usable."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/collections-desktop.png",
+      "proof": "Collections desktop loaded: preview strip bounded, search shell stable, rows/actions readable."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/collections-mobile.png",
+      "proof": "Collections mobile loaded: 320px no horizontal overflow."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/collections-selected-row.png",
+      "proof": "Collections loaded selected row: selected state visible and detail rail updates."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/collections-item-checks-disabled.png",
+      "proof": "Collections loaded Viewer item-level checks: disabled with reviewer-only reason preserved."
+    },
+    {
+      "file": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/runs/evidence/2026-06-18/final-premerge-ui-review/admin-readiness-missing.png",
+      "proof": "Admin missing readiness after fix: simulated 503 shows warning, no green local rehearsal pass."
+    }
+  ],
+  "metrics": [
+    {
+      "label": "upload-initial-desktop",
+      "url": "http://localhost:4871/upload?role=Contributor",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": null,
+      "appliedFilterBar": null,
+      "filterbarControls": null,
+      "libraryGridColumns": null,
+      "filterRail": null,
+      "inspectorRail": null,
+      "drawer": null,
+      "previewStrip": null,
+      "adminGrid": null,
+      "disabledReasons": [],
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Share Photos 5 Recent Uploads Requests 6 My Tasks 4 Support Help Center LC admin Contributor Share photos with the media team Add photos or Drive link Upload photos from computer Drag files here or choose files Media team reviews photos before anything becomes public. How review works Save for later Send to media team"
+    },
+    {
+      "label": "upload-initial-mobile",
+      "url": "http://localhost:4871/upload?role=Contributor",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "scroll": {
+        "width": 320,
+        "clientWidth": 320,
+        "horizontalOverflow": false
+      },
+      "topbar": null,
+      "appliedFilterBar": null,
+      "filterbarControls": null,
+      "libraryGridColumns": null,
+      "filterRail": null,
+      "inspectorRail": null,
+      "drawer": null,
+      "previewStrip": null,
+      "adminGrid": null,
+      "disabledReasons": [],
+      "offscreenControls": [],
+      "textSample": "Skip to content Share Photos Library Share Collections Recent Uploads Help Share photos with the media team Add photos or Drive link Upload photos from computer Drag files here or choose files Media team reviews photos before anything becomes public. How review works Save for later Send to media team"
+    },
+    {
+      "label": "upload-after-source",
+      "url": "http://localhost:4871/upload?role=Contributor",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": null,
+      "appliedFilterBar": null,
+      "filterbarControls": null,
+      "libraryGridColumns": null,
+      "filterRail": null,
+      "inspectorRail": null,
+      "drawer": null,
+      "previewStrip": null,
+      "adminGrid": null,
+      "disabledReasons": [],
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Share Photos 5 Recent Uploads Requests 6 My Tasks 4 Support Help Center LC admin Contributor Share photos with the media team Ready to send Upload photos from computer Drag files here or choose files Remove 1 Drive link Ready for details Google Drive link drive.google.com Event name * Date * Ministry / team * Photographer / source * Location Notes for reviewers Media team reviews photos before anything becomes public. How review works Save for later Send to media team"
+    },
+    {
+      "label": "upload-success-state",
+      "url": "http://localhost:4871/upload?role=Contributor",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": null,
+      "appliedFilterBar": null,
+      "filterbarControls": null,
+      "libraryGridColumns": null,
+      "filterRail": null,
+      "inspectorRail": null,
+      "drawer": null,
+      "previewStrip": null,
+      "adminGrid": null,
+      "disabledReasons": [],
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Share Photos 5 Recent Uploads Requests 6 My Tasks 4 Support Help Center LC admin Contributor Thank you — your photos were sent to the media team. Submission Final premerge UI review success Sent Google Drive link We'll review rights, people/youth visibility, and usage before anything is published. Share more photos"
+    },
+    {
+      "label": "admin-desktop",
+      "url": "http://localhost:4871/admin",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": null,
+      "appliedFilterBar": null,
+      "filterbarControls": null,
+      "libraryGridColumns": null,
+      "filterRail": null,
+      "inspectorRail": null,
+      "drawer": null,
+      "previewStrip": null,
+      "adminGrid": {
+        "x": 284,
+        "y": 302,
+        "width": 1128,
+        "height": 5387,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "disabledReasons": [],
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Share Photos 5 Recent Uploads Review Queue 7 Requests 6 My Tasks 4 Governance Rights & Consent 3 Metadata Health 7 Policy Center Audit Log Admin Control Center Users & Roles Taxonomy Integrations Settings Support Help Center LC admin DAM Admin Control Center Local prototype status for source health, audit activity, storage honesty, identity proof, and policy-sensitive workflows. Local prototype Read-only observer ResourceSpace ResourceSpace metadata export Durable state Missing Identity Not production-proven Proof score 50% Admin observer Read-only observer mode Local prototype only. Not beta-ready. Hosted proof missing. Config changes, secrets, paid hosting changes, source mutation, public launch, and ResourceSpace writeback stay disabled until operator proof is explicit. No paid June charge. No public launch claim. Administration Overview Route-focused control module. Data is read-only unless a safe portal action explicitly says otherwise. Read-only Local prototype Blocking evidence Exception-first controls before any teammate rehearsal. Local rehearsal readiness Pass/hold evidence for teammate rehearsal. Blocks are invite stoppers; warnings are rehearsal follow-ups. Hold until blockers clear 50% local proof score generated 6/18/2026, "
+    },
+    {
+      "label": "admin-mobile",
+      "url": "http://localhost:4871/admin",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "scroll": {
+        "width": 320,
+        "clientWidth": 320,
+        "horizontalOverflow": false
+      },
+      "topbar": null,
+      "appliedFilterBar": null,
+      "filterbarControls": null,
+      "libraryGridColumns": null,
+      "filterRail": null,
+      "inspectorRail": null,
+      "drawer": null,
+      "previewStrip": null,
+      "adminGrid": {
+        "x": 12,
+        "y": 379,
+        "width": 296,
+        "height": 756,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "disabledReasons": [],
+      "offscreenControls": [],
+      "textSample": "Skip to content Control Center Library Share Review Collections Help Control Center Local prototype Read-only observer ResourceSpace ResourceSpace metadata export Durable state Missing Identity Not production-proven Proof score 50% Admin observer Read-only observer mode No paid June charge. No public launch claim. Administration Overview Read-only Local prototype Blocking evidence Exception-first controls before any teammate rehearsal. Local rehearsal evidence Hold until blockers clear Hold 7 PASS 3 WARN 4 BLOCK ResourceSpace review writeback: Review decisions save as portal pending-sync events. They are not final ResourceSpace truth. Governance policies Access boundaries and custody Source truth, policy counts, role boundaries. No writeback. Audit activity Recent actor-backed events Denied, queued, preview, allowed. Integration health Source and integration state Read-only until writeback approval."
+    },
+    {
+      "label": "library-desktop-1440",
+      "url": "http://localhost:4871/",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": {
+        "x": 282,
+        "y": 60,
+        "width": 1131,
+        "height": 104,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "8"
+      },
+      "appliedFilterBar": {
+        "x": 282,
+        "y": 209,
+        "width": 1075,
+        "height": 116,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "5"
+      },
+      "filterbarControls": {
+        "x": 286,
+        "y": 211,
+        "width": 886,
+        "height": 110,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "libraryGridColumns": "1075.22px 40px",
+      "filterRail": null,
+      "inspectorRail": {
+        "visible": true,
+        "className": "ed-library-inspector-rail is-collapsed",
+        "display": "block",
+        "width": 40
+      },
+      "drawer": null,
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Requests 6 My Tasks 4 Support Help Center LC admin Viewer LIBRARY 2,061 assets Media library SOURCE FILES RESTRICTED Search DAM assets Comfort Dense Sort assets Approved first Recently approved Newest A-Z Save view Inspector No selection SAVED VIEW All saved views Ready to use (2,061) Approved with blockers (0) Website hero images (146) Sermon / slide backgrounds (27) Newsletter images (121) Social media images (121) No people (0) People unknown (0) People/minors (0) Recently approved (2,061) Needs review (0) Archive only (0) COLLECTION All collections Approved Public (2,061) Approved Internal (2,061) Review Intake (2,061) Archive Reference (0) Sabbath (38) Teaching & Study (27) Seasonal Details (96) Welcome Team (12) Fellowship (0) Web & Slides (2,061) Social Ready (2,061) Projection Ready (2,061) Print Ready (2,061) Missing Rights (2,061) People / Minors (2,061) Missing Derivative (0) Duplicate Cleanup (6) Stale Approval (0) STATUS Any Needs Review (0) Approved Public (30) Approved Internal (0) Portal Ready (0) Archive Only (0) RIGHTS / CONSENT Any Rights Review (0) Rights Missing (0) Consent Confirmed (30) Consent Review (0) Music Rights (1) PEOPLE / MINORS Any No People (0) Adults Visible (30) People Unknown (0) Possible Minors (0) C"
+    },
+    {
+      "label": "library-mobile-320",
+      "url": "http://localhost:4871/",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "scroll": {
+        "width": 320,
+        "clientWidth": 320,
+        "horizontalOverflow": false
+      },
+      "topbar": {
+        "x": 11,
+        "y": 78,
+        "width": 298,
+        "height": 295,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "8"
+      },
+      "appliedFilterBar": {
+        "x": 11,
+        "y": 454,
+        "width": 298,
+        "height": 38,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "5"
+      },
+      "filterbarControls": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "libraryGridColumns": "297.625px",
+      "filterRail": null,
+      "inspectorRail": {
+        "visible": false,
+        "className": "ed-library-inspector-rail is-collapsed",
+        "display": "none",
+        "width": 0
+      },
+      "drawer": null,
+      "offscreenControls": [],
+      "textSample": "Skip to content Library Library Collections Requests My Tasks Help LIBRARY 2,061 assets Media library SOURCE FILES RESTRICTED Search DAM assets Filters Comfort Dense Sort assets Approved first Recently approved Newest A-Z Save view Inspector No selection Filters Clear filters Showing 1–30 Per page 15 30 60 120 Previous Page 1 of 69 Next Needs Review Bee Media library HEIC 367 Not provided 2026-06-04 Needs Review Plant 1 Media library JPG 441 Not provided 2026-06-04 Needs Review Bench Bible Media library JPG 368 Not provided 2026-06-04 Needs Review Fountain 1 Media library JPG 404 Not provided 2026-06-04 Needs Review Bird 6 Media library JPG 391 Not provided 2026-06-04 Needs Review Plant 11 Media library PNG 447 Not provided 2026-06-04 Needs Review Bible 10 Media library JPG 372 Not provided 2026-06-04 Needs Review Fountain 2 Media library JPG 405 Not provided 2026-06-04 Needs Review Birdhouse Media library PNG 392 Not provided 2026-06-04 Needs Review Plant 12 Media library PNG 448 Not provided 2026-06-04 Needs Review Bible 11 Media library JPG 373 Not provided 2026-06-04 Needs Review Fountain 3 Media library JPG 406 Not provided 2026-06-04 Needs Review Butterfly 10 Media library HEIC 396 Not provided 2026-06-04 Needs Review Plant 13 Media library JPG 449 Not provided 2026-06-04 Needs Review Bible 13 Media library JPG 374 Not provided 2026-06-04 Needs Review Fountain 5 Media library HEIC 407 Not provided 2026-06-04 Needs Review Butterfly 11 Media library HEIC 397 Not provided "
+    },
+    {
+      "label": "library-more-filters-desktop",
+      "url": "http://localhost:4871/",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": {
+        "x": 282,
+        "y": 60,
+        "width": 1131,
+        "height": 104,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "8"
+      },
+      "appliedFilterBar": {
+        "x": 282,
+        "y": 209,
+        "width": 1075,
+        "height": 116,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "5"
+      },
+      "filterbarControls": {
+        "x": 286,
+        "y": 211,
+        "width": 886,
+        "height": 110,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "libraryGridColumns": "1075.22px 40px",
+      "filterRail": null,
+      "inspectorRail": {
+        "visible": true,
+        "className": "ed-library-inspector-rail is-collapsed",
+        "display": "block",
+        "width": 40
+      },
+      "drawer": {
+        "x": 992,
+        "y": 0,
+        "width": 448,
+        "height": 1000,
+        "display": "flex",
+        "position": "fixed",
+        "zIndex": "50"
+      },
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Requests 6 My Tasks 4 Support Help Center LC admin Viewer LIBRARY 2,061 assets Media library SOURCE FILES RESTRICTED Search DAM assets Comfort Dense Sort assets Approved first Recently approved Newest A-Z Save view Inspector No selection SAVED VIEW All saved views Ready to use (2,061) Approved with blockers (0) Website hero images (146) Sermon / slide backgrounds (27) Newsletter images (121) Social media images (121) No people (0) People unknown (0) People/minors (0) Recently approved (2,061) Needs review (0) Archive only (0) COLLECTION All collections Approved Public (2,061) Approved Internal (2,061) Review Intake (2,061) Archive Reference (0) Sabbath (38) Teaching & Study (27) Seasonal Details (96) Welcome Team (12) Fellowship (0) Web & Slides (2,061) Social Ready (2,061) Projection Ready (2,061) Print Ready (2,061) Missing Rights (2,061) People / Minors (2,061) Missing Derivative (0) Duplicate Cleanup (6) Stale Approval (0) STATUS Any Needs Review (0) Approved Public (30) Approved Internal (0) Portal Ready (0) Archive Only (0) RIGHTS / CONSENT Any Rights Review (0) Rights Missing (0) Consent Confirmed (30) Consent Review (0) Music Rights (1) PEOPLE / MINORS Any No People (0) Adults Visible (30) People Unknown (0) Possible Minors (0) C"
+    },
+    {
+      "label": "library-more-filters-mobile",
+      "url": "http://localhost:4871/",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "scroll": {
+        "width": 320,
+        "clientWidth": 320,
+        "horizontalOverflow": false
+      },
+      "topbar": {
+        "x": 11,
+        "y": 78,
+        "width": 298,
+        "height": 295,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "8"
+      },
+      "appliedFilterBar": {
+        "x": 11,
+        "y": 454,
+        "width": 298,
+        "height": 38,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "5"
+      },
+      "filterbarControls": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "libraryGridColumns": "297.625px",
+      "filterRail": null,
+      "inspectorRail": {
+        "visible": false,
+        "className": "ed-library-inspector-rail is-collapsed",
+        "display": "none",
+        "width": 0
+      },
+      "drawer": {
+        "x": 0,
+        "y": 196,
+        "width": 320,
+        "height": 704,
+        "display": "flex",
+        "position": "fixed",
+        "zIndex": "50"
+      },
+      "offscreenControls": [],
+      "textSample": "Skip to content Library Library Collections Requests My Tasks Help LIBRARY 2,061 assets Media library SOURCE FILES RESTRICTED Search DAM assets Filters Comfort Dense Sort assets Approved first Recently approved Newest A-Z Save view Inspector No selection Filters Clear filters Showing 1–30 Per page 15 30 60 120 Previous Page 1 of 69 Next Needs Review Bee Media library HEIC 367 Not provided 2026-06-04 Needs Review Plant 1 Media library JPG 441 Not provided 2026-06-04 Needs Review Bench Bible Media library JPG 368 Not provided 2026-06-04 Needs Review Fountain 1 Media library JPG 404 Not provided 2026-06-04 Needs Review Bird 6 Media library JPG 391 Not provided 2026-06-04 Needs Review Plant 11 Media library PNG 447 Not provided 2026-06-04 Needs Review Bible 10 Media library JPG 372 Not provided 2026-06-04 Needs Review Fountain 2 Media library JPG 405 Not provided 2026-06-04 Needs Review Birdhouse Media library PNG 392 Not provided 2026-06-04 Needs Review Plant 12 Media library PNG 448 Not provided 2026-06-04 Needs Review Bible 11 Media library JPG 373 Not provided 2026-06-04 Needs Review Fountain 3 Media library JPG 406 Not provided 2026-06-04 Needs Review Butterfly 10 Media library HEIC 396 Not provided 2026-06-04 Needs Review Plant 13 Media library JPG 449 Not provided 2026-06-04 Needs Review Bible 13 Media library JPG 374 Not provided 2026-06-04 Needs Review Fountain 5 Media library HEIC 407 Not provided 2026-06-04 Needs Review Butterfly 11 Media library HEIC 397 Not provided "
+    },
+    {
+      "label": "library-inspector-collapsed",
+      "url": "http://localhost:4871/",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": {
+        "x": 282,
+        "y": 60,
+        "width": 1131,
+        "height": 104,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "8"
+      },
+      "appliedFilterBar": {
+        "x": 282,
+        "y": 209,
+        "width": 1075,
+        "height": 116,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "5"
+      },
+      "filterbarControls": {
+        "x": 286,
+        "y": 211,
+        "width": 886,
+        "height": 110,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "libraryGridColumns": "1075.22px 40px",
+      "filterRail": null,
+      "inspectorRail": {
+        "visible": true,
+        "className": "ed-library-inspector-rail is-collapsed",
+        "display": "block",
+        "width": 40
+      },
+      "drawer": null,
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Requests 6 My Tasks 4 Support Help Center LC admin Viewer LIBRARY 2,061 assets Media library SOURCE FILES RESTRICTED Search DAM assets Comfort Dense Sort assets Approved first Recently approved Newest A-Z Save view Inspector No selection SAVED VIEW All saved views Ready to use (2,061) Approved with blockers (0) Website hero images (146) Sermon / slide backgrounds (27) Newsletter images (121) Social media images (121) No people (0) People unknown (0) People/minors (0) Recently approved (2,061) Needs review (0) Archive only (0) COLLECTION All collections Approved Public (2,061) Approved Internal (2,061) Review Intake (2,061) Archive Reference (0) Sabbath (38) Teaching & Study (27) Seasonal Details (96) Welcome Team (12) Fellowship (0) Web & Slides (2,061) Social Ready (2,061) Projection Ready (2,061) Print Ready (2,061) Missing Rights (2,061) People / Minors (2,061) Missing Derivative (0) Duplicate Cleanup (6) Stale Approval (0) STATUS Any Needs Review (0) Approved Public (30) Approved Internal (0) Portal Ready (0) Archive Only (0) RIGHTS / CONSENT Any Rights Review (0) Rights Missing (0) Consent Confirmed (30) Consent Review (0) Music Rights (1) PEOPLE / MINORS Any No People (0) Adults Visible (30) People Unknown (0) Possible Minors (0) C"
+    },
+    {
+      "label": "library-selected-inspector-open",
+      "url": "http://localhost:4871/",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "topbar": {
+        "x": 282,
+        "y": 60,
+        "width": 1131,
+        "height": 104,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "8"
+      },
+      "appliedFilterBar": {
+        "x": 282,
+        "y": 209,
+        "width": 827,
+        "height": 175,
+        "display": "grid",
+        "position": "sticky",
+        "zIndex": "5"
+      },
+      "filterbarControls": {
+        "x": 286,
+        "y": 211,
+        "width": 638,
+        "height": 169,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "libraryGridColumns": "827.219px 288px",
+      "filterRail": null,
+      "inspectorRail": {
+        "visible": true,
+        "className": "ed-library-inspector-rail",
+        "display": "block",
+        "width": 288
+      },
+      "drawer": null,
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Requests 6 My Tasks 4 Support Help Center LC admin Viewer LIBRARY 2,061 assets Media library SOURCE FILES RESTRICTED Search DAM assets Comfort Dense Sort assets Approved first Recently approved Newest A-Z Save view Inspector 1 selected SAVED VIEW All saved views Ready to use (2,061) Approved with blockers (0) Website hero images (146) Sermon / slide backgrounds (27) Newsletter images (121) Social media images (121) No people (0) People unknown (0) People/minors (0) Recently approved (2,061) Needs review (0) Archive only (0) COLLECTION All collections Approved Public (2,061) Approved Internal (2,061) Review Intake (2,061) Archive Reference (0) Sabbath (38) Teaching & Study (27) Seasonal Details (96) Welcome Team (12) Fellowship (0) Web & Slides (2,061) Social Ready (2,061) Projection Ready (2,061) Print Ready (2,061) Missing Rights (2,061) People / Minors (2,061) Missing Derivative (0) Duplicate Cleanup (6) Stale Approval (0) STATUS Any Needs Review (0) Approved Public (30) Approved Internal (0) Portal Ready (0) Archive Only (0) RIGHTS / CONSENT Any Rights Review (0) Rights Missing (0) Consent Confirmed (30) Consent Review (0) Music Rights (1) PEOPLE / MINORS Any No People (0) Adults Visible (30) People Unknown (0) Possible Minors (0) Chi"
+    },
+    {
+      "label": "collections-desktop",
+      "url": "http://localhost:4871/collections",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "previewStrip": {
+        "x": 284,
+        "y": 250,
+        "width": 1128,
+        "height": 290,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "collectionGrid": {
+        "x": 284,
+        "y": 554,
+        "width": 1128,
+        "height": 2816,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "selectedRows": 1,
+      "disabledReasons": [
+        {
+          "text": "Item-level checks",
+          "reason": "Reviewer access required for item-level checks"
+        }
+      ],
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Requests 6 My Tasks 4 Support Help Center LC admin Viewer Collections 18 packages Package cabinet for ministry kits. Collections organize assets; each record keeps its own reuse decision. Open selected Start toolkit draft Item-level checks Catalog snapshot Collections show approved-copy navigation and review worklists only. Package approval never overrides asset approval Role-safe previews Collection preview samples Approved Public opens with preview-backed records where local derivatives exist. 5 visible Bee 367 · HEIC Plant 1 441 · JPG Bench Bible 368 · JPG Fountain 1 404 · JPG Bird 6 391 · JPG Cabinet summary 18,728 Ready items 0 Need review 18,728 Total refs 18 Packages Saved filters Ready to use 2,061 Needs review 0 People/minors 0 Saved filters are local catalog views. They do not edit taxonomy or create durable custom fields. Collection groups Source collections 6,183 Ministry collections 173 Channel collections 8,244 Governance collections 4,128 Source collections 4 sets Approved Public Public delivery set built from reviewed asset records · 2,061 assets · Ready set Portal Ready Selected Open filtered set Build toolkit Approved Internal Internal delivery set for ministry teams and member-facing material · 2,061 assets · Ready set"
+    },
+    {
+      "label": "collections-mobile",
+      "url": "http://localhost:4871/collections",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "scroll": {
+        "width": 320,
+        "clientWidth": 320,
+        "horizontalOverflow": false
+      },
+      "previewStrip": {
+        "x": 10,
+        "y": 529,
+        "width": 300,
+        "height": 986,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "collectionGrid": {
+        "x": 10,
+        "y": 1529,
+        "width": 300,
+        "height": 5929,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "selectedRows": 1,
+      "disabledReasons": [
+        {
+          "text": "Item-level checks",
+          "reason": "Reviewer access required for item-level checks"
+        }
+      ],
+      "offscreenControls": [],
+      "textSample": "Skip to content Collections Library Collections Requests My Tasks Help Collections 18 packages Package cabinet for ministry kits. Collections organize assets; each record keeps its own reuse decision. Open selected Start toolkit draft Item-level checks Catalog snapshot Collections show approved-copy navigation and review worklists only. Package approval never overrides asset approval Role-safe previews Collection preview samples Approved Public opens with preview-backed records where local derivatives exist. 5 visible Bee 367 · HEIC Plant 1 441 · JPG Bench Bible 368 · JPG Fountain 1 404 · JPG Bird 6 391 · JPG Cabinet summary 18,728 Ready items 0 Need review 18,728 Total refs 18 Packages Saved filters Ready to use 2,061 Needs review 0 People/minors 0 Saved filters are local catalog views. They do not edit taxonomy or create durable custom fields. Collection groups Source collections 6,183 Ministry collections 173 Channel collections 8,244 Governance collections 4,128 Source collections 4 sets Approved Public Public delivery set built from reviewed asset records · 2,061 assets · Ready set Portal Ready Selected Open filtered set Build toolkit Approved Internal Internal delivery set for ministry teams and member-facing material · 2,061 assets · Ready set Portal Ready Inspect Open filtered set Build toolkit Review Intake Records awaiting review before reuse · 2,061 assets · Ready set Portal Ready Inspect Open filtered set Build toolkit Archive Reference Searchable reference record"
+    },
+    {
+      "label": "collections-selected-row",
+      "url": "http://localhost:4871/collections",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "previewStrip": {
+        "x": 284,
+        "y": -266,
+        "width": 1128,
+        "height": 290,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "collectionGrid": {
+        "x": 284,
+        "y": 38,
+        "width": 1128,
+        "height": 2816,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "selectedRows": 1,
+      "disabledReasons": [
+        {
+          "text": "Item-level checks",
+          "reason": "Reviewer access required for item-level checks"
+        }
+      ],
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Requests 6 My Tasks 4 Support Help Center LC admin Viewer Collections 18 packages Package cabinet for ministry kits. Collections organize assets; each record keeps its own reuse decision. Open selected Start toolkit draft Item-level checks Catalog snapshot Collections show approved-copy navigation and review worklists only. Package approval never overrides asset approval Role-safe previews Collection preview samples Review Intake opens with preview-backed records where local derivatives exist. 5 visible Bee 367 · HEIC Plant 1 441 · JPG Bench Bible 368 · JPG Fountain 1 404 · JPG Bird 6 391 · JPG Cabinet summary 18,728 Ready items 0 Need review 18,728 Total refs 18 Packages Saved filters Ready to use 2,061 Needs review 0 People/minors 0 Saved filters are local catalog views. They do not edit taxonomy or create durable custom fields. Collection groups Source collections 6,183 Ministry collections 173 Channel collections 8,244 Governance collections 4,128 Source collections 4 sets Approved Public Public delivery set built from reviewed asset records · 2,061 assets · Ready set Portal Ready Inspect Open filtered set Build toolkit Approved Internal Internal delivery set for ministry teams and member-facing material · 2,061 assets · Ready set Po"
+    },
+    {
+      "label": "collections-item-checks-disabled",
+      "url": "http://localhost:4871/collections",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "previewStrip": {
+        "x": 284,
+        "y": 250,
+        "width": 1128,
+        "height": 290,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "collectionGrid": {
+        "x": 284,
+        "y": 554,
+        "width": 1128,
+        "height": 2816,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "selectedRows": 1,
+      "disabledReasons": [
+        {
+          "text": "Item-level checks",
+          "reason": "Reviewer access required for item-level checks"
+        }
+      ],
+      "offscreenControls": [],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Requests 6 My Tasks 4 Support Help Center LC admin Viewer Collections 18 packages Package cabinet for ministry kits. Collections organize assets; each record keeps its own reuse decision. Open selected Start toolkit draft Item-level checks Catalog snapshot Collections show approved-copy navigation and review worklists only. Package approval never overrides asset approval Role-safe previews Collection preview samples Approved Public opens with preview-backed records where local derivatives exist. 5 visible Bee 367 · HEIC Plant 1 441 · JPG Bench Bible 368 · JPG Fountain 1 404 · JPG Bird 6 391 · JPG Cabinet summary 18,728 Ready items 0 Need review 18,728 Total refs 18 Packages Saved filters Ready to use 2,061 Needs review 0 People/minors 0 Saved filters are local catalog views. They do not edit taxonomy or create durable custom fields. Collection groups Source collections 6,183 Ministry collections 173 Channel collections 8,244 Governance collections 4,128 Source collections 4 sets Approved Public Public delivery set built from reviewed asset records · 2,061 assets · Ready set Portal Ready Selected Open filtered set Build toolkit Approved Internal Internal delivery set for ministry teams and member-facing material · 2,061 assets · Ready set"
+    },
+    {
+      "label": "admin-readiness-missing",
+      "url": "http://localhost:4871/admin",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scroll": {
+        "width": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false
+      },
+      "adminGrid": {
+        "x": 284,
+        "y": 368,
+        "width": 1128,
+        "height": 2610,
+        "display": "grid",
+        "position": "static",
+        "zIndex": "auto"
+      },
+      "readinessDecision": [
+        "Readiness unavailable Readiness facts are not loaded; absence of blockers is not a pass. Restore readiness data, rerun browser QA and hosted smoke, then decide rehearsal users."
+      ],
+      "textSample": "Skip to content True Jesus Church Media Library Search assets, records, packages, collections... Ctrl K DAM command center Search assets, navigate routes, and open role-aware DAM workflows. Media Library Collections Distribution Sets Workflow Share Photos 5 Recent Uploads Review Queue 7 Requests 6 My Tasks 4 Governance Rights & Consent 3 Metadata Health 7 Policy Center Audit Log Admin Control Center Users & Roles Taxonomy Integrations Settings Support Help Center LC admin DAM Admin Control Center Local prototype status for source health, audit activity, storage honesty, identity proof, and policy-sensitive workflows. Local prototype Read-only observer ResourceSpace Disconnected Durable state Missing Identity Not production-proven Proof score 0% Admin observer Read-only observer mode Local prototype only. Not beta-ready. Hosted proof missing. Config changes, secrets, paid hosting changes, source mutation, public launch, and ResourceSpace writeback stay disabled until operator proof is explicit. No paid June charge. No public launch claim. ResourceSpace data unavailable Live DAM metrics are unavailable. Static governance views remain visible; writes and launch claims stay disabled. simulated readiness unavailable Administration Overview Route-focused control module. Data is read-only unless a safe portal action explicitly says otherwise. Source offline Local prototype Blocking evidence Exception-first controls before any teammate rehearsal. Local rehearsal readiness Pass/hold e"
+    }
+  ]
+}

@@ -368,6 +368,10 @@ export type BetaFeedbackSeverity = "low" | "medium" | "high" | "critical";
 
 export type BetaFeedbackStatus = "new" | "triaged" | "agent-ready" | "fixed" | "wont-fix";
 
+export type BetaFeedbackOwner = "unassigned" | "Hali" | "Enoch" | "Reviewer" | "Codex" | "Admin";
+
+export type BetaFeedbackIncidentState = "none" | "watch" | "triggered" | "resolved";
+
 export type BetaFeedbackRecord = {
   id: string;
   createdAt: string;
@@ -379,6 +383,10 @@ export type BetaFeedbackRecord = {
   expected: string;
   actual: string;
   status: BetaFeedbackStatus;
+  owner: BetaFeedbackOwner;
+  incidentState: BetaFeedbackIncidentState;
+  incidentId?: string;
+  incidentTriggeredAt?: string;
   notes?: string;
   reporterName?: string;
   browser?: string;
@@ -607,6 +615,14 @@ export type DamReadinessResult = {
     latestAt?: string;
     denied: number;
     queued: number;
+    storage?: {
+      mode: string;
+      durable: boolean;
+      productionReady: boolean;
+      accountabilityEvidence: boolean;
+      truthBoundary: string;
+      detail: string;
+    };
     recent: AuditEventSummary[];
   };
 };

@@ -1094,9 +1094,15 @@ describe("launch readiness facts", () => {
 
     const readiness = buildBetaReadiness({ integrations, assetCount: 1, portalReady: 1, auditRecent: [] });
     const writeback = readiness.facts.find((item) => item.id === "review-writes");
+    const hosted181 = readiness.facts.find((item) => item.id === "hosted-181-record-proof");
+    const boundary = readiness.facts.find((item) => item.id === "durable-fail-closed-boundary");
+    const signoff = readiness.facts.find((item) => item.id === "team-beta-owner-signoff");
 
     expect(writeback?.ready).toBe(false);
     expect(writeback?.state).toBe("block");
+    expect(hosted181?.state).toBe("block");
+    expect(boundary?.state).toBe("block");
+    expect(signoff?.state).toBe("block");
     expect(readiness.ready).toBe(false);
   });
 });

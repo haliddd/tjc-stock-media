@@ -35,6 +35,7 @@ export type AuditEventType =
   | "beta_auth_logout"
   | "beta_feedback_submitted"
   | "beta_feedback_triaged"
+  | "beta_feedback_incident_triggered"
   | "resourcespace_write_attempted"
   | "resourcespace_write_succeeded"
   | "resourcespace_write_failed"
@@ -122,6 +123,7 @@ const auditEventTypes: AuditEventType[] = [
   "beta_auth_logout",
   "beta_feedback_submitted",
   "beta_feedback_triaged",
+  "beta_feedback_incident_triggered",
   "resourcespace_write_attempted",
   "resourcespace_write_succeeded",
   "resourcespace_write_failed",
@@ -167,6 +169,7 @@ const auditAccountabilityAreas: Record<AuditEventType, AuditAccountabilityArea> 
   beta_auth_logout: "admin-readiness",
   beta_feedback_submitted: "beta-feedback",
   beta_feedback_triaged: "beta-feedback",
+  beta_feedback_incident_triggered: "beta-feedback",
   resourcespace_write_attempted: "resourcespace-sync",
   resourcespace_write_succeeded: "resourcespace-sync",
   resourcespace_write_failed: "resourcespace-sync",

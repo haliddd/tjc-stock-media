@@ -1,6 +1,14 @@
 # Team Beta Internal Tester Packet
 
-Last updated: 2026-06-17
+Last updated: 2026-06-18
+
+## June 18 ORCH Final Override
+
+Current status: **NO-GO for sending teammate invites.** Use this packet as draft copy only.
+
+June 18 ORCH local browser QA is green after product fixes, but invite/send remains blocked until hosted 181-record catalog proof, hosted durable audit/ticket proof or explicit fail-closed hosted-download owner approval, and renewed Hali/Enoch owner signoff are complete.
+
+Verified local browser QA: `docs/screenshots/qa/browser-qa-report.json`, checked at `2026-06-18T06:14:20.205Z`, 20 pages, 6 viewport widths, 32 screenshots, 0 failures, 0 console errors, 0 network failures, 3 expected denied console entries.
 
 ## June 17 Safety Override
 

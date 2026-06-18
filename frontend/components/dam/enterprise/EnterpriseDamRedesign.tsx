@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Archive,
@@ -59,13 +59,7 @@ import {
   type GovernanceRecord
 } from "@/lib/enterprise-dam-redesign";
 import { routeWithRole } from "@/lib/role-routes";
-import {
-  buildDuplicateHints,
-  buildMediaInventory,
-  buildRiskFlags,
-  parseIntakeSourceName,
-  type DetectionConfidence
-} from "@/lib/upload-intake-detection";
+import { buildMediaInventory } from "@/lib/upload-intake-detection";
 import { enterpriseReviewActionState } from "@/lib/enterprise-review-actions";
 import type { DemoRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -829,10 +823,7 @@ export function EnterpriseLibraryPage() {
   );
 }
 
-const uploadSteps = ["Add media", "Confirm batch", "Submit review packet"] as const;
 const uploadDraftKey = "tjc-upload-intake-batch-draft-v1";
-const requestedUseOptions = ["Website", "Social", "Newsletter", "Slides", "Print", "Internal training", "Public external use", "Archive only"];
-const folderInputProps = { webkitdirectory: "", directory: "" } as unknown as InputHTMLAttributes<HTMLInputElement>;
 
 type UploadReceipt = {
   ok?: boolean;
@@ -844,18 +835,20 @@ type UploadReceipt = {
   storageMode?: string;
   custodyMode?: string;
   resourceSpaceWritten?: boolean;
+  reviewWarnings?: string[];
+};
+
+type UploadFilePreview = {
+  id: string;
+  name: string;
+  meta: string;
+  url?: string;
 };
 
 function formatBytes(value: number) {
   if (value >= 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(value / 1024)).toLocaleString()} KB`;
-}
-
-function confidenceLabel(confidence: DetectionConfidence) {
-  if (confidence === "high") return "High confidence";
-  if (confidence === "medium") return "Needs confirmation";
-  return "Reviewer task";
 }
 
 function safeHttpUrl(value: string) {
@@ -868,73 +861,58 @@ function safeHttpUrl(value: string) {
   }
 }
 
+function filesFromDrop(dataTransfer: DataTransfer | null) {
+  const directFiles = Array.from(dataTransfer?.files || []);
+  if (directFiles.length) return directFiles;
+  return Array.from(dataTransfer?.items || [])
+    .map((item) => item.kind === "file" ? item.getAsFile() : null)
+    .filter((file): file is File => Boolean(file));
+}
+
 export function EnterpriseUploadPage() {
   const { role } = useDemoRole();
-  const [step, setStep] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
+  const [filePreviews, setFilePreviews] = useState<UploadFilePreview[]>([]);
   const [sourceLink, setSourceLink] = useState("");
   const [batchName, setBatchName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [ministry, setMinistry] = useState("");
   const [source, setSource] = useState("");
-  const [location, setLocation] = useState("");
-  const [collection, setCollection] = useState("");
-  const [language, setLanguage] = useState("");
+  const [locationName, setLocationName] = useState("");
   const [notes, setNotes] = useState("");
-  const [tags, setTags] = useState("");
-  const [usage, setUsage] = useState<string[]>(["Website"]);
   const [message, setMessage] = useState("");
   const [receipt, setReceipt] = useState<UploadReceipt | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const allowed = roleCanContribute(role);
   const inventory = useMemo(() => buildMediaInventory(files), [files]);
-  const duplicateHints = useMemo(() => buildDuplicateHints(files), [files]);
-  const detected = useMemo(() => parseIntakeSourceName(inventory.folderName || batchName || ""), [batchName, inventory.folderName]);
-  const mergedDetected = {
-    ...detected,
-    eventName: batchName || detected.eventName,
-    eventDate: eventDate || detected.eventDate,
-    ministry: ministry || detected.ministry,
-    location: location || detected.location,
-    photographer: source || detected.photographer
-  };
-  const riskFlags = useMemo(() => buildRiskFlags({
-    folderName: inventory.folderName,
-    filenames: files.map((file) => file.name),
-    notes,
-    tags,
-    eventName: batchName,
-    ministry
-  }), [batchName, files, inventory.folderName, ministry, notes, tags]);
   const validSourceLink = safeHttpUrl(sourceLink);
   const hasFileOrSource = files.length > 0 || Boolean(sourceLink.trim() && validSourceLink);
+  const hasStarted = files.length > 0 || Boolean(sourceLink.trim()) || Boolean(batchName.trim() || eventDate.trim() || ministry.trim() || source.trim() || locationName.trim() || notes.trim());
   const missingAddMedia = [
-    !hasFileOrSource && "Add photos, a folder, or a source link",
-    sourceLink.trim() && !validSourceLink && "Use a full http or https source link"
+    !hasFileOrSource && "Add photos or a Google Drive link",
+    sourceLink.trim() && !validSourceLink && "Use a full http or https Google Drive link"
   ].filter(Boolean);
-  const missingBatch = [
-    !batchName.trim() && "Batch/event name",
+  const missingDetails = [
+    !batchName.trim() && "Event name",
     !eventDate.trim() && "Date",
     !ministry.trim() && "Ministry/team",
-    !source.trim() && "Source/photographer/uploader"
+    !source.trim() && "Photographer/source"
   ].filter(Boolean);
-  const readyToSubmit = hasFileOrSource && validSourceLink && missingBatch.length === 0;
-  const reviewerTasks = [
-    "Rights reviewer verifies ownership/license before public use",
-    "People/youth reviewer confirms visibility before approval",
-    "Consent/release required before public/external approval when people/youth appear",
-    tags.trim() ? "Taxonomy reviewer approves suggested tags" : "Taxonomy reviewer adds approved search terms",
-    duplicateHints.length ? "Duplicate candidates need reviewer/admin decision" : "",
-    ...riskFlags
-  ].filter(Boolean);
-  const adminTasks = [
-    inventory.largeMediaCount ? "Large media/admin intake required" : "",
-    files.length ? "Checksum processing pending" : "",
-    duplicateHints.length ? "Duplicate group processing pending" : "",
-    "Approved derivatives generated after review",
-    "DAM sync pending; upload does not write approval truth"
-  ].filter(Boolean);
+  const readyToSubmit = hasFileOrSource && validSourceLink && missingDetails.length === 0;
+  const sourceLinkHost = sourceLink.trim() ? new URL(sourceLink.trim(), "https://drive.google.com").host.replace(/^www\./, "") : "";
+  const selectedCountLabel = files.length
+    ? `${files.length} photo${files.length === 1 ? "" : "s"} selected`
+    : sourceLink.trim()
+      ? "1 Drive link"
+      : "Ready for photos";
+  const readyStateLabel = readyToSubmit
+    ? "Ready to send"
+    : hasFileOrSource
+      ? `Need ${missingDetails.join(", ")}`
+      : sourceLink.trim() && !validSourceLink
+        ? "Check Drive link"
+        : "Add photos or Drive link";
 
   useEffect(() => {
     try {
@@ -944,12 +922,8 @@ export function EnterpriseUploadPage() {
       setEventDate(String(saved.eventDate || ""));
       setMinistry(String(saved.ministry || ""));
       setSource(String(saved.source || ""));
-      setLocation(String(saved.location || ""));
-      setCollection(String(saved.collection || ""));
-      setLanguage(String(saved.language || ""));
+      setLocationName(String(saved.locationName || ""));
       setNotes(String(saved.notes || ""));
-      setTags(String(saved.tags || ""));
-      if (Array.isArray(saved.usage)) setUsage(saved.usage.map(String).filter(Boolean));
     } catch {
       // Local draft restore is best-effort only.
     } finally {
@@ -959,25 +933,30 @@ export function EnterpriseUploadPage() {
 
   useEffect(() => {
     if (!draftLoaded) return;
-    window.localStorage.setItem(uploadDraftKey, JSON.stringify({ sourceLink, batchName, eventDate, ministry, source, location, collection, language, notes, tags, usage }));
-  }, [batchName, collection, draftLoaded, eventDate, language, location, ministry, notes, source, sourceLink, tags, usage]);
+    window.localStorage.setItem(uploadDraftKey, JSON.stringify({ sourceLink, batchName, eventDate, ministry, source, locationName, notes }));
+  }, [batchName, draftLoaded, eventDate, locationName, ministry, notes, source, sourceLink]);
 
   useEffect(() => {
-    if (!inventory.folderName) return;
-    const parsed = parseIntakeSourceName(inventory.folderName);
-    if (!batchName && parsed.eventName) setBatchName(parsed.eventName);
-    if (!eventDate && parsed.eventDate) setEventDate(parsed.eventDate);
-    if (!ministry && parsed.ministry) setMinistry(parsed.ministry);
-    if (!source && parsed.photographer) setSource(parsed.photographer);
-    if (!location && parsed.location) setLocation(parsed.location);
-  }, [batchName, eventDate, inventory.folderName, location, ministry, source]);
+    const nextPreviews = files.slice(0, 8).map((file, index) => ({
+      id: `${file.name}-${file.size}-${index}`,
+      name: file.name,
+      meta: `${file.type || "Photo"} | ${formatBytes(file.size)}`,
+      url: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined
+    }));
+    setFilePreviews(nextPreviews);
+    return () => {
+      nextPreviews.forEach((preview) => {
+        if (preview.url) URL.revokeObjectURL(preview.url);
+      });
+    };
+  }, [files]);
 
   if (!allowed) {
     return (
       <div className="damx-page">
         <EmptyState
-          title="Create intake batch requires Contributor access"
-          body="Contributors can create intake batches. Reviewers approve rights, people/youth, usage scope, and derivatives later."
+          title="Sharing photos requires Contributor access"
+          body="Contributors can send photos to the media team. Media team reviews photos before anything becomes public."
           actions={<EnterpriseButton href={routeWithRole("/library", role)} icon={<Library size={16} aria-hidden="true" />}>Open Library</EnterpriseButton>}
         />
       </div>
@@ -988,63 +967,43 @@ export function EnterpriseUploadPage() {
     const nextFiles = Array.from(fileList || []);
     setFiles(nextFiles);
     setReceipt(null);
-    if (nextFiles.length) setMessage(`${nextFiles.length} file(s) staged locally. System scan prepared a review packet draft.`);
+    if (nextFiles.length) setMessage(`${nextFiles.length} photo${nextFiles.length === 1 ? "" : "s"} added.`);
   }
 
-  function addDroppedFiles(fileList: FileList | null) {
-    const nextFiles = [...files, ...Array.from(fileList || [])];
+  function addDroppedFiles(dataTransfer: DataTransfer | null) {
+    const droppedFiles = filesFromDrop(dataTransfer);
+    const nextFiles = [...files, ...droppedFiles];
     setFiles(nextFiles);
     setReceipt(null);
-    if (nextFiles.length) setMessage(`${nextFiles.length} file(s) staged locally. System scan prepared a review packet draft.`);
-  }
-
-  function toggleUsage(item: string) {
-    setUsage((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item]);
+    if (nextFiles.length) setMessage(`${nextFiles.length} photo${nextFiles.length === 1 ? "" : "s"} added.`);
   }
 
   function saveDraft() {
-    window.localStorage.setItem(uploadDraftKey, JSON.stringify({ sourceLink, batchName, eventDate, ministry, source, location, collection, language, notes, tags, usage }));
-    setMessage("Draft saved locally in this browser. Files are not durable until submit.");
+    window.localStorage.setItem(uploadDraftKey, JSON.stringify({ sourceLink, batchName, eventDate, ministry, source, locationName, notes }));
+    setMessage("Saved for later in this browser.");
   }
 
-  function clearDraft() {
-    window.localStorage.removeItem(uploadDraftKey);
+  function resetSubmission() {
     setFiles([]);
     setSourceLink("");
     setBatchName("");
     setEventDate("");
     setMinistry("");
     setSource("");
-    setLocation("");
-    setCollection("");
-    setLanguage("");
+    setLocationName("");
     setNotes("");
-    setTags("");
-    setUsage(["Website"]);
     setReceipt(null);
-    setMessage("Local draft cleared.");
-  }
-
-  function goNext() {
-    if (step === 0 && missingAddMedia.length) {
-      setMessage(missingAddMedia.join(". "));
-      return;
-    }
-    if (step === 1 && missingBatch.length) {
-      setMessage(`Complete: ${missingBatch.join(", ")}.`);
-      return;
-    }
     setMessage("");
-    setStep((current) => Math.min(uploadSteps.length - 1, current + 1));
+    window.localStorage.removeItem(uploadDraftKey);
   }
 
   async function submitBatch() {
     if (!readyToSubmit) {
-      setMessage(`Complete: ${[...missingAddMedia, ...missingBatch].join(", ")}.`);
+      setMessage(`Need ${[...missingAddMedia, ...missingDetails].join(", ")}.`);
       return;
     }
     setSubmitting(true);
-    setMessage("Creating intake batch. Nothing is public.");
+    setMessage("Sending photos to the media team.");
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
     form.set("role", role);
@@ -1053,216 +1012,127 @@ export function EnterpriseUploadPage() {
     form.set("eventDate", eventDate);
     form.set("ministry", ministry);
     form.set("source", source);
-    form.set("location", location);
-    form.set("collection", collection);
-    form.set("language", language);
+    form.set("location", locationName);
+    form.set("collection", "");
+    form.set("language", "");
     form.set("intakeNotes", notes);
-    form.set("tags", tags);
+    form.set("tags", "");
     form.set("sourceLink", sourceLink);
     form.set("folderName", inventory.folderName || "");
-    usage.forEach((item) => form.append("requestedUse", item));
+    form.append("requestedUse", "Website");
     const response = await fetch("/api/upload", { method: "POST", body: form });
     const body = await response.json().catch(() => ({}));
     setSubmitting(false);
     setReceipt(body);
     if (response.ok) {
       window.localStorage.removeItem(uploadDraftKey);
-      setMessage(body.message || "Batch submitted. Your review packet has been created. Nothing is public yet.");
+      setMessage("");
     } else {
-      setMessage(body.message || body.error || "We could not create the intake batch. No public asset was created.");
+      setMessage(body.message || body.error || "We could not send these photos. Nothing was published.");
     }
   }
 
   return (
-    <div className="damx-page damx-upload-page">
-      <PageHeader
-        eyebrow="Contributor intake"
-        title="Create intake batch"
-        description="Drop photos, folders, or paste a Drive link. The DAM will prepare the review packet automatically."
-        primaryAction={<EnterpriseButton tone="primary" icon={<UploadCloud size={16} aria-hidden="true" />} disabled={!readyToSubmit || submitting} disabledReason="Complete media and batch identity before submitting." onClick={submitBatch}>Submit batch for DAM review</EnterpriseButton>}
-        secondaryActions={<><EnterpriseButton icon={<Save size={16} aria-hidden="true" />} onClick={saveDraft}>Save draft</EnterpriseButton><EnterpriseButton tone="tertiary" onClick={clearDraft}>Clear</EnterpriseButton></>}
-        metadata={<span>Default after submit: Needs Review / Do Not Publish</span>}
-      />
-      <section className="damx-beta-limit-banner" aria-label="Upload beta limitations">
-        <ShieldCheck size={18} aria-hidden="true" />
-        <div>
-          <strong>Batch intake only</strong>
-          <span>Submission creates a review packet. It does not approve rights, consent, tags, derivatives, downloads, or ResourceSpace truth.</span>
-        </div>
-      </section>
+    <div className="damx-page damx-upload-page damx-upload-v34">
       {message ? <p className="damx-notice" role="status">{message}</p> : null}
-      <nav className="damx-stepper" aria-label="Upload steps">
-        {uploadSteps.map((item, index) => (
-          <button className={index === step ? "is-active" : index < step ? "is-complete" : undefined} type="button" key={item} onClick={() => setStep(index)}>
-            <span>{index + 1}</span>
-            {item}
-          </button>
-        ))}
-      </nav>
-      <div className="damx-upload-layout">
-        <main className="damx-wizard-panel">
-          {step === 0 ? (
-            <section className="damx-wizard-step" data-send-step="0">
-              <h2>Add media batch</h2>
-              <div
-                className="damx-dropzone"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  addDroppedFiles(event.dataTransfer.files);
-                }}
-              >
-                <UploadCloud size={28} aria-hidden="true" />
-                <strong>Drop photos, folders, or paste a Google Drive folder link.</strong>
-                <p>We will detect event info, dates, file types, duplicates, and review tasks.</p>
-                <input type="file" multiple aria-label="Browse files" onChange={(event) => handleFiles(event.target.files)} />
-              </div>
-              <div className="damx-upload-actions-row">
-                <label className="damx-folder-picker">
-                  <FolderOpen size={16} aria-hidden="true" />
-                  <span>Choose folder</span>
-                  <input type="file" multiple aria-label="Choose folder" {...folderInputProps} onChange={(event) => handleFiles(event.target.files)} />
-                </label>
-                <label className="damx-field">
-                  <span>Google Drive or source link</span>
-                  <input value={sourceLink} onChange={(event) => setSourceLink(event.target.value)} placeholder="https://drive.google.com/..." />
-                </label>
-              </div>
-              {missingAddMedia.length ? <div className="damx-missing-chips">{missingAddMedia.map((item) => <span key={String(item)}>{item}</span>)}</div> : null}
-              <section className="damx-scan-summary" aria-label="Batch scan">
+      <main className="damx-upload-shell" aria-labelledby="share-photos-title">
+        {receipt ? (
+          <section className="damx-upload-success" aria-label="Photo submission sent">
+            <CheckCircle2 size={24} aria-hidden="true" />
+            <div>
+              <h1>Thank you — your photos were sent to the media team.</h1>
+              <dl>
+                <div><dt>Submission</dt><dd>{batchName}</dd></div>
+                <div><dt>Sent</dt><dd>{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"}` : "Google Drive link"}</dd></div>
+              </dl>
+              <p>We'll review rights, people/youth visibility, and usage before anything is published.</p>
+              <EnterpriseButton tone="primary" onClick={resetSubmission}>Share more photos</EnterpriseButton>
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className="damx-upload-card" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); addDroppedFiles(event.dataTransfer); }}>
+              <header className="damx-upload-card-header">
                 <div>
-                  <span>Batch scan</span>
-                  <strong>{inventory.fileCount} files detected</strong>
-                  <small>{inventory.photoCount} photos | {inventory.heicCount} HEIC | {inventory.videoCount} video | {inventory.audioCount} audio | {formatBytes(inventory.totalBytes)}</small>
+                  <h1 id="share-photos-title">Share photos with the media team</h1>
                 </div>
-                <dl>
-                  <div><dt>Folder/source</dt><dd>{inventory.folderName || (sourceLink ? "Source link captured" : "Needs media")}</dd></div>
-                  <div><dt>Detected date</dt><dd>{mergedDetected.eventDate || "Needs confirmation"}</dd></div>
-                  <div><dt>Possible event</dt><dd>{mergedDetected.eventName || "Needs confirmation"}</dd></div>
-                  <div><dt>Possible location</dt><dd>{mergedDetected.location || "Optional"}</dd></div>
-                  <div><dt>Possible source</dt><dd>{mergedDetected.photographer || "Needs confirmation"}</dd></div>
-                  <div><dt>Duplicates</dt><dd>{duplicateHints.length ? `${duplicateHints.length} hint type(s)` : "checking after submit"}</dd></div>
-                  <div><dt>Large media</dt><dd>{inventory.largeMediaCount ? `${inventory.largeMediaCount} route to admin intake` : "none"}</dd></div>
-                </dl>
-                <div className="damx-confidence-row">
-                  <span>{confidenceLabel(detected.confidence)}</span>
-                  {riskFlags.length ? riskFlags.map((flag) => <span key={flag}>Reviewer task: {flag}</span>) : <span>Reviewer task: standard review</span>}
-                </div>
-              </section>
-              <div className="damx-file-list" aria-label="Selected file preview">
-                {files.length ? files.map((file, index) => (
-                  <div key={`${file.name}-${file.size}-${index}`}>
-                    <FileCheck2 size={16} aria-hidden="true" />
-                    <span><strong>{file.name}</strong><small>{file.type || "Unknown type"} | {formatBytes(file.size)} | Staged locally</small></span>
-                    <button type="button" onClick={() => setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))}>Remove</button>
-                  </div>
-                )) : <p>No files added yet. A source link can create a review packet without browser file upload.</p>}
+                <span className={cn("damx-upload-ready", readyToSubmit && "is-ready")}>{readyStateLabel}</span>
+              </header>
+
+              <label className="damx-upload-dropzone">
+                <UploadCloud size={34} aria-hidden="true" />
+                <strong>Upload photos from computer</strong>
+                <em>Drag files here or choose files</em>
+                <input type="file" multiple accept="image/*,.jpg,.jpeg,.png,.webp,.heic" aria-label="Upload photos from computer" onChange={(event) => handleFiles(event.target.files)} />
+              </label>
+
+              <div className="damx-drive-link">
+                <LinkIcon size={17} aria-hidden="true" />
+                <input value={sourceLink} onChange={(event) => { setSourceLink(event.target.value); setReceipt(null); }} placeholder="Paste Google Drive link" aria-label="Paste Google Drive link" />
+                {sourceLink ? <button type="button" onClick={() => setSourceLink("")}>Remove</button> : null}
               </div>
-            </section>
-          ) : null}
-          {step === 1 ? (
-            <section className="damx-wizard-step damx-form-grid" data-send-step="1">
-              <h2>Confirm batch details</h2>
-              <p className="damx-step-copy">We filled this from folder name and file metadata. Edit only what is wrong.</p>
-              <label className="damx-field"><span>Batch / event name *</span><input value={batchName} onChange={(event) => setBatchName(event.target.value)} placeholder="Youth Service" /></label>
-              <label className="damx-field"><span>Date *</span><input value={eventDate} onChange={(event) => setEventDate(event.target.value)} type="date" /></label>
-              <label className="damx-field"><span>Ministry / team *</span><input value={ministry} onChange={(event) => setMinistry(event.target.value)} placeholder="Youth / RE" /></label>
-              <label className="damx-field"><span>Source / photographer / uploader *</span><input value={source} onChange={(event) => setSource(event.target.value)} placeholder="Media team or photographer" /></label>
-              <label className="damx-field"><span>Location</span><input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Elizabeth NJ" /></label>
-              <label className="damx-field"><span>Collection</span><input value={collection} onChange={(event) => setCollection(event.target.value)} placeholder="Youth service" /></label>
-              <label className="damx-field"><span>Language</span><input value={language} onChange={(event) => setLanguage(event.target.value)} placeholder="English, Mandarin..." /></label>
-              <label className="damx-field"><span>Suggested tags</span><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Bible, fellowship, youth..." /></label>
-              <label className="damx-field is-wide"><span>Notes</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Anything reviewers should know before reuse." /></label>
-              <section className="damx-requested-use is-wide" aria-label="Requested use">
-                <h3>Requested use</h3>
-                <p>Requested use helps reviewers prioritize. It does not approve publishing.</p>
-                <div className="damx-checkbox-grid">
-                  {requestedUseOptions.map((item) => (
-                    <label key={item}>
-                      <input type="checkbox" checked={usage.includes(item)} onChange={() => toggleUsage(item)} />
-                      <span>{item}</span>
-                    </label>
-                  ))}
-                </div>
-              </section>
-              {missingBatch.length ? <div className="damx-missing-chips is-wide">{missingBatch.map((item) => <span key={String(item)}>{item}</span>)}</div> : null}
-              <section className="damx-auto-explain is-wide">
-                <article><strong>Rights assumption</strong><span>TJC-created media / reviewer verifies before public use.</span></article>
-                <article><strong>People/youth</strong><span>System will flag likely people or youth. Reviewer confirms before approval.</span></article>
-                <article><strong>Consent/release</strong><span>Not required to submit. Required before public/external approval when people/youth appear.</span></article>
-              </section>
-              <section className="damx-folder-helper is-wide">
-                <strong>Best folder name</strong>
-                <code>YYYY-MM-DD - Event Name - Church/Location - Photographer</code>
-                <span>Example: 2026-06-16 - Youth Service - Elizabeth NJ - John</span>
-                <small>Any folder name works. Better names improve auto-fill.</small>
-              </section>
-            </section>
-          ) : null}
-          {step === 2 ? (
-            <section className="damx-wizard-step" data-send-step="2">
-              <h2>Review packet summary</h2>
-              <div className="damx-summary-cards">
-                <span><strong>{inventory.fileCount}</strong><small>{inventory.photoCount} photos | {inventory.heicCount} HEIC | {inventory.videoCount + inventory.audioCount} video/audio | {duplicateHints.length} duplicate hints</small></span>
-                <span><strong>{batchName || "Needs name"}</strong><small>{eventDate || "Needs date"} | {ministry || "Needs ministry"} | {source || "Needs source"}</small></span>
-                <span><strong>{reviewerTasks.length}</strong><small>Reviewer tasks created</small></span>
-                <span><strong>Needs Review / Do Not Publish</strong><small>Downloads blocked. Originals restricted.</small></span>
-              </div>
-              <div className="damx-review-task-list"><h3>Reviewer tasks</h3>{reviewerTasks.map((taskItem) => <span key={taskItem}>{taskItem}</span>)}</div>
-              <div className="damx-review-task-list"><h3>Admin tasks</h3>{adminTasks.map((taskItem) => <span key={taskItem}>{taskItem}</span>)}</div>
-              <section className="damx-submission-state">
-                <div><strong>Status after submit</strong><span>Needs Review / Do Not Publish</span></div>
-                <div><strong>Download</strong><span>Blocked until reviewer approval</span></div>
-                <div><strong>Originals</strong><span>Restricted</span></div>
-                <div><strong>ResourceSpace</strong><span>No approval write from upload</span></div>
-              </section>
-              {receipt ? (
-                <section className="damx-submit-receipt" aria-label="Batch submitted">
-                  <CheckCircle2 size={22} aria-hidden="true" />
-                  <div>
-                    <h3>Batch submitted</h3>
-                    <p>Your review packet has been created. Nothing is public yet. Reviewers will confirm rights, people/youth, usage scope, and approved copies.</p>
-                    <dl>
-                      <div><dt>Batch reference</dt><dd>{receipt.batchId || "Not persisted"}</dd></div>
-                      <div><dt>Storage</dt><dd>{receipt.storageMode || "source-link-only"}</dd></div>
-                      <div><dt>ResourceSpace written</dt><dd>{receipt.resourceSpaceWritten ? "Yes" : "No"}</dd></div>
-                    </dl>
-                    <div className="damx-receipt-actions">
-                      <EnterpriseButton href={routeWithRole("/recent-uploads", role)}>View batch status</EnterpriseButton>
-                      <EnterpriseButton onClick={() => { setReceipt(null); setStep(0); }}>Upload another batch</EnterpriseButton>
-                      <EnterpriseButton onClick={() => navigator.clipboard?.writeText(receipt.batchId || "")}>Copy batch reference</EnterpriseButton>
-                    </div>
+
+              {(files.length || sourceLink.trim()) ? (
+                <section className="damx-upload-preview" aria-label="Selected photos and links">
+                  <header>
+                    <strong>{selectedCountLabel}</strong>
+                    <span>{validSourceLink ? "Ready for details" : "Drive link needs http or https"}</span>
+                    {files.length ? <button type="button" onClick={() => setFiles([])}>Remove all</button> : null}
+                  </header>
+                  <div className="damx-preview-grid">
+                    {filePreviews.map((preview) => (
+                      <article className="damx-preview-tile" key={preview.id}>
+                        {preview.url ? <img src={preview.url} alt={`Preview of ${preview.name}`} /> : <span><FileCheck2 size={18} aria-hidden="true" /></span>}
+                        <div>
+                          <strong>{preview.name}</strong>
+                          <small>{preview.meta}</small>
+                        </div>
+                      </article>
+                    ))}
+                    {files.length > filePreviews.length ? <article className="damx-preview-more">+{files.length - filePreviews.length}</article> : null}
+                    {sourceLink.trim() ? (
+                      <article className="damx-preview-link">
+                        <LinkIcon size={18} aria-hidden="true" />
+                        <div>
+                          <strong>Google Drive link</strong>
+                          <small>{validSourceLink ? sourceLinkHost : "Needs full http or https link"}</small>
+                        </div>
+                      </article>
+                    ) : null}
                   </div>
                 </section>
               ) : null}
             </section>
-          ) : null}
-        </main>
-        <aside className="damx-wizard-aside">
-          <h2>What happens next</h2>
-          <ol>
-            <li>This batch enters Needs Review.</li>
-            <li>The DAM prepares previews and metadata.</li>
-            <li>Reviewers confirm rights, people/youth, and usage scope.</li>
-            <li>Only approved copies become downloadable.</li>
-          </ol>
-          <section className="damx-custody-card">
-            <strong>Source custody</strong>
-            <span>Originals stay restricted.</span>
-            <span>Approved derivatives are generated later.</span>
-            <span>Submission creates a review packet only.</span>
-          </section>
-        </aside>
-      </div>
-      <div className="damx-sticky-actions">
-        <EnterpriseButton disabled={step === 0} onClick={() => setStep((current) => Math.max(0, current - 1))}>Back</EnterpriseButton>
-        <EnterpriseButton onClick={saveDraft}>Save draft</EnterpriseButton>
-        {step < uploadSteps.length - 1 ? (
-          <EnterpriseButton tone="primary" onClick={goNext}>Next</EnterpriseButton>
-        ) : (
-          <EnterpriseButton tone="primary" disabled={!readyToSubmit || submitting} disabledReason="Complete media and batch identity before submitting." onClick={submitBatch}>Submit batch for DAM review</EnterpriseButton>
+
+            {hasStarted ? (
+              <section className="damx-upload-details" aria-label="Photo details">
+                <div className="damx-upload-form-grid">
+                  <label className="damx-field"><span>Event name *</span><input value={batchName} onChange={(event) => setBatchName(event.target.value)} placeholder="Youth Service" /></label>
+                  <label className="damx-field"><span>Date *</span><input value={eventDate} onChange={(event) => setEventDate(event.target.value)} type="date" /></label>
+                  <label className="damx-field"><span>Ministry / team *</span><input value={ministry} onChange={(event) => setMinistry(event.target.value)} placeholder="Youth / RE" /></label>
+                  <label className="damx-field"><span>Photographer / source *</span><input value={source} onChange={(event) => setSource(event.target.value)} placeholder="Media team or photographer" /></label>
+                  <label className="damx-field"><span>Location</span><input value={locationName} onChange={(event) => setLocationName(event.target.value)} placeholder="Church, city, or room" /></label>
+                  <label className="damx-field is-wide"><span>Notes for reviewers</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Anything the media team should know." /></label>
+                </div>
+              </section>
+            ) : null}
+
+            <footer className="damx-upload-footer">
+              <div>
+                <p>Media team reviews photos before anything becomes public.</p>
+                <details>
+                  <summary>How review works</summary>
+                  <span>We check rights, people/youth visibility, and usage before sharing photos.</span>
+                </details>
+              </div>
+              <div className="damx-upload-actions">
+                <EnterpriseButton tone="tertiary" onClick={saveDraft}>Save for later</EnterpriseButton>
+                <EnterpriseButton tone="primary" disabled={!readyToSubmit || submitting} disabledReason="Add photos or a link, plus event details, before sending." onClick={submitBatch}>Send to media team</EnterpriseButton>
+              </div>
+            </footer>
+          </>
         )}
-      </div>
+      </main>
     </div>
   );
 }
@@ -1730,6 +1600,7 @@ export function EnterpriseAdminPage({ initialModule = "dashboard", adminOnly = f
               ["Expiring rights", String(damAssets.filter((asset) => asset.displayStatus === "Expiring Soon").length), "Rights/license recheck nearing deadline."],
               ["Blocked assets", String(damAssets.filter((asset) => asset.displayStatus === "Blocked").length), "Policy prevents reuse or export."],
               ["Reviewer workload", "6", "Active reviewer queue items."],
+              ["Permission Matrix", "4 roles", "Viewer, contributor, reviewer, and admin gates stay role-safe."],
               ["Integration health", "3 checks", "ResourceSpace, portal store, identity provider."]
             ].map(([label, value, detail]) => (
               <article className="damx-kpi-card" key={label}><span>{label}</span><strong>{value}</strong><p>{detail}</p></article>

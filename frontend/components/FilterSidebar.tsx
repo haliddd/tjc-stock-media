@@ -1,29 +1,99 @@
 import { SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/ui";
 
+type FilterOption = string | { label: string; value: string };
+type FilterGroup = {
+  label: string;
+  priority: "primary" | "advanced";
+  options: FilterOption[];
+};
+
 export const filterGroups = [
-  { label: "Verdict", priority: "primary", options: ["Approved copy", "Needs review", "Restricted", "Do Not Use", "Expired/re-review"] },
-  { label: "Rights status", priority: "primary", options: ["Evidence complete", "Evidence missing", "Owner/license missing", "Proof link missing"] },
-  { label: "People/minors", priority: "primary", options: ["No people", "Adults only", "People unknown", "Children/youth"] },
   { label: "Media type", priority: "primary", options: ["Photo", "Video", "Audio", "Graphic", "Document"] },
-  { label: "Ministry", priority: "primary", options: ["Worship", "Bible Study", "Fellowship", "Sabbath", "Welcome Team"] },
-  { label: "Governance", priority: "advanced", options: ["Missing source", "Rights review", "Portal ready", "Metadata enrichment", "Taxonomy drift", "Duplicate candidate", "Stale approval", "Rendition gap", "Pending write"] },
-  { label: "Custody", priority: "advanced", options: ["S3 derivative ready", "Drive original restricted", "ResourceSpace reference", "Source access request"] },
-  { label: "Incident search", priority: "advanced", options: ["Denied downloads", "Downloaded by user", "Used in package", "Takedown path"] },
-  { label: "Event/date", priority: "advanced", options: ["2026", "2025", "2024"] },
-  { label: "Orientation", priority: "advanced", options: ["Landscape", "Square", "Portrait"] },
-  { label: "Source", priority: "advanced", options: ["Church photographer", "Online source", "License owner", "ResourceSpace ID", "Google Drive custody"] }
-];
+  {
+    label: "Status",
+    priority: "primary",
+    options: [
+      { label: "Ready to use", value: "portal ready" },
+      "Approved public",
+      "Approved internal",
+      "Needs review",
+      "Archive only"
+    ]
+  },
+  {
+    label: "Rights basis",
+    priority: "primary",
+    options: [
+      "TJC-owned",
+      "Contributor license",
+      "Public domain",
+      "Hymn license",
+      "Fair use internal",
+      { label: "Missing rights", value: "rights basis missing" }
+    ]
+  },
+  {
+    label: "Usage scope",
+    priority: "primary",
+    options: ["Church-wide use", "Internal ministry", "Archive only"]
+  },
+  {
+    label: "Approved channel",
+    priority: "advanced",
+    options: ["Website channel", "Social channel", "Projection channel", "Print channel", "Livestream channel", "Internal training channel", "Limited share channel"]
+  },
+  {
+    label: "People/minors",
+    priority: "advanced",
+    options: ["No people", { label: "Adults visible", value: "adults only" }, "People unknown", "Possible minors", "Children/youth"]
+  },
+  {
+    label: "Sensitivity",
+    priority: "advanced",
+    options: ["Public-safe sensitivity", "Member sensitive", "Sacrament sensitive", "Youth sensitive", "Testimony sensitive", "Music rights", "Internal governance", "Archive restricted"]
+  },
+  {
+    label: "Date",
+    priority: "advanced",
+    options: ["Recently approved", "Stale approval", "Recheck due", "Expired", "Embargoed"]
+  },
+  {
+    label: "Format/dimensions",
+    priority: "advanced",
+    options: ["Landscape", "Square", "Portrait", { label: "JPEG", value: "file:jpg" }, { label: "PNG", value: "file:png" }, { label: "PDF", value: "file:pdf" }]
+  },
+  {
+    label: "Rendition availability",
+    priority: "advanced",
+    options: ["Portal ready", { label: "Missing derivative", value: "rendition gap" }]
+  },
+  {
+    label: "Duplicate/version state",
+    priority: "advanced",
+    options: [{ label: "Duplicate cleanup", value: "duplicate candidate" }, "Duplicate candidate"]
+  }
+] satisfies FilterGroup[];
+
+function optionLabel(option: FilterOption) {
+  return typeof option === "string" ? option : option.label;
+}
+
+function filterValue(option: FilterOption) {
+  return typeof option === "string" ? option.toLowerCase() : option.value;
+}
 
 export function FilterSidebar({
   filters,
   onToggle,
   onClear,
+  filterCounts = {},
   variant = "inline"
 }: {
   filters: string[];
   onToggle: (filter: string) => void;
   onClear: () => void;
+  filterCounts?: Record<string, number | undefined>;
   variant?: "inline" | "drawer";
 }) {
   const primaryGroups = filterGroups.filter((group) => group.priority === "primary");
@@ -35,20 +105,26 @@ export function FilterSidebar({
       <section className={cn("border-b border-tjc-line/70 px-3 py-3", variant === "inline" && "md:border-r md:last:border-r-0")} key={group.label} aria-label={`${group.label} filters`}>
         <h2 className="mb-2 text-xs font-black uppercase text-[#65736b]">{group.label}</h2>
         <div className={cn("grid gap-1.5", variant === "drawer" ? "grid-cols-2" : "grid-cols-2")}>
-          {group.options.map((filter) => (
+          {group.options.map((option) => {
+            const label = optionLabel(option);
+            const value = filterValue(option);
+            const active = filters.includes(value) || filters.includes(label);
+            const count = filterCounts[value] ?? filterCounts[label.toLowerCase()] ?? filterCounts[label];
+            return (
             <button
               type="button"
-              key={filter}
+              key={label}
               className={cn(
-                "min-h-9 rounded-md border border-tjc-line bg-white px-3 text-left text-xs font-black text-[#3e4741] transition hover:border-[#9bc5b5] hover:bg-[#eef7f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0f4f45] active:translate-y-px",
-                filters.includes(filter) && "border-[#92c2b0] bg-[#e8f5ef] text-tjc-evergreen"
+                "flex min-h-9 items-center justify-between gap-2 rounded-md border border-tjc-line bg-white px-3 text-left text-xs font-black text-[#3e4741] transition hover:border-[#9bc5b5] hover:bg-[#eef7f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0f4f45] active:translate-y-px",
+                active && "border-[#92c2b0] bg-[#e8f5ef] text-tjc-evergreen"
               )}
-              onClick={() => onToggle(filter)}
-              aria-pressed={filters.includes(filter)}
+              onClick={() => onToggle(value)}
+              aria-pressed={active}
             >
-              {filter}
+              <span>{label}</span>
+              {typeof count === "number" ? <em className="not-italic text-[11px] font-black text-[#65736b]">{count.toLocaleString()}</em> : null}
             </button>
-          ))}
+          );})}
         </div>
       </section>
     );

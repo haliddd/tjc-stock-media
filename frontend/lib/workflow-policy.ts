@@ -25,8 +25,27 @@ export const uploadDefaultState = {
   status: "Submitted",
   message: "New media starts in review. A reviewer approves it before anyone can reuse it.",
   largeMediaMessage:
-    "Video/audio and files over 100 MB use the large-media intake path. They still need review before reuse."
+    "Video/audio and files over 100 MB use the large-media/admin intake path. They still need review before reuse."
 };
+
+export const uploadBetaBoundaries = {
+  allowed: [
+    "Event photos, ministry graphics, source folders, or Google Drive/source links for reviewer intake",
+    "Focused batches up to 80 browser-selected files",
+    "Reviewer evidence: source, owner/license, people/youth, requested use, proof link, and restrictions"
+  ],
+  forbidden: [
+    "Video/audio or files over 100 MB in browser upload; use the large-media/admin intake path",
+    "Source-media renames, deletes, moves, or Git commits",
+    "Public approval, download enablement, or ResourceSpace approval writeback from upload"
+  ],
+  defaultState: {
+    received: "Received",
+    review: "Needs Review",
+    usage: "Do Not Publish",
+    custody: "Source custody stays outside this browser upload; ResourceSpace remains review/search layer"
+  }
+} as const;
 
 export const reviewActions = [
   { id: "approve-internal", label: "Approve internal use", backend: "Approve Internal", targetStatus: "Approved Internal" },

@@ -3,7 +3,7 @@
 import { useEffect, useState, type DragEvent, type RefObject } from "react";
 import { CheckCircle2, Clock3, FileCheck2, ShieldAlert, Trash2, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/ui";
-import { LARGE_MEDIA_BYTES, uploadDefaultState } from "@/lib/workflow-policy";
+import { LARGE_MEDIA_BYTES, uploadBetaBoundaries, uploadDefaultState } from "@/lib/workflow-policy";
 
 type UploadFileDropzoneProps = {
   inputRef: RefObject<HTMLInputElement | null>;
@@ -76,6 +76,10 @@ export function UploadFileDropzone({
         setDragging(false);
       }}
     >
+      <div className="grid gap-2 rounded-md border border-[#c8d7e6] bg-[#f2f7fb] p-3 text-sm font-semibold text-[#27435b]">
+        <strong>Beta browser upload accepts review-ready photos only.</strong>
+        <span>{uploadBetaBoundaries.forbidden[0]}</span>
+      </div>
       <label
         className={cn(
           "grid min-h-64 cursor-pointer place-items-center rounded-lg border border-dashed border-[#85a898] bg-[#f7faf7] p-6 text-center text-tjc-ink transition focus-within:border-[#0b4b42] focus-within:ring-2 focus-within:ring-[#9bc5b5]",
@@ -92,7 +96,7 @@ export function UploadFileDropzone({
           </span>
           <span className="text-lg font-black text-tjc-ink">{dragging ? "Release to add files" : "Drop files here or browse"}</span>
           <span id="upload-file-help" className="max-w-[28rem] text-sm font-semibold leading-relaxed text-tjc-muted">
-            Photos, graphics, documents, video, and audio enter Status: Submitted with Gate: Not published. Large files use the large-media intake path.
+            Photos and lightweight graphics enter Status: Received / Needs Review with Gate: Do Not Publish. Large media uses the admin intake path.
           </span>
         </span>
         <input
@@ -102,7 +106,7 @@ export function UploadFileDropzone({
           className="sr-only"
           name="files"
           type="file"
-          accept="image/*"
+          accept="image/*,.jpg,.jpeg,.png,.webp,.heic"
           multiple
           onChange={(event) => onInputFiles(event.currentTarget.files)}
         />

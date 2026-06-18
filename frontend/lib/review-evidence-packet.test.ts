@@ -159,4 +159,88 @@ describe("review evidence packet", () => {
       reviewerRole: "Reviewer"
     });
   });
+
+  it("blocks public approval without reviewer, review date, and matching approval scope", () => {
+    const packet = buildReviewEvidencePacket({
+      asset: asset({
+        usageScope: "Public",
+        peopleRisk: "No people",
+        sensitiveContext: undefined,
+        rightsStatus: "Rights approved",
+        consentStatus: "Consent confirmed",
+        downloadPolicy: "approved-copy-allowed",
+        imageDimensions: "1600x900",
+        tags: ["general"],
+        tjcTerms: ["approved"]
+      }),
+      action: "Approve Public",
+      actionDefinition: reviewActions.find((item) => item.backend === "Approve Public"),
+      note: "Reviewed source, rights, people, scope, derivative, and lifecycle evidence for public reuse.",
+      checklist: {
+        sourceConfirmed: true,
+        rightsConfirmed: true,
+        attributionConfirmed: true,
+        peopleVisibilityConfirmed: true,
+        childrenYouthChecked: true,
+        usageScopeSelected: true,
+        derivativeAvailable: true,
+        sensitiveContextChecked: true,
+        creditRequirementChecked: true,
+        expirationRereviewSet: true,
+        proofLinkAttached: true
+      }
+    });
+
+    expect(packet.blocked).toBe(true);
+    expect(packet.missingEvidence).toEqual(expect.arrayContaining(["reviewerName", "reviewDate", "approvalScope"]));
+    expect(packet.missingEvidenceLabels).toEqual(expect.arrayContaining([
+      "Reviewer name missing",
+      "Review date missing or future",
+      "Approval usage scope missing"
+    ]));
+  });
+
+  it("accepts public approval only when reviewer evidence and public scope are present", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const packet = buildReviewEvidencePacket({
+      asset: asset({
+        usageScope: "Public",
+        peopleRisk: "No people",
+        sensitiveContext: undefined,
+        rightsStatus: "Rights approved",
+        consentStatus: "Consent confirmed",
+        downloadPolicy: "approved-copy-allowed",
+        imageDimensions: "1600x900",
+        tags: ["general"],
+        tjcTerms: ["approved"]
+      }),
+      action: "Approve Public",
+      actionDefinition: reviewActions.find((item) => item.backend === "Approve Public"),
+      note: "Reviewed source, rights, people, scope, derivative, and lifecycle evidence for public reuse.",
+      checklist: {
+        sourceConfirmed: true,
+        rightsConfirmed: true,
+        attributionConfirmed: true,
+        peopleVisibilityConfirmed: true,
+        childrenYouthChecked: true,
+        usageScopeSelected: true,
+        derivativeAvailable: true,
+        sensitiveContextChecked: true,
+        creditRequirementChecked: true,
+        expirationRereviewSet: true,
+        proofLinkAttached: true
+      },
+      reviewerName: "Reviewer One",
+      reviewDate: today,
+      approvalScope: "Public"
+    });
+
+    expect(packet.blocked).toBe(false);
+    expect(packet.approvalEvidence).toEqual({ reviewerName: "Reviewer One", reviewDate: today, approvalScope: "Public" });
+    expect(reviewEvidencePacketAuditRecord(packet, "Reviewer", "reviewer@example.test", "2026-06-14T00:00:00.000Z")).toMatchObject({
+      reviewerName: "Reviewer One",
+      reviewDate: today,
+      approvalScope: "Public"
+    });
+  });
 });

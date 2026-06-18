@@ -101,6 +101,21 @@ export type PackageGovernancePacket = {
   sections: PackageGovernanceSection[];
 };
 
+export type PackagePortalReadinessInspector = {
+  selectedAssets: number;
+  blockedAssets: number;
+  missingDerivatives: number;
+  rightsIssues: number;
+  expirationIssues: number;
+};
+
+export type PackageManifestPreviewRow = {
+  assetRef: string;
+  allowedRendition: string;
+  status: "ready" | "blocked" | "request-only";
+  reason: string;
+};
+
 function uniqueStrings(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -202,7 +217,7 @@ export function buildPackageActionDecisions(input: {
       action: "export-approved-copy-package",
       allowed: input.canPublish,
       status: input.canPublish ? "allowed" : "blocked",
-      reason: input.canPublish ? "Every item is Portal Ready; export may include approved-copy derivatives only." : input.reason,
+      reason: input.canPublish ? "Every item is Portal Ready; export manifest may list approved-copy derivatives only." : input.reason,
       originalMasterIncluded: false,
       requiresApprovedCopyGate: true,
       durableShareStorage: false
@@ -212,7 +227,7 @@ export function buildPackageActionDecisions(input: {
       allowed: input.canShare && input.missingRefs === 0,
       status: input.canShare && input.missingRefs === 0 ? "preview" : "blocked",
       reason: input.canShare && input.missingRefs === 0
-        ? "Internal access decision can be prepared, but no durable public link is created here."
+        ? "Internal access decision can be prepared as a local draft; no durable public link is created here."
         : input.reason,
       originalMasterIncluded: false,
       requiresApprovedCopyGate: true,
@@ -286,8 +301,8 @@ function readinessStatus({
 function readinessLabel(status: PackageGovernancePacket["readinessStatus"], score: number) {
   if (status === "empty") return "Add refs";
   if (status === "blocked") return "Refs missing";
-  if (status === "review") return `${score}% publish-ready`;
-  return "Ready to publish";
+  if (status === "review") return `${score}% draft-ready`;
+  return "Ready for review";
 }
 
 function sectionReadinessSummary(section: {
@@ -297,11 +312,47 @@ function sectionReadinessSummary(section: {
   internalOnlyRefs: number;
   reviewRequiredRefs: number;
 }) {
-  if (!section.totalRefs) return "No refs selected. Section will stay out of distribution draft output.";
+  if (!section.totalRefs) return "No refs selected. Section will stay out of local package draft output.";
   if (section.missingRefs.length) return `${section.missingRefs.length} ref${section.missingRefs.length === 1 ? "" : "s"} no longer resolves.`;
-  if (section.reviewRequiredRefs) return `${section.reviewRequiredRefs} ref${section.reviewRequiredRefs === 1 ? "" : "s"} need rights review before publish.`;
-  if (section.internalOnlyRefs) return `${section.internalOnlyRefs} internal-only ref${section.internalOnlyRefs === 1 ? "" : "s"} block public publish.`;
+  if (section.reviewRequiredRefs) return `${section.reviewRequiredRefs} ref${section.reviewRequiredRefs === 1 ? "" : "s"} need rights review before delivery handoff.`;
+  if (section.internalOnlyRefs) return `${section.internalOnlyRefs} internal-only ref${section.internalOnlyRefs === 1 ? "" : "s"} block public portal draft use.`;
   return `${section.portalReadyRefs}/${section.totalRefs} refs are Portal Ready.`;
+}
+
+export function buildPackagePortalReadinessInspector(packet: PackageGovernancePacket): PackagePortalReadinessInspector {
+  const missingDerivatives = packet.blockerSummary.find((item) => item.category === "missing-derivative")?.count || 0;
+  const rightsIssues = packet.blockerSummary
+    .filter((item) => [
+      "missing-rights",
+      "minors-consent",
+      "channel-mismatch",
+      "required-notice",
+      "sensitivity-domain-review",
+      "review-required"
+    ].includes(item.category))
+    .reduce((sum, item) => sum + item.count, 0);
+  const expirationIssues = packet.blockerSummary.find((item) => item.category === "stale-lifecycle")?.count || 0;
+
+  return {
+    selectedAssets: packet.totalRefs,
+    blockedAssets: packet.blockedRefs,
+    missingDerivatives,
+    rightsIssues,
+    expirationIssues
+  };
+}
+
+export function buildPackageManifestPreviewRows(packet: PackageGovernancePacket, limit = 24): PackageManifestPreviewRow[] {
+  return packet.sections
+    .flatMap((section) => section.assets.flatMap((item) => (
+      item.deliveryManifest.items.map((manifest) => ({
+        assetRef: item.ref,
+        allowedRendition: manifest.label,
+        status: manifest.status,
+        reason: manifest.detail
+      }))
+    )))
+    .slice(0, limit);
 }
 
 export function buildPackageGovernance(
@@ -372,16 +423,16 @@ export function buildPackageGovernance(
   const packageScore = readinessScore(totalRefs, portalReadyRefs);
   const packageStatus = readinessStatus({ totalRefs, missingRefs, blockedRefs });
   const reason = !hasRefs
-    ? `Package needs media ${refNoun} before preview, share, or publish.`
+    ? `Package needs media ${refNoun} before preview, share-link draft, or export manifest review.`
     : missingRefs
       ? `Package has media ${refNoun} that no longer resolve.`
       : internalOnlyRefs
-        ? "Publish blocked because some refs are Internal ready only."
+        ? "Public portal draft blocked because some refs are Internal ready only."
         : reviewRequiredRefs
           ? "Readiness blocked until every ref is Portal Ready."
           : chosenUseBlockedRefs
             ? `Readiness blocked until every ref has an approved derivative for ${chosenUse.replace("-", " ")}.`
-          : "Every ref is Portal Ready for distribution readiness review.";
+          : "Every ref is Portal Ready for export manifest review.";
   const blockerSummary = packageBlockerSummary(sections);
   const actions = buildPackageActionDecisions({ hasRefs, canPreview, canShare, canPublish, missingRefs, blockedRefs, reason });
 
@@ -407,8 +458,8 @@ export function buildPackageGovernance(
     blockerSummary,
     actions,
     commandCenter: [
-      command("Preview distribution set", canPreview, canPreview ? `All ${refNoun} can render a role-safe preview.` : `Preview waits for resolvable ${refNoun} and role-safe previews.`, !canPreview && hasRefs),
-      command("Prepare internal access packet", canShare, canShare ? "Access stays policy-scoped; no public link is created here." : `Access waits until every selected ${refNoun} is Portal Ready for ${chosenUse.replace("-", " ")}.`, !canShare && hasRefs),
+      command("Preview package draft", canPreview, canPreview ? `All ${refNoun} can render a role-safe preview.` : `Preview waits for resolvable ${refNoun} and role-safe previews.`, !canPreview && hasRefs),
+      command("Prepare Internal Portal Draft", canShare, canShare ? "Access stays policy-scoped; no public link is created here." : `Access waits until every selected ${refNoun} is Portal Ready for ${chosenUse.replace("-", " ")}.`, !canShare && hasRefs),
       command("Queue readiness review", canPublish, canPublish ? (canSeeOpsCopy ? "All refs are Portal Ready; DAM source files stay canonical." : "All references are Portal Ready; source files stay protected.") : reason, !canPublish && hasRefs)
     ],
     sections

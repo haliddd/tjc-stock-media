@@ -1,6 +1,6 @@
-export const inspectorDrawerTabs = ["Details", "Rights & restrictions", "Versions", "Activity"];
+export const inspectorDrawerTabs = ["Overview", "Metadata", "Rights", "Renditions", "Versions", "Activity"];
 
-export const assetDetailTabs = ["Metadata", "Keywords", "Suggested tags", "Comments", "Activity", "Usage History"];
+export const assetDetailTabs = ["Overview", "Metadata", "Rights", "Renditions", "Versions", "Activity", "Related"];
 
 export function isActivityTab(tab: string) {
   return tab === "Activity" || tab === "Usage History";

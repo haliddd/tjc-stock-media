@@ -1,0 +1,72 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "grid": {
+    "width": 1131,
+    "height": 1544,
+    "left": 282,
+    "right": 1414,
+    "display": "grid"
+  },
+  "workspace": {
+    "width": 1075,
+    "height": 1544,
+    "left": 282,
+    "right": 1358,
+    "display": "grid"
+  },
+  "filterRail": null,
+  "inspector": {
+    "width": 40,
+    "height": 144,
+    "left": 1374,
+    "right": 1414,
+    "display": "block"
+  },
+  "topFilterBar": {
+    "width": 1075,
+    "height": 101,
+    "left": 282,
+    "right": 1358,
+    "display": "grid"
+  },
+  "topFilterControls": {
+    "width": 886,
+    "height": 95,
+    "left": 286,
+    "right": 1173,
+    "display": "grid"
+  },
+  "moreFilters": {
+    "width": 102,
+    "height": 30,
+    "left": 1182,
+    "right": 1284,
+    "display": "flex"
+  },
+  "mobileFilterTrigger": {
+    "width": 0,
+    "height": 0,
+    "left": 0,
+    "right": 0,
+    "display": "none"
+  },
+  "activeSelects": [
+    "Saved view",
+    "Collection",
+    "Status",
+    "Rights / Consent",
+    "People / Minors",
+    "Media Type",
+    "Date",
+    "Source Custody",
+    "Derivative Readiness"
+  ],
+  "visibleCards": 30,
+  "hasPersistentRailText": false,
+  "consoleMessages": [],
+  "failedRequests": [],
+  "badResponses": []
+}

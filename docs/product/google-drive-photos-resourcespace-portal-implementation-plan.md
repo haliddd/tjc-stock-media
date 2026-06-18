@@ -14,7 +14,7 @@ Source PRD: `docs/product/google-drive-photos-resourcespace-portal-prd.md`
 - ResourceSpace remains source truth.
 - Google Shared Drive remains master archive.
 - Approved Public/Internal folders remain delivery outputs, not the full archive.
-- Current beta remains photo-only and beta-ready with limitations.
+- Current product is a photo-only local prototype; Team Beta remains NO-GO until hosted proof, durable/fail-closed boundaries, and owner signoff close.
 
 ## Phase 1: Viewer / Contributor Friendly Front Door
 
