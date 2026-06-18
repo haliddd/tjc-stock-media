@@ -6,33 +6,13 @@ Purpose: one canonical decision packet for the TJC Stock Media internal Team Bet
 
 This packet does not approve public launch, production SSO, live ResourceSpace writeback, public downloads, broad archive reuse, source media mutation, staging, commits, deploys, or external communications.
 
-## June 18 ORCH Final Override
-
-Current ORCH evidence supersedes stale June 17 browser-QA language below.
-
-Current call:
-
-- Local DAM prototype: improved for local rehearsal only.
-- Owner-led local dry run: PASS on local browser QA after ORCH product fixes; not hosted invite approval.
-- Team Beta invite/send: NO-GO.
-- Enterprise beta: NO-GO.
-- Production: NO-GO.
-
-Verified June 18 evidence:
-
-- Local browser QA passed at `2026-06-18T06:14:20.205Z`: 20 pages, 6 viewport widths, 32 screenshots, 0 failures, 0 console errors, 0 network failures, 3 expected denied console entries.
-- Hosted read-only probe passed protected/redacted safety shape, and `/api/beta-auth/session` exposed build marker `small-team-beta-readiness-2026-06-17` with commit `7320d1643801`.
-- Hosted 181-record catalog proof is not established because protected hosted API/content routes redirect through beta auth.
-- Hosted durable audit/ticket storage is not proven; hosted downloads must remain fail-closed unless owner-approved durable storage proof exists.
-- Hali/Enoch final owner signoff and invite/send approval are not recorded.
-
 ## Decision
 
 | Scope | Decision | Reason |
 |---|---|---|
-| Owner-led internal dry run | PASS local route/auth/browser QA only | June 18 ORCH local browser QA is green after product fixes. This is not hosted invite approval. |
-| Joanna mini beta | NO-GO until hosted snapshot proof, hosted persistence/fail-closed boundary, and owner signoff close | Hosted current marker passes protected session shape, but authenticated 181-record count proof and durable hosted audit/ticket proof are missing. |
-| Tiny teammate invite batch | NO-GO until hosted/current gates close and renewed owner signoff exists | Teammate invites require hosted 181 proof, named tester list, send owner, stop-test owner, feedback triage owner, and explicit invite/send approval. |
+| Owner-led internal dry run | PASS local route/auth smoke only; browser QA still red | June 17 local route, role, upload/review/library, invite, redaction, and tests improved, but latest production-mode browser QA is red on download audit safety probes. This is not hosted invite approval. |
+| Joanna mini beta | NO-GO until hosted snapshot proof, persistence boundary, and owner signoff close | Hosted current marker and real beta-session auth now pass. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot for hosted fallback, but stable hosted count proof still needs a redeploy/probe, hosted persistence/fail-closed boundary, and renewed owner approval. |
+| Tiny teammate invite batch | NO-GO until hosted/current gates close, Joanna feedback lands, and renewed owner signoff exists | Teammate invites require hosted/current proof, Joanna proof first, named tester list, send owner, stop-test owner, and feedback triage owner. |
 | Production/internal launch | NO-GO | Production SSO, durable storage, live ResourceSpace writeback, full rights review, production delivery, and full archive readiness are not proven. |
 
 Current gap audit: `docs/team-beta-gap-audit-2026-06-18.md`.
@@ -54,7 +34,7 @@ Current gap audit: `docs/team-beta-gap-audit-2026-06-18.md`.
 | API payload safety | `node scripts/api-payload-guard.mjs` passes. | PASS local |
 | API audit coverage | `node scripts/api-audit-guard.mjs` passes. | PASS local |
 | Storage honesty | `node scripts/storage-honesty-guard.mjs` passes. | PASS local |
-| Browser QA | `docs/screenshots/qa/browser-qa-report.json` covers 20 pages, 6 viewport widths, and 32 screenshots. Latest ORCH report checked at `2026-06-18T06:14:20.205Z` has 0 failures, 0 console errors, 0 network failures, and 3 expected denied console entries. | PASS local |
+| Browser QA | `docs/screenshots/qa/browser-qa-report.json` covers 20 pages, 6 viewport widths, and 32 screenshots. Latest report has 2 failures and 3 console errors, both tied to production-mode download audit writes failing closed with `503 audit-required` when no durable runtime store is configured. | FAIL / safe fail-closed |
 | June 17 readiness pass | `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md` records local route, upload, review, library, invite-smoke, typecheck, test, and build proof. It also records browser QA red on download audit probes. | PARTIAL local / hosted gates open |
 | Hosted current marker | `curl https://tjc-stock-media.vercel.app/api/beta-auth/session` after deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND` returns 401 unauthenticated session JSON with `build.readinessContract: small-team-beta-readiness-2026-06-17`. | PASS hosted/current |
 | Real beta auth/invite | Hosted smoke passed beta-session login for Viewer, Contributor, Reviewer, and DAM Admin. Contributor and above used a church/location invite code. Values stay in Vercel env and `.runtime/beta-credentials-2026-06-17.env`, not Git/docs/logs/chat. | PASS private proof |
@@ -117,7 +97,7 @@ Use `docs/team-beta-internal-test-packet.md` as the send packet. Keep this frami
 
 ## Verification Commands
 
-June 18 override: current decision is **Team Beta NO-GO**. Production-mode local browser QA is now green, but hosted teammate invites remain **NO-GO** until hosted 181-record proof, hosted persistence or explicit fail-closed hosted download instructions, and owner approval are proven.
+June 17 override: current decision is **Small-team beta not ready**. Production-mode local browser QA is red on download audit safety probes, and hosted teammate invites remain **NO-GO** until the stable URL is redeployed/probed with the 181-record beta snapshot, hosted persistence or explicit fail-closed hosted download instructions, and owner approval are proven.
 
 Hosted download behavior for this recovery pass: use the conservative default from `docs/runs/pm-no-go-recovery-plan-2026-06-17.md`. Hosted approved-copy downloads stay intentionally fail-closed for Joanna unless Hali separately approves and proves durable audit/ticket storage. No audit-required behavior may be loosened to make tests pass.
 

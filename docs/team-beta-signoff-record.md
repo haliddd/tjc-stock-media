@@ -6,21 +6,15 @@ Use this file as the human-owned record before sending any teammate invite links
 
 This record does not approve production launch, public sharing, live ResourceSpace writeback, public downloads, broad archive reuse, source media mutation, staging, commits, deploys, or external communications.
 
-## June 18 ORCH Final Override
-
-Current decision remains **NO-GO**.
-
-June 18 ORCH verified local browser QA is green after product fixes, but Team Beta invite/send remains blocked because hosted 181-record catalog proof, hosted durable audit/ticket proof or explicit fail-closed hosted-download owner approval, and Hali/Enoch final owner signoff are not complete.
-
 ## Current Decision
 
 Decision: NO-GO
 
-Decision timestamp: 2026-06-18T02:28:20Z
+Decision timestamp: 2026-06-17T19:29:57Z
 
 Decision owner: Codex recovery execution update, pending Hali + Enoch renewed approval
 
-Decision notes: June 18 ORCH local browser QA passed after product fixes, and hosted/current read-only safety shape passes with build marker `small-team-beta-readiness-2026-06-17` and commit `7320d1643801`. Stable hosted 181-record count proof is still not established from the unauthenticated read-only probe. Hosted durable audit/ticket storage remains unproven, so hosted downloads must stay fail-closed unless owner-approved durable proof exists. Joanna/team invites remain blocked until snapshot proof, hosted persistence/fail-closed instructions, and renewed owner approval close. Prior tiny Team Beta approval is superseded for send/invite decisions.
+Decision notes: June 17 local route/auth smoke improved, and hosted/current plus real beta-session auth now pass after production deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND`. Latest browser QA remains red on download audit probes that fail closed without durable runtime storage. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot for hosted fallback, but stable hosted count proof still needs redeploy/probe evidence. Joanna/team invites remain blocked until snapshot proof, hosted persistence/fail-closed instructions, and renewed owner approval close. Prior June 11 tiny Team Beta approval is superseded for send/invite decisions.
 
 ## Required Gates
 

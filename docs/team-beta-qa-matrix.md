@@ -1,14 +1,6 @@
 # Team Beta QA Matrix
 
-Last updated: 2026-06-18
-
-## June 18 ORCH Final Override
-
-Current decision is **NO-GO for hosted teammate invites**.
-
-Current local QA evidence is better than the older June 15/17 notes: `docs/screenshots/qa/browser-qa-report.json` passed at `2026-06-18T06:14:20.205Z` with 20 pages, 6 viewport widths, 32 screenshots, 0 failures, 0 console errors, 0 network failures, and 3 expected denied console entries.
-
-This green local browser QA does not create Team Beta GO. Hosted 181-record catalog proof is still missing, hosted durable audit/ticket storage is not proven, and Hali/Enoch owner signoff is not recorded.
+Last updated: 2026-06-15
 
 ## June 15 Safety Override
 
@@ -142,8 +134,6 @@ Before widening beyond owner demo, complete these human checks:
 
 ## Final QA Call
 
-**Current Team Beta call**: NO-GO. June 18 local browser QA is green, but hosted 181-record proof, hosted durable/fail-closed proof, and Hali/Enoch signoff are missing. Enterprise beta and production are also NO-GO.
-
-**Future GO condition**: Signed six-person internal beta workflow test using stable hosted URL, beta login, Task Mode, blocked downloads, queued review workflow, Admin readiness, diagnostic metrics, feedback inbox/export, packages, and saved searches as beta-only affordances after hosted proof and owner gates close.
+**GO**: Signed six-person internal beta workflow test using stable hosted URL, beta login, Task Mode, blocked downloads, queued review workflow, Admin readiness, diagnostic metrics, feedback inbox/export, packages, and saved searches as beta-only affordances.
 
 **NO-GO**: Public launch, production approval workflow, real download/reuse workflow, live ResourceSpace writeback, production analytics, durable public package sharing, source/original access, or wider teammate invite batch before media safety, private sharing policy, hosted writeback mode, seed ownership, and research-derived manual QA gates are signed off.
