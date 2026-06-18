@@ -4,6 +4,9 @@ import { writableRuntimeRoot } from "@/lib/env";
 import { latestMetadataExportPath } from "@/lib/media-source/exported-metadata";
 import type { ImageVariant } from "@/lib/images";
 
+export { buildDeliveryReadinessManifest } from "@/lib/delivery-readiness";
+export type { DeliveryReadinessManifest, DeliveryReadinessManifestItem, DeliveryReadinessUse } from "@/lib/delivery-readiness";
+
 export type DerivativeIndexEntry = {
   resourceId: string;
   variant: ImageVariant;

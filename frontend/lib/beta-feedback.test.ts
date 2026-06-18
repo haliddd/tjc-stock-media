@@ -42,6 +42,7 @@ describe("beta feedback durability and attachment safety", () => {
     expect(betaFeedbackStorageUnavailableError()).toEqual({
       body: {
         error: "Beta feedback durable storage is not configured.",
+        reasonCode: "feedback-durable-storage-missing",
         missing: ["KV_REST_API_URL", "KV_REST_API_TOKEN"]
       },
       status: 503
@@ -60,7 +61,7 @@ describe("beta feedback durability and attachment safety", () => {
       expected: "Hosted feedback should save durably.",
       actual: "KV failed.",
       actor: "test"
-    })).rejects.toThrow("Hosted beta feedback durable write failed.");
+    })).rejects.toThrow("Beta feedback durable storage write failed in hosted runtime.");
   });
 
   it("keeps file attachments disabled by default even when Blob is configured", async () => {

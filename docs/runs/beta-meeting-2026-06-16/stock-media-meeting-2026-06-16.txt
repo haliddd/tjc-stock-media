@@ -1,0 +1,800 @@
+sword there wouldn't be a way to tell what event the photo is from right or is it if you click on
+like the the photo like if you click on the details then i'll tell you
+detail meaning the description yeah yeah
+uh yeah i mean with with the tags of course we can tag everything we want so if you want we could
+also create like an event tag and then have like multiple sub tags for that um it's completely up
+to you guys the tag system is pretty like loose in that way so if you want to type by event we can
+type by event um it already has a photographer in like built-in system so you can press search by
+photographer too so it's it's just really um up to what we wanted to do although now i just came up
+with the mvp 2024 because it's just like a description for it right otherwise it just becomes a generic
+like outdoor bible but yeah i see what you guys are saying in that yeah like we might not need
+to know it's from the mvp 2024 source right and then we can just put that in the description or whatever
+yeah
+yeah i um yeah so i was thinking like if we if we want to approach the naming from that
+that the premise that we want to have only what is minimally necessary um whether that's the approach
+we want um yeah if that's the case i i would say for sure the date i think that's very helpful
+um and then also some kind of a identifier right like bible outdoor like those identifiers i think are
+very helpful um i mentioned the date because i know that sometimes when people look at photos they
+might be like oh this is outdated and then they just kind of have a way to verify very quickly oh this
+photo is from like 20 years ago um yeah we might want to have more photos in these kind of um
+game right but then yeah more more recent photos so yeah that's why i was thinking like if there's a
+very quick way just from the date and mentioned in the file you can tell this is a really old photo or
+this is like not that old yeah yeah for sure and then uh resource space also has a feature where you
+can actually like archive some items so if you're going through and you're like oh you know this item
+is like really old we don't want people using this we can just like park it archive it so it'll be there
+for like historical like viewing purposes but you probably will not be able to like do anything
+uh you probably won't be able to download it sorry yeah so that's a feature for resource space too
+yeah in the in the data itself for each of the photo is there a place where we enter some kind of a date
+info for the photo um i don't have resource based pull up right now so uh we can check when holly does
+his presentation but i think there should be a date attached along with the location unless i'm
+remembering wrong holly um so when so the way i get all the photos is i download them from lm the photos
+directly so i don't really get to get all the details because if i want to get all the details like directly
+if like everyone put on uh uh m photos we need like we need verification from the dk to like get all the
+details from that so what we get is like no dates or something so what we can verify just
+if they have like 2024 mvp or this folder name is like 2012 we can put them but we don't have like access to that
+okay um yeah i i i i'm not sure if we have to have the date info for each of the photos i was just wondering if
+there's something something like that especially if it's going to be part of the file name already i
+think it's less even less of a concern for me um i was just curious and the other thing is like let's
+say if we do want to put a date um for at least the most recent batches i don't know how easy it is to go
+back to the other photos and get that info um but let's say if we want it from from all the mvps because the
+mvps are already grouped by year right and we can just pick the last date of that mvp right as the
+quote-unquote date for that particular batch of photos yeah yeah
+sorry i'm not sure uh can you guys see this this screen right here the resource space with my dog
+yeah yeah so there's uh yeah there's a date section the metadata is automatically pulled
+uh okay yeah i see so because the photos in in the google photos i think there is a date right um
+okay yes there should be um you can see the metadata and then when i pull them in from the
+albums it puts them in so i tried doing it with the 1999 like sunflower photo it shows up as 1999 in my
+own photos oh okay okay yeah so the metadata should automatically be attached i believe okay yeah it's
+just i think sometimes when people take their photo using whatever camera um or phone where the date is
+not set correctly then that's where maybe there could be some weird date data coming through right
+yeah um so maybe that's just something we can um note down that in the guidelines that like in general
+just make sure that they reflect um like correctly right um yeah so that at least it's it's in the note
+it's in the guidelines um yeah so we don't get like you know how sometimes people's camera is set to like
+50 years ago it's like you get these photos that's like 1972 or whatever whatnot it's just kind of odd
+i i was just thinking it would be good to clean up those kind of info as part of the process right
+of creating these in the art in the in the system yeah yeah for sure yeah so you can see for example
+like this one is from one of the mvp 2024 photos right so it has like a correct date of roughly when mvp
+would happen and you can see all this other like metadata of like what cameras used to take a photo
+and then um yeah i don't know who else would have a chinese camera besides kelly but oh right yeah okay
+yeah like this one's i i don't know what this photo was taken so i don't know this is the correct uh
+date tag but i can but these these ones are correct for sure okay okay yeah maybe maybe we don't need to
+spend the effort to go and make sure if those are correct it's just the the one that is very like
+obviously like um you know from 50 years ago we just need to maybe we redate those but like the recent
+ones you know if they're off by like months or whatnot you don't need to go back because it's possible i
+think during mvp some people may actually upload photos that they took months ago uh because it's a good photo
+um they they still uploaded it it was even though it was not something they did you know as part of
+the field trip or during the mvp so that's that's fine as well we can just keep the original date for
+those right there's no need to read those yeah yeah that's all fine like i think in the grand scheme
+of things we can like of course discuss this as we get closer and closer like if this becomes a real
+thing uh we can discuss this holly and i would just kind of come in with like an initial plan and then
+yeah we can just see how it goes from there it's not a huge deal honestly sounds good yeah because
+like it's just a file name right i think the resource space is a little more important since
+this is how you actually search for stuff the file name is not like the most important thing
+to us okay i see i see file name is more like just the actual file names that show up in wherever we
+store them practices in the system yeah so like in the google drive or whatever if the backup it will
+it will just show up as this name but it won't be like the most important thing because the name
+will be here right but if you want to search for lunar you can just search up like the tags and stuff
+and then yeah but yeah so it's just something we're more open to like discussing as we get closer too
+yeah for sure um sorry any more questions on uh i guess the the naming scheme uh not before i go into
+detail yeah okay okay yeah so um yeah as mentioned previously uh yeah subject's not really that important
+we can of course figure out later um however holly and i did also come up with this thingy so it's like
+the end here um it's kind of like the version um of the photo right there's because um i know there's
+like multiple different stuff so for example like canva or canva also has to use the photos and then
+because of it's for instagram we might have to like crop it right so you would have like two versions
+um of the photo right like the original photo of whatever it is and then uh like a social specific
+versions like an instagram specific version right to fit the whatever the photo like size needs to be
+or maybe you want to put it onto the tjci website then you might have to do some more stuff with it
+right like stretch it shrink it something like that so holly and i felt that we should add this kind of
+descriptor to the end of it and then that way we can also restrict who can download it right so you
+can't download the original but you can download the derivatives if you ever need to use the
+derivatives for whatever reason basically yeah um yeah any question on that part that sounds good
+okay yeah um holly is there anything you want to add to this section before i go on to the research part
+uh no no no okay sounds good um yeah so another thing we had to do um was to research kind of the
+integrations um or not integrations just like the other um stuff to do with the with resource space
+right um there were some questions and then i think it's worth doing so yeah um so i checked if
+there's a google drive integration so there is something that lets you pull the files directly from
+google drive into resource space without downloading it but it looks like you have to run a cyber server
+um so yeah not going to work for us especially since we don't have that set up so we're probably going
+to have to do the old way of you know you just download all the files and then we just put them in and then
+use an lm or just manually put in the details unfortunately and then um the second thing was i know
+we talked about a like backup or automatically putting it back into google drive um so that way
+we have two copies right one in resource space one in google drive if you ever need so i was trying to
+check and it looks like there is no native plugin for that sorry by native plugin i mean there's no way
+for you to like there's no um thing that they provide that will just instantly work out of the box
+right like you just download it and then you run it and then it works there's nothing like that
+we would have to probably like do it ourselves basically all right so one of the so there's
+like three options technically but i don't really consider number two an option because you basically
+have to go through a middleman and then most of the middleman software stuff is like paid right so
+not really an option if you want to keep this low cost um yeah so realistically only two options so the
+first one is you mix um apis and web hooks um to break that down an api is basically something that
+gives us access to like resource-based functionalities um if we want to do it not in resource space so for
+example um it will be like ways to maybe something like bulk import something into resource space without
+ever opening um this tab you just pull up like a command terminal or something and then you run the like
+run the script or you run the code and then it will do something with resource space basically
+yeah and then a web hook is a similar idea in that um you can like just basically do it over the web and
+then it'll notify resource space or it'll pull some sort of resource-based feature like uploading
+yeah so in this case it would be basically when you go to resource space and you upload a file right so let's
+say i upload the file of my dog right then it would basically send like um i guess you can call it a
+notification right it will basically send a notification um to our custom script right um and then the the
+custom script would like receive a notification they'd be like okay now that i've been notified then i know to
+upload this file also to google drive right because google drive also has their own um code system that you can
+pull from basically yeah so the entire thing would be like i upload my picture to resource space
+resource space and the notification to the script um the script sends the notification to google drive and
+then uploads it there essentially um is the first option and then the second option is um we use something
+called r clone yeah so i won't go into detail but our clone basically um it's kind of like a data dump
+they'll pull all the they'll pull all the files and then you can just run that on your own computer
+right um so it would be a little bit more complicated since we would have to um change where resource space
+stores the the files or we'd have to have like dedicated um folders for the photos but once we have the
+dedicated folders um then you can basically use our code to just copy all the files and then you run it on a
+schedule and it would automatically upload it back to google drive right so if we do go forward with
+like the backup plan then we would we would probably already be using something like our code so we would
+just have to set a schedule for it to basically upload it into google drive essentially sorry i i hope
+that made sense i broke down the terminology well uh is there any questions on the google drive part
+uh no question
+okay uh sounds good if there's no questions from anybody else then um you can move on to the amazon
+integration um i know we talked a lot about amazon and like amazon s3 um last time so i looked into that
+too um so amazon s3 is essentially the same as google drive um where again there's like middleware platforms
+right i don't want to do that um you can just mix in the resource space um api with the amazon s3 api or
+you can do something similar with our clone where you just like schedule the file upload back into
+amazon s3 yeah i have less experience with amazon s3 so i don't really know the specifics but um it
+should work almost exactly the same way as google drive essentially um yeah just amazon s3 would be like
+pure storage of course right so while the google drive would allow so for some like very limited
+like browsing stuff s3 would just be storage only as far as i'm aware yeah um any questions on the amazon part
+okay that's good um yeah and then the next part was um quad flare integration so
+um this part's a little bit more important um yeah i'm not sure how aware you guys are of like
+what cloud flare is and to be honest i'm not like the most advanced in cloud flare either but what cloud
+flare does is it basically gives you like a url for people to access the site right so basically you
+would launch it on your own local version right so and you can see um it's running on my local so the url is
+like local host a local host right you can see in that url but the word cloud cloud flare would do it
+is that it would give you like a new like domain name or like a url name and then just by accessing
+that url people can then go into the resource space so i believe if you're since the back end is hooked up
+to your local if the local does not run then people cannot access um the website which is why we were
+talking about like leaving the computer on before um yeah i i feel like we have a cloud flare domain
+since um i know when i go to the end of the library and i try to scrape stuff there's a cloud flare
+like pop-up that appears so i feel like we have a domain name and then that way we can maybe just like
+integrate it into something to do with cloud flare but um i haven't done like the most research into that
+since i don't know if that's something we want to do like i think we probably need to do it to let more
+people access but yeah not too sure um on that part regarding the decisions yeah um any questions on that
+part
+um so you know for cloud cloud uh flare um you're saying that's used to provide an url yeah so cloud
+flare is basically um yeah so it would give you like uh oh wait actually all right sorry yeah sorry
+uh i just thought something yeah cloud flare is basically kind of like uh i don't know web hosting
+is the right word but it would let people also access it because right now i don't think you
+guys can access it because this is running on my own local version right so if you guys try to put
+this in it would open up your own like local house part on your own pc which wouldn't lead you anywhere
+because it's not open right it's not leading anywhere so i think you would need uh kind of like a middleman
+or like cloud flare or something like that to access like a broader internet and then let people
+access it i believe that's the correct way okay yeah um sorry the other thought i had was that um
+i might be running into the cloud flare pop-up because we use google sites right google sites might
+already be running through cloud flare which is why um we have that issue yeah so in that case then um
+it might be a little bit more complicated since for cloud play you need to kind of have like a domain
+name basically you need to pay them for url to like use their space basically so yeah again we're running
+into that like payment issue right um i i feel like we had something to do with cloud flare um up there in
+the pricing uh it's yeah i don't really want to find it right now but yeah i think we had a pricing for
+that but yeah basically you're just like it's almost like you're paying for like a spot i like spectrum
+right you're like paying for that storefront so people can go into your store otherwise you're just
+operating like out of the back of your car right it's very hard to find but if you go to spectrum
+and then you pay spectrum for that store for that like domain name then people can more easily access
+into that website um if that example makes sense to you guys yeah um if we feel that we're at that point
+where we can have that discussion with it i think we can um so yeah you know how we have a lot of like
+service dot pdc dot org right order dot pdc dot org yeah um we yeah so we can we can have something
+like that but uh the other question i'm not sure how to answer as well is like the whole server situation
+um yeah is is it possible for it not to run locally is there some kind of uh
+uh other other options other than a local circle um i can do some more research into that too um
+i believe when holly and i were looking it was either you run it locally or you run it in cloud
+or you run it on the cloud on resource space's own like cloud storage thing so that would probably be
+permanently online but again since you're using resource space's cloud thing then you're gonna have to pay for
+that too right yeah but it is part of the resource space right like there's something that there's
+some third party is that right uh it's their own resource space actually so it would it would be first
+party because it's resources space's own cloud thing oh okay yeah so they already have their own
+they offer their own cloud hosting kind of service that if you guys want we can like look into also
+yeah uh yeah holly and i doing sorry holly oh sorry they're going so resource space
+uh if you do i think if i remember correctly is if it is free for like less than 10 gigabytes i think
+uh it's just for our testings because in the future it's just more and more and then
+uh so the virtual machines i think they can do that that's why i was looking for azure and
+uh oracle but oracle is out of stock and as there was some student free credits something
+okay yeah but yeah that's why you they they ask us to like pay hundreds thousands a year for their
+services because they are hosting those for us yeah because if you do it local you also need to pay something
+uh don't look like research spreads it's too expensive yeah that's great i never considered it
+yeah sorry so that's why like yeah how are you and i like we knew there was a cloud option but that's
+why we were only looking at the local option because we wanted to like keep costs down right so we thought
+it would be cheaper to just keep the pc running compared to getting a cloud server or something like
+that yeah yeah so that that might be a bottleneck we need to clear um because i don't know how like the
+ga can manage like a computer running yeah yeah okay okay so maybe if you feel that we're ready to have
+that discussion with ip we can have yeah that's a question but we can um ask joseph first and then if
+you need to bring other workers um you can or maybe they can have their own discussion but um i think if
+we're ready here we can talk to at least um yeah about these kind of questions okay yeah sounds good uh for
+sure we can do some more uh research but yeah that's it for the naming and then like integration parts so
+like any last minute questions before we move on to holly's part not from you okay um sounds good in that
+case uh holly saw you man okay i need to open up the screen share okay access
+wait wait i need to reopen sorry that's okay yeah
+about sharing screen one but yeah it was pretty fast to run resource space so it shouldn't be that bad
+either we do need to like boot it on yeah
+you can see right
+yep music yeah
+so i'm trying to get here like to like white the color to white the worries i haven't done that yet
+but i just want to put like this kind of face here and then
+so you can select like different
+how many photos you want in one page and then so this is just what we mentioned like
+the naming things like the derivatives like the small sizes so we already
+get like you don't need to know like the actual size of each
+we need to replace this with the maybe some better versions maybe and then you can do different
+it's for like here you can just search different things
+um
+um
+
+
+
+um
+i hope it works here searching but i don't think it really works
+oh it works okay perfect
+i think these are just placeholder or something
+yeah but when you search everything can pop up and then
+um so here's filters and yeah we still need to work on this but it is the structures here
+you can select like different things
+and
+we also need to fix this and you can see all the data here
+uh
+and you can uh to if you find something like not right you can just request it
+admin or i think admin or reviewers we can discuss on that
+uh so when you go to the review queue i think it will be here
+yeah i don't know why mine is so slow
+it's somewhere but not here
+i was playing around late like this it was here
+uh
+and
+yeah
+i also have different collections where right now they really work but
+you can see like uh we really need to go to something specific orders you can find it
+and here's the upload um yeah we also need to fix that like i guess i don't think people want to put so many things
+they don't want to upload this but just the required ones
+and for different yeah they're just all too much worry but that's what they need to do and then we can just submit
+and these are just for amy's
+uh just it's here because in the exhibit but we still need to uh do like a lot of research and
+trying to figure out what it what is what
+yeah
+yeah maybe here is someone they want to get this
+approved but they don't have that like the rights or something so they can use so they will get
+kind of notification or something requests so they can just approve them
+they can just
+it's just
+everything just here but
+it's a lot to do so
+here um
+if a lot of things you can view
+but
+we just need really
+need more time to work on
+all the details because this is what real
+them should be like they have different things so you can see seven and then
+you have different different things so when it search
+you can just get it's just much much helpful
+oh this is a metadata by like small small details and this is admin so
+you can see the most things but when you're real use normal user you don't see this much
+um
+it's just here but we just need to take time to work on every details
+so help center
+it's too ai but the things are here
+yeah not too much things but yeah like this works much better than last week much much more details
+heli did you have to customize a lot of these
+what what's the last one
+did you have to customize a lot of what you just showed us like basically all the
+functions under workflow um so you know like uh all the air right now they can do like long deep
+search for like 10 minutes 20 minutes and they have like research reports so i just feed them to ai and
+they will come out with all these like small small details but yeah you know it's very in general but we
+just need more time to do everything in details so this part is just so in our style
+you can press command k or control k you can get a search function so there are some websites you just
+copy the prompt and just tell it get copy paste and you will come up with this uh this is from this is from
+our identity.tcc.org or us something so and this is like this view or like great view or something
+and this is also copy paste i just tell uh you need to have one here oh i remember i said i need one here
+but i don't know why it's gone yeah i just did it um like off nowhere
+so like for this screen did you have to customize like those type of things like for example that per
+page that drop down did you did you customize those four numbers no yeah just decide but it's better like
+it's pretty good like you have five and you can just scroll six rows
+uh sorry just to clarify real quick um uh yeah it's kind of is has to be like customized a little
+bit it uses the resource space like back end but since this is just a ui it's just kind of like a skin
+covering and then we just uh uh how they just kind of ask the llm like how to basically like put on the
+like basically asked how to put on makeup for it so back end still works with resource space these are
+most of these are based like resource space functionalities they're just like integrated
+and made to look like a little bit better okay i'll back with it yeah it does and then when heli says
+there still needs a lot of work what is that referring to like when i click something it doesn't really work
+uh-huh so somehow the function needs to be linked up right still yeah it's okay we have things here but
+they only have to just outside the inside doesn't work and is uh once let's say the piles are loaded
+into the back end like what what kind of work needs to happen for for it to actually work work
+uh so let's say someone upload something here so what i want to do is just they can just upload maybe but
+everything should be like default or something like you get a date default by accessing the metadata files
+and then uh the reviewers will decide like different things
+so right now if someone submits something um they can submit by by using this page and then whatever they
+typed into those fields that you just show in like it's number one cat number one yeah like all those
+things will get recorded into the into the um database right now like the one that we created vocal
+yeah like what we want is so you just upload here and then it will get oh yeah um it will be like in
+the places we want to store them and then uh but they just put on like different things like so that
+uh the reviewers will know when when when where what and then if you need something specific for different use
+for different places or it's only for internal or maybe it's better like print something and then uh
+uh yeah reviewers will decide whether this should be on but most i think most of the time and everything
+just on just make sure there's no like copyright stuff uh just make sure they take pictures by themselves
+so just just just a very rough idea like how long would it take to build this so that it's functional
+fully functional
+i hope it's working but it really depends on ai like like they say so much like every time i just tell it
+oh you need to get this down like demo down or like you need to make this like version one but like
+in the end they're just running for like five hours ten hours okay and like doing nothing
+uh all right it's doing in the back but i don't really see it right right because like i every time i
+like before i go eat i just uh here's a task that you can run for like hours and before i go out or
+one wake up or before i sleep i just run this for like 12 hours i don't really know what to do it
+okay okay okay so it it it may be functioning uh but probably there's still things that need to be
+either cleaned up or like yeah i mean if anything to be clean out like right now it's just very sore ai
+i look at this every day so it's just very very ai
+we don't really need those in actual pages i still need to view all the uh those damn youtube videos and
+trying to do this and also like their search functions like they already have like ai searching
+back in like seven years ago like 2019 there is much much cleaner
+okay so it's more like kind of simplifying it from what you have right now
+yeah around a bit of that work yeah you don't want to see this much finish
+this is too hard oh and that part you asked ai to do like it's like oh simplify this part keep
+only this something like that kind of like that but you need to be very very specific because
+like i said you just wait for one hour and it's either not doing anything you can see or it's doing
+it's making it much worse
+okay i see but if sometimes like when i be very specific like this like i copy paste this
+like i need all the damp uh features most important things here like so it's here but when but this
+still makes no sense here because everything is here while they are all here
+it's just too busy here and the colors
+just need more time and hopefully i will get it done
+and yeah because there are many like blockers on if i want to get it on
+car or somewhere hosted for free for small batch of like internal testings
+yeah i also need to go to those different websites to get them down like oracle is out of stock
+right right oh i'm gonna jump ahead and ask my question um to jackie jackie currently how easy it
+is it to get like the non um non-kdc specific photos like if people want photos of flowers of like ocean like
+is it did there's just so many places to get those for free nowadays um yeah actually yes it's it's pretty
+easy to get those okay so i'm starting to wonder for our stock media whether we should really just
+narrow down to those things that we can't get outside
+so like our sources just the free uh resources outside and like uh some member pictures
+like for example flowers right maybe that's not something we need to put in our stock media
+yeah but when someone wants something they go outside and how can i make sure this is like no copyrights
+yeah jackie do they usually clarify this is like free there's no copyright you do not need to acknowledge
+um yeah um if you go to like a um stock photo site for example pexels or unsplash they will say
+which ones you can use freely and which ones you have to pay royalty so usually like sites like getty
+you'll have to pay royalties too um and then some sites like canva
+um because we have a subscription that we don't actually pay for um but we do have like a pro version
+because we're a non-profit we can use those licensed images um for our our use because we have a contract
+with them so anything we get from for example canva um we are we are allowed to use because we have that
+active subscription and um most of those images are uploaded by users anyway so it's not like canva is
+hosting them so whoever's uploading them has also um given the rights they basically signed the rights
+over to canva so that canva can redistribute those to whatever whichever users and we're one of those
+um and i think it's also the same for pexels and unsplash where if you have that subscription or you
+have that access then you can you can freely use it so i don't think it's very i don't know how that
+one church ended up using like a copyright photo it must have been like something that was not very
+stock in terms of the content so maybe it was like a specific location or a specific um something that
+you can really tell that it's unique to like propriety um you need to like that one company or that one
+entity yeah yeah so um that's kind of how i understand it like stock stuff should be like
+either our own stock things that where you can't identify who the person is in the photo like you
+can't see the face you can't really tell like from the back who they are um or like it's just it's like
+church property like parts of the church property things like that or um another thing i do use quite
+a lot just for church content is if it's like an ordained minister an ordained creature or deacon and
+we know that they're full-time workers and um they have like a really good reputation then we just go
+ahead and use that photo and we actually still try not to use like their full face um just for their
+privacy as well but yeah things like that did that answer yeah okay sorry if i could ask a
+question real quick would it be yeah i know it's kind of like a sensitive matter but would it be
+possible to like get more details of what happened with that like copyright thing because if we have
+more details then maybe we can try to plan around it or see if it's like even a concern because um yeah
+yeah um i don't know too much detail but the when i got looked in is basically some kind of a nature
+photo i think it was like some ocean type scene and it was just on a webpage um in the indonesian site and
+um so so then we got a letter from like uh like a law firm saying that oh this is uh if this is
+a copyrighted image um and then so they just demand that we pay them for using that image and so
+yeah so we basically negotiated we settled for a lesser amount that we ended up paying them um
+but they're yeah the whole premise is it was a copyrighted image and somehow our our worker found that
+somewhere online and then just use it without realizing that if they did the copyrighted image
+okay sounds good and then this is like in indonesia right not not us on our indonesian site but the you
+know like people always well even the indonesia site if you look at it is still a tdc.org slash id something
+like that right so basically all these legal issues still normally come through to ia um and then ia will
+work with whichever respective ga right to resolve the issue um if the local gav need to be brought in
+right so we had to like inform the indonesia ellen like uh you know take down the photo and we have
+to figure out how to deal with the whole um the issue right the payment issue yeah yeah okay i see
+yeah sounds good thanks um yeah i don't know if we can really do anything around that but yeah yeah
+yeah i think i think more and more gays are are more getting more experience with you know like telling
+how to make sure they use only the images that are copyright free right or that it's committed um my
+only question is like i should be royalty free right royalty free right yeah um and so jesse the other
+quick question i have also is like are there any of these photos where they said you have to include
+on the photo itself
+or much are free like you can just with use them without acknowledging that's a good question um
+um i do okay so off the top of my head i do know that some of them um they highly encourage giving the
+credit like signing the credit of where the photo is but from what i remember that was just highly
+encouraged um just as a best practice sort of thing but i don't think i remember seeing that and
+honestly when i use canva i don't i don't say anything but you can see um within canva who is the owner of
+that photo um usually yeah so so they may not necessarily require us to use it right to to
+to include that acknowledgement no absolutely not okay okay then that's good because that that would be
+um that would be more of a reason why we want to have our own you know stock photos of flowers and
+whatnot right if we have to acknowledge basically all of them or a lot of them um then we might as well
+but like i think for music i believe that's usually still the case right we have to acknowledge yeah for
+music it's a bit more strict about that okay so that so then that that's the reason why i was thinking
+earlier um for stock photos do we because we can go we can really go all out we can have hundreds of
+thousands of photos right so we're really opening it to like oh we should have trees we have we should
+have flowers we should have right um pencil we should have yeah we can just go all out right versus
+if we can really get those free photos so easily out there do we want to only focus on the ones that
+we can't find outside right let's say baptism right baptism in like in living water right like in rivers
+in oceans like those kind of photos and then you know with the person's head bowing down like do we want
+to focus more on those kind of photos yeah i would really like to have a lot of those photos actually
+i did request to annabelle for the ui ux and the graphic design team at mvp to um consider taking
+pictures i actually i gave her a list so for example a group of people praying in the chapel with lots of
+negative space and things like that or you know bible study outdoors cannot see the faces with a lot
+of negative space things like that so i do request those um hopefully we can start building up a larger
+library of that kind of content um i so i just took a look at canva it does say like for example i
+searched up a flower pink uh peony bouquet on a sky background and it does tell me um who it's just
+like a username who it's by it doesn't say the name and then it does say that this is pro content and
+it's included with canva terms um so oh no sorry uh included with canva teams um and that's what we have
+so yeah we it says canva teams subscribers get this image for free so oh it doesn't say anything about um
+usage or like acknowledgement and you don't even know who it's from and interestingly enough um this is from getty images
+so this is so i guess canva has access to getty images oh interesting
+and usually getty images is not free
+um i had a good question um say for example a lot of the projects like pocket calendars a lot of the
+pictures are taken from our own stock photo library right that's right yeah and they're usually nature
+oriented yeah i'm wondering if there are other projects like that are you suggesting that um
+those photos can be taken from other places like getting images or other places
+images like that are you suggesting that you're using the same exact nature right yeah that's what i was
+thinking too yeah
+okay so there might still be a a good enough reason
+to have our own at least nature images that are are regularly not regularly but at least are used for a regular context
+yeah
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+do we okay so for the pocket calendar we almost would never use anything other than nature
+nature nature
+yeah i mean i could see us using like um if you're talking about um the water baptism
+um those types of photos maybe we would use those um but i guess it just depends on the verse right
+yeah
+so far all of them is like very nature-y
+all yeah yeah
+yeah the i guess going back to my original suggestion i'm just wondering like how
+big do we want the stock media system to be oh the bigger the more the pay
+yeah
+i feel like that might be one of the
+potential blocker we have to do
+i don't know if there's a way to limit this but um like say for example flowers we already have like
+a lot of flower photos like can is it possible to
+somehow limit the amount of people contributing to that particular photo
+like for every nature photo two or three church photos or something yeah
+yeah i don't know yeah request to the uh to annabelle
+yeah because it doesn't go through admin to review right can admin just
+be like oh like not review or not accept it because they're already a lot of a certain type of photo
+yeah i think i think that is probably possible but it sounds like there's like two things going on so
+like hailey and enoch are building the system and it sounds like we also need content managers to work
+within the system so it's kind of like two different teams and we haven't really talked about the content
+side yet because i think they don't really have a clear idea yet of what information to include
+because we haven't like we haven't told them because i think we don't even really know ourselves we have
+to make those decisions right that's like what i'm kind of getting out of it
+yeah i think nobody knows i've thought through this enough um to really know the full picture um but
+this is part of our discovery process right it's going through this um to see what is even possible
+and then right and then now these questions pop up like we need to address these questions
+um yeah to be fair if you really wanted to and if you like trust the people uploading them enough
+then you can just like kind of give them like open access but holly and i were just kind of a little
+iffy on open access because as you know sometimes people um may just like overlook stuff or uh just
+stuff happens right so that's why we're just like thinking about requests only but if you really trust
+people we can also skip the whole approval process if you really need it yeah i think um
+right we did mention by default joanna would be the content approver and if she needs to involve
+other people um if there's too much work i think she can build a team right but at the very least
+as a project manager i guess she would be hopefully our default approver
+um and it might yeah i don't know how much we can control who the contributors are um is it right is
+it possible to set it up that like basically you need to have an account to be able to submit yeah yeah
+uh i just try like you need to log in so you can submit like we can trace back like whoever did it is so
+if you want like more you can just uh maybe we can have some specific code like access code like
+uh sign up codes distributed maybe by ga usga or different churches so you just go to the council and like you can get the uh sign up uh code for that
+so otherwise you cannot sign up okay you can only view and view like as a viewer and you can never be a contributor unless you get access code
+uh okay that's what we did before for up like a beta yeah a beta version
+yeah the files also tell you who's uploaded them so if you ask if you tell people to use their real name
+or like their church and their real name then you should be able to like track down who contributed to
+the photos pretty easily um joanna i think like if we only open the contribution access to the people who
+are regularly right contributing like for example right chris chen or could just stand like would we give them
+access um so even if they continue to load new nature photos we probably wouldn't be too concerned about them
+uploading too many right yeah i don't see that there's people like regularly um contributing to
+the google photos right now um but i know previously we talked about like the mvp um is it
+like the graphic design team or the one of the teams they all have access to
+the google library to the google photos library yeah so they would be the viewer then right they're not
+necessarily contributing and then maybe at the end of every mvp workshop um the team lead can
+uh only upload the photos that yeah yeah yeah yeah yeah yeah yeah yeah yeah yeah yeah yeah yeah
+yeah i think it would be possible if it's just the team lead that uploads it
+and i think so far that has been more or less the case right when they uploaded to the google photo
+account um that the team needs to be the one to make sure i see i don't know exactly what happened
+last year during mvp because i shared the um folder with annabelle but i don't know if she gave direct
+access to that folder to all the team members or it was just her who did it yeah okay okay i guess
+regardless at the end she could still be the person to go through and delete the photos that probably
+don't need to be in there and then right and then remove access from all the participants by that point
+and then um because the way it is right now is some of the ex-participant or previous
+participant that continue to take a lot of good photos and want to contribute more after that mvp
+then that's when we create these specific folders for them like chris uh um paulina right probably not
+yeah i think it's just in the year 2021 whoever the team meet was just created individual folders for
+all right but i think it probably should have been just like an mvp 2021 and it would just combine all
+those into one similar to like how it's already combined into the mvp yeah
+i had a question about the naming um system that we were talking about before is it very tedious to name
+every photo say like the team lead has to upload 200 some photos each would they have to go in one by one
+to like label everything right it's auto generated
+auto generated okay
+i guess like if you wanted to change parts of the name you would have to do that one by one right
+like we can do like some bulk upload like you can just apply like let's say bible to these photos you
+just upload the something like you can do like a whole folder or you can do like this specific ones
+if you can do like select and these these photos need to add well it's much more complicated but we can try
+i see oh okay like you can just create your like first you can create a folder and then you can just
+bulk upload like buy different things you want to upload to this and then you add the same
+elements to this this folder if photos you want to upload
+i see sorry just to add on real quick um since the photographers also will need to put the
+photos onto their computer first before they can upload to resource space
+um if you really need to we could also try providing like some sort of custom script to make
+like automating that easier right so for example it would be like oh like what do you want to name
+this group of photos right and then like oh how many images do you want to upload right and it would
+just sequentially go through them and then you can just name them something generic for example right
+so you can just that way you can just say oh you know date is going to be this and then um some sort
+of topic here right and then sequential and then you just just mass bulk um rename them there should be
+like features for that just natively built into the computers i think that would be helpful
+yeah yeah so if that's like a real concern then we can look into that in the future as well
+and then just on resource space is it possible to like on the um home page is it possible to search up
+by contributor like say a contributor wants to okay
+um i think i read somewhere that professional stock photographers spend um up to half of their work
+time tagging and sorting and keywording so that it is a big part of it
+uh jackie the two things that you just shared the first one is it just to show us that we can get
+like these kind of photos pretty easily yes i just wanted to uh share what it kind of looks like
+from pexels it does say it's free to use oh okay and then for canva because we have access to um
+um we have access to i guess they're non-free photos those were the terms so basically uh it does say in
+the terms that we have access to it in perpetuate forever perpetuity perpetuity
+yeah so if they do swap it out with something else or they take it off we still once we have taken
+like use that photo we can use it forever um just there's some limits like we don't want to we can't
+use it uh within the logo like there's just no okay like for our uses um i don't think we would encounter
+that right like social media posts and pocket calendars right right yeah yeah and they say like you can't
+um like just use the image without um modify without like putting something on top of it or like
+you can't like print it and sell it as your own artwork right right okay
+um i'll wait if you let me share my screen i can show the uh check which contributor
+uh yeah so um yeah i didn't do that extensively as holly did so everything's contributed by admin user
+which is me so if you go to so sorry so again base resource space right the search box on the right
+and you go to advanced search you go all the way down and you search for who contributed like just
+type in admin that user will pop up right yeah so you can check by which contributors there are you
+just need to set up the contributors of course yeah sorry just answer the question about the contributors
+um you also had a question about howie's version um for i think it was one of the pages with the tabs
+one through five on the fourth step it was like usage scope um and there are different options does that change
+how the photos are categorized or organized um if you click a certain one or what's the purpose of that
+like do you mean this like upload here yeah the usage scope um number four
+uh
+like you can just i mean these are ai but there is a reason why they're here maybe so um
+so like you can just be more specific on this maybe like when you go to the filter on the library
+and you want to do like uh print you select print or these print like tags they just come up
+so it doesn't change like the way that the photos are organized at all no like this is just actress
+i see yeah i still need to watch more other good videos on this okay
+so um
+do you know how did you come up with your version is it just you didn't use a link to build it you just
+like pull whatever it is uh it's a like ready version
+yeah sorry my version is how it looks like straight out of the box so if everybody just goes to the
+resource space and then like follows instructions and it gets running a computer it will look like mine
+essentially yeah yeah so that's why like that i think the budget is almost like no customization at
+all it's basically like it works pretty well out of the blocks to be honest yeah
+okay i don't know
+if we if we want to write um implement this we have to we have to be able to manage it right
+for the next 20 years
+so let's see how do we do that let me ask
+all right thank you like a little bit more specific on what you mean by manage like is there any specific
+aspect um right to bring up yeah like that's a company like ultimately add
+need like additional i'm sorry add additional
+fields like data yeah yeah that's that's pretty easy um
+yeah it will be much better maybe like right now i do it for a month maybe i can just do it one one one
+day it's only gonna be more powerful like you can just talk what you want they will just
+do everything and they will look like this much better
+and this is even for like six years ago
+yeah and then uh base resource space if you want to add more fields it's also pretty easy
+um you can just go into the menus and it has yeah it's it's like built-in feature to add more fields
+and then uh determine if it's going to be like necessary and what like what you want the field to
+specifically be yeah
+um
+yeah yeah so if you guys want to like come up with some more questions too um for holly and i then maybe
+we can try to answer them and then maybe that can help refine what our true like purpose will be like
+going forward we can narrow it down to search a little if you guys want
+yeah do you know what do you think um i think ultimately like we probably will still be there
+right with still be the project manager um and maybe you can comment on that
+um i just think the bottom line is if it's user friendly for everyone because not everyone is super
+tech savvy um so i feel like as long as contributors can easily um contribute to this and um do it some
+like um like um on their own accord i think that would be the most important and then also um like
+how it's organized like the tags the naming system everything that's easy to find um i think that's also
+important too
+yeah that's why i like i spend time on this like i just want to make it much easier right now the the
+the one i'm doing is uh i would say it's very like the layout is not good enough not like very
+user friendly or like because we all we want just some people just upload and let's call it a day that's
+it and they want to find something that's the most important things that's why i want to see resource
+space no this is so hard
+yeah i think either way we're also gonna have to create like a walkthrough of any story
+clear especially if they have like naming conventions or anything we're probably already gonna have to
+make a walkthrough so we can probably just add that just want to make everything easy
+yeah i think what would be helpful is maybe like coming up with like an inch page of instructions
+of how to upload and like a naming system um that might be helpful yeah like i'll just make it as easy
+as like you use google photos google drives you just upload everything and right yeah you can just
+search up things that's the ultimate goal i think for most of people like we can be more much much work
+but the users just make it easy easy easy
+yeah in terms of like the maintenance side i'm not sure if that would be
+um for you guys to maintain or yeah oh um it's just about price maybe like yeah i can do it maybe
+let's see if it's in the future
+yeah that's why we made some of the choices we did so we don't have like tech that in the field
+sorry tech that is basically like just choosing something that works now instead of planning ahead
+right like we're also trying to like plan ahead that's why we're like thinking about like vocal hosting
+um
+um
+um
+um jackie do you have any recommendation on where to go from here yeah actually i was thinking about that
+um i was so wondering do you think it's time to also involve anabella too um because she's uh pretty
+active in the in the i guess like the content of this project um i'm wondering if we can
+remember how we were talking about doing like a limited version like just using the previous year's mvp
+um to test it was that what um the photos were already limited to in the presentation of the
+um you know the demo from today were those the photos only from mvp 2020 something six five 2025.
+yeah we did talk about using is it mvp 24 right oh 24 okay
+um so like for that those content i think what's kind of missing possibly is like um like the information
+of the of those photos are not in the they're not in the um the mock-up that um hailey and enoch built
+so we can't really tell what's going on and also they don't really know what to name it so i think
+that information might need to come from the content managing side um but if we can just limit it to
+however photos those were i don't remember if it was like 200 or 50. um that might be a good way to
+test it to see like how user friendly it is without taking up a lot of people's time i'm wondering
+because i think ultimately one of the goals was to categorize the photos um but that may not have been
+possible with this intern group because they don't really know what the content might be that would
+have had to come from the content manager side which would happen and i don't know that that's what
+i'm thinking it's not like fully formed but i don't know if anybody can expand on that
+um yeah so joanna and nfl are in that same project and managers group um the i think nfl's role so far
+has been um actually apart from the project managers and that she was a team lead for the graphic graphic
+design and user experience design um team it's just that usually that team produces a lot of the stock photos
+that get fed into the overall stock basically the stock media library that joanna is the project
+that's right because like pastor sam also contributes to right yeah and some other non-mvp participants
+of the past like you know chris chen jerry kong like those people who are very into taking photographs
+um um they have been they have at least had one point to do quite a number of colors
+yeah so i think yeah maybe we could um i don't know if somehow okay if we don't want to involve
+animal yet if somehow joanna is able to like use their product somehow i'm not sure how
+we could do that um and then like give her feedback on whether this is the route we can go because i i'm
+not the i'm not the one who will make the decision so i'm not exactly sure what we want
+yeah yeah it's sorry yeah go ahead i was just wondering is there something that i could try out this
+like uploading a photo or like uploading the past photos
+yeah that's one of the things we're talking about because right now um yeah so as you can see my
+version is completely different from holly's version right and that's because we're both running on our
+local own separate versions right so that's one of the issues we're talking about where we might
+probably need something like that cloudflare domain so everybody can connect to it something like that
+using like a url type of thing yeah yeah like a centralized source because otherwise it's all
+local and you guys can't touch any of that right yeah oh i'm sorry and then yeah then holly and i
+didn't want to centralize too fast because again that way if we just need to abandon the project there's
+no harm done basically is there um are we at a point yet to decide on one of the um platforms um so
+either holly's or enoch so that you can work together
+sorry to be clear um yeah holly's version just builds on the original base version my version is
+not really my version it's literally just the standard default like i haven't done any customization work
+to it holly's is just like uh that way so if you want to think of it like my face my version is
+basically just my face right but holly's version is kind of like the makeup on the face it just builds
+on it essentially so it's like the same thing oh okay all right so you are you are working on the
+same thing uh well technically holly's doing most of the work on that side to be real because again
+like it's a local version right so i can't touch the work he does basically that's right yeah is what
+you're doing huge enough where it cannot be done like on a free um i don't know like a free post like
+you know some some of them they have like trial posting i don't know um i don't know very much about
+web hosting oh i if you want i maybe can do it like on answer but more ideally it's oracle but same thing so
+if you want to play around i mean i can get it down like you can play around with it but
+yeah like when it's scope is big enough or like let's get a bit to you like in the future you just
+need to make it somewhere else but right now yeah that's what i'm trying to do i i i just want to get
+it uh everyone can just trying to upload things but every time yeah i just say okay it's done
+i just tell you to review and just come keep coming going back and something i have to fix all the
+things and i just have to wait and just pointing out another bug and it has to figure it fix again
+but yeah if you want we can get it somewhere on like you i put in a chat like it's a website but i think it's
+older one oh no oh yeah okay can you um can you i'm gonna paste this into our google chat meeting i don't
+[REDACTED credential discussion] so this was like pretty old maybe last
+i don't know if you want to do it but i don't know if you want to do it but i can update this so
+the [REDACTED-CREDENTIAL-LIKE-TEXT] is for uh i mean i do not remember other credential-like values oh okay so joanna can
+use this to try it out uh no this is just a shell oh that's what i was trying to figure out like
+hosting somewhere else so like azure virtual machine so we can really link both things together and yeah
+okay i'm gonna say something that i don't think anybody wants to hear but it kind of sounds like
+like there is a high possibility that there's going to be a lot of maintenance required on this um
+project that people who do not have a cs background really cannot do so like um
+heli what you're doing with giving ai the tasks to do um without this kind of background like you
+have it like if someone hasn't gone through the steps and learned about dam and all of that like
+how you and enoch have been learning about it um the past few weeks they will not be able to um maintain
+the bugs and things like that because i know that for joseph his full-time job is basically debugging
+or something like that so i'm i think i'm suspecting that it may be too complicated that is
+sorry uh yeah just as quick uh clarification uh do you mean like ai in terms of like for the photos and
+stuff because um the i just speeds it up like you don't have to use the air at all if you're not
+contributing that many photos if you contribute say like 50 you can just upload like like 10 at a time
+for example and you can manually go through and then like add the tags yourself so on the user side when
+it's all done like there shouldn't be that many issues the flow should be pretty good right like you
+just like rename the photo or you rename the file on your own computer and then you upload it and then
+you just like select all the tags and then you should like be pretty good there's like maybe one or two
+more steps beyond that but it shouldn't be like super complicated on the user end it's just a little
+bit more complicated for us because we're working like the back end like maintenance and then setting
+up kind of end so yeah hopefully the end goal shouldn't be like that bad sorry just does that clarify
+anything or oh yeah yeah absolutely yeah yeah i was actually concerned about no i think the way that you
+set it up for the user is pretty brilliant it's like very all-encompassing and um i think the way that
+you do it is very thorough and i i'm just concerned about the back end maintenance part because once you
+set it up something might fail eventually and like if yeah that's just what i'm concerned about but of
+course like yeah please prove me wrong that would be great um but it's yeah so how how can we get to
+a point where joanna can try out um like with a limited number of photos to for her to manage and
+she can let us know yeah i would try that and when i get it done i will just share it and okay chat
+is that going to be a lot of work i'll just ask ai to just click something click click click and i just
+build a review and okay continue okay create okay yeah it's just ai using your uh safari chrome and
+in the end you just click that payment ish thing
+what payment ish no no no no not payment because we got like azure student credits or
+they're small enough like we don't need to pay just like ai will keep the last one for you to like
+confirm sorry you mean a lot of work to set up or a lot of work for joanna to add the photos
+because there are two different things no the the to set up the thing for joanna to use not sure it's
+just a few like platforms oh okay that's what i think we might do is that okay yeah that's what i
+was trying to do last week that's why i bring this because i was trying to use oric of it didn't work
+oh okay okay yeah i definitely learned a lot like from this whole project and so it was like whoa all
+this information it's really cool yeah um yeah i don't i don't have anything else um if that's okay
+for the for the plan if everyone is okay with that we can set that up okay yeah
+okay so we'll wait for a text or a message from holly and enoch and then um joanna will take a look
+at that and then after that joanna let us know so do we want to set a follow-up meeting or yeah we
+probably should um sorry what did you say oh yeah go ahead yeah we can uh okay so what would we want
+to do a week from now and then also i forget um holly and enoch when is your last day as intern for the
+internship workshop oh the workshop right okay so the the week of the sixth and seventh it would be like
+the last week right um would the would next tuesday be too early for a follow-up oh no no no no no no
+no okay so that depends on joanna too would you have enough time like if they give you the link by i
+don't know like friday or so would that be enough time for you to work um take a look over it over the
+weekend um this weekend yeah oh it's father's day this weekend yeah
+it'll be as easy as you just upload some photos and yeah like you do uh like google drive
+yeah it should be fine i i might not be available saturday sunday but i could do
+do it monday or whatever you send it okay okay yeah then um yeah maybe we can aim for next week at the
+same time um sorry
+oh never mind okay uh
+uh sorry i can't see my full screen because the google meeting is in the way um okay i'm looking at
+today and this week okay so what month uh would
+uh would like 11 o'clock or 11 30 be okay on tuesday
+yeah 11 to 12
+oh 11 to 12 okay yeah okay great yeah looks like everyone is okay with that so we'll schedule it for
+next week at 11. um okay yeah i'm pretty excited to hear what joanna has to say next week
+uh thank god it it's really really impressive like what you're able to get ai to do and also kind of
+like satisfying to hear that ai doesn't work all that well sometimes but um but yeah it's very impressive
+um i've learned a lot so thank god um that we could be part of this discovery process and kind of like
+figure out what we need to know what we don't know yet um yeah and i think we can conclude here
+okay thank god all right uh see you all next week at u11 then
+okay
+you

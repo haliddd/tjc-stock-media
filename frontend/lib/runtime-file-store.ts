@@ -9,6 +9,7 @@ export type RuntimeStateCategory =
   | "download-tickets"
   | "beta-feedback"
   | "package-drafts"
+  | "intake-batches"
   | "saved-searches"
   | "usage-events"
   | "runtime";
@@ -19,6 +20,7 @@ function categoryForPath(filePath: string): RuntimeStateCategory {
   if (filePath.includes("download-tickets")) return "download-tickets";
   if (filePath.includes("beta-feedback")) return "beta-feedback";
   if (filePath.includes("package-drafts")) return "package-drafts";
+  if (filePath.includes("intake-batches")) return "intake-batches";
   if (filePath.includes("saved-searches")) return "saved-searches";
   if (filePath.includes("usage")) return "usage-events";
   return "runtime";
@@ -27,15 +29,19 @@ function categoryForPath(filePath: string): RuntimeStateCategory {
 export function runtimeStoreDiagnostics() {
   const durable = durableRuntimeStoreConfigured();
   const production = productionRuntime();
+  const mode = runtimeStoreMode();
+  const requestedDurableMode = mode !== "local-filesystem";
   return {
-    mode: runtimeStoreMode(),
+    mode,
     adapter: "local-filesystem",
     durable,
     production,
     statefulWritesAllowed: !production || durable,
     state: production && !durable ? "Blocked" : durable ? "Operational" : "Local beta only",
     detail: production && !durable
-      ? "Production stateful features require a configured durable runtime store. Local filesystem state is blocked."
+      ? requestedDurableMode
+        ? "Production stateful features are blocked because generic runtime writes still use the local filesystem adapter. Vercel KV is implemented for beta feedback only, not audit logs, tickets, package drafts, saved searches, or pending write queues."
+        : "Production stateful features require a configured durable runtime store. Local filesystem state is blocked."
       : durable
         ? "Durable runtime store is configured for production readiness checks."
         : "Local filesystem runtime state is enabled for local/private beta only."
@@ -46,6 +52,23 @@ export function assertRuntimeWriteAllowed(category: RuntimeStateCategory) {
   if (productionRuntime() && !durableRuntimeStoreConfigured()) {
     throw new Error(`Durable runtime store required for production ${category} writes.`);
   }
+}
+
+export function isRuntimeWriteBlockedError(error: unknown): error is Error {
+  return error instanceof Error && /^Durable runtime store required for production .+ writes\.$/.test(error.message);
+}
+
+export function runtimeWriteBlockedRouteError(category: RuntimeStateCategory, error: unknown) {
+  const detail = isRuntimeWriteBlockedError(error) ? error.message : "Runtime store write failed.";
+  return {
+    status: 503 as const,
+    body: {
+      error: "Durable runtime store is required for this production write.",
+      reasonCode: "runtime-store-required",
+      category,
+      detail
+    }
+  };
 }
 
 export function ensureRuntimeDir(dir: string) {

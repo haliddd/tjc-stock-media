@@ -1,16 +1,22 @@
 # Team Beta QA Matrix
 
-Last updated: 2026-06-12
+Last updated: 2026-06-15
+
+## June 15 Safety Override
+
+Current decision is **NO-GO for hosted teammate invites** until the June 15 evidence packet blockers are resolved. The old six-person GO language below is historical and superseded by `docs/runs/evidence/2026-06-15/11-friday-readiness-report.md`.
+
+Hosted mutating smoke is not read-only. `portal-hosted-smoke` now requires `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` and `PORTAL_HOSTED_SMOKE_APPROVED_BY` before any non-local POST. Use `portal-hosted-readonly-probe` for unauthenticated hosted read-only checks.
 
 This matrix separates automated proof from manual teammate beta checks and remaining risks. It is scoped to internal beta demo readiness only. It does not approve production launch, public publishing, source media changes, ResourceSpace live writeback, or source/original downloads.
 
-Internal beta access update: hosted beta should use `/beta-login` when `BETA_AUTH_ENABLED=true`. Persona passwords come from Vercel env vars, and beta sessions override query/localStorage role spoofing. Older `?role=` links remain local/beta-off QA shortcuts only.
+Internal beta access update: hosted beta should use `/beta-login` when `BETA_AUTH_ENABLED=true`. Persona passwords come from Vercel env vars, and beta sessions override query/localStorage role spoofing. Query-role links are retired for hosted access; protected local QA uses trusted beta session/SSO headers or the trusted-header smoke helper.
 
 ## Current Decision
 
-**Demo QA: GO for signed six-person internal beta workflow test. NO-GO for production launch, public media library, wider tester batch, live ResourceSpace writeback, production analytics, durable public package sharing, or source/original downloads.**
+**Demo QA: NO-GO for hosted teammate invite/send until June 15 blockers close. PASS only for isolated local safety/UI proof. NO-GO for production launch, public media library, wider tester batch, live ResourceSpace writeback, production analytics, durable public package sharing, or source/original downloads.**
 
-Code and app proof is broad enough for a tiny internal beta: local rehearsal passed, hosted smoke passed, browser QA passed across desktop/tablet/mobile widths, download gates are blocked, review decisions remain honest queued evidence, feedback intake/export is covered, package/saved-search beta storage is guarded, and Phase 7 governance/readiness metrics are diagnostic-only.
+Code and app proof is broad locally, but no longer enough for hosted invites by itself: June 15 local rehearsal, protected smokes, browser QA, and hosted read-only probes passed, while authenticated hosted protection, canonical deploy, ResourceSpace/Drive custody, durable hosted state, and approved tester list remain unresolved.
 
 Wider-batch blockers remain human/ops gates:
 
@@ -24,20 +30,20 @@ Wider-batch blockers remain human/ops gates:
 
 | Area | Automated proof already present | Manual beta test needed | Untested risk / demo note | Demo gate |
 |---|---|---|---|---|
-| Build and launch readiness | `make frontend-check`; `make launch-readiness` pass per `docs/beta-readiness-command-center.md`. Launch readiness still reports one `.env` placeholder warning. | Confirm demo operator uses intended env values and stable URL. | Placeholder warning can confuse production-readiness story. Demo should state beta, not launch. | GO for demo, NO-GO for production |
-| Hosted beta URL | `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke` passes for hosted routes, feedback POST, non-admin feedback denial, DAM Admin feedback inbox, and Viewer unsafe download block. | Open stable URL from tester network and verify no Vercel-login preview URL is shared. | Private access policy is not signed off. Stable unlisted URL is not same as real auth. | GO for controlled demo, invite gate open |
-| Roles and access model | `portal-sso-smoke` covers trusted-header role behavior; `portal-api-smoke` covers backend role gates; browser QA records expected 403s for denied Viewer/Reviewer calls. | Each beta tester uses assigned role link and confirms beta-only role switch wording is visible. | SSO is not live; role switch is simulated. Production auth cannot be inferred from beta role links. | GO for demo |
-| Viewer search and asset trust | Latest rehearsal `20260611T182011Z-71517` passes Viewer search, asset open, source redaction, blocked download, and no-review access. | Viewer searches `Bible`, opens result, decides whether page clearly says if media can be used. | Seed visibility still needs human reviewer signoff. Viewer-visible records are not portal-ready. | GO for preview-only demo, invite gate open |
-| Download gate | `portal-download-ticket-smoke` covers direct GET denial, explicit terms, one-use ticket mint/consume/reuse block, concurrent consume one-wins, thumbnail download block, hidden payload URL, and audit persistence. Rehearsal and hosted smoke confirm unsafe Viewer download returns 403. | Tester tries unsafe download path and confirms block/explanation. If approved-copy test is added, run it only as a recorded temporary exception. | No real approved-download flow exists in current seed because zero assets are portal-ready/downloadable. Keep `DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0`. | GO for blocked-download demo, NO-GO for reuse/download demo |
-| Reviewer workflow | `portal-beta-rehearsal` proves queue load, incomplete approval blocks with evidence errors, complete decision returns `202` queued/pending-write truth. `portal-writeback-guard-smoke` proves no-live ResourceSpace writeback claims. | Reviewer switches queues, changes rows per page, tries approval without evidence, then completes evidence plus note and verifies queued/synced/blocked copy is honest. | Live ResourceSpace writeback is not proven and should remain disabled/queued. Pending writes are portal evidence, not source truth. | GO for queued-review demo |
-| Contributor intake/upload | `portal-api-smoke` and browser QA cover upload/intake surfaces and role gates. Browser QA includes upload desktop, 320 px, and 390 px screenshots. | Contributor steps through Upload with harmless sample files only; confirms no publish claim and no sensitive media. | Real large media intake and Shared Drive incoming flow are outside this beta. Human testers can accidentally upload sensitive files unless instructions are repeated. | GO with strict test-data warning |
-| DAM Admin readiness | `portal-beta-rehearsal` proves Admin readiness opens; `portal-api-smoke` covers readiness payload shape and redaction; command center lists integration readiness states. | DAM Admin opens Admin modules, checks module content changes, identifies top launch blockers. | Admin data is partly readiness/dashboard evidence, not proof that integrations are production-configured. | GO for readiness demo |
-| Feedback path | `portal-feedback-smoke` covers feedback submission, unsafe link/route/text sanitization, missing severity validation, non-admin denial, Admin list, triage update, and agent-ready export. Hosted smoke covers feedback POST and Admin feedback inbox. | Testers use in-app Report issue button in Task Mode; DAM Admin exports agent-ready JSON after triage. Use template only if app unavailable. | Vercel KV/Blob storage is preferred for hosted persistence; local fallback is JSON. Confirm hosted storage before widening tester group. | GO for small demo |
-| Devices and responsive UI | `portal-browser-qa` report checked 17 pages, viewports 1440/1280/1024/768/390/320, 23 screenshots, zero failures, zero warnings, zero console errors, zero network failures. | At least one human mobile pass around 390 px for Viewer, Reviewer, and DAM Admin workflows; check tap targets and copy clarity. | Automated screenshots do not prove human comprehension or touch ergonomics. | GO with manual mobile spot check |
-| Packages and collections | `portal-package-smoke` covers Viewer denial, Contributor sanitized ResourceSpace refs, Reviewer listing, local-json storage mode, and Admin readiness warning that wider rollout needs durable storage. Phase 6 package governance blocks export/share unless every item passes item-level reuse/channel/derivative/lifecycle checks. | Contributor/Reviewer inspect Package Builder and confirm ResourceSpace references are clear, originals are not copied, and one blocked item blocks package export/share. | Package drafts are beta affordances unless backend storage/publishing/share links are connected. Collection/package membership is curation, not permission. | GO for draft-only demo |
-| Saved searches | `portal-saved-search-smoke` covers Viewer denial, Contributor sanitized search state, Reviewer listing, local-json storage mode, and Admin readiness warning. Phase 3 saved views are query definitions only. | Tester saves/loads one benign search if this is part of demo script. | Saved views are beta affordances until durable backend storage is connected. They cannot bypass role/policy filtering. | GO for draft-only demo |
-| Usage analytics, metrics, and Insights | `portal-usage-smoke` covers event logging when `PORTAL_USAGE_LOGGING=1` and Admin analytics payload redaction. Phase 7 metrics summarize blocked assets, stale lifecycle, package/share blockers, audit/download coverage, and unavailable data honestly. | Viewer opens Insights and common use-case cards; DAM Admin checks readiness and metrics copy. | Metrics/readiness are diagnostics only, not permission truth. Missing analytics/storage must read unavailable or stale, never zero success. | GO for diagnostics, NO-GO for production analytics |
-| Delivery privacy and source custody | `portal-delivery-smoke`, `portal-api-smoke`, and browser QA redaction checks cover no private/source/original/signed URL leakage in browser-facing payloads. | Tester verifies UI language does not imply original/master access. | S3 derivative delivery and Google Shared Drive master-original integration are not configured for production. | GO for privacy demo, NO-GO for production delivery |
+| Build and launch readiness | `make frontend-check`; `make launch-readiness` pass per `docs/beta-readiness-command-center.md`. Launch readiness still reports `.env` and `.runtime/backups` warnings. | Confirm demo operator uses intended env values and stable URL. | Missing env/backups can confuse production-readiness story. Demo should state beta, not launch. | PASS local, NO-GO for production |
+| Hosted beta URL | June 15 `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe` partial PASS: anonymous/query-role probes redirected or denied without privileged JSON. Mutating hosted smoke was not run and is approval-gated. | Open stable URL from tester network only after owner approves hosted proof scope and canonical deployment. | Private access policy, authenticated hosted protection, and deployed commit are not signed off. Stable unlisted URL is not same as real auth. | NO-GO for invite/send |
+| Roles and access model | `portal-sso-smoke` covers trusted-header role behavior; `portal-api-smoke` covers backend role gates; browser QA records expected 403s for denied Viewer/Reviewer calls. | Each beta tester uses trusted beta session/SSO identity and confirms beta-only role copy is visible. | SSO is not live; role switch is simulated. Production auth cannot be inferred from local role controls. | PASS local |
+| Viewer search and asset trust | June 15 protected local rehearsal passes Viewer search, asset open, source redaction, blocked download, and no-review access in isolated worktree. | Viewer searches `Bible`, opens result, decides whether page clearly says if media can be used after renewed hosted proof is approved. | Seed visibility still needs renewed human reviewer signoff. Viewer-visible records are not portal-ready. | PASS local, NO-GO for hosted invite/send |
+| Download gate | `portal-download-ticket-smoke` covers direct GET denial, explicit terms, one-use ticket mint/consume/reuse block, concurrent consume one-wins, thumbnail download block, hidden payload URL, and audit persistence. Local rehearsal confirms unsafe Viewer download returns 403. | Tester tries unsafe download path and confirms block/explanation. If approved-copy test is added, run it only as a recorded temporary exception. | No real approved-download flow exists in current seed because zero assets are portal-ready/downloadable. Keep `DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0`. | PASS local for blocked-download demo, NO-GO for reuse/download demo |
+| Reviewer workflow | `portal-beta-rehearsal` proves queue load, incomplete approval blocks with evidence errors, complete decision returns `202` queued/pending-write truth. `portal-writeback-guard-smoke` proves no-live ResourceSpace writeback claims locally. | Reviewer switches queues, changes rows per page, tries approval without evidence, then completes evidence plus note and verifies queued/synced/blocked copy is honest. | Live ResourceSpace writeback is not proven and should remain disabled/queued. Pending writes are portal evidence, not source truth. | PASS local |
+| Contributor intake/upload | `portal-api-smoke` and browser QA cover upload/intake surfaces and role gates. Browser QA includes upload desktop, 320 px, and 390 px screenshots. | Contributor steps through Upload with harmless sample files only; confirms no publish claim and no sensitive media. | Real large media intake and Shared Drive incoming flow are outside this beta. Human testers can accidentally upload sensitive files unless instructions are repeated. | PASS local with strict test-data warning |
+| DAM Admin readiness | `portal-beta-rehearsal` proves Admin readiness opens; `portal-api-smoke` covers readiness payload shape and redaction; command center lists integration readiness states. | DAM Admin opens Admin modules, checks module content changes, identifies top launch blockers. | Admin data is partly readiness/dashboard evidence, not proof that integrations are production-configured. | PASS local |
+| Feedback path | Local `portal-feedback-smoke` covers feedback submission, unsafe link/route/text sanitization, missing severity validation, non-admin denial, Admin list, triage update, and agent-ready export. Hosted feedback POST was not rerun on June 15 because it mutates hosted state. | Testers use in-app Report issue button only after hosted durable state and approval scope are confirmed. Use template only if app unavailable. | Vercel KV/Blob storage is preferred for hosted persistence; local fallback is JSON. Confirm hosted storage before any tester group. | NO-GO for hosted invite/send |
+| Devices and responsive UI | `portal-browser-qa` report checked 17 pages, viewports 1440/1280/1024/768/390/320, 23 screenshots, zero failures, zero warnings, zero console errors, zero network failures. | At least one human mobile pass around 390 px for Viewer, Reviewer, and DAM Admin workflows; check tap targets and copy clarity. | Automated screenshots do not prove human comprehension or touch ergonomics. | PASS local with manual mobile spot check still useful |
+| Packages and collections | `portal-package-smoke` covers Viewer denial, Contributor sanitized ResourceSpace refs, Reviewer listing, local-json storage mode, and Admin readiness warning that wider rollout needs durable storage. Phase 6 package governance blocks export/share unless every item passes item-level reuse/channel/derivative/lifecycle checks. | Contributor/Reviewer inspect Package Builder and confirm ResourceSpace references are clear, originals are not copied, and one blocked item blocks package export/share. | Package drafts are beta affordances unless backend storage/publishing/share links are connected. Collection/package membership is curation, not permission. | PASS local for draft-only demo |
+| Saved searches | `portal-saved-search-smoke` covers Viewer denial, Contributor sanitized search state, Reviewer listing, local-json storage mode, and Admin readiness warning. Phase 3 saved views are query definitions only. | Tester saves/loads one benign search if this is part of demo script. | Saved views are beta affordances until durable backend storage is connected. They cannot bypass role/policy filtering. | PASS local for draft-only demo |
+| Usage analytics, metrics, and Insights | `portal-usage-smoke` covers event logging when `PORTAL_USAGE_LOGGING=1` and Admin analytics payload redaction. Phase 7 metrics summarize blocked assets, stale lifecycle, package/share blockers, audit/download coverage, and unavailable data honestly. | Viewer opens Insights and common use-case cards; DAM Admin checks readiness and metrics copy. | Metrics/readiness are diagnostics only, not permission truth. Missing analytics/storage must read unavailable or stale, never zero success. | PASS local diagnostics, NO-GO for production analytics |
+| Delivery privacy and source custody | `portal-delivery-smoke`, `portal-api-smoke`, and browser QA redaction checks cover no private/source/original/signed URL leakage in browser-facing payloads. | Tester verifies UI language does not imply original/master access. | S3 derivative delivery and Google Shared Drive master-original integration are not configured for production. | PASS local for privacy demo, NO-GO for production delivery |
 | Seed/media safety | Read-only seed scrub in command center: 2,290 records, 181 Viewer-visible, 0 portal-ready/downloadable, 181 rights/copyright-review flags, 0 obvious sensitive/youth/private flags. | Rights/media reviewer must sign off preview-only visibility or scrub seed. | Mechanical scan cannot replace rights/people/minors review. This is top invite blocker. | NO-GO until signed off |
 
 ## Research-Derived Manual QA Appendix
@@ -68,23 +74,25 @@ Run these after all integrated changes land and before demo QA signoff:
 ```bash
 make frontend-check
 make launch-readiness
-BASE_URL=http://localhost:4868 make portal-api-smoke
-BASE_URL=http://localhost:4868 make portal-download-ticket-smoke
-BASE_URL=http://localhost:4868 make portal-writeback-guard-smoke
-BASE_URL=http://localhost:4868 make portal-package-smoke
-BASE_URL=http://localhost:4868 make portal-saved-search-smoke
-BASE_URL=http://localhost:4868 make portal-feedback-smoke
-BASE_URL=http://localhost:4868 make portal-beta-rehearsal
-BASE_URL=http://localhost:4868 make portal-browser-qa
-BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
+BASE_URL=http://localhost:4871 make portal-api-smoke
+BASE_URL=http://localhost:4871 make portal-download-ticket-smoke
+BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke
+BASE_URL=http://localhost:4871 make portal-package-smoke
+BASE_URL=http://localhost:4871 make portal-saved-search-smoke
+BASE_URL=http://localhost:4871 make portal-feedback-smoke
+BASE_URL=http://localhost:4871 make portal-beta-rehearsal
+BASE_URL=http://localhost:4871 make portal-browser-qa
+BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe
+# Mutating hosted smoke requires explicit approval:
+# PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1 PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-or-ticket> BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
 ```
 
 Run environment-specific smokes with matching server flags:
 
 ```bash
-BASE_URL=http://localhost:4876 make portal-sso-smoke
-BASE_URL=http://localhost:4878 make portal-usage-smoke
-BASE_URL=http://localhost:4880 make portal-delivery-smoke
+BASE_URL=http://localhost:4871 make portal-sso-smoke
+BASE_URL=http://localhost:4871 make portal-usage-smoke
+BASE_URL=http://localhost:4871 make portal-delivery-smoke
 ```
 
 Server expectations:
@@ -116,7 +124,7 @@ Before widening beyond owner demo, complete these human checks:
 - No manual proof yet that sensitive testimony assets remain context-safe or archive-only unless pastoral review approves broader use.
 - No manual proof yet that TJC search aliases and facets are complete enough for `RE`, `Religious Education`, `Sabbath`, `Holy Spirit`, `speaking in tongues`, testimony themes, and hymn terms.
 - No manual proof yet that testers can distinguish stock-safe, context-safe, and archive-only assets in normal task flow.
-- No production SSO proof; only trusted-header shim and beta role fallback are tested.
+- No production SSO proof; only local trusted-header shim and beta session/fallback paths are tested. Production SSO role proof now requires Cloudflare Access assertion/email evidence or a future approved adapter.
 - No live ResourceSpace writeback proof; correct beta behavior is queued/no-live-writeback.
 - No approved-copy real reuse/download demo because zero seed assets are portal-ready/downloadable.
 - No production S3 derivative delivery or Google Shared Drive master-original connector proof.

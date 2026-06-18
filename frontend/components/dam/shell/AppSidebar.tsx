@@ -11,6 +11,7 @@ import {
   damShellNavGroups,
   type DamShellNavItem
 } from "@/components/dam/shell/damShellNav";
+import { isDamShellRouteActive } from "@/lib/dam-route-identity";
 import {
   Sidebar,
   SidebarContent,
@@ -24,39 +25,8 @@ import {
   SidebarMenuItem,
   useSidebar
 } from "@/components/ui/sidebar";
-import { routeWithRole } from "@/lib/role-routes";
 import { cn } from "@/lib/utils";
-
-function hasParams(params: URLSearchParams) {
-  return Array.from(params.keys()).length > 0;
-}
-
-function isActiveRoute(pathname: string, currentSearch: string, currentHash: string, href: string) {
-  const target = new URL(href, "http://tjc.local");
-  const targetPathname = target.pathname || "/";
-  const pathMatches = targetPathname === "/"
-    ? pathname === "/"
-    : pathname === targetPathname || pathname.startsWith(`${targetPathname}/`);
-
-  if (!pathMatches) return false;
-
-  const targetParams = new URLSearchParams(target.search);
-  const currentParams = new URLSearchParams(currentSearch);
-  targetParams.delete("role");
-  currentParams.delete("role");
-
-  if (hasParams(targetParams)) {
-    for (const [key, value] of targetParams) {
-      if (currentParams.get(key) !== value) return false;
-    }
-  } else if (hasParams(currentParams)) {
-    return false;
-  }
-
-  const targetHash = target.hash.replace(/^#/, "");
-  if (targetHash) return currentHash === targetHash;
-  return !currentHash;
-}
+import { routeWithRole } from "@/lib/role-routes";
 
 function useCurrentHash(pathname: string, currentSearch: string) {
   const [hash, setHash] = useState("");
@@ -83,7 +53,13 @@ function SidebarLink({ item, compact = false }: { item: DamShellNavItem; compact
   const { role } = useDemoRole();
   const { setOpenMobile, isMobile } = useSidebar();
   const Icon = item.icon;
-  const active = isActiveRoute(pathname, currentSearch, currentHash, item.href);
+  const active = isDamShellRouteActive({
+    pathname,
+    currentSearch,
+    currentHash,
+    href: item.href,
+    activeHrefs: item.activeHrefs
+  });
 
   return (
     <SidebarMenuItem>
@@ -128,7 +104,7 @@ function BrandLockup() {
         <Menu className="size-4" aria-hidden="true" />
       </button>
       <Link
-        href={routeWithRole("/", role)}
+        href={routeWithRole("/library", role)}
         className="dam-sidebar-brand-link flex min-w-0 flex-1 items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         aria-label="True Jesus Church Media Library home"
       >
@@ -169,7 +145,7 @@ function SidebarUserCard() {
     <div className="dam-sidebar-user">
       <div className="dam-sidebar-avatar" aria-hidden="true">LC</div>
       <div className="min-w-0">
-        <strong>{betaLocked ? "Internal beta access" : "Leanne Chu"}</strong>
+        <strong>{betaLocked ? "Internal beta access" : "admin"}</strong>
         <span>{role}</span>
       </div>
       {betaLocked ? (
@@ -184,7 +160,7 @@ function SidebarUserCard() {
 export function AppSidebar() {
   const { role } = useDemoRole();
   const visibleItems = damShellItemsForRole(role);
-  const footerItems = visibleItems.filter((item) => item.group === "System");
+  const footerItems: DamShellNavItem[] = [];
 
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border">
@@ -196,7 +172,7 @@ export function AppSidebar() {
       <SidebarContent className="px-2">
         {damShellNavGroups.map((group) => {
           const groupItems = visibleItems.filter((item) => item.group === group);
-          if (!groupItems.length || group === "System") return null;
+          if (!groupItems.length) return null;
           return (
             <SidebarGroup key={group} className="px-0 py-1">
               <SidebarGroupLabel className="text-white/54">{group}</SidebarGroupLabel>
@@ -217,10 +193,10 @@ export function AppSidebar() {
         <SidebarUserCard />
 
         <Link
-          href={routeWithRole("/guide", role)}
+          href={routeWithRole("/help", role)}
           className="hidden min-h-10 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:grid"
-          aria-label="Help"
-          title="Help"
+          aria-label="Help Center"
+          title="Help Center"
         >
           <HelpCircle className="size-4" aria-hidden="true" />
         </Link>

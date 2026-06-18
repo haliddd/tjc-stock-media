@@ -32,16 +32,12 @@ type BetaFeedbackRouteError = {
   body: {
     error: string;
     missing?: string[];
+    reasonCode?: string;
+    detail?: string;
   };
   status: 400 | 403 | 503;
 };
 type BetaFeedbackAdminArea = "inbox" | "update" | "export";
-export class BetaFeedbackStorageError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "BetaFeedbackStorageError";
-  }
-}
 export type BetaFeedbackExportFilters = {
   status?: BetaFeedbackStatus | "all";
   severity?: BetaFeedbackSeverity | "all";
@@ -135,12 +131,75 @@ function feedbackKey(id: string) {
   return `${feedbackRecordPrefix}${id}`;
 }
 
+function hostedRuntime() {
+  return process.env.VERCEL === "1";
+}
+
+function durableFeedbackError(action: string) {
+  return new Error(`Beta feedback durable storage ${action} failed in hosted runtime.`);
+}
+
+export function isBetaFeedbackDurableStorageError(error: unknown): error is Error {
+  return error instanceof Error && /^Beta feedback durable storage .+ failed in hosted runtime\.$/.test(error.message);
+}
+
+export function betaFeedbackDurableStorageRouteError(error: unknown): BetaFeedbackRouteError {
+  return {
+    body: {
+      error: "Beta feedback durable storage is unavailable.",
+      reasonCode: "feedback-durable-storage-unavailable",
+      detail: isBetaFeedbackDurableStorageError(error) ? error.message : "Hosted feedback storage failed."
+    },
+    status: 503
+  };
+}
+
 function newestFirst(records: BetaFeedbackRecord[]) {
   return newestByTimestamp(records, (record) => record.createdAt);
 }
 
 function newestFeedbackWindow(records: BetaFeedbackRecord[]) {
   return newestFirst(records).slice(0, maxBetaFeedbackRecords);
+}
+
+function betaFeedbackAttachmentTypeAllowed(file: File) {
+  const type = file.type.toLowerCase();
+  return [
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "application/pdf",
+    "text/plain"
+  ].includes(type);
+}
+
+export function betaFeedbackAttachmentValidationError(file: File | null): BetaFeedbackRouteError | null {
+  if (!file || !file.size) return null;
+  if (!betaFeedbackAttachmentsEnabled()) {
+    return {
+      body: { error: "Feedback attachments are disabled for this beta. Paste a redacted safe link instead." },
+      status: 400
+    };
+  }
+  if (!hasVercelBlobConfig()) {
+    return {
+      body: { error: "Feedback attachment storage is not configured." },
+      status: 503
+    };
+  }
+  if (file.size > maxBetaFeedbackAttachmentBytes) {
+    return {
+      body: { error: "Feedback attachment is too large. Limit attachments to 2 MB." },
+      status: 400
+    };
+  }
+  if (!betaFeedbackAttachmentTypeAllowed(file)) {
+    return {
+      body: { error: "Feedback attachment type is not allowed. Use PNG, JPEG, WebP, PDF, or plain text." },
+      status: 400
+    };
+  }
+  return null;
 }
 
 function normalizeStoredFeedback(input: unknown): BetaFeedbackRecord | null {
@@ -217,50 +276,6 @@ async function writeKvFeedback(record: BetaFeedbackRecord) {
     kv.set(feedbackIndexKey, nextIds)
   ]);
   return true;
-}
-
-function hostedRuntime() {
-  return process.env.VERCEL === "1";
-}
-
-function betaFeedbackAttachmentTypeAllowed(file: File) {
-  const type = file.type.toLowerCase();
-  return [
-    "image/png",
-    "image/jpeg",
-    "image/webp",
-    "application/pdf",
-    "text/plain"
-  ].includes(type);
-}
-
-export function betaFeedbackAttachmentValidationError(file: File | null): BetaFeedbackRouteError | null {
-  if (!file || !file.size) return null;
-  if (!betaFeedbackAttachmentsEnabled()) {
-    return {
-      body: { error: "Feedback attachments are disabled for this beta. Paste a redacted safe link instead." },
-      status: 400
-    };
-  }
-  if (!hasVercelBlobConfig()) {
-    return {
-      body: { error: "Feedback attachment storage is not configured." },
-      status: 503
-    };
-  }
-  if (file.size > maxBetaFeedbackAttachmentBytes) {
-    return {
-      body: { error: "Feedback attachment is too large. Limit attachments to 2 MB." },
-      status: 400
-    };
-  }
-  if (!betaFeedbackAttachmentTypeAllowed(file)) {
-    return {
-      body: { error: "Feedback attachment type is not allowed. Use PNG, JPEG, WebP, PDF, or plain text." },
-      status: 400
-    };
-  }
-  return null;
 }
 
 export async function putBetaFeedbackAttachment(id: string, file: File | null) {
@@ -377,29 +392,11 @@ export function betaFeedbackStorageUnavailableError(): BetaFeedbackRouteError | 
   return {
     body: {
       error: "Beta feedback durable storage is not configured.",
+      reasonCode: "feedback-durable-storage-missing",
       missing: ["KV_REST_API_URL", "KV_REST_API_TOKEN"]
     },
     status: 503
   };
-}
-
-export function betaFeedbackDurableWriteFailedError(): BetaFeedbackRouteError {
-  return {
-    body: { error: "Beta feedback durable storage write failed. The report was not saved." },
-    status: 503
-  };
-}
-
-export function betaFeedbackDurableReadFailedError(): BetaFeedbackRouteError {
-  return {
-    body: { error: "Beta feedback durable storage read failed." },
-    status: 503
-  };
-}
-
-export function betaFeedbackStorageRouteError(error: unknown, mode: "read" | "write"): BetaFeedbackRouteError | null {
-  if (!(error instanceof BetaFeedbackStorageError)) return null;
-  return mode === "read" ? betaFeedbackDurableReadFailedError() : betaFeedbackDurableWriteFailedError();
 }
 
 function betaFeedbackAdminDeniedCopy(area: BetaFeedbackAdminArea) {
@@ -466,8 +463,8 @@ export async function createBetaFeedback(input: Omit<BetaFeedbackRecord, "id" | 
     storageMode: kvAvailable ? "vercel-kv" : "local-json"
   };
   const wroteKv = kvAvailable ? await writeKvFeedback(record).catch(() => false) : false;
-  if (!wroteKv && kvAvailable && hostedRuntime()) {
-    throw new BetaFeedbackStorageError("Hosted beta feedback durable write failed.");
+  if (!wroteKv && hostedRuntime()) {
+    throw durableFeedbackError("write");
   }
   if (!wroteKv) {
     record.storageMode = "local-json";
@@ -498,11 +495,12 @@ export async function createBetaFeedbackFromSubmission(submission: NormalizedBet
 }
 
 export async function listBetaFeedback() {
-  const kvRecords = await readKvFeedback().catch(() => null);
+  const kvRecords = await readKvFeedback().catch((error) => {
+    if (hostedRuntime() && hasVercelKvConfig()) throw durableFeedbackError("read");
+    return null;
+  });
   if (kvRecords) return kvRecords;
-  if (hasVercelKvConfig() && hostedRuntime()) {
-    throw new BetaFeedbackStorageError("Hosted beta feedback durable read failed.");
-  }
+  if (hostedRuntime()) throw durableFeedbackError("read");
   return newestFeedbackWindow(await readLocalFeedback());
 }
 
@@ -620,8 +618,8 @@ export async function patchBetaFeedback(id: string, patch: FeedbackPatch) {
     updatedAt: new Date().toISOString()
   };
   const wroteKv = await writeKvFeedback(next).catch(() => false);
-  if (!wroteKv && hasVercelKvConfig() && hostedRuntime()) {
-    throw new BetaFeedbackStorageError("Hosted beta feedback durable write failed.");
+  if (!wroteKv && hostedRuntime()) {
+    throw durableFeedbackError("update");
   }
   if (!wroteKv) {
     const localRecords = await readLocalFeedback();

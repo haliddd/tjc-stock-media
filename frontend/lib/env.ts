@@ -100,7 +100,8 @@ export function productionTrustedIdentityRequired() {
 
 export function localBetaRoleOverridesEnabled() {
   if (productionRuntime()) return false;
-  return process.env.PORTAL_ALLOW_BETA_ROLE_OVERRIDE === "1" || process.env.BETA_ROLE_OVERRIDE_ENABLED === "1";
+  return ["1", "true"].includes((process.env.PORTAL_ALLOW_BETA_ROLE_OVERRIDE || "").toLowerCase())
+    || ["1", "true"].includes((process.env.BETA_ROLE_OVERRIDE_ENABLED || "").toLowerCase());
 }
 
 export function hasUsageAnalyticsConfig() {
@@ -148,6 +149,5 @@ export function runtimeStoreMode() {
 }
 
 export function durableRuntimeStoreConfigured() {
-  const mode = runtimeStoreMode();
-  return (mode === "vercel-kv" && hasVercelKvConfig()) || mode === "external-durable";
+  return false;
 }

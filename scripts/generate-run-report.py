@@ -5,9 +5,23 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
+import subprocess
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+
+
+def run_headroom_guard(context: str) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.setdefault("SAFE_LANE_HEADROOM_CONTEXT", context)
+    subprocess.run(
+        ["node", "scripts/safe-lane-headroom-guard.mjs"],
+        cwd=repo_root,
+        env=env,
+        check=True,
+    )
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -89,6 +103,8 @@ def main() -> int:
     parser.add_argument("--run-dir", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=Path("docs/runs/batch-02-run-report.md"))
     args = parser.parse_args()
+
+    run_headroom_guard("lm-photos-run-report")
 
     run_dir = args.run_dir
     source_rows: list[dict[str, str]] = []

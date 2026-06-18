@@ -1,36 +1,43 @@
 # Premium Enterprise UI Backlog
 
-Status: P2/P3 backlog. This is not authorization for broad redesign or new features.
+Status: P2/P3 backlog after the 2026-06-13 premium enterprise UI pass. This is not authorization for broad redesign or new features.
 
 ## Design Target
 
 The portal should feel like a serious internal enterprise DAM for TJC: calm, dense, trustworthy, role-aware, and honest about beta limits. It should not feel like a public SaaS landing page or prototype.
 
-## P2 Items
+## Completed In 2026-06-13 Pass
+
+| Priority | Item | Completion note |
+|---|---|---|
+| P2 | Make Library list/table first, grid optional | Library now defaults to a dense list/table path with compact mobile cards and grid as an optional mode. |
+| P2 | Consolidate repeated warnings | Core surfaces now lead with one clearance decision and move evidence/detail below it. |
+| P2 | Rename "Can I use this?" | Enterprise surfaces now use "Clearance status" / "Reuse decision" language. |
+| P2 | Remove normal-user ResourceSpace internals | Normal-role UI uses reference/media-library language; admin/source diagnostics are role-scoped. |
+| P2 | Fix concatenated blocker text | Blockers are separated through blocker panels, metadata rows, and next-action copy. |
+| P2 | Gate source custody fields | Source/original/private fields remain Admin/Reviewer-gated and below evidence where shown. |
+| P2 | Clean Collections vs Distribution Sets | Distribution sets are framed as governed drafts; collections remain curation/reference context only. |
+| P2 | Stop "Approved" overclaim | Clearance copy avoids treating raw approval, tags, packages, or collections as permission truth. |
+| P2 | First-class empty preview state | Preview and derivative gaps are described honestly without fake originals. |
+| P2 | Review Queue shell consistency | Review Queue now follows next-action/evidence ordering. |
+| P2 | Mobile 320/390 sanity | Browser QA passes 320px and 390px core paths with no failures. |
+| P3 | Full browser QA harness | Browser QA passes full local page/viewport matrix and current premium copy. |
+
+## Remaining P2 Items
 
 | Priority | Item | Acceptance |
 |---|---|---|
-| P2 | Make Library list/table first, grid optional | Viewer can scan clearance, title, event, usage, derivative status, and blockers without opening every asset. |
-| P2 | Consolidate repeated warnings | One canonical clearance/status panel; no repeated banner/right-panel/bottom warning noise. |
-| P2 | Rename "Can I use this?" | Use "Clearance status" or "Reuse decision" consistently. |
-| P2 | Remove normal-user ResourceSpace internals | Viewer/Contributor copy uses media-library/reference language; ResourceSpace admin/source terms stay Admin/Reviewer. |
-| P2 | Fix concatenated blocker text | Blockers render as bullets, rows, or separated chips. |
-| P2 | Gate source custody fields | Empty technical/source rows hidden from normal users; Admin-only collapsed diagnostics. |
-| P2 | Clean Collections vs Distribution Sets | Collection is references; distribution set is channel-specific release packet. Neither grants permission. |
-| P2 | Stop "Approved" overclaim | Use Approved only for item-level clearance with reviewer/date/scope/evidence. |
-| P2 | First-class empty preview state | Missing preview says unavailable/missing, not fake imagery. |
-| P2 | Review Queue shell consistency | Same theme and shell model as the rest of the app. |
 | P2 | Feedback copy | Attachments disabled or strongly warned; no unsafe screenshots of people/minors/source/private info. |
-| P2 | Mobile 320/390 sanity | Core beta routes have no text overlap or hidden Report issue action. |
+| P2 | Metadata schema management | Admin can view field key, controlled values, required flag, role visibility, clearance effect, and intake requirement from durable schema data. |
 
-## P3 Items
+## Remaining P3 Items
 
 | Priority | Item | Acceptance |
 |---|---|---|
 | P3 | Pagination select polish | Native select does not look unfinished. |
-| P3 | Badge density pass | Fewer secondary chips on cards and details. |
-| P3 | Empty state tone | Smaller, quieter states with reason and next action. |
-| P3 | Full browser QA harness | Stable local role/data setup for portal-browser-qa. |
+| P3 | Badge density follow-up | Tune residual secondary chips after real beta feedback. |
+| P3 | Empty state tone | Smaller, quieter states with reason and next action across secondary routes. |
+| P3 | Real beta feedback polish | Apply changes from actual team feedback once the internal beta has enough responses. |
 
 ## Safety Rules
 

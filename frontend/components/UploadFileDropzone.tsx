@@ -34,6 +34,10 @@ function useImageUpload(files: File[]) {
   return previews;
 }
 
+function fileIsFutureVideoAudio(file: Pick<File, "name" | "type">) {
+  return /^video\//i.test(file.type) || /^audio\//i.test(file.type) || /\.(mov|mp4|m4v|avi|mkv|mp3|wav|m4a|aac|flac)$/i.test(file.name);
+}
+
 export function UploadFileDropzone({
   inputRef,
   selectedFiles,
@@ -88,7 +92,7 @@ export function UploadFileDropzone({
           </span>
           <span className="text-lg font-black text-tjc-ink">{dragging ? "Release to add files" : "Drop files here or browse"}</span>
           <span id="upload-file-help" className="max-w-[28rem] text-sm font-semibold leading-relaxed text-tjc-muted">
-            Photos, graphics, documents, video, and audio still enter Needs Review / Do Not Publish. Large files use the large-media intake path.
+            Photos, graphics, documents, video, and audio enter Status: Submitted with Gate: Not published. Large files use the large-media intake path.
           </span>
         </span>
         <input
@@ -98,6 +102,7 @@ export function UploadFileDropzone({
           className="sr-only"
           name="files"
           type="file"
+          accept="image/*"
           multiple
           onChange={(event) => onInputFiles(event.currentTarget.files)}
         />
@@ -139,14 +144,15 @@ export const UploadDropzone = UploadFileDropzone;
 
 export function SelectedFilePreview({ file, previewUrl, onRemove }: { file: File; previewUrl?: string; onRemove: () => void }) {
   const tooLarge = file.size > LARGE_MEDIA_BYTES;
+  const futureVideoAudio = fileIsFutureVideoAudio(file);
   return (
     <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-[#d6dfd8] px-1 py-3 last:border-b-0" data-component="SelectedFilePreview" aria-label={`${file.name} staged for reviewer intake`}>
-      {previewUrl ? (
-        <img className="h-12 w-12 rounded-md border border-[#d6dfd8] object-cover" src={previewUrl} alt="" />
-      ) : tooLarge ? (
+      {futureVideoAudio || tooLarge ? (
         <span className="grid h-12 w-12 place-items-center rounded-md border border-[#ead6a8] bg-[#fff8e8] text-[#725216]">
           <ShieldAlert size={17} strokeWidth={1.8} aria-hidden="true" />
         </span>
+      ) : previewUrl ? (
+        <img className="h-12 w-12 rounded-md border border-[#d6dfd8] object-cover" src={previewUrl} alt="" />
       ) : (
         <span className="grid h-12 w-12 place-items-center rounded-md border border-[#b8d9c6] bg-[#edf8f1] text-tjc-evergreen">
           <FileCheck2 size={17} strokeWidth={1.8} aria-hidden="true" />
@@ -160,7 +166,7 @@ export function SelectedFilePreview({ file, previewUrl, onRemove }: { file: File
             Staged
           </span>
         </span>
-        <span className="mt-0.5 block text-[11px] font-semibold text-tjc-muted">{file.type || "unknown type"} / {formatBytes(file.size)}{tooLarge ? " / large-media intake" : ""}</span>
+        <span className="mt-0.5 block text-[11px] font-semibold text-tjc-muted">{file.type || "unknown type"} / {formatBytes(file.size)}{futureVideoAudio ? " / video-audio blocked in beta" : tooLarge ? " / large-media intake" : ""}</span>
         <span className="mt-2 grid gap-1.5" aria-label="Staged progress: selected, waiting for submit, then reviewer intake">
           <span className="flex flex-wrap items-center gap-1.5 text-[10px] font-black text-tjc-evergreen">
             <CheckCircle2 size={12} strokeWidth={1.8} aria-hidden="true" />

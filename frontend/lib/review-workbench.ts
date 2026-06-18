@@ -3,7 +3,7 @@ import { buildDuplicateGroupCounts } from "@/lib/asset-governance";
 import { buildReviewEvidenceDecision, reviewChecklistItems, reviewChecklistLabelByField, reviewDecisionMissingLabels, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
 import type { ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
 import { missingReviewEvidence } from "@/lib/review-evidence";
-import { missingReviewFields, reviewRiskFlags, type ReviewActionBackend } from "@/lib/workflow-policy";
+import { missingReviewFields, reviewGovernanceGroupsForAsset, reviewRiskFlags, type ReviewActionBackend } from "@/lib/workflow-policy";
 
 export type ReviewDecisionAction = {
   id: string;
@@ -152,7 +152,12 @@ export function buildReviewSignals(assets: StockMediaAsset[]): ReviewSignal[] {
     { label: "Usage scope needed", count: count((asset) => !asset.usageScope || /unknown|review/i.test(asset.usageScope)) },
     { label: "Internal only", count: count((asset) => asset.status === "Approved Internal" || asset.usageScope === "Internal") },
     { label: "Archive candidates", count: count((asset) => asset.status === "Searchable Archive" || asset.usageScope === "Archive Only") },
-    { label: "Duplicate candidates", count: count((asset) => reviewRiskFlags(asset).includes("Duplicate candidate") || reviewRiskFlags(asset).includes("Possible duplicate")) }
+    { label: "Duplicate candidates", count: count((asset) => reviewRiskFlags(asset).includes("Duplicate candidate") || reviewRiskFlags(asset).includes("Possible duplicate")) },
+    { label: "Risk triage", count: count((asset) => reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "risk" && group.active)) },
+    { label: "Missing evidence", count: count((asset) => reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "missing-evidence" && group.active)) },
+    { label: "Stale review", count: count((asset) => reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "stale-review" && group.active)) },
+    { label: "Derivative gap", count: count((asset) => reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "derivative-gap" && group.active)) },
+    { label: "Pending write", count: count((asset) => reviewGovernanceGroupsForAsset(asset).some((group) => group.id === "pending-write" && group.active)) }
   ];
 }
 
@@ -357,11 +362,12 @@ export function buildSelectedReviewGuidance({
     };
   }
 
-  const approveDecision = buildReviewEvidenceDecision("Approve Public", checklist, comment);
+  const approveDecision = buildReviewEvidenceDecision("Approve Public", checklist, comment, asset);
   const requestInfoDecision = buildReviewEvidenceDecision("Request More Info", checklist, comment);
   const riskFlags = reviewRiskFlags(asset);
   const missingFields = missingReviewFields(asset);
-  const approveMissingLabels = reviewDecisionMissingLabels("Approve Public", checklist, comment);
+  const approveMissingLabels = approveDecision.missingLabels;
+  const governanceGroups = reviewGovernanceGroupsForAsset(asset, Boolean(pending || asset.pendingReviewWrite));
   const firstMissing = approveMissingLabels[0] || missingFields[0];
   const nextBestAction = pending
     ? "Check pending ResourceSpace sync before making another decision."
@@ -377,6 +383,9 @@ export function buildSelectedReviewGuidance({
     riskFlags,
     missingFields,
     approveMissingLabels,
+    approveDisabledReason: approveDecision.disabledReason,
+    sensitiveMinistryEvidence: approveDecision.sensitiveMinistryEvidence,
+    governanceGroups,
     nextBestAction,
     blockedExplanation: approveDecision.ready
       ? "Public approval is unblocked in portal UI, but ResourceSpace remains final approval truth."

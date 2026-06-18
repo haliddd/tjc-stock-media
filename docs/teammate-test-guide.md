@@ -1,17 +1,19 @@
 # TJC DAM Beta Teammate Test Guide
 
-Last updated: 2026-06-11
+Last updated: 2026-06-15
 
 ## Test URL
 
 - Hosted beta URL: `https://tjc-stock-media.vercel.app`
-- Share-ready invite pack: `docs/teammate-beta-invite-pack.md`
-- Local QA URL used for this readiness pass: `http://localhost:4868`
+- Draft invite pack: `docs/teammate-beta-invite-pack.md`
+- Local QA URL used for latest protected proof: `http://localhost:4871`
 - Beta readiness command center: `docs/beta-readiness-command-center.md`
+- Read-only hosted probe command: `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe`
+- Hosted mutating smoke is blocked unless `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1` and `PORTAL_HOSTED_SMOKE_APPROVED_BY` are set.
 
 This is a beta test deployment, not a production launch. ResourceSpace remains the source of truth. Review decisions may queue as portal pending-write evidence unless live writeback is explicitly enabled. Do not upload sensitive, private, unreleased, youth-identifiable, or copyrighted media for this test round.
 
-Before inviting teammates, clear the Team Beta ops runbook in `docs/beta-readiness-command-center.md`. A local dry run can proceed because the local code/test gate is GO. Do not send Team Beta invites until seed scrub, hosted writeback/access policy, and feedback triager confirmation are complete.
+Current status: **NO-GO for sending teammate invites.** The June 15 local safety proof is useful, but hosted/canonical/ResourceSpace/Drive/durable/tester approval gates still block teammate send. Do not send hosted `?role=` links; Reviewer/Admin access must come from trusted beta session or trusted SSO, not URL query params.
 
 Use `docs/team-beta-rights-playbook.md` as the rights-state script for Viewer, Contributor, Reviewer, and DAM Admin testing.
 
@@ -22,15 +24,15 @@ Use `docs/team-beta-rights-playbook.md` as the rights-state script for Viewer, C
 - Reviewer: tests review queue, evidence checklist, and queued decision truth.
 - DAM Admin: tests governance/admin setup clarity.
 
-Use the account menu role switch for beta QA only. Production access will use trusted identity/SSO.
+Use only trusted beta session or trusted SSO for hosted role testing. Current production SSO proof requires Cloudflare Access assertion/email plus mapped groups. Local role switch and local trusted-header shims are simulated QA access only and are not production auth, SSO, real user impersonation, or permission delegation.
 
-## Role Invite Links
+## Role Entry Paths
 
-- Viewer: `https://tjc-stock-media.vercel.app/?role=Viewer&taskMode=1`
-- Contributor: `https://tjc-stock-media.vercel.app/upload?role=Contributor&taskMode=1`
-- Reviewer: `https://tjc-stock-media.vercel.app/review?role=Reviewer&taskMode=1`
-- DAM Admin: `https://tjc-stock-media.vercel.app/admin?role=DAM%20Admin&taskMode=1`
-- Guide: `https://tjc-stock-media.vercel.app/guide?role=Viewer&taskMode=1`
+- Viewer: beta session/SSO -> `/`
+- Contributor: beta session/SSO -> `/upload`
+- Reviewer: beta session/SSO -> `/review`
+- DAM Admin: beta session/SSO -> `/admin`
+- Guide: beta session/SSO -> `/guide`
 
 Task Mode opens an in-app checklist, quick links, beta limits, and a Report issue button. Reports are stored through `/api/beta-feedback` and visible to DAM Admins in Admin → Feedback Inbox.
 
@@ -89,13 +91,13 @@ Run these probes as Viewer, then repeat failed or confusing probes as Reviewer.
 
 ## Known Limits
 
-- Deployment-specific Vercel preview URLs may require Vercel login. After the Team Beta ops runbook is complete, share `https://tjc-stock-media.vercel.app` for teammate testing.
+- Deployment-specific Vercel preview URLs may require Vercel login. Do not share `https://tjc-stock-media.vercel.app` for teammate testing until hosted/canonical/custody/durable gates close and Hali renews approval.
 - ResourceSpace writeback should remain queued/disabled unless explicitly approved.
 - Hosted beta env should keep `BETA_FEEDBACK_ENABLED` and `BETA_TASK_MODE_ENABLED` enabled, either by omitting them or setting each to `1`; setting either to `0` disables that beta feature.
 - Hosted beta env should include `RESOURCESPACE_ENABLE_WRITEBACK=0` and `RESOURCESPACE_WRITEBACK_MODE=queued` unless live ResourceSpace writeback has explicit approval and proof.
 - Keep `DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0` for this preview-only hosted batch. If approved-copy download testing is added before SSO, set it to `1` only as a recorded temporary Team Beta exception.
 - Vercel KV/Blob env comes from Vercel storage integrations; local development falls back to `data/runtime/beta-feedback.json`.
-- Package drafts, saved views, favorites, and invite links are beta affordances unless backend storage is connected.
+- Package drafts, saved views, and favorites are local beta affordances unless backend storage is connected. Invite copy remains draft-only; hosted invite links are not sent while current NO-GO blockers remain open.
 - SSO is not live; beta role switch simulates access.
 - Current seed has zero portal-ready/downloadable assets, so Team Beta is preview-only workflow testing until a rights reviewer approves reusable seed media.
 - Static S3-only hosting is not enough for this app because Next API routes are required.

@@ -24,7 +24,7 @@ const missions: Record<DemoRole, BetaMission[]> = {
   Contributor: [
     { label: "Submit harmless intake", detail: "Use a safe test image/link and complete intake metadata." },
     { label: "Trigger missing context", detail: "Leave one required review field blank and confirm validation explains it." },
-    { label: "Queue reviewer handoff", detail: "Submit complete intake and confirm it stays Needs Review / Do Not Publish." }
+    { label: "Queue reviewer handoff", detail: "Submit complete intake and confirm it stays submitted, unpublished, and gated for reviewer evidence." }
   ],
   Reviewer: [
     { label: "Try approve without evidence", detail: "Confirm approval stays disabled until evidence and note are complete." },
@@ -43,7 +43,7 @@ const routeLinks = [
   { href: "/upload", label: "Upload" },
   { href: "/review", label: "Review" },
   { href: "/admin", label: "Admin" },
-  { href: "/guide", label: "Guide" }
+  { href: "/help", label: "Help Center" }
 ];
 
 const severityOptions: BetaFeedbackSeverity[] = ["low", "medium", "high", "critical"];
@@ -238,7 +238,7 @@ export function BetaPrototypeTools() {
                 <button type="submit" disabled={submitting}><Send size={15} />{submitting ? "Saving..." : "Submit"}</button>
               </footer>
             </form>
-            <Link className="beta-report-guide" href="/guide?taskMode=1"><FileText size={15} />Open test guide <ExternalLink size={13} /></Link>
+            <Link className="beta-report-guide" href="/help?taskMode=1"><FileText size={15} />Open Help Center <ExternalLink size={13} /></Link>
           </div>
         </div>
       ) : null}

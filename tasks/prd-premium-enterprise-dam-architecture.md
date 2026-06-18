@@ -12,6 +12,17 @@ Make TJC Stock Media feel and behave like a premium enterprise DAM by deepening 
 - Keep private beta readiness facts synchronized across command line, Admin, and teammate docs.
 - Preserve existing safety gates while making the interface easier for future agents and teammates to navigate.
 
+## 2026-06-15 Safe UI / Beta-Proof Update
+
+Status from isolated worktree `codex/safe-ui-beta-proof-2026-06-15`:
+
+- P0 query-role elevation fixed as a bug class. Query/body `role` no longer grants Reviewer/Admin power unless explicit server-only local override or trusted identity/session exists.
+- Trusted SSO headers now hydrate server-rendered UI role state through the same trusted-header policy, so protected browser QA can exercise Contributor/Reviewer/Admin UI without reopening query/localStorage trust.
+- Library maturity pass fixed `Quick lookSelected`, improved row density, bigger thumbnails, title wrapping, grouped blockers, and visible disabled-download lock reasons.
+- Review Queue maturity pass improved next-action hierarchy and made preview redaction intentional with a role-safe derivative notice.
+- Protected-mode safety proof passed: guards, typecheck, 86 tests, build, `portal-api-smoke`, and `portal-download-ticket-smoke`. Current self-owned `portal-browser-qa` is PASS at `2026-06-16T13:37:58.461Z` with 20 pages, six viewports, 32 screenshots, 0 failures, 0 console errors, 0 network failures, and 0 warnings.
+- Readiness remains NO-GO until hosted protection, canonical deployment/env, ResourceSpace scope, Google Drive custody, hosted redaction/download proof, and durable/fail-closed state are proven.
+
 ## User Stories
 
 ### US-001: Deepen Portal reuse decision
@@ -224,7 +235,7 @@ Make TJC Stock Media feel and behave like a premium enterprise DAM by deepening 
 - [x] Hosted smoke checks Viewer, Contributor, Reviewer, DAM Admin, and Guide pages.
 - [x] Hosted smoke checks feedback submission, Viewer feedback inbox denial, and DAM Admin feedback inbox visibility.
 - [x] Hosted smoke selects a currently blocked asset before proving Viewer download remains blocked without private URLs.
-- [x] Add teammate invite docs with role links, missions, safety copy, and feedback expectations.
+- [x] Add teammate invite docs with trusted beta session/SSO entry paths, missions, safety copy, and feedback expectations.
 - [x] Launch readiness validates the hosted smoke script exists.
 - [x] Typecheck passes.
 - [x] Build passes.
@@ -243,6 +254,31 @@ Make TJC Stock Media feel and behave like a premium enterprise DAM by deepening 
 - [x] Typecheck passes.
 - [x] Build passes.
 - [x] Feedback smoke passes against a local production server.
+
+### US-025: Fix query-role trust before premium UI proof
+**Description:** As a beta safety operator, I want API routes to ignore query/body role elevation unless a trusted beta session, trusted SSO identity, or explicit server-only local override exists, so local and hosted proof cannot be faked by `?role=Reviewer`.
+
+**Acceptance Criteria:**
+- [x] Create and use an isolated worktree for the safe 30-40h lane while sibling sessions are active.
+- [x] Patch request identity/session resolution so production/hosted query role is never trusted.
+- [x] Default unauthenticated local smoke callers to Viewer unless trusted identity/session or explicit server-only local override exists.
+- [x] Add guard coverage so localhost query-role trust cannot return.
+- [x] Add smoke coverage for reviewer query role, admin query role, Viewer/Contributor redaction, and blocked download behavior.
+- [x] Run guard, typecheck, test, build, `portal-api-smoke`, and `portal-download-ticket-smoke` against explicit `BASE_URL`.
+- [x] Update evidence docs `00` through `12` plus daily checkpoint with honest NO-GO posture.
+- [x] Add safe lane guard so isolated worktree path, branch, ledger, BASE_URL, sibling sessions, and forbidden surfaces stay machine-checked.
+- [x] Add runtime isolation guard so `.runtime`, `frontend/.next`, screenshots, hosted summary, and evidence packet proof paths stay inside the isolated worktree.
+- [x] Make launch readiness fail if protected local smokes regress to query-role-only curl paths.
+- [x] Add repeatable hosted read-only probe command that does not POST, mutate hosted data, or store raw response bodies.
+- [x] Require beta role/marker headers to come from a trusted beta session, not caller-supplied headers.
+- [x] Add hosted read-only probe guard, hosted smoke mutation guard, and evidence packet guard so proof cannot drift into mutation or false-GO wording.
+- [x] Make launch readiness require current Team Beta NO-GO signoff after the June 15 P0 until renewed approval exists.
+- [x] Make user-facing invite/demo packets draft-only and block stale hosted query-role links or send-ready claims.
+- [x] Make evidence docs record backup/restore as blocked when real `.env`, ResourceSpace config, or backups are absent instead of faking proof.
+- [x] Make hosted read-only probe evidence timestamped and guard the docs against stale hosted summary results.
+- [x] Make API identity guard fail if route-level `searchParams.get("role")` reads do not feed the identity/session seam directly.
+
+**Notes:** Completed in isolated worktree `codex/safe-ui-beta-proof-2026-06-15` at `/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run`. Local safety proof passed on `BASE_URL=http://localhost:4871`; broader beta remains NO-GO until hosted/canonical/ResourceSpace/Drive/durable gates pass. `make launch-readiness` now checks safe lane guard, runtime isolation guard, trusted-header helper adoption for protected local smokes, hosted read-only probe guard, hosted smoke mutation guard, current Team Beta NO-GO signoff after the June 15 P0, draft-only invite packets, trusted beta session/SSO hosted entry paths instead of query-role invite links, backup/restore blocked because real `.env`/ResourceSpace config/backups are absent, route-level `searchParams.get("role")` identity-seam guard coverage, and evidence packet guard. `make portal-hosted-readonly-probe` provides repeatable anonymous hosted read-only probe evidence without mutation and latest hosted read-only summary is timestamped at `2026-06-16T14:22:04.520Z`; `portal-hosted-smoke` now requires explicit owner approval env before non-local POSTs. Current self-owned browser QA is PASS at `2026-06-16T13:37:58.461Z` with 20 pages, six viewports, 32 screenshots, 0 failures, 0 console errors, 0 network failures, and 0 warnings. Client privileged GET paths no longer append query-role authority for asset detail, review queue, admin readiness, brand kit, or search reads. Beta role/marker headers require a trusted beta session marker, naked caller-supplied headers are ignored, and latest safety proof is 86 tests plus guarded API/download/SSO smokes.
 
 ## Functional Requirements
 
@@ -263,9 +299,10 @@ Make TJC Stock Media feel and behave like a premium enterprise DAM by deepening 
 - FR-15: Production-style trusted-header identity must have a repeatable local smoke path before teammate beta access is treated as identity-ready.
 - FR-16: Usage analytics must have a repeatable local smoke path before Insights can be treated as event-backed rather than sample-only.
 - FR-17: Delivery privacy must have a repeatable local smoke path before teammate beta payloads can be treated as storage-safe.
-- FR-18: Hosted beta launches must have a repeatable post-deploy smoke path and share-ready teammate invite packet before internal testers receive the URL.
+- FR-18: Hosted beta launches must have a repeatable post-deploy smoke path and draft-only teammate invite packet using trusted beta session/SSO entry paths before internal testers receive the URL.
 - FR-19: Private beta dry-runs must produce machine-readable evidence for Viewer, Reviewer, and DAM Admin before teammate invite decisions.
 - FR-20: Beta feedback intake and triage must have a repeatable smoke path before teammate feedback is treated as operational evidence.
+- FR-21: Query/body/client role inputs must never grant Reviewer/Admin authority unless trusted beta session, trusted SSO identity, or explicit server-only local override exists; hosted production query role is never trusted.
 
 ## Non-Goals
 
@@ -294,7 +331,7 @@ Make TJC Stock Media feel and behave like a premium enterprise DAM by deepening 
 
 - `make frontend-check` passes.
 - `make launch-readiness` passes or reports only explicit environment warnings.
-- Viewer and Reviewer dry-runs pass through `make portal-api-smoke` and `make portal-browser-qa`.
+- Viewer and Reviewer safety dry-runs pass through `make portal-api-smoke`; current `make portal-browser-qa` must return to green before browser-readiness can be claimed.
 - Future agents can locate reuse and review evidence truth from one module each.
 - No regression in source/master restrictions.
 

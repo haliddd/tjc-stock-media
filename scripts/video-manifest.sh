@@ -13,6 +13,9 @@ MANIFEST="$OUT_DIR/video-manifest-$STAMP.csv"
 SUMMARY="$OUT_DIR/video-manifest-summary-$STAMP.md"
 STAGING_ROOT="$ROOT/.runtime/shared-drive-staging"
 
+cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-video-manifest}" node scripts/safe-lane-headroom-guard.mjs
+
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "FAIL: source directory not found: $SOURCE_DIR"
   exit 1

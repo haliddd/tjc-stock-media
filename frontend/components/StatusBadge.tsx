@@ -32,7 +32,7 @@ const usageLabels: Record<StockMediaAsset["usageScope"], string> = {
   Internal: "Internal ministry use",
   "Public and Internal": "Church-wide and internal",
   "Archive Only": "Archive only",
-  "Do Not Publish": "Do not publish yet",
+  "Do Not Publish": "Not published",
   "Do Not Use": "Do not use"
 };
 
@@ -151,15 +151,15 @@ export function RawStatusBadge({ status, size = "sm" }: { status: StockMediaAsse
 }
 
 const reuseStateLabels: Record<string, string> = {
-  portal_ready: "Portal Ready",
-  portalReady: "Portal Ready",
-  "portal-ready": "Portal Ready",
-  internal_ready: "Internal Ready",
-  "internal-ready": "Internal Ready",
-  needs_portal_review: "Needs review",
+  portal_ready: "Reuse approved",
+  portalReady: "Reuse approved",
+  "portal-ready": "Reuse approved",
+  internal_ready: "Reuse approved",
+  "internal-ready": "Reuse approved",
+  needs_portal_review: "Needs review before reuse",
   preview_only: "Preview only",
-  blocked: "Blocked",
-  archive_only: "Archive only",
+  blocked: "Blocked from reuse",
+  archive_only: "Blocked from reuse",
   do_not_publish: "Do not publish"
 };
 
@@ -183,7 +183,7 @@ function reuseStateIcon(status: string, downloadable?: boolean) {
 export function ReuseStateBadge({ asset, state, size = "sm" }: { asset?: StockMediaAsset; state?: string; size?: TjcStatusSize }) {
   const decision = asset ? buildReuseDecision(asset) : null;
   const status = decision?.state || state || "needs_portal_review";
-  const label = decision?.label || reuseStateLabels[status] || status;
+  const label = decision ? reuseStateLabels[decision.state] || decision.label : reuseStateLabels[status] || status;
   return (
     <TjcStatusBadge
       domain="reuse"
@@ -191,7 +191,7 @@ export function ReuseStateBadge({ asset, state, size = "sm" }: { asset?: StockMe
       tone={reuseStateTone(status)}
       icon={reuseStateIcon(status, decision?.downloadable)}
       label={label}
-      tooltip={`Portal reuse state: ${decision?.summary || label}`}
+      tooltip={`Reuse/download answer: ${decision?.summary || label}`}
       size={size}
     />
   );

@@ -2,13 +2,17 @@
 
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, Bell, Box, Check, CheckCircle2, ClipboardCheck, Database, Download, FileText, HardDrive, KeyRound, Lock, MessageSquareWarning, Plug, RefreshCw, Settings, Shield, ShieldCheck, Sparkles, Tags, Users, XCircle } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAdminReadiness } from "@/components/dam/useDamApi";
 import { adminNavItems, adminNavLabel, integrationReadinessColumns, integrationState, policySummaryRows, systemHealthRows } from "@/lib/admin-control";
+import { enterpriseMetadataSchemaRows, metadataSchemaHealthSummary } from "@/lib/enterprise-metadata";
 import type { EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaSourceIsLive } from "@/lib/media-source/truth";
+import { canAccessRoute } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
+import { taxonomyGovernanceTerms, taxonomyHealthSummary } from "@/lib/taxonomy";
 import type { BetaFeedbackRecord, BetaFeedbackSeverity, BetaFeedbackStatus, BetaReadinessFact, DamReadinessResult, IntegrationReadinessItem } from "@/lib/types";
 import { ActionButton, CustodyMapPanel, ErrorCard, KpiCard, LoadingCard, PageHeader, SourcePill, StatusBadge } from "./EnterpriseShared";
 
@@ -16,7 +20,8 @@ const roleRows = [
   ["Viewer", "Find approved media", "Approved copy only", "No", "No", "No"],
   ["Contributor", "Find and submit media", "Approved copy only", "Yes", "No", "No"],
   ["Reviewer", "Review evidence and decisions", "Role-gated previews", "Yes", "Yes", "No"],
-  ["DAM Admin", "Governance and integrations", "Role-gated previews", "Yes", "Yes", "Yes"]
+  ["DAM Admin observer", "Read readiness and blockers", "Role-gated previews", "Yes", "Yes", "Read-only"],
+  ["Beta operator", "Configure beta operations after proof", "Role-gated previews", "Yes", "Yes", "Controlled"]
 ];
 
 const teamRows = [
@@ -67,6 +72,36 @@ const adminFocusTargetByHash = new Map<string, string>([
   ["audit-activity-section", "audit-activity-section"],
   ["system-health-section", "system-health-section"]
 ]);
+
+const adminPageIdentityByPath = new Map<string, { title: string; subtitle: string }>([
+  ["/admin", { title: "Control Center", subtitle: "Admin view for source health, audit activity, launch readiness, and policy-sensitive workflows." }],
+  ["/governance/rights-consent", { title: "Rights & Consent", subtitle: "Evidence, consent, owner/license, minors, and public-use approvals." }],
+  ["/governance/metadata-health", { title: "Metadata Health", subtitle: "Required fields, duplicate candidates, taxonomy drift, and orphaned records." }],
+  ["/governance/policy-center", { title: "Policy Center", subtitle: "Download gates, source restrictions, roles, approval, consent, and expiration rules." }],
+  ["/governance/audit-log", { title: "Audit Log", subtitle: "Upload, edit, approval, download, export, and policy events." }],
+  ["/governance/integrations", { title: "Integrations", subtitle: "ResourceSpace, Google Shared Drive, portal, storage, and identity health." }],
+  ["/admin/users", { title: "Users & Roles", subtitle: "Role-safe permissions and user assignments." }],
+  ["/admin/taxonomy", { title: "Taxonomy", subtitle: "Ministry, event, collection, tag, and metadata vocabularies." }],
+  ["/admin/settings", { title: "Settings", subtitle: "DAM workspace settings and operational controls." }]
+]);
+
+const legacyAdminModuleMap = new Map<string, string>([
+  ["dashboard", DEFAULT_ADMIN_NAV],
+  ["rights", "rights-policies"],
+  ["metadata", "metadata-schemas"],
+  ["policy", "rights-policies"],
+  ["audit", "audit-logs"],
+  ["integrations", "integrations"],
+  ["settings", "system-settings"],
+  ["users", "users-roles"],
+  ["taxonomy", "taxonomy"]
+]);
+
+function normalizeAdminInitialModule(value?: string) {
+  if (!value) return DEFAULT_ADMIN_NAV;
+  const mapped = legacyAdminModuleMap.get(value) || value;
+  return adminNavIds.has(mapped) ? mapped : DEFAULT_ADMIN_NAV;
+}
 
 type AdminNavSelectionOptions = {
   focusTargetId?: string;
@@ -204,7 +239,7 @@ function LaunchReadinessSummary({ readiness, onSelectModule }: { readiness?: Dam
   const auditActivity = readiness?.auditLog.recent[0];
   const launchFact = facts.find((item) => item.source === "launch-readiness" && item.state !== "pass") || facts.find((item) => item.source === "launch-readiness");
   const stateTone: AdminStatusTone = beta?.ready ? "Healthy" : blockers.length ? "Critical" : "Warning";
-  const stateLabel = beta?.ready ? "Beta Go" : blockers.length ? "Beta No-Go" : "Beta Hold";
+  const stateLabel = beta?.ready ? "Release ready" : blockers.length ? "Release readiness blocked" : "Release hold";
   const queueItems = governanceQueueItems(readiness);
   const primaryQueueItem = queueItems[0];
   const remainingQueueItems = queueItems.slice(1);
@@ -472,7 +507,7 @@ function FeedbackInboxModule() {
   async function loadFeedback() {
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/beta-feedback?role=DAM%20Admin", { headers: { Accept: "application/json" } });
+    const response = await fetch("/api/beta-feedback", { headers: { Accept: "application/json" } });
     const payload = await response.json().catch(() => ({}));
     setLoading(false);
     if (!response.ok) {
@@ -496,7 +531,7 @@ function FeedbackInboxModule() {
   )), [feedback, roleFilter, routeFilter, severityFilter, statusFilter]);
 
   async function updateFeedback(id: string, patch: Partial<Pick<BetaFeedbackRecord, "status" | "severity" | "notes">>) {
-    const response = await fetch(`/api/beta-feedback/${encodeURIComponent(id)}?role=DAM%20Admin`, {
+    const response = await fetch(`/api/beta-feedback/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(patch)
@@ -511,7 +546,6 @@ function FeedbackInboxModule() {
 
   async function exportJson() {
     const params = new URLSearchParams({
-      role: "DAM Admin",
       status: statusFilter,
       severity: severityFilter,
       feedbackRole: roleFilter,
@@ -572,7 +606,7 @@ function FeedbackInboxModule() {
                 <label>Admin notes<textarea value={item.notes || ""} onChange={(event) => setFeedback((current) => current.map((row) => row.id === item.id ? { ...row, notes: event.target.value } : row))} onBlur={(event) => void updateFeedback(item.id, { notes: event.target.value })} placeholder="Triage note for next agent..." /></label>
               </footer>
             </article>
-          )) : <section className="ed-empty-state"><MessageSquareWarning size={24} /><h2>No feedback in this filter</h2><p>Share role invite links with teammates, then reports appear here.</p></section>}
+          )) : <section className="ed-empty-state is-quiet"><MessageSquareWarning size={24} /><h2>No feedback in this filter</h2><p>Share role invite links with teammates, then reports appear here.</p></section>}
         </div>
       )}
     </section>
@@ -622,15 +656,113 @@ function AuditTable({ readiness, onViewAll }: { readiness?: DamReadinessResult |
   );
 }
 
+function AdminOperationalReadinessModules({
+  readiness,
+  onSelectModule
+}: {
+  readiness?: DamReadinessResult | null;
+  onSelectModule: SelectAdminModule;
+}) {
+  const metrics = readiness?.metrics;
+  const modules = [
+    {
+      label: "Needs Review",
+      value: metrics?.needsReview || 0,
+      detail: "Review workload before any broader reuse.",
+      action: "Open review workflow",
+      nav: "review-workflows"
+    },
+    {
+      label: "Blocked by Consent",
+      value: metrics?.childrenYouth || 0,
+      detail: "People/minors and consent-sensitive records.",
+      action: "Open rights policies",
+      nav: "rights-policies"
+    },
+    {
+      label: "Rights Expiring / Recheck Needed",
+      value: metrics?.staleApprovals || 0,
+      detail: "Lifecycle/recheck blockers stay ahead of usage metrics.",
+      action: "Open rights policies",
+      nav: "rights-policies"
+    },
+    {
+      label: "Metadata Gaps",
+      value: (metrics?.taxonomyDrift || 0) + (metrics?.aiEnrichment || 0),
+      detail: "Required fields, taxonomy drift, and suggestions needing human decision.",
+      action: "Open metadata fields",
+      nav: "metadata-schemas"
+    },
+    {
+      label: "Source Custody Gaps",
+      value: metrics?.missingSource || 0,
+      detail: "Source/provenance needs confirmation; no private paths exposed here.",
+      action: "Open storage",
+      nav: "storage-retention"
+    },
+    {
+      label: "Duplicate Links",
+      value: metrics?.duplicateCandidates || 0,
+      detail: "Canonical/source membership decisions; never auto-delete source appearances.",
+      action: "Open taxonomy",
+      nav: "taxonomy"
+    },
+    {
+      label: "Distribution Blockers",
+      value: (readiness?.actionBacklog || []).filter((item) => /package|share|distribution/i.test(`${item.id} ${item.label} ${item.action}`)).reduce((sum, item) => sum + item.count, 0),
+      detail: "Distribution set drafts remain blocked by item-level clearance.",
+      action: "Open review workflow",
+      nav: "review-workflows"
+    },
+    {
+      label: "Feedback Inbox",
+      value: "Open",
+      detail: "Open triage inbox; counts load inside module from feedback storage.",
+      action: "Open feedback",
+      nav: "feedback-inbox"
+    },
+    {
+      label: "Import Audit Coverage",
+      value: readiness?.auditLog.count || 0,
+      detail: "Actor-backed audit evidence, not production readiness by itself.",
+      action: "Open audit logs",
+      nav: "audit-logs"
+    }
+  ];
+
+  return (
+    <section className="ed-card ed-admin-module" aria-label="Operational readiness modules">
+      <header className="ed-card-head">
+        <div>
+          <h3>Operational readiness modules</h3>
+          <p>Blockers, gaps, and worklists outrank usage metrics. Missing data is not counted as success.</p>
+        </div>
+        <StatusBadge status="Read-only" />
+      </header>
+      <div className="ed-module-grid">
+        {modules.map((item) => (
+          <section className="ed-card ed-module-card" key={item.label}>
+            <h3>{item.label}</h3>
+            <strong>{typeof item.value === "number" ? item.value.toLocaleString() : item.value}</strong>
+            <p>{item.detail}</p>
+            <button className="ed-link-button" type="button" onClick={() => onSelectModule(item.nav)}>{item.action}</button>
+          </section>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function OverviewModule({ readiness, onSelectModule }: { readiness?: DamReadinessResult | null; onSelectModule: SelectAdminModule }) {
   return (
     <>
       <section className="ed-admin-section" aria-labelledby="launch-readiness-section">
-        <header><div><span className="ed-section-eyebrow">Launch readiness</span><h3 id="launch-readiness-section" tabIndex={-1}>Go/No-Go evidence</h3></div><p>Exception-first beta controls before internal teammate testing.</p></header>
+        <header><div><span className="ed-section-eyebrow">Launch readiness</span><h3 id="launch-readiness-section" tabIndex={-1}>Blocking evidence</h3></div><p>Exception-first controls before internal teammate testing.</p></header>
         <BetaCommandCenter readiness={readiness} />
       </section>
       <section className="ed-admin-section" aria-labelledby="governance-policies-section">
         <header><div><span className="ed-section-eyebrow">Governance policies</span><h3 id="governance-policies-section" tabIndex={-1}>Access boundaries and custody</h3></div><p>Source truth, policy counts, and role boundaries stay visible without enabling writeback.</p></header>
+        <AdminOperationalReadinessModules readiness={readiness} onSelectModule={onSelectModule} />
         <CustodyMapPanel readiness={readiness} />
         <div className="ed-kpi-grid is-four"><KpiCard label="Records" value={(readiness?.assetCount || 0).toLocaleString()} delta="ResourceSpace-backed" icon={Database} /><KpiCard label="Readiness" value={`${readiness?.score || 0}/100`} delta="policy score" icon={Shield} /><KpiCard label="Needs Review" value={(readiness?.metrics.needsReview || 0).toLocaleString()} delta="queue count" icon={FileText} /><KpiCard label="Audit Events" value={(readiness?.auditLog.count || 0).toLocaleString()} delta="portal log" icon={Box} /></div>
         <div className="ed-module-grid">{(readiness?.actionBacklog || []).slice(0, 6).map((item) => <section className="ed-card ed-module-card" key={item.id}><AdminStatusBadge tone={item.severity === "critical" || item.severity === "high" ? "Critical" : item.severity === "medium" ? "Warning" : "Info"} label={item.severity} /><h3>{item.label}</h3><p>{item.action}</p><small>{item.count.toLocaleString()} · {item.owner}</small></section>)}</div>
@@ -640,10 +772,123 @@ function OverviewModule({ readiness, onSelectModule }: { readiness?: DamReadines
         <AuditTable readiness={readiness} onViewAll={() => onSelectModule("audit-logs")} />
       </section>
       <section className="ed-admin-section" aria-labelledby="system-health-section">
-        <header><div><span className="ed-section-eyebrow">System health</span><h3 id="system-health-section" tabIndex={-1}>Source and integration state</h3></div><p>Read-only states are intentional until ResourceSpace writeback is approved.</p></header>
+        <header><div><span className="ed-section-eyebrow">Integration health</span><h3 id="system-health-section" tabIndex={-1}>Source and integration state</h3></div><p>Read-only states are intentional until ResourceSpace writeback is approved.</p></header>
         <section className="ed-card"><header className="ed-card-head"><div><h3>Integration Status</h3><p>ResourceSpace, Drive, S3, and portal readiness.</p></div><SourcePill source={readiness?.source} live={mediaSourceIsLive(readiness?.source)} /></header><IntegrationTable rows={readiness?.integrationReadiness || []} /></section>
       </section>
     </>
+  );
+}
+
+function MetadataSchemaConsole({ readiness }: { readiness?: DamReadinessResult | null }) {
+  const health = metadataSchemaHealthSummary();
+  const coverageByKey = new Map((readiness?.fieldMappings || []).map((row) => [row.key, row]));
+
+  return (
+    <section className="ed-card ed-admin-module">
+      <header className="ed-card-head">
+        <div>
+          <h3>Metadata Fields</h3>
+          <p>Admin-only field governance. ResourceSpace remains metadata truth; Shared Drive remains master custody.</p>
+        </div>
+        <StatusBadge status="Read-only" />
+      </header>
+      <div className="ed-admin-stat-grid">
+        <article><strong>{health.total}</strong><span>governed fields</span><small>{health.required} required</small></article>
+        <article><strong>{health.controlled}</strong><span>controlled fields</span><small>select lists, not free text</small></article>
+        <article><strong>{health.privateInternals}</strong><span>private internals</span><small>DAM Admin only</small></article>
+      </div>
+      <table className="ed-table">
+        <thead>
+          <tr>
+            <th>Field key</th>
+            <th>Controlled values</th>
+            <th>Required</th>
+            <th>Role visibility</th>
+            <th>Clearance effect</th>
+            <th>Intake</th>
+            <th>Source binding</th>
+          </tr>
+        </thead>
+        <tbody>
+          {enterpriseMetadataSchemaRows.map((row) => {
+            const coverage = coverageByKey.get(row.key);
+            return (
+              <tr key={row.key}>
+                <td><strong>{row.key}</strong><br /><small>{row.label}</small></td>
+                <td>{row.controlledValues.length ? row.controlledValues.join(", ") : "Free text / derived"}</td>
+                <td>{row.required ? "Required" : "Optional"}</td>
+                <td>{row.roleVisibility.join(", ")}</td>
+                <td>{row.clearanceEffect}</td>
+                <td>{row.intakeRequirement}</td>
+                <td><small>{row.sourceTruth}</small><br />{row.resourceSpaceField}<br /><StatusBadge status={coverage && coverage.coverage >= 90 ? "Operational" : row.required ? "Degraded" : "Read-only"} /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="ed-mobile-card-list" aria-label="Metadata field owner notes">
+        {enterpriseMetadataSchemaRows.filter((row) => row.privateSourceInternal || row.required).slice(0, 8).map((row) => (
+          <article key={`note-${row.key}`}>
+            <header><strong>{row.label}</strong><AdminStatusBadge tone={row.privateSourceInternal ? "Disabled" : "Info"} label={row.privateSourceInternal ? "Admin only" : "Governed"} /></header>
+            <p>{row.ownerNotes}</p>
+            <span>{row.resourceSpaceField}</span>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TaxonomyGovernanceConsole({ readiness }: { readiness?: DamReadinessResult | null }) {
+  const health = taxonomyHealthSummary();
+  const vocabulary = readiness?.vocabulary || [];
+
+  return (
+    <section className="ed-card ed-admin-module">
+      <header className="ed-card-head">
+        <div>
+          <h3>Taxonomy</h3>
+          <p>Canonical vocabulary, alias cleanup, forbidden language, and sensitive ministry mappings for reviewer-owned metadata.</p>
+        </div>
+        <StatusBadge status={readiness?.metrics.taxonomyDrift ? "Degraded" : "Operational"} />
+      </header>
+      <div className="ed-admin-stat-grid">
+        <article><strong>{health.canonicalLabels.length}</strong><span>canonical labels</span><small>{health.aliasCount} aliases</small></article>
+        <article><strong>{health.deprecatedTerms.length}</strong><span>deprecated terms</span><small>cleanup candidates</small></article>
+        <article><strong>{health.forbiddenTerms.length}</strong><span>forbidden terms</span><small>reviewer-owned policy</small></article>
+      </div>
+      <table className="ed-table">
+        <thead>
+          <tr>
+            <th>Canonical label</th>
+            <th>Aliases</th>
+            <th>Deprecated</th>
+            <th>Forbidden</th>
+            <th>Sensitive / ministry mapping</th>
+            <th>Owner notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {taxonomyGovernanceTerms.map((term) => (
+            <tr key={term.canonical}>
+              <td><strong>{term.canonical}</strong></td>
+              <td>{term.aliases.join(", ")}</td>
+              <td>{term.deprecatedTerms.join(", ")}</td>
+              <td>{term.forbiddenTerms.join(", ")}</td>
+              <td><small>{term.ministryMapping}</small><br />{term.sensitiveMapping || "public-safe when evidence supports it"}</td>
+              <td>{term.ownerNotes}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <section className="ed-card">
+        <header className="ed-card-head"><div><h3>Observed vocabulary</h3><p>Current ResourceSpace-backed terms remain evidence, not automatic policy changes.</p></div><StatusBadge status="Read-only" /></header>
+        <table className="ed-table">
+          <thead><tr><th>Term</th><th>Count</th><th>Kind</th></tr></thead>
+          <tbody>{vocabulary.slice(0, 12).map((row) => <tr key={`${row.kind}-${row.term}`}><td>{row.term}</td><td>{row.count.toLocaleString()}</td><td>{row.kind}</td></tr>)}</tbody>
+        </table>
+      </section>
+    </section>
   );
 }
 
@@ -660,7 +905,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNa
         <article><strong>Local</strong><span>beta fallback</span><small>Role switch remains for pilot QA only</small></article>
         <article><strong>SSO-ready</strong><span>not live</span><small>Needs trusted provider headers</small></article>
       </div>
-      <table className="ed-table"><thead><tr><th>Role</th><th>Primary job</th><th>Download</th><th>Upload</th><th>Review</th><th>Admin</th></tr></thead><tbody>{roleRows.map((row) => <tr key={row[0]}>{row.map((cell) => <td key={cell}>{cell}</td>)}</tr>)}</tbody></table>
+      <table className="ed-table"><thead><tr><th>Role</th><th>Primary job</th><th>Download</th><th>Upload</th><th>Review</th><th>Admin</th></tr></thead><tbody>{roleRows.map((row) => <tr key={row[0]}>{row.map((cell, index) => <td key={`${row[0]}-${index}`}>{cell}</td>)}</tr>)}</tbody></table>
     </section>
   );
   if (activeNav === "roles-permissions") return (
@@ -676,16 +921,10 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNa
     </section>
   );
   if (activeNav === "taxonomy") return (
-    <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Taxonomy</h3><p>Vocabulary drift and search terms from current ResourceSpace-backed catalog.</p></div><StatusBadge status={metrics?.taxonomyDrift ? "Degraded" : "Operational"} /></header>
-      <table className="ed-table"><thead><tr><th>Term</th><th>Count</th><th>Kind</th></tr></thead><tbody>{(readiness?.vocabulary || []).slice(0, 14).map((row) => <tr key={`${row.kind}-${row.term}`}><td>{row.term}</td><td>{row.count.toLocaleString()}</td><td>{row.kind}</td></tr>)}</tbody></table>
-    </section>
+    <TaxonomyGovernanceConsole readiness={readiness} />
   );
   if (activeNav === "metadata-schemas") return (
-    <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Metadata Fields</h3><p>Field mapping truth. Live writeback remains blocked until ResourceSpace refs are configured.</p></div><StatusBadge status="Read-only" /></header>
-      <table className="ed-table"><thead><tr><th>Field</th><th>ResourceSpace field</th><th>Coverage</th><th>Missing</th></tr></thead><tbody>{(readiness?.fieldMappings || []).map((row) => <tr key={row.key}><td>{row.label}</td><td>{row.resourceSpaceField}</td><td><StatusBadge status={row.coverage >= 90 ? "Operational" : row.required ? "Degraded" : "Read-only"} /> {row.coverage}%</td><td>{row.missing.toLocaleString()}</td></tr>)}</tbody></table>
-    </section>
+    <MetadataSchemaConsole readiness={readiness} />
   );
   if (activeNav === "rights-policies") return (
     <section className="ed-card ed-admin-module">
@@ -723,17 +962,23 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule }: { activeNa
   if (activeNav === "audit-logs") return <AuditTable readiness={readiness} />;
   return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>System Status</h3><p>Configuration status for ResourceSpace, writeback, preview proxy, and audit evidence.</p></div><StatusBadge status={readiness?.source.readOnly ? "Read-only" : "Operational"} /></header>
+      <header className="ed-card-head"><div><h3>Integration Status</h3><p>Configuration status for ResourceSpace, writeback, preview proxy, and audit evidence.</p></div><StatusBadge status={readiness?.source.readOnly ? "Read-only" : "Operational"} /></header>
       <IntegrationTable rows={integrations} />
       <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
     </section>
   );
 }
 
-export function EnterpriseAdminPage() {
+export function EnterpriseAdminPage({ initialModule, adminOnly = false }: { initialModule?: string; adminOnly?: boolean } = {}) {
   const { role, ready } = useDemoRole();
-  const [activeNav, setActiveNav] = useState(adminNavItems[0].id);
+  const pathname = usePathname();
+  const [activeNav, setActiveNav] = useState(() => normalizeAdminInitialModule(initialModule));
   const admin = useAdminReadiness(role);
+  const operatorVerified = false;
+  const pageIdentity = adminPageIdentityByPath.get(pathname) || {
+    title: "Governance",
+    subtitle: "Launch readiness, policies, audit activity, and integration health for the DAM workspace."
+  };
   function selectAdminNav(id: string, options: AdminNavSelectionOptions = {}) {
     const nextNav = adminNavIds.has(id) ? id : DEFAULT_ADMIN_NAV;
     const hash = options.hash || adminHashByNav.get(nextNav) || DEFAULT_ADMIN_HASH;
@@ -746,6 +991,10 @@ export function EnterpriseAdminPage() {
   useEffect(() => {
     function syncFromHash() {
       const hash = readAdminHash();
+      if (!hash) {
+        setActiveNav(normalizeAdminInitialModule(initialModule));
+        return;
+      }
       const nextNav = adminNavByHash.get(hash) || DEFAULT_ADMIN_NAV;
       const canonicalHash = hash ? canonicalAdminHash(hash, nextNav) : DEFAULT_ADMIN_HASH;
       const focusTargetId = adminFocusTargetByHash.get(canonicalHash) || "admin-active-module-title";
@@ -757,14 +1006,22 @@ export function EnterpriseAdminPage() {
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
-  }, []);
+  }, [initialModule]);
 
   if (!ready) return <div className="enterprise-page"><LoadingCard label="Loading control center..." /></div>;
-  if (role !== "DAM Admin") return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Governance requires DAM Admin role</h1><p>System governance, policies, user access, integrations, and audit controls are restricted to DAM Admins.</p><Link href={routeWithRole("/", role)}>Return to Asset Library</Link></section></div>;
+  if (!canAccessRoute(role, pathname)) return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Governance requires DAM Admin role</h1><p>DAM governance, policies, user access, integrations, and audit controls are restricted to DAM Admins.</p><Link href={routeWithRole("/library", role)}>Return to Asset Library</Link></section></div>;
   const readiness = admin.data;
   return (
     <div className="enterprise-page enterprise-admin-control">
-      <PageHeader title="Governance" subtitle="Launch readiness, policies, audit activity, and system health for the DAM beta." />
+      <PageHeader title={pageIdentity.title} subtitle={pageIdentity.subtitle} />
+      <section className="ed-admin-mode-banner" aria-label="Admin beta access boundary">
+        <div>
+          <AdminStatusBadge tone={operatorVerified ? "Healthy" : "Disabled"} label={operatorVerified ? "Beta operator" : "Admin observer"} />
+          <strong>{operatorVerified ? "Controlled operator controls available" : "Read-only observer mode"}</strong>
+          <p>Six-person beta may view readiness, blockers, redacted status, and audit evidence. Config changes, secrets, paid hosting changes, source mutation, public launch, and ResourceSpace writeback stay disabled until operator proof is explicit.</p>
+        </div>
+        <span>No paid June charge. No public launch claim.</span>
+      </section>
       {admin.loading ? <LoadingCard /> : admin.error ? <ErrorCard message={admin.error} source={admin.source} /> : <LaunchReadinessSummary readiness={readiness} onSelectModule={selectAdminNav} />}
       <div className="ed-admin-grid">
         <aside className="ed-panel ed-admin-nav" aria-label="Admin section navigation"><strong>Section jump list</strong>{adminNavItems.map((item) => {
@@ -777,7 +1034,7 @@ export function EnterpriseAdminPage() {
             <AdminModuleContent activeNav={activeNav} readiness={readiness} onSelectModule={selectAdminNav} />
           </>}
         </section>
-        <aside className="ed-admin-rail"><BetaCommandCenter readiness={readiness} compact /><section className="ed-card"><h3>Policy Summary</h3><p>{readiness?.source.detail || "Readiness not loaded."}</p><div className="ed-big-check"><Check size={30} /></div>{policySummaryRows(readiness).map((row) => <p className="ed-row-between" key={row.label}><span>{row.label}</span><strong>{row.value.toLocaleString()}</strong></p>)}<ActionButton onClick={() => selectAdminNav("rights-policies")}>Manage policies</ActionButton></section><section className="ed-card"><header className="ed-card-head"><h3>Recent Activity</h3><button className="ed-link-button" type="button" onClick={() => selectAdminNav("audit-logs")}>View all</button></header>{(readiness?.auditLog.recent || []).slice(0, 5).map((item) => <p className="ed-activity" key={item.id}><Bell size={16} />{item.summary}<small>{item.actor ? `${item.actor} · ` : ""}{item.role} · {item.createdAt}</small></p>)}</section><section className="ed-card"><h3>System Health</h3>{systemHealthRows(readiness).map((item) => <p className="ed-row-between" key={item.id}><span>{item.label}</span><StatusBadge status={item.state} /></p>)}<button className="ed-link-button" type="button" onClick={() => selectAdminNav("system-settings")}>View system status</button></section></aside>
+        <aside className="ed-admin-rail"><BetaCommandCenter readiness={readiness} compact /><section className="ed-card"><h3>Policy Summary</h3><p>{readiness?.source.detail || "Readiness not loaded."}</p><div className="ed-big-check"><Check size={30} /></div>{policySummaryRows(readiness).map((row) => <p className="ed-row-between" key={row.label}><span>{row.label}</span><strong>{row.value.toLocaleString()}</strong></p>)}<ActionButton onClick={() => selectAdminNav("rights-policies")}>View policies</ActionButton></section><section className="ed-card"><header className="ed-card-head"><h3>Recent Activity</h3><button className="ed-link-button" type="button" onClick={() => selectAdminNav("audit-logs")}>View all</button></header>{(readiness?.auditLog.recent || []).slice(0, 5).map((item) => <p className="ed-activity" key={item.id}><Bell size={16} />{item.summary}<small>{item.actor ? `${item.actor} · ` : ""}{item.role} · {item.createdAt}</small></p>)}</section><section className="ed-card"><h3>Integration Health</h3>{systemHealthRows(readiness).map((item) => <p className="ed-row-between" key={item.id}><span>{item.label}</span><StatusBadge status={item.state} /></p>)}<button className="ed-link-button" type="button" onClick={() => selectAdminNav("system-settings")}>View integration status</button></section></aside>
       </div>
     </div>
   );

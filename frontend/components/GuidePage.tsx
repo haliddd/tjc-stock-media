@@ -41,14 +41,14 @@ const gettingStarted = [
 ];
 
 const commonTasks: HelpTask[] = [
-  { id: "find", title: "Find approved media", summary: "Search by use case, event, ministry, topic, or package.", href: "/", icon: Search },
+  { id: "find", title: "How to find approved photos", summary: "Search by use case, event, ministry, topic, or package, then confirm Approved for reuse before using a photo.", href: "/", icon: Search },
   { id: "status", title: "Check approval status", summary: "View approval, rights, usage scope, and expiration.", href: "/", icon: ShieldCheck },
   { id: "download", title: "Download approved copy", summary: "Open the record and download the approved derivative.", href: "/", icon: Download },
   { id: "collection", title: "Use a collection", summary: "Start from a curated ministry collection and confirm each item.", href: "/collections", icon: FolderOpen },
-  { id: "source", title: "Request source-file access", summary: "Request access to source/original files when needed.", href: "/guide#request-review", icon: FileLock2 },
+  { id: "source", title: "Request source-file access", summary: "Request access to source/original files when needed.", href: "/requests", icon: FileLock2 },
   { id: "send", title: "Send media for review", summary: "Submit files or links for review and approval.", href: "/upload", icon: UploadCloud },
-  { id: "public", title: "Public / external use", summary: "Review rules for public, social, and external use.", href: "/guide#policies", icon: Globe2 },
-  { id: "incident", title: "Rights incident or takedown", summary: "Report rights issues or request content removal.", href: "/review?queue=rights-review", icon: FileCheck2 }
+  { id: "public", title: "Public / external use", summary: "Review rules for public, social, and external use.", href: "/help#policies", icon: Globe2 },
+  { id: "incident", title: "Rights incident or takedown", summary: "Report rights issues or request content removal.", href: "/requests", icon: FileCheck2 }
 ];
 
 const reviewReasons = [
@@ -60,9 +60,9 @@ const reviewReasons = [
 
 const quickLinks = [
   { title: "Collections", detail: "Open ministry collections and kits", href: "/collections", icon: FolderOpen },
-  { title: "Recent uploads", detail: "Open upload intake and recent media", href: "/upload", icon: UploadCloud },
-  { title: "Source-file access", detail: "Jump to review request guidance", href: "/guide#request-review", icon: FileLock2 },
-  { title: "Review requests", detail: "Open review and access queue", href: "/review", icon: FileText }
+  { title: "Recent uploads", detail: "Open recent intake ledger", href: "/recent-uploads", icon: UploadCloud },
+  { title: "Source-file access", detail: "Read request guidance", href: "#source-access", icon: FileLock2 },
+  { title: "Review requests", detail: "Open request operations", href: "/requests", icon: FileText }
 ];
 
 const policies = [
@@ -73,22 +73,65 @@ const policies = [
   { title: "Metadata standards", detail: "Naming, tagging, and descriptions" }
 ];
 
+const helpArticles = [
+  {
+    title: "How to find approved photos",
+    detail: "Search the library, open the media record, and confirm Approved for reuse, usage scope, reviewer, and review date before using a photo."
+  },
+  {
+    title: "How to request reuse",
+    detail: "Open a reuse request when approval, audience, channel, or derivative access is unclear. Include use scope, deadline, and ministry owner."
+  },
+  {
+    title: "Why source files are restricted",
+    detail: "Source/original files stay restricted to protect custody, consent, rights evidence, and the controlled DAM record."
+  },
+  {
+    title: "What photo-only beta means",
+    detail: "Photos are the controlled beta surface. Non-photo records may appear as reference or review items, but video/audio import remains reserved."
+  },
+  {
+    title: "Report a rights issue",
+    detail: "Pause distribution when license, consent, credit, takedown, or public-use scope is unclear."
+  },
+  {
+    title: "Review people/minors evidence",
+    detail: "Confirm visible people, youth/minors possibility, consent evidence, and allowed audience before external use."
+  },
+  {
+    title: "Build a distribution set",
+    detail: "Collect approved references for an internal set without copying source files or bypassing item-level clearance."
+  },
+  {
+    title: "Understand source custody model",
+    detail: "The portal shows role-safe records. Source custody and approval evidence remain governed by DAM policy."
+  },
+  {
+    title: "Why downloads are locked",
+    detail: "Downloads stay locked when evidence, approved derivative, reviewer date, or use scope is missing."
+  },
+  {
+    title: "What Portal Ready means",
+    detail: "Portal Ready means current evidence supports the shown use scope. It is not a blanket public approval."
+  }
+];
+
 const faqs: HelpFaq[] = [
   {
-    question: "What is an approved derivative?",
-    answer: "The approved derivative is the safe copy cleared for distribution. Source/original access is restricted by default."
+    question: "How do I find approved photos?",
+    answer: "Search the library, open the record, and confirm Approved for reuse, usage scope, reviewer, and review date before use."
   },
   {
-    question: "How do I know if I can use this media publicly?",
-    answer: "Open the media record and confirm approval status, usage scope, rights evidence, consent notes, reviewer, and review date. If any part is unclear, request DAM review."
+    question: "How do I request reuse?",
+    answer: "Open a reuse request with the record, intended channel, audience, deadline, and ministry owner. Requests do not approve public use by themselves."
   },
   {
-    question: "What should I do if I need source files?",
-    answer: "Submit a source-file access request. Include the record, ministry use, deadline, and why the approved derivative is not enough."
+    question: "Why are source files restricted?",
+    answer: "Source files remain restricted so custody, consent, rights evidence, and the hosted DAM record stay controlled."
   },
   {
-    question: "How long is media approved for?",
-    answer: "Use the review date and expiration or re-review notes on the media record. If approval looks old or scope changed, request a new review."
+    question: "What does photo-only beta mean?",
+    answer: "The beta supports photo intake and reuse review. Non-photo records can remain reference/review items until later import phases."
   }
 ];
 
@@ -109,12 +152,12 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
   const rightTasks = visibleTasks.filter((_, index) => index % 2 === 1);
 
   return (
-    <div className="dam-help-center">
+    <div className="dam-help-center" data-route-identity="help">
       <main className="help-center-main">
         <section className="help-center-hero" aria-labelledby="help-center-title">
           <div>
-            <h1 id="help-center-title">{policyCenter ? "Policy Center" : "Media Help Center"}</h1>
-            <p>{policyCenter ? "Policy-safe DAM guidance for reuse, rights, consent, and metadata standards." : "Find approved media, check reuse status, and request review when needed."}</p>
+            <h1 id="help-center-title">{policyCenter ? "Policy Center" : "Help Center"}</h1>
+            <p>{policyCenter ? "Policy-safe DAM guidance for reuse, rights, consent, and metadata standards." : "DAM guidance, rights policy, and role-safe support instructions."}</p>
           </div>
           <form className="help-center-search" role="search">
             <Search size={19} strokeWidth={1.9} aria-hidden="true" />
@@ -157,6 +200,21 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
           </div>
         </section>
 
+        <section className="help-center-tasks" data-primary-section="help-articles" aria-labelledby="help-articles-title">
+          <h2 id="help-articles-title">Help articles</h2>
+          <div className="help-article-grid">
+            {helpArticles.map((article) => (
+              <article id={article.title === "Request source access" ? "source-access" : undefined} key={article.title}>
+                <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
+                <div>
+                  <strong>{article.title}</strong>
+                  <p>{article.detail}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section className="help-center-tasks" aria-labelledby="common-tasks-title">
           <h2 id="common-tasks-title">Common tasks</h2>
           {visibleTasks.length ? (
@@ -187,7 +245,7 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
         <section id="faq" className="help-center-faq" aria-labelledby="faq-title">
           <header>
             <h2 id="faq-title">Help topics (FAQ)</h2>
-            <Link href="/guide">View all articles <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link href="/help">View all articles <ArrowRight size={15} aria-hidden="true" /></Link>
           </header>
           <div className="help-faq-list">
             {faqs.map((item, index) => {
@@ -206,18 +264,32 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
         </section>
       </main>
 
-      <aside className="help-center-rail" aria-label="Media help actions">
+      <aside className="help-center-rail" aria-label="Media help documentation">
+        <section className="help-side-card">
+          <h2>Documentation scope</h2>
+          <p className="help-side-copy">This page explains DAM rules and safe support paths. Request records live in Requests. Assigned work lives in My Tasks.</p>
+        </section>
+
+        <section className="help-side-card">
+          <h2>My open requests</h2>
+          <div className="help-open-requests">
+            <span><strong>2</strong><small>Waiting on me</small></span>
+            <span><strong>4</strong><small>Open total</small></span>
+          </div>
+          <Link className="help-review-primary" href="/requests">
+            Open Requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" />
+          </Link>
+        </section>
+
         <section id="request-review" className="help-review-card">
           <header>
             <MessageCircle size={22} strokeWidth={1.8} aria-hidden="true" />
             <div>
-              <h2>Request DAM Review</h2>
-              <p>If approval, source access, rights, or use scope is unclear, open a request with the media team.</p>
+              <h2>How to request DAM review</h2>
+              <p>If approval, source access, rights, or use scope is unclear, open a request with enough context for safe triage.</p>
             </div>
           </header>
-          <a className="help-review-primary" href="mailto:media@tjc.org?subject=Request%20DAM%20review&body=Please%20review%20this%20media%20for%20safe%20reuse.%0AContext:%20">
-            Open review request <ExternalLink size={15} strokeWidth={1.8} aria-hidden="true" />
-          </a>
+          <Link className="help-review-primary" href="/requests">Open Requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
           <div>
             <h3>When to request review</h3>
             <ul>
@@ -249,7 +321,7 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
           <h2>Policies &amp; Guidelines</h2>
           <div className="help-link-list is-policy">
             {policies.map((item) => (
-              <Link href={item.href || "/guide"} key={item.title} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined}>
+              <Link href={item.href || "/help"} key={item.title} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined}>
                 <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
                 <span><strong>{item.title}</strong><small>{item.detail}</small></span>
                 {item.external ? <ExternalLink size={15} strokeWidth={1.8} aria-hidden="true" /> : null}

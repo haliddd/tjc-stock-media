@@ -9,6 +9,8 @@ import type { DemoRole, MediaSourceStatus, ReuseState, StockMediaAsset } from "@
 
 export type AssetCardPresenter = {
   approvalLabel: string;
+  betaVisibilityLabel: string;
+  reuseAnswerLabel: string;
   sourceLabel: string;
   tagLabels: string[];
 };
@@ -31,6 +33,8 @@ export type AssetDetailPresenter = {
 export type ReviewPresenter = {
   nextAction: string;
   nextDetail: string;
+  betaVisibility: string;
+  reuseAnswer: string;
   detailRows: MetadataRow[];
   evidenceTableRows: Array<[string, string, string, string]>;
 };
@@ -49,25 +53,35 @@ function safeCollection(asset: StockMediaAsset) {
 
 function safeSourceLabel(source?: MediaSourceStatus | null) {
   const label = sourceLabel(source);
-  if (/fixture|fallback/i.test(label)) return "Beta fixture library";
-  if (/resourcespace/i.test(label)) return "DAM record";
+  if (/fixture|fallback|demo/i.test(label)) return "Local demo data";
+  if (/resourcespace|live dam|dam/i.test(label)) return "Hosted DAM instance";
+  if (/local/i.test(label)) return "Local demo data";
   return label;
 }
 
+export function betaVisibilityLabel(assetOrAllowed?: StockMediaAsset | boolean | null) {
+  if (typeof assetOrAllowed === "boolean") return assetOrAllowed ? "Visible in beta" : "Hidden from beta";
+  if (!assetOrAllowed) return "Visibility unknown";
+  if (assetOrAllowed.visibilityTier === "archive" || assetOrAllowed.status === "Do Not Use") return "Hidden from beta";
+  return "Visible in beta";
+}
+
+export function reuseAnswerLabel(state: ReuseState) {
+  if (state === "portal-ready" || state === "internal-ready") return "Reuse approved";
+  if (state === "blocked-archive" || state === "blocked-do-not-use") return "Blocked from reuse";
+  return "Needs review before reuse";
+}
+
 function cardApprovalLabel(state: ReuseState) {
-  if (state === "portal-ready") return "Public approved";
-  if (state === "internal-ready") return "Internal approved";
-  if (state === "blocked-archive") return "Archive only";
-  if (state === "blocked-do-not-use") return "Restricted";
-  return "Needs review";
+  return reuseAnswerLabel(state);
 }
 
 function useSummary(packet: PortalReuseDecisionPacket) {
-  if (packet.viewerVerdict.canDownload) return "Approved copy is ready for public derivative use.";
-  if (packet.reuse.state === "internal-ready") return "Approved for internal ministry use.";
+  if (packet.viewerVerdict.canDownload) return "Approved copy is ready for scoped derivative use.";
+  if (packet.reuse.state === "internal-ready") return "Reuse is approved for internal ministry scope.";
   if (packet.reuse.state === "blocked-archive") return "Kept for reference; not for public delivery.";
   if (packet.reuse.state === "blocked-do-not-use") return "Not available for reuse.";
-  return "Reviewer action needed before public use.";
+  return "Reviewer action needed before reuse or download.";
 }
 
 function useReason(packet: PortalReuseDecisionPacket) {
@@ -78,7 +92,8 @@ function useReason(packet: PortalReuseDecisionPacket) {
 export function presentAssetCardContext(asset: StockMediaAsset, role: DemoRole): AssetCardPresenter {
   const packet = buildPortalReuseDecision(asset, role);
   const tagLabels = unique([
-    cardApprovalLabel(packet.reuse.state),
+    betaVisibilityLabel(asset),
+    reuseAnswerLabel(packet.reuse.state),
     compactValue(asset.usageScope),
     compactValue(asset.peopleRisk),
     ...(asset.tjcTerms || []),
@@ -87,6 +102,8 @@ export function presentAssetCardContext(asset: StockMediaAsset, role: DemoRole):
 
   return {
     approvalLabel: cardApprovalLabel(packet.reuse.state),
+    betaVisibilityLabel: betaVisibilityLabel(asset),
+    reuseAnswerLabel: reuseAnswerLabel(packet.reuse.state),
     sourceLabel: safeCollection(asset),
     tagLabels
   };
@@ -111,13 +128,14 @@ export function presentAssetDetailContext(asset: StockMediaAsset, role: DemoRole
     packet,
     approved,
     status: approved ? "Approved" : packet.viewerVerdict.tone === "unavailable" ? "Restricted" : assetEnterpriseStatus(asset),
-    canUseTitle: approved ? "Ready to use" : packet.viewerVerdict.title,
+    canUseTitle: reuseAnswerLabel(packet.reuse.state),
     canUseSummary: useSummary(packet),
     canUseReason: useReason(packet),
     primaryActionLabel: approved ? "Download approved copy" : packet.viewerVerdict.primaryAction,
     requestReviewLabel: approved ? "Review usage notes" : "Request DAM review",
     summaryFacts: unique([
-      approved ? "Ready to use" : cardApprovalLabel(packet.reuse.state),
+      betaVisibilityLabel(asset),
+      reuseAnswerLabel(packet.reuse.state),
       packet.access.downloadOriginal.label || "Source file restricted",
       assetType(asset)
     ]),
@@ -153,19 +171,21 @@ export function presentReviewContext({
   const nextAction = pendingStatus
     ? "Review pending sync"
     : approvalReady
-      ? "Queue final reviewer decision"
+      ? "Queue decision"
       : nextBestAction.replace(/^Complete evidence: /, "Complete ");
   const nextDetail = pendingStatus
     ? "Pending sync. Review before another decision."
     : packet.viewerVerdict.canDownload
-      ? "Public-approved copy is already safe for derivative use."
+      ? "Reuse-approved copy is already safe within recorded scope."
       : approvalReady
-        ? "Evidence checks are complete in portal UI."
+        ? "Evidence checks are complete. Queue decision unless ResourceSpace write mapping is proven."
         : "Required evidence stays incomplete.";
 
   return {
     nextAction,
     nextDetail,
+    betaVisibility: betaVisibilityLabel(asset),
+    reuseAnswer: reuseAnswerLabel(packet.reuse.state),
     detailRows: [
       ["Title", displayTitle(asset)],
       ["Reference", assetRecordRef(asset)],
@@ -174,12 +194,13 @@ export function presentReviewContext({
       ["File type", assetType(asset).toUpperCase()],
       ["File size", formatBytes(asset.fileSizeBytes)],
       ["Dimensions", metadataValue(asset.imageDimensions)],
-      ["Reuse state", packet.reuse.label]
+      ["Beta visibility", betaVisibilityLabel(asset)],
+      ["Reuse answer", reuseAnswerLabel(packet.reuse.state)]
     ],
     evidenceTableRows: [
       ["Assigned to", queueLabel, "Current status", currentStatus],
-      ["Policy", asset.downloadPolicy || "not-downloadable", "Portal decision", pendingStatus || packet.reuse.label],
-      ["Record source", "DAM record", "Next action", nextAction]
+      ["Policy", asset.downloadPolicy || "not-downloadable", "Reuse answer", pendingStatus || reuseAnswerLabel(packet.reuse.state)],
+      ["Source truth", "Hosted DAM instance", "Next action", nextAction]
     ]
   };
 }
@@ -206,12 +227,12 @@ export function presentBrandKitContext(governance?: BrandKitGovernance, role: De
     } as const;
   }
 
-  if (governance.canDownloadKit) {
+  if (governance.deliveryReady) {
     return {
-      nextTitle: "Kit ready for download gate",
-      nextDetail: "Every mapped asset is Portal Ready. Source records remain canonical in the DAM.",
-      nextAction: "Prepare kit packet",
-      tone: "ready"
+      nextTitle: "Kit readiness packet ready",
+      nextDetail: "Every mapped asset is Portal Ready. Live ZIP/share delivery remains disabled in beta.",
+      nextAction: "View packet",
+      tone: "review"
     } as const;
   }
 

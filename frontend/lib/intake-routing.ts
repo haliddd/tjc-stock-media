@@ -7,6 +7,7 @@ export const LARGE_MEDIA_LIMIT_BYTES = 100 * 1024 * 1024;
 export type IntakeRoutingReasonId =
   | "doctrine-sacrament-review"
   | "music-rights-review"
+  | "testimony-pastoral-review"
   | "minors-consent-review"
   | "source-provenance-review"
   | "rendition-readiness-review"
@@ -38,11 +39,15 @@ type IntakeRoutingInput = {
   minorsVisible?: string;
   usageRights?: string;
   consentRestrictions?: string;
+  doctrineSacramentSensitive?: string;
+  testimonyPastoralSensitive?: string;
+  hymnMusicPresent?: string;
 };
 
 const sacramentPattern = /\b(baptism|sacrament|holy communion|communion|footwashing|holy spirit|prayer in spirit|doctrine)\b/i;
 const musicPattern = /\b(hymn|hymns of praise|music|choir|worship audio|worship video|livestream|song|singing)\b/i;
 const youthPattern = /\b(minor|minors|children|child|youth|teen|re\b|religious education)\b/i;
+const testimonyPattern = /\b(testimony|pastoral|sensitive story|healing|illness|grief|counseling|spiritual battle)\b/i;
 
 const canonicalTagLookup = new Set(
   [...canonicalTags.visibleTags, ...canonicalTags.tjcTerms].map((tag) => tag.toLowerCase())
@@ -70,9 +75,13 @@ function splitSuggestionTags(value?: string) {
     .filter(Boolean);
 }
 
-export function fileRequiresAdminIntake(file: Pick<File, "name" | "size" | "type">) {
+export function fileIsVideoOrAudio(file: Pick<File, "name" | "type">) {
   const name = file.name.toLowerCase();
-  return file.size > LARGE_MEDIA_LIMIT_BYTES || /^video\//i.test(file.type) || /^audio\//i.test(file.type) || /\.(mov|mp4|m4v|avi|mkv|mp3|wav|m4a|aac|flac)$/i.test(name);
+  return /^video\//i.test(file.type) || /^audio\//i.test(file.type) || /\.(mov|mp4|m4v|avi|mkv|mp3|wav|m4a|aac|flac)$/i.test(name);
+}
+
+export function fileRequiresAdminIntake(file: Pick<File, "name" | "size" | "type">) {
+  return file.size > LARGE_MEDIA_LIMIT_BYTES || fileIsVideoOrAudio(file);
 }
 
 export function intakeDefaultsToNeedsReview() {
@@ -91,7 +100,10 @@ export function routeUploadIntakeForReview(input: IntakeRoutingInput): IntakeRou
     input.intakeNotes,
     input.suggestedTags,
     input.usageRights,
-    input.consentRestrictions
+    input.consentRestrictions,
+    input.doctrineSacramentSensitive,
+    input.testimonyPastoralSensitive,
+    input.hymnMusicPresent
   ]);
   const files = input.files || [];
 
@@ -104,7 +116,7 @@ export function routeUploadIntakeForReview(input: IntakeRoutingInput): IntakeRou
       reason: "Video, audio, or files over the browser limit must be placed through Shared Drive/admin intake before DAM review."
     }));
   }
-  if (sacramentPattern.test(text)) {
+  if (/yes|unknown/i.test(input.doctrineSacramentSensitive || "") || sacramentPattern.test(text)) {
     addUnique(reasons, routingReason({
       id: "doctrine-sacrament-review",
       label: "Doctrine/sacrament review",
@@ -113,13 +125,22 @@ export function routeUploadIntakeForReview(input: IntakeRoutingInput): IntakeRou
       reason: "Sacrament or doctrine terms require domain review before any public reuse decision."
     }));
   }
-  if (musicPattern.test(text)) {
+  if (/yes|unknown/i.test(input.hymnMusicPresent || "") || musicPattern.test(text)) {
     addUnique(reasons, routingReason({
       id: "music-rights-review",
       label: "Music/hymn rights review",
       queue: "music-rights",
       reviewer: "music-rights",
       reason: "Hymn, music, choir, livestream, or worship audio/video terms require music-rights evidence."
+    }));
+  }
+  if (/yes|unknown/i.test(input.testimonyPastoralSensitive || "") || testimonyPattern.test(text)) {
+    addUnique(reasons, routingReason({
+      id: "testimony-pastoral-review",
+      label: "Testimony/pastoral sensitivity review",
+      queue: "pastoral-sensitivity",
+      reviewer: "pastoral-sensitivity",
+      reason: "Testimony or pastoral-sensitive context needs restricted review before broad reuse."
     }));
   }
   if (input.peopleVisible === "Unknown" || input.minorsVisible === "Unknown" || input.minorsVisible === "Yes" || youthPattern.test(text)) {
@@ -192,6 +213,15 @@ export function routeAssetForReview(asset: StockMediaAsset): IntakeRoutingReason
       queue: "music-rights",
       reviewer: "music-rights",
       reason: "Music or hymn context needs rights basis, channel clearance, and notice."
+    }));
+  }
+  if (testimonyPattern.test(text) || asset.sensitivityClass === "testimony-sensitive") {
+    addUnique(reasons, routingReason({
+      id: "testimony-pastoral-review",
+      label: "Testimony/pastoral sensitivity review",
+      queue: "pastoral-sensitivity",
+      reviewer: "pastoral-sensitivity",
+      reason: "Testimony or pastoral-sensitive context needs restricted review before broad reuse."
     }));
   }
   if (!asset.peopleRisk || asset.peopleRisk === "Unknown" || assetHasChildrenYouthRisk(asset)) {

@@ -95,7 +95,8 @@ API path:
 ```bash
 mkdir -p docs/feedback
 curl -sS \
-  "https://tjc-stock-media.vercel.app/api/beta-feedback/export?role=DAM%20Admin&status=agent-ready" \
+  -H "Cookie: <trusted-beta-or-sso-admin-session>" \
+  "https://tjc-stock-media.vercel.app/api/beta-feedback/export?status=agent-ready" \
   -o docs/feedback/tjc-beta-feedback-$(date -u +%F)-agent-ready.json
 ```
 
@@ -104,14 +105,16 @@ For urgent P0/P1:
 ```bash
 mkdir -p docs/feedback
 curl -sS \
-  "https://tjc-stock-media.vercel.app/api/beta-feedback/export?role=DAM%20Admin&status=agent-ready&severity=critical" \
+  -H "Cookie: <trusted-beta-or-sso-admin-session>" \
+  "https://tjc-stock-media.vercel.app/api/beta-feedback/export?status=agent-ready&severity=critical" \
   -o docs/feedback/tjc-beta-feedback-$(date -u +%F)-p0.json
 curl -sS \
-  "https://tjc-stock-media.vercel.app/api/beta-feedback/export?role=DAM%20Admin&status=agent-ready&severity=high" \
+  -H "Cookie: <trusted-beta-or-sso-admin-session>" \
+  "https://tjc-stock-media.vercel.app/api/beta-feedback/export?status=agent-ready&severity=high" \
   -o docs/feedback/tjc-beta-feedback-$(date -u +%F)-p1.json
 ```
 
-Export packet schema is `tjc-beta-feedback-export.v1`. It includes filters, counts, and records. The API is DAM Admin only; Viewer export must stay denied.
+Export packet schema is `tjc-beta-feedback-export.v1`. It includes filters, counts, and records. The API is DAM Admin only through trusted beta session/SSO; Viewer export must stay denied.
 
 Local fallback storage path is `data/runtime/beta-feedback.json`. Hosted beta should use Vercel KV for durable feedback storage and Vercel Blob for attachments before widening beyond tiny internal testing.
 
@@ -140,9 +143,10 @@ P1 may pause only the affected role/path if the incident lead confirms no P0 ris
 7. Decide: incident lead records one of `resume`, `resume affected role only`, `hold next batch`, or `no-go until fixed`.
 8. Export: mark implementation-ready records `agent-ready` and export JSON.
 9. Verify: after fix or operational decision, rerun relevant smoke:
-   - `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke`
-   - `BASE_URL=http://localhost:4868 make portal-feedback-smoke`
-   - `BASE_URL=http://localhost:4868 make portal-beta-rehearsal`
+   - `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe`
+   - Mutating hosted verification only with approval: `PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1 PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-or-ticket> BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke`
+   - `BASE_URL=http://localhost:4871 make portal-feedback-smoke`
+   - `BASE_URL=http://localhost:4871 make portal-beta-rehearsal`
    - Add `portal-download-ticket-smoke`, `portal-writeback-guard-smoke`, or `portal-browser-qa` for related incidents.
 10. Resume: send tester resume wording only after incident lead approves.
 
@@ -169,7 +173,7 @@ Could you add one Report issue entry with your role, route, device/browser, what
 Resume testing:
 
 ```text
-Beta testing may resume for [scope]. The reviewed issue is [fixed / documented as a known beta limit / isolated to a paused path]. Continue using only your assigned role link and Report issue for anything confusing or unsafe.
+Beta testing may resume for [scope]. The reviewed issue is [fixed / documented as a known beta limit / isolated to a paused path]. Continue using only your assigned trusted beta session or SSO identity and Report issue for anything confusing or unsafe.
 ```
 
 Close next-batch gate:

@@ -299,6 +299,10 @@ export function auditStorageReadiness(): AuditStorageReadiness {
   };
 }
 
+export function createAuditEventId(createdAt = new Date()) {
+  return `${safeIsoTimestampIdPart(createdAt)}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
 export function sanitizeAuditDetailsForRole(role: DemoRole, details: AuditEventRecord["details"]): AuditEventRecord["details"] {
   const safe = safeDetails(details);
   if (!safe) return undefined;
@@ -431,13 +435,19 @@ function normalizeAuditEvent(input: unknown): AuditEventRecord | null {
   };
 }
 
-export function appendAuditEvent(event: Omit<AuditEventRecord, "id" | "createdAt" | "actor"> & { actor?: string }) {
-  const createdAt = new Date();
-  const draft: AuditEventRecord = {
-    id: `${safeIsoTimestampIdPart(createdAt)}-${crypto.randomUUID().slice(0, 8)}`,
+function auditEventDraft(event: AuditEventDraft, createdAt: Date, id = createAuditEventId(createdAt)): AuditEventRecord {
+  return {
+    id,
     createdAt: createdAt.toISOString(),
     actor: event.actor || event.role,
     ...event
+  };
+}
+
+export function appendAuditEvent(event: AuditEventDraft) {
+  const createdAt = new Date();
+  const draft: AuditEventRecord = {
+    ...auditEventDraft(event, createdAt)
   };
   const record = normalizeAuditEvent(draft) || draft;
   try {
@@ -448,13 +458,14 @@ export function appendAuditEvent(event: Omit<AuditEventRecord, "id" | "createdAt
   return record;
 }
 
-export function appendRequiredAuditEvent(event: Omit<AuditEventRecord, "id" | "createdAt" | "actor"> & { actor?: string }) {
+export function appendRequiredAuditEvent(event: AuditEventDraft) {
+  return appendRequiredAuditEventWithId(createAuditEventId(), event);
+}
+
+export function appendRequiredAuditEventWithId(id: string, event: AuditEventDraft) {
   const createdAt = new Date();
   const draft: AuditEventRecord = {
-    id: `${safeIsoTimestampIdPart(createdAt)}-${crypto.randomUUID().slice(0, 8)}`,
-    createdAt: createdAt.toISOString(),
-    actor: event.actor || event.role,
-    ...event
+    ...auditEventDraft(event, createdAt, id)
   };
   const record = normalizeAuditEvent(draft);
   if (!record) throw new Error("Audit event normalization failed.");

@@ -155,6 +155,27 @@ defaults to `publish_status = Needs Review` and `usage_scope = Do Not Publish`.
 Large video/audio and files over the browser limit route to Shared Drive/admin
 intake so originals stay under master custody.
 
+### Joanna Mini Beta Required Intake Fields
+
+For the June 16 Joanna-testable mini beta, contributor-facing required fields are
+intentionally narrow:
+
+| Field | Maps To |
+|---|---|
+| Title/name | `human_title_final` draft / intake title |
+| Event/source | `event_name` and source context |
+| Contributor | `source` or photographer/uploader context |
+| Rights/source type | `rights_status`, `rights_basis`, source class note |
+| Usage intent | `usage_scope` / requested usage |
+| People/minors visible | `people_visible`, `minors_visible` |
+| Notes | `approval_notes`, consent/restriction notes, reviewer notes |
+
+Date defaults from EXIF or exported date metadata when available. Event year or
+folder context is fallback when metadata is unavailable. Obviously wrong dates
+should be flagged for correction. Filename remains secondary to metadata and
+approved search tags. Original/master vs derivative/approved-copy distinction
+must remain visible in reviewer/admin context.
+
 Smart routing reasons are explainable hints:
 
 | Routing reason | Trigger examples | Review owner |

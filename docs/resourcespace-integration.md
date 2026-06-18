@@ -148,29 +148,29 @@ If any condition fails, the pending write stays queued or sync-failed and the UI
 Rehearse the no-live-writeback guard before inviting testers:
 
 ```bash
-BASE_URL=http://localhost:4868 make portal-writeback-guard-smoke
+BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke
 ```
 
 This smoke expects ResourceSpace live writeback to be unavailable. It verifies Admin readiness reports review writeback as non-operational, incomplete reviewer evidence is blocked, complete reviewer evidence returns `202` queued pending-write truth, and pending-write readiness remains visible. Do not run it against a staging server where live ResourceSpace writeback has intentionally been enabled.
 
 ## SSO-Ready Shim
 
-Production SSO is deferred, but the backend can map trusted headers to portal roles when `SSO_TRUSTED_HEADERS=1` or `SSO_PROVIDER=cloudflare-access`. Supported inputs include Cloudflare Access style email headers, generic auth request group headers, and optional `SSO_ROLE_MAP_JSON`. Local query/form roles remain beta fallback only.
+Production SSO is deferred. Local rehearsal can map trusted-header shim inputs when `SSO_TRUSTED_HEADERS=1`, but production no longer treats generic `x-tjc-role`, `x-auth-request-email`, or `x-auth-request-groups` as authority. Production trusted SSO currently requires `SSO_PROVIDER=cloudflare-access` plus Cloudflare Access assertion/email headers; role mapping comes from Cloudflare Access groups and optional `SSO_ROLE_MAP_JSON`. Query/form roles are never hosted authority; local overrides require explicit server-only override env and are disabled for protected proof.
 
 Rehearse the trusted-header path before inviting teammates:
 
 ```bash
 cd frontend
-SSO_TRUSTED_HEADERS=1 TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media npm exec next dev -- --port 4876
+SSO_TRUSTED_HEADERS=1 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=0 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=0 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0 TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run npm exec next dev -- --port 4871
 ```
 
 Then run:
 
 ```bash
-BASE_URL=http://localhost:4876 make portal-sso-smoke
+BASE_URL=http://localhost:4871 make portal-sso-smoke
 ```
 
-The smoke checks that trusted Reviewer, Contributor, and DAM Admin headers override beta `role=Viewer` inputs for read, review, package, collection, upload, feedback, and download-gate routes while unsafe downloads remain blocked.
+The smoke checks that local trusted-header rehearsal personas override beta `role=Viewer` inputs for read, review, package, collection, upload, feedback, and download-gate routes while unsafe downloads remain blocked. This is local proof only; hosted production role proof still requires beta session cookies or Cloudflare Access assertion/email proof.
 
 ## Durable Analytics
 
@@ -180,13 +180,13 @@ Rehearse local durable analytics before relying on Insights for beta decisions:
 
 ```bash
 cd frontend
-PORTAL_USAGE_LOGGING=1 TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media npm exec next dev -- --port 4878
+SSO_TRUSTED_HEADERS=1 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=0 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=0 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0 PORTAL_USAGE_LOGGING=1 TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run npm exec next dev -- --port 4871
 ```
 
 Then run:
 
 ```bash
-BASE_URL=http://localhost:4878 make portal-usage-smoke
+BASE_URL=http://localhost:4871 make portal-usage-smoke
 ```
 
 The smoke records search, dynamically selected asset view, dynamically selected blocked download gate, dynamically selected review action, and Brand Hub usage events, then verifies the SQLite database contains those event types with actor identity and a unique search marker.
@@ -199,13 +199,13 @@ Rehearse delivery privacy before inviting teammates:
 
 ```bash
 cd frontend
-TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media npm exec next dev -- --port 4880
+SSO_TRUSTED_HEADERS=1 PORTAL_ALLOW_BETA_ROLE_OVERRIDE=0 NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH=0 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0 TJC_STOCK_MEDIA_ROOT=/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run npm exec next dev -- --port 4871
 ```
 
 Then run:
 
 ```bash
-BASE_URL=http://localhost:4880 make portal-delivery-smoke
+BASE_URL=http://localhost:4871 make portal-delivery-smoke
 ```
 
 The smoke checks Viewer/Contributor search and asset payloads, blocked Viewer download, blocked Reviewer download-gate POST, and DAM Admin S3 readiness copy. Admin readiness may report Amazon S3 setup status, but it must not claim production signed delivery until a real staging S3 smoke exists.
@@ -215,17 +215,21 @@ The smoke checks Viewer/Contributor search and asset payloads, blocked Viewer do
 After a Vercel deployment, run:
 
 ```bash
-BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
+BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe
 ```
 
-The smoke checks `/`, `/upload`, `/review`, `/admin`, and `/guide`, verifies feedback POST plus DAM Admin feedback inbox access, proves Viewer feedback inbox access is denied, and selects a current blocked asset before verifying Viewer download still returns `403` without private URLs.
+The read-only probe checks unauthenticated hosted route protection and query-role denial without POST, hosted writeback, env mutation, raw body/header capture, or tester invite behavior. The mutating hosted smoke checks feedback POST and DAM Admin feedback inbox only after explicit owner approval:
+
+```bash
+PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1 PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-or-ticket> BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
+```
 
 ## Feedback Operations Smoke
 
 Before widening teammate testing, rehearse feedback intake and triage against a local or hosted beta server:
 
 ```bash
-BASE_URL=http://localhost:4868 make portal-feedback-smoke
+BASE_URL=http://localhost:4871 make portal-feedback-smoke
 ```
 
 The smoke submits Viewer feedback, proves Viewer cannot open the feedback inbox, verifies DAM Admin can list it, patches severity/status/notes, and confirms Admin readiness reports the feedback storage mode. Local runs use `data/runtime/beta-feedback.json`; hosted runs should use Vercel KV/Blob when configured.

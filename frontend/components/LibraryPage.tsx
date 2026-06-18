@@ -178,12 +178,12 @@ export function LibraryPage() {
   }, [ready, role, selectedView, submittedQuery, selectedCollection]);
 
   const apiUrl = useMemo(() => {
-    const params = new URLSearchParams({ role, q: submittedQuery, sort, limit: String(pageLimit), offset: String(pageOffset) });
+    const params = new URLSearchParams({ q: submittedQuery, sort, limit: String(pageLimit), offset: String(pageOffset) });
     if (selectedView) params.set("view", selectedView);
     if (selectedCollection) params.set("collection", selectedCollection);
     filters.forEach((filter) => params.append("filter", filter));
     return `/api/assets/search?${params.toString()}`;
-  }, [role, submittedQuery, sort, pageLimit, pageOffset, selectedView, selectedCollection, filters]);
+  }, [submittedQuery, sort, pageLimit, pageOffset, selectedView, selectedCollection, filters]);
 
   useEffect(() => {
     if (!ready) return;
@@ -219,7 +219,7 @@ export function LibraryPage() {
       return;
     }
     let cancelled = false;
-    const params = new URLSearchParams({ role: "Viewer", view: "batch-approved-blockers", limit: "6" });
+    const params = new URLSearchParams({ view: "batch-approved-blockers", limit: "6" });
     fetch(`/api/assets/search?${params.toString()}`)
       .then(async (response) => {
         if (!response.ok) return null;

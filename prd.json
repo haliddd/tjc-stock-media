@@ -299,7 +299,7 @@
         "Hosted smoke checks Viewer, Contributor, Reviewer, DAM Admin, and Guide pages.",
         "Hosted smoke checks feedback submission, Viewer feedback inbox denial, and DAM Admin feedback inbox visibility.",
         "Hosted smoke selects a currently blocked asset before proving Viewer download remains blocked without private URLs.",
-        "Add teammate invite docs with role links, missions, safety copy, and feedback expectations.",
+        "Add teammate invite docs with trusted beta session/SSO entry paths, missions, safety copy, and feedback expectations.",
         "Launch readiness validates the hosted smoke script exists.",
         "Typecheck passes.",
         "Build passes.",
@@ -307,7 +307,7 @@
       ],
       "priority": 18,
       "passes": true,
-      "notes": "Added scripts/portal-hosted-smoke.sh, Make/launch-readiness coverage, and docs/teammate-beta-invite-pack.md. The hosted smoke checks stable Vercel routes, feedback POST, Viewer feedback denial, DAM Admin feedback inbox, and dynamic blocked download safety. Verified by bash syntax check, frontend-check, launch-readiness, hosted Vercel smoke, JSON parse, and diff check."
+      "notes": "Added scripts/portal-hosted-smoke.sh, Make/launch-readiness coverage, and docs/teammate-beta-invite-pack.md. June 15 safety update keeps hosted mutating smoke approval-gated and current invite docs draft-only; hosted role access must come from trusted beta session/SSO, not query-role links. Verified by bash syntax check, frontend-check, launch-readiness, hosted read-only probe guard, evidence-packet guard, JSON parse, and diff check."
     },
     {
       "id": "US-019",
@@ -425,6 +425,34 @@
       "priority": 24,
       "passes": true,
       "notes": "Added saved-search-store, /api/saved-searches, Library Save this search API wiring, saved-search-storage readiness row, Make/launch-readiness coverage, beta docs, and portal-saved-search-smoke. The smoke proves role gates, empty-search rejection, sanitization/deduping, Reviewer listing, and local-json wider-rollout warning. Verified by typecheck, frontend-check, launch-readiness, API smoke, saved-search smoke, JSON parse, and diff check."
+    },
+    {
+      "id": "US-025",
+      "title": "Fix query-role trust before premium UI proof",
+      "description": "As a beta safety operator, I want API routes to ignore query/body role elevation unless a trusted beta session, trusted SSO identity, or explicit server-only local override exists, so local and hosted proof cannot be faked by ?role=Reviewer.",
+      "acceptanceCriteria": [
+        "Create and use an isolated worktree for the safe 30-40h lane while sibling sessions are active.",
+        "Patch request identity/session resolution so production/hosted query role is never trusted.",
+        "Default unauthenticated local smoke callers to Viewer unless trusted identity/session or explicit server-only local override exists.",
+        "Add or extend guard coverage so localhost query-role trust cannot return.",
+        "Add or extend smoke coverage for reviewer query role, admin query role, Viewer/Contributor redaction, and blocked download behavior.",
+        "Run guard, typecheck, test, build, portal-api-smoke, and portal-download-ticket-smoke against explicit BASE_URL.",
+        "Update evidence docs 00 through 12 plus daily checkpoint with honest NO-GO posture.",
+        "Add safe lane guard so isolated worktree path, branch, ledger, BASE_URL, sibling sessions, and forbidden surfaces stay machine-checked.",
+        "Add runtime isolation guard so .runtime, frontend/.next, screenshots, hosted summary, and evidence packet proof paths stay inside the isolated worktree.",
+        "Make launch readiness fail if protected local smokes regress to query-role-only curl paths.",
+        "Add repeatable hosted read-only probe command that does not POST, mutate hosted data, or store raw response bodies.",
+        "Require beta role/marker headers to come from a trusted beta session, not caller-supplied headers.",
+        "Add hosted read-only probe guard, hosted smoke mutation guard, and evidence packet guard so proof cannot drift into mutation or false-GO wording.",
+        "Make launch readiness require current Team Beta NO-GO signoff after the June 15 P0 until renewed approval exists.",
+        "Make user-facing invite/demo packets draft-only and block stale hosted query-role links or send-ready claims.",
+        "Make evidence docs record backup/restore as blocked when real .env, ResourceSpace config, or backups are absent instead of faking proof.",
+        "Make hosted read-only probe evidence timestamped and guard the docs against stale hosted summary results.",
+        "Make API identity guard fail if route-level searchParams.get(\"role\") reads do not feed the identity/session seam directly."
+      ],
+      "priority": 25,
+      "passes": true,
+      "notes": "Completed in isolated worktree codex/safe-ui-beta-proof-2026-06-15 at /Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run. Removed implicit localhost query-role trust, confined local overrides to server-only env, added trusted-header role hydration, required beta role/marker headers to come from a trusted beta session, strengthened api-identity-guard and portal-api-smoke, made legacy local smokes use scripts/portal-smoke-trusted-identity.sh, added safe lane guard, added runtime isolation guard, added make portal-hosted-readonly-probe for non-mutating hosted probes, added hosted read-only probe guard, hosted smoke mutation guard, and evidence packet guard, and reran guards, typecheck, 86 tests, build, API smoke, download-ticket smoke, broader local smokes, browser QA, launch-readiness, and hosted read-only probe. Latest hosted read-only summary is timestamped at 2026-06-16T14:22:04.520Z and docs are guarded against stale summary drift. Current self-owned browser QA is PASS at 2026-06-16T13:37:58.461Z with 20 pages, six viewports, 32 screenshots, 0 failures, 0 console errors, 0 network failures, and 0 warnings. Client privileged GET paths no longer append query-role authority for asset detail, review queue, admin readiness, brand kit, or search reads. Evidence docs 00 through 12 plus daily checkpoint now record local safety PASS, current browser QA PASS, partial hosted read-only PASS, mutating hosted smoke approval gating, current Team Beta NO-GO signoff after the June 15 P0, draft-only invite packets, trusted beta session/SSO hosted entry paths instead of query-role invite links, backup/restore blocked because real .env/resourcespace config/backups are absent, route-level searchParams.get(\"role\") identity-seam guard coverage, and broader NO-GO until canonical/ResourceSpace/Drive/durable/authenticated-hosted gates pass."
     }
   ]
 }

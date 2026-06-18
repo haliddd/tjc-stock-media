@@ -109,7 +109,7 @@ Required gates:
 **Description:** As the CEO/CTO, I need the production identity provider and role map decided so agents do not guess auth architecture.
 
 **Acceptance Criteria:**
-- [ ] Choose identity provider: Cloudflare Access, Google Workspace SSO, church-host proxy headers, or another approved provider.
+- [ ] Choose identity provider: Cloudflare Access is the current production-supported trusted-header path; Google Workspace SSO, church-host proxy headers, or another provider require an approved adapter before headers are trusted.
 - [ ] Document group-to-role mapping for Viewer, Contributor, Reviewer, and DAM Admin.
 - [ ] Document which role can access internal-only assets.
 - [ ] Document emergency admin access and offboarding flow.
@@ -476,17 +476,19 @@ make launch-readiness
 Targeted checks:
 
 ```bash
-BASE_URL=http://127.0.0.1:<port> make portal-api-smoke
-BASE_URL=http://127.0.0.1:<port> make portal-browser-qa
-BASE_URL=http://127.0.0.1:<port> make portal-sso-smoke
-BASE_URL=http://127.0.0.1:<port> make portal-delivery-smoke
-BASE_URL=http://127.0.0.1:<port> make portal-writeback-guard-smoke
-BASE_URL=http://127.0.0.1:<port> make portal-package-smoke
-BASE_URL=http://127.0.0.1:<port> make portal-saved-search-smoke
-BASE_URL=http://127.0.0.1:<port> make portal-feedback-smoke
-BASE_URL=http://127.0.0.1:<port> make portal-beta-rehearsal
-BASE_URL=http://127.0.0.1:<port> make portal-usage-smoke
-BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
+BASE_URL=http://localhost:4871 make portal-api-smoke
+BASE_URL=http://localhost:4871 make portal-browser-qa
+BASE_URL=http://localhost:4871 make portal-sso-smoke
+BASE_URL=http://localhost:4871 make portal-delivery-smoke
+BASE_URL=http://localhost:4871 make portal-writeback-guard-smoke
+BASE_URL=http://localhost:4871 make portal-package-smoke
+BASE_URL=http://localhost:4871 make portal-saved-search-smoke
+BASE_URL=http://localhost:4871 make portal-feedback-smoke
+BASE_URL=http://localhost:4871 make portal-beta-rehearsal
+BASE_URL=http://localhost:4871 make portal-usage-smoke
+BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe
+# Mutating hosted smoke requires explicit owner approval:
+# PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1 PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-or-ticket> BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke
 ```
 
 Production/ops gates:

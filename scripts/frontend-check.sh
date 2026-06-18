@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-frontend-check}" node scripts/safe-lane-headroom-guard.mjs
+
 LOCK_DIR=".runtime/locks/frontend-check.lock"
 mkdir -p ".runtime/locks"
 
@@ -50,6 +52,7 @@ fi
 
 (cd frontend && npm run typecheck)
 rm -rf frontend/.next
+node scripts/dev-server-build-guard.mjs
 (cd frontend && npm run build)
 
 [ -f frontend/.next/required-server-files.json ] || { echo "FAIL: Next production server manifest missing"; exit 1; }

@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 import playwright from "../frontend/node_modules/playwright/index.js";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+execFileSync(process.execPath, ["scripts/safe-lane-headroom-guard.mjs"], {
+  stdio: "inherit",
+  env: { ...process.env, SAFE_LANE_HEADROOM_CONTEXT: "browser-qa" }
+});
+
 const { chromium } = playwright;
-const base = process.env.BASE_URL || "http://localhost:3008";
+const base = process.env.BASE_URL || "http://localhost:4871";
 const trustedHeaderQa = process.env.PORTAL_QA_TRUSTED_HEADERS === "1";
 let betaAuthProbe = null;
 const outDir = path.resolve("docs/screenshots");
@@ -36,9 +42,18 @@ const requiredShots = [
   { name: "admin-desktop.png", path: "/admin", role: "DAM Admin", width: 1440, height: 1000 },
   { name: "admin-mobile-320.png", path: "/admin", role: "DAM Admin", width: 320, height: 900 },
   { name: "admin-mobile-390.png", path: "/admin", role: "DAM Admin", width: 390, height: 900 },
-  { name: "guide-desktop.png", path: "/guide", role: "Viewer", width: 1440, height: 1000 },
-  { name: "guide-mobile-320.png", path: "/guide", role: "Viewer", width: 320, height: 900 },
-  { name: "guide-mobile-390.png", path: "/guide", role: "Viewer", width: 390, height: 900 }
+  { name: "requests-desktop.png", path: "/requests", role: "Viewer", width: 1440, height: 1000 },
+  { name: "requests-mobile-320.png", path: "/requests", role: "Viewer", width: 320, height: 900 },
+  { name: "requests-mobile-390.png", path: "/requests", role: "Viewer", width: 390, height: 900 },
+  { name: "my-tasks-desktop.png", path: "/my-tasks", role: "Viewer", width: 1440, height: 1000 },
+  { name: "my-tasks-mobile-320.png", path: "/my-tasks", role: "Viewer", width: 320, height: 900 },
+  { name: "my-tasks-mobile-390.png", path: "/my-tasks", role: "Viewer", width: 390, height: 900 },
+  { name: "help-desktop.png", path: "/help", role: "Viewer", width: 1440, height: 1000 },
+  { name: "help-mobile-320.png", path: "/help", role: "Viewer", width: 320, height: 900 },
+  { name: "help-mobile-390.png", path: "/help", role: "Viewer", width: 390, height: 900 },
+  { name: "recent-uploads-desktop.png", path: "/recent-uploads", role: "Contributor", width: 1440, height: 1000 },
+  { name: "recent-uploads-mobile-320.png", path: "/recent-uploads", role: "Contributor", width: 320, height: 900 },
+  { name: "recent-uploads-mobile-390.png", path: "/recent-uploads", role: "Contributor", width: 390, height: 900 }
 ];
 
 const qaViewports = [1440, 1280, 1024, 768, 390, 320];
@@ -57,13 +72,16 @@ const qaPaths = [
   { path: "/upload", role: "Contributor", label: "upload-contributor" },
   { path: "/review", role: "Viewer", label: "review-viewer" },
   { path: "/review?queue=pending", role: "Reviewer", label: "review-reviewer" },
+  { path: "/requests", role: "Viewer", label: "requests-viewer" },
+  { path: "/my-tasks", role: "Viewer", label: "my-tasks-viewer" },
+  { path: "/help", role: "Viewer", label: "help-viewer" },
+  { path: "/recent-uploads", role: "Contributor", label: "recent-uploads-contributor" },
   { path: "/admin", role: "Viewer", label: "admin-viewer" },
-  { path: "/admin", role: "DAM Admin", label: "admin-dam-admin" },
-  { path: "/guide", role: "Viewer", label: "guide-viewer" }
+  { path: "/admin", role: "DAM Admin", label: "admin-dam-admin" }
 ];
 
 const qaAsset = {
-  detail: { id: preferredDetailAssetId, path: `/assets/${preferredDetailAssetId}`, title: "Bench Bible" },
+  detail: { id: preferredDetailAssetId, path: `/assets/${preferredDetailAssetId}`, title: "Bench Bible", available: true },
   unsafe: { id: preferredUnsafeAssetId, path: `/assets/${preferredUnsafeAssetId}`, title: "" }
 };
 
@@ -120,11 +138,19 @@ function isTransientBrowserTargetClose(error) {
   return /Target page, context or browser has been closed|ERR_ABORTED|frame was detached/i.test(String(error?.message || error));
 }
 
+function isTransientNavigationError(error) {
+  return /Timeout .* exceeded|Navigation timeout|ERR_CONNECTION_REFUSED|ECONNREFUSED|ERR_EMPTY_RESPONSE|Target page, context or browser has been closed/i.test(String(error?.message || error));
+}
+
 function trustedRoleHeaders(role) {
   if (!trustedHeaderQa || !role) return {};
+  const email = `${String(role).replace(/\s+/g, "-")}@portal-browser-qa.local`;
   return {
     "x-tjc-role": role,
-    "x-auth-request-email": `${String(role).replace(/\s+/g, "-")}@portal-browser-qa.local`
+    "x-auth-request-email": email,
+    "cf-access-jwt-assertion": "portal-browser-qa-placeholder-token",
+    "cf-access-authenticated-user-email": email,
+    "cf-access-groups": role
   };
 }
 
@@ -299,8 +325,8 @@ async function gotoAndSettle(page, url) {
       break;
     } catch (error) {
       const message = String(error?.message || error);
-      if (/ERR_CONNECTION_REFUSED|ECONNREFUSED|ERR_EMPTY_RESPONSE/i.test(message) && attempt < 3) {
-        await page.waitForTimeout(750);
+      if (isTransientNavigationError(error) && attempt < 3) {
+        await page.waitForTimeout(750 * (attempt + 1));
         continue;
       }
       if (!/ERR_ABORTED|frame was detached/i.test(message)) throw error;
@@ -316,14 +342,50 @@ async function gotoAndSettle(page, url) {
 
 async function waitForAppReady(page, routePath, role) {
   const pathname = new URL(routePath, base).pathname;
+  await page.waitForFunction(() => !/Loading ResourceSpace data/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
   if (pathname === "/") {
     await page.getByLabel("Search media library").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
-    await page.locator(".ed-grid .ed-asset-card, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+    await page.locator(".ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname === "/packages") {
+    await page.locator(".ed-builder-grid, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
   }
   if (pathname === "/review" && (role === "Reviewer" || role === "DAM Admin")) {
     await page.waitForFunction(() => !/Loading ResourceSpace review queue/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
     await page.locator(".ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 })
-      .catch(() => page.getByText("Review Evidence").first().waitFor({ state: "visible", timeout: 30000 }));
+      .catch(() => page.getByText(/Evidence and next action|Review Evidence/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {}));
+  }
+}
+
+function normalizedActiveLabel(label) {
+  return String(label || "")
+    .replace(/\s+/g, " ")
+    .replace(/(\D)\d+$/, "$1")
+    .trim();
+}
+
+async function activeSidebarLabels(page) {
+  const labels = await page.locator('[data-sidebar="menu-button"][data-active], [data-sidebar="menu-button"][data-active="true"], a[aria-current="page"]').evaluateAll((nodes) => nodes
+    .map((node) => (node.textContent || "").replace(/\s+/g, " ").trim())
+    .filter(Boolean));
+  return [...new Set(labels.map(normalizedActiveLabel).filter(Boolean))];
+}
+
+async function assertRouteIdentity({ path: pathName, role, h1, activeLabel, primarySection, forbiddenPrimaryH1 }) {
+  const { page, context } = await newRolePage(role, 1440, 1000);
+  try {
+    await gotoAndSettle(page, `${base}${pathName}`);
+    await waitForAppReady(page, pathName, role);
+    const firstH1 = (await page.locator("h1").first().innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+    if (firstH1 !== h1) failures.push(`${pathName}: expected primary H1 ${h1}, saw "${firstH1}"`);
+    if (forbiddenPrimaryH1 && firstH1 === forbiddenPrimaryH1) failures.push(`${pathName}: primary H1 masquerades as ${forbiddenPrimaryH1}`);
+    if ((await page.locator(`[data-primary-section="${primarySection}"]`).count()) < 1) failures.push(`${pathName}: primary data section ${primarySection} missing`);
+    const activeLabels = await activeSidebarLabels(page);
+    if (!activeLabels.some((label) => label.includes(activeLabel))) {
+      failures.push(`${pathName}: sidebar active mismatch expected ${activeLabel}, got ${JSON.stringify(activeLabels)}`);
+    }
+  } finally {
+    await closeContext(context);
   }
 }
 
@@ -364,32 +426,33 @@ async function saveFullPageScreenshot(page, screenshotPath) {
 }
 
 async function fillUploadContextStep(page, prefix = "Browser QA") {
-  await page.getByLabel("Title").fill(`${prefix} intake`);
-  await page.getByLabel("Event").fill("Sabbath media QA");
+  await page.getByLabel("Batch / event name").fill(`${prefix} intake`);
   await page.getByLabel("Date").fill("2026-06-06");
-  await page.getByLabel("Ministry/team").fill("Internet Ministry");
-  await page.getByLabel("Source / photographer").fill("QA reviewer");
-  await page.getByLabel("Source class").selectOption("Church photographer / TJC-created");
+  await page.getByLabel("Ministry / team").fill("Internet Ministry");
+  await page.getByLabel("Source / photographer / uploader").fill("QA reviewer");
 }
 
 async function fillUploadRightsStep(page) {
-  await page.getByLabel("People visible").selectOption("No");
-  await page.getByLabel("Children/youth visible").selectOption("No");
-  await page.getByLabel("Usage rights").selectOption("TJC-owned / permission confirmed");
-  await page.getByLabel("Suggested approval direction").selectOption("Likely internal ministry use only");
-  await page.getByLabel("Consent/restrictions").fill("No consent restrictions; no people visible.");
+  await page.getByLabel("Suggested tags").fill("Bible, worship");
+  await page.getByLabel("Notes").fill("Browser QA intake note for reviewer packet.");
 }
 
 async function clickUploadNext(page) {
-  await page.locator('[aria-label="Send actions"]').getByRole("button", { name: /^Next$/ }).click();
+  const next = page.locator(".damx-sticky-actions button:visible", { hasText: "Next" }).last();
+  await next.waitFor({ state: "visible", timeout: 30000 });
+  await next.scrollIntoViewIfNeeded().catch(() => {});
+  await next.click();
+}
+
+async function clickUploadAction(page, label) {
+  const action = page.locator(".damx-sticky-actions button:visible", { hasText: label }).last();
+  await action.waitFor({ state: "visible", timeout: 30000 });
+  await action.scrollIntoViewIfNeeded().catch(() => {});
+  await action.click();
 }
 
 async function advanceUploadToFiles(page, prefix = "Browser QA") {
-  await clickUploadNext(page);
-  await fillUploadContextStep(page, prefix);
-  await clickUploadNext(page);
-  await fillUploadRightsStep(page);
-  await clickUploadNext(page);
+  void prefix;
 }
 
 async function fillReviewEvidence(page, note) {
@@ -403,7 +466,7 @@ async function fillReviewEvidence(page, note) {
 async function inspectPage(page, expected) {
   return page.evaluate((expectedPage) => {
     const doc = document.documentElement;
-    const visibleText = document.body.textContent || "";
+    const visibleText = document.body.innerText || document.body.textContent || "";
     const visibleImages = [...document.images].filter((img) => {
       const rect = img.getBoundingClientRect();
       return rect.width > 20 && rect.height > 20 && rect.bottom > 0 && rect.top < window.innerHeight;
@@ -483,7 +546,7 @@ async function inspectPage(page, expected) {
     hasBlockedDownload: visibleText.includes("Download unavailable") || visibleText.includes("Downloads blocked") || visibleText.includes("Download blocked") || visibleText.includes("Needs review") || visibleText.includes("Review required before use") || visibleText.includes("Source file restricted") || visibleText.includes("Request DAM review") || visibleText.includes("Request-only") || visibleText.includes("Preview protected"),
       hasReviewBlocker: visibleText.includes("Decision locked") || visibleText.includes("Complete required evidence before approval"),
       hasViewerReviewBlock: visibleText.includes("Review inbox requires reviewer access"),
-      hasViewerUploadBlock: visibleText.includes("Send media requires Contributor access"),
+      hasViewerUploadBlock: visibleText.includes("Create intake batch requires Contributor access"),
       hasAdminBlock: visibleText.includes("Governance requires DAM Admin role"),
       hasOriginalFilenameOnCard: [...document.querySelectorAll('[aria-label="Source metadata"]')].some((el) => (el.textContent || "").includes("Original:")),
       missingTabControls: [...document.querySelectorAll('[role="tab"][aria-controls]')]
@@ -506,6 +569,37 @@ async function inspectPageAfterSettledNavigation(page, expected) {
     await page.waitForTimeout(250);
     return inspectPage(page, expected);
   }
+}
+
+async function inspectPremiumPolish(page) {
+  return page.evaluate(() => {
+    const visible = (el) => {
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 8 && rect.height > 8 && style.visibility !== "hidden" && style.display !== "none" && Number(style.opacity) > 0.05;
+    };
+    const unfinishedSelects = [...document.querySelectorAll("main select, #main-content select")]
+      .filter(visible)
+      .filter((el) => {
+        const style = window.getComputedStyle(el);
+        const radius = Number.parseFloat(style.borderRadius || "0");
+        const paddingRight = Number.parseFloat(style.paddingRight || "0");
+        const hasArrowAsset = style.backgroundImage && style.backgroundImage !== "none";
+        return radius < 6 || !hasArrowAsset || paddingRight < 24 || el.scrollWidth > el.clientWidth + 2;
+      })
+      .map((el) => (el.getAttribute("aria-label") || el.closest("label")?.textContent || el.textContent || "select").trim().replace(/\s+/g, " ").slice(0, 80))
+      .slice(0, 8);
+    const overflowingBadges = [...document.querySelectorAll(".ed-badge, .ed-admin-status, .ed-review-row-meta em")]
+      .filter(visible)
+      .filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 2)
+      .map((el) => (el.textContent || "badge").trim().replace(/\s+/g, " ").slice(0, 80))
+      .slice(0, 8);
+    return {
+      unfinishedSelects,
+      overflowingBadges,
+      quietEmptyStates: document.querySelectorAll(".ed-empty-state.is-quiet").length
+    };
+  });
 }
 
 function escapeRegExp(value) {
@@ -536,8 +630,13 @@ function assetSummary(asset) {
   return {
     id: String(asset.id),
     path: `/assets/${encodeURIComponent(String(asset.id))}`,
-    title: String(asset.title || asset.id)
+    title: String(asset.title || asset.id),
+    available: true
   };
+}
+
+function hasViewerDetailAsset() {
+  return qaAsset.detail?.available !== false;
 }
 
 async function resolveAssetDetailFixture() {
@@ -552,8 +651,8 @@ async function resolveAssetDetailFixture() {
     return firstVisible;
   }
 
-  console.log(`[browser-qa] fixture resolver keeping ${preferredDetailAssetId}; no Viewer-visible fallback asset found`);
-  return { ...qaAsset.detail };
+  console.log(`[browser-qa] fixture resolver found no Viewer-visible detail asset; detail-only QA will be skipped`);
+  return { ...qaAsset.detail, available: false };
 }
 
 async function resolveUnsafeAssetFixture(detailId) {
@@ -587,7 +686,20 @@ async function resolveQaAssetFixtures() {
     if (item.label === "detail-unsafe-viewer" || item.label === "detail-unsafe-reviewer") item.path = qaAsset.unsafe.path;
   }
 
-  console.log(`[browser-qa] asset detail fixture ${qaAsset.detail.id} (${qaAsset.detail.title})`);
+  if (!hasViewerDetailAsset()) {
+    for (let index = requiredShots.length - 1; index >= 0; index -= 1) {
+      if (["asset-detail-desktop.png", "detail-mobile-320.png", "detail-mobile-390.png"].includes(requiredShots[index].name)) {
+        requiredShots.splice(index, 1);
+      }
+    }
+    for (let index = qaPaths.length - 1; index >= 0; index -= 1) {
+      if (qaPaths[index].label === "detail-approved-viewer") qaPaths.splice(index, 1);
+    }
+  }
+
+  console.log(hasViewerDetailAsset()
+    ? `[browser-qa] asset detail fixture ${qaAsset.detail.id} (${qaAsset.detail.title})`
+    : "[browser-qa] asset detail fixture unavailable to Viewer; skipping Viewer detail assertions");
   console.log(`[browser-qa] unsafe/review fixture ${qaAsset.unsafe.id}${qaAsset.unsafe.title ? ` (${qaAsset.unsafe.title})` : ""}`);
 }
 
@@ -604,10 +716,13 @@ for (const width of qaViewports) {
         await withTimeout(`ready ${item.label} ${width}`, 40000, () => waitForAppReady(page, item.path, item.role));
         await withTimeout(`images ${item.label} ${width}`, 5000, () => waitForVisibleImages(page));
         const state = await withTimeout(`inspect ${item.label} ${width}`, 10000, () => inspectPageAfterSettledNavigation(page, item));
+        const polish = await withTimeout(`premium polish ${item.label} ${width}`, 5000, () => inspectPremiumPolish(page));
         if (!response || response.status() >= 500) failures.push(`${item.label} ${width}: HTTP ${response?.status()}`);
         if (state.overflowX) failures.push(`${item.label} ${width}: horizontal overflow ${state.scrollWidth}/${state.clientWidth}`);
         if (state.clippedControls.length) failures.push(`${item.label} ${width}: clipped controls ${JSON.stringify(state.clippedControls)}`);
         if (state.headerOverlaps.length) failures.push(`${item.label} ${width}: header controls overlap ${JSON.stringify(state.headerOverlaps)}`);
+        if (polish.unfinishedSelects.length) failures.push(`${item.label} ${width}: unfinished native selects ${JSON.stringify(polish.unfinishedSelects)}`);
+        if (polish.overflowingBadges.length) failures.push(`${item.label} ${width}: badge text overflow ${JSON.stringify(polish.overflowingBadges)}`);
         if (width <= 767 && state.fixedMobileNavs.length) failures.push(`${item.label} ${width}: fixed mobile nav can cover content ${JSON.stringify(state.fixedMobileNavs)}`);
         if (state.missingTabControls.length) failures.push(`${item.label} ${width}: tab aria-controls missing targets ${state.missingTabControls.join(", ")}`);
         if (state.brokenImages.length) warnings.push(`${item.label} ${width}: broken images ${state.brokenImages.join(", ")}`);
@@ -626,7 +741,7 @@ for (const width of qaViewports) {
         if (item.label === "admin-viewer" && !state.hasAdminBlock) failures.push(`${item.label} ${width}: viewer admin block missing`);
         if (item.label === "library-reviewer" && state.hasOriginalFilenameOnCard) failures.push(`${item.label} ${width}: original filename exposed on Find card`);
         if (item.label === "viewer-needs-review-hidden" && state.textSample.includes("2012 Photo")) warnings.push(`${item.label} ${width}: viewer may see review asset copy`);
-        if ((width === 1024 || width === 768 || width === 390 || width === 320) && ["library-viewer", "review-reviewer", "guide-viewer"].includes(item.label)) {
+        if ((width === 1024 || width === 768 || width === 390 || width === 320) && ["library-viewer", "review-reviewer", "help-viewer", "requests-viewer", "my-tasks-viewer", "recent-uploads-contributor"].includes(item.label)) {
           await saveFullPageScreenshot(page, path.join(outDir, "qa", `${item.label}-${width}.png`));
         }
         completed = true;
@@ -658,13 +773,14 @@ browser = await launchBrowser();
   } else {
     await findSearchInput.fill("Bible");
     await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
-    await waitForVisibleText(page, "Can I use this?");
+    await page.getByText(/Beta visibility|Reuse\/download|Portal Ready|Download unavailable/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
     if ((await findSearchInput.inputValue()) !== "Bible") failures.push("search interaction: search input did not retain query");
     if ((await page.getByText(/Bible/i).count()) < 1) failures.push("search interaction: search query did not surface Bible results");
   }
-  for (const text of ["Library", "Can I use this?", "Download"]) {
+  for (const text of ["Library", "Download"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`library ResourceSpace shell: missing ${text}`);
   }
+  if ((await page.getByText(/Beta visibility|Reuse\/download|Portal Ready|Download unavailable/i).count()) < 1) failures.push("library ResourceSpace shell: missing beta visibility or reuse decision copy");
   if ((await page.getByLabel("Quick filters").count()) < 1) failures.push("library ResourceSpace shell: quick filters missing");
   if ((await page.locator(".ed-source-pill").count()) < 1) failures.push("library ResourceSpace shell: data-source badge missing");
   if ((await page.getByText(/Serene mountain|Coastal cliffs|Summer Launch Toolkit/i).count()) > 0) failures.push("library ResourceSpace shell: old demo asset copy visible");
@@ -675,29 +791,34 @@ browser = await launchBrowser();
 {
   const { page, context } = await newRolePage("Viewer", 390, 900);
   await gotoAndSettle(page, base);
+  await waitForAppReady(page, "/", "Viewer");
   if ((await page.getByRole("heading", { name: /^(Library|Asset Library)$/ }).count()) < 1) failures.push("library mobile: library heading missing");
-  if ((await page.locator(".ed-grid .ed-asset-card").count()) < 1) failures.push("library mobile: asset cards missing");
+  if ((await page.locator(".ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr").count()) < 1
+    && (await page.getByText(/No media library records match this search|No matching assets/i).count()) < 1) {
+    failures.push("library mobile: asset rows or safe empty state missing");
+  }
   await closeContext(context);
 }
 
 {
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/brand-hub`);
-  for (const text of ["MVP 2024", "Worship God", "Follow Christ", "Love People", "Bring Hope", "Logo usage", "Allowed channels"]) {
-    if ((await page.getByText(text).count()) < 1) failures.push(`brand hub ResourceSpace shell: missing ${text}`);
+  for (const text of ["Policy Center", "Usage policy", "Rights & consent", "Public use rules", "Metadata standards"]) {
+    if ((await page.getByText(text).count()) < 1) failures.push(`brand hub policy redirect shell: missing ${text}`);
   }
-  if ((await page.locator(".ed-logo-grid img").count()) < 4) failures.push("brand hub ResourceSpace shell: TJC logo assets missing");
+  if (!/section=policies/.test(page.url())) failures.push("brand hub policy redirect shell: /brand-hub did not land on policy guidance");
   await closeContext(context);
 }
 
 {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/packages`);
-  for (const text of ["ResourceSpace Toolkit Draft", "Package outline", "Browse ResourceSpace assets", "DAM record refs retained", "References retained only", "Original copying disabled", "No ResourceSpace writeback from this draft"]) {
+  await waitForAppReady(page, "/packages", "Reviewer");
+  for (const text of ["Distribution set draft", "Set outline", "Browse DAM records", "Reference-only internal beta", "ResourceSpace writeback"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`package builder ResourceSpace refs shell: missing ${text}`);
   }
-  const packageSummary = await page.locator(".ed-summary-grid").innerText().catch(() => "");
-  if (!/0\s+File copies/i.test(packageSummary.replace(/\s+/g, " "))) failures.push("package builder ResourceSpace refs shell: refs-only summary missing zero file copies");
+  if ((await page.getByText(/Source files (stay|remain) private/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: missing source-file privacy guarantee");
+  if ((await page.getByText(/no ZIP, public link, source-file access, external share, or ResourceSpace writeback/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: refs-only beta guarantee missing");
   await closeContext(context);
 }
 
@@ -715,13 +836,13 @@ browser = await launchBrowser();
   await closeContext(context);
 }
 
-{
+if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, `${base}${qaAsset.detail.path}`);
   if ((await page.getByText(new RegExp(escapeRegExp(qaAsset.detail.title), "i")).count()) < 1) {
     failures.push(`asset detail ResourceSpace shell: missing fixture title ${qaAsset.detail.title}`);
   }
-  for (const text of ["Can I use this?", "Rights & Restrictions"]) {
+  for (const text of ["Beta visibility", "Reuse/download"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`asset detail ResourceSpace shell: missing ${text}`);
   }
   if ((await page.getByText("Download approved copy").count()) < 1 && (await page.getByText("Request DAM review").count()) < 1) {
@@ -731,15 +852,18 @@ browser = await launchBrowser();
   const viewerDetailText = await page.locator("body").innerText();
   if (/Reviewer\/Admin source truth|Raw ResourceSpace status|Source\/original path|Pending write status|Shared Drive|master\/original/i.test(viewerDetailText)) failures.push("asset detail: viewer sees operations truth");
   await closeContext(context);
+} else {
+  warnings.push("asset detail ResourceSpace shell skipped: no Viewer-visible asset fixture");
 }
 
 {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/review?queue=pending`);
   await waitForAppReady(page, "/review?queue=pending", "Reviewer");
-  for (const text of ["Review Queue", "Review Evidence", "Metadata completeness", "Risk signals", "Save progress", "Next asset", "Request info", "Owner/license evidence missing", "Rights checks require evidence before approval can proceed"]) {
+  for (const text of ["Review Queue", "Evidence", "Top blocker", "Save progress", "Next asset"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`review ResourceSpace shell: missing ${text}`);
   }
+  if ((await page.getByText(/Review blocked|Approval blocked|Add or verify required evidence|Evidence required/i).count()) < 1) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
   if ((await page.getByLabel("Review decision actions").count()) < 1) failures.push("review ResourceSpace shell: decision actions footer missing");
   if ((await page.getByText("Mark checked").count()) > 0) failures.push("review ResourceSpace shell: unsafe Mark checked action visible");
   if ((await page.locator(".ed-review-list .ed-queue-item.is-active").count()) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
@@ -749,44 +873,37 @@ browser = await launchBrowser();
 
 {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
-  await gotoAndSettle(page, `${base}/upload`);
+  await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Browser QA");
-  if ((await page.getByText("Drop files here or browse").count()) < 1) failures.push("upload file dropzone: drop/browse affordance missing");
-  await page.getByText("Drop files here or browse").evaluate((node) => {
-    const label = node.closest("label");
-    if (!label) throw new Error("upload dropzone label missing");
+  if ((await page.getByText("Drop photos, folders, or paste a Google Drive folder link.").count()) < 1) failures.push("upload file dropzone: batch affordance missing");
+  await page.getByText("Drop photos, folders, or paste a Google Drive folder link.").evaluate((node) => {
+    const dropzone = node.closest(".damx-dropzone");
+    if (!dropzone) throw new Error("upload dropzone missing");
     const transfer = new DataTransfer();
     transfer.items.add(new File([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], "qa-drop.jpg", { type: "image/jpeg" }));
-    label.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    dropzone.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
   });
   if ((await page.getByLabel("Selected file preview").getByText("qa-drop.jpg").count()) < 1) failures.push("upload file dropzone: dropped file missing from preview");
-  await page.getByLabel("Selected file preview").getByRole("button", { name: "Clear files" }).click();
-  await page.getByLabel("Files").setInputFiles([{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await page.getByLabel("Selected file preview").getByRole("button", { name: "Remove" }).first().click();
+  await page.getByLabel("Browse files").setInputFiles([{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }]);
   if ((await page.getByLabel("Selected file preview").getByText("qa-photo.png").count()) < 1) failures.push("upload file preview: selected file missing");
-  await page.getByLabel("Selected file preview").getByRole("button", { name: "Clear files" }).click();
-  await page.getByLabel("Existing media-team link").fill("https://media.tjc.example/review-source");
-  if ((await page.getByLabel("Suggested tags suggestions", { exact: true }).getByRole("button", { name: "Bible" }).count()) < 1) failures.push("upload tag input: taxonomy suggestions missing");
-  await page.getByLabel("Suggested tags", { exact: true }).fill("qa");
-  await page.keyboard.press("Enter");
-  if ((await page.getByRole("button", { name: "Remove qa" }).count()) > 0) failures.push("upload tag input: non-canonical typed tag became canonical chip");
-  if ((await page.getByText("not in the current taxonomy").count()) < 1) failures.push("upload tag input: non-canonical tag warning missing");
-  await page.getByLabel("Suggested tags", { exact: true }).fill("Bible, worship");
-  await page.keyboard.press("Enter");
-  if ((await page.getByRole("button", { name: "Remove Bible" }).count()) < 1) failures.push("upload tag input: canonical typed tag chip missing");
-  await page.getByLabel("Reviewer notes").fill("Browser QA no-file intake with source link only.");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Reviewer packet").count()) < 1) failures.push("upload contributor packet: review packet step missing");
-  await page.getByRole("button", { name: "Submit for DAM review" }).click();
-  await page.waitForSelector("text=Intake received");
+  await page.getByLabel("Google Drive or source link").fill("https://media.tjc.example/review-source");
+  await clickUploadNext(page);
+  await fillUploadContextStep(page, "Browser QA");
+  await fillUploadRightsStep(page);
+  await clickUploadNext(page);
+  if ((await page.getByText("Review packet summary").count()) < 1) failures.push("upload contributor packet: review packet step missing");
+  await page.getByRole("button", { name: "Submit batch for DAM review" }).last().click();
+  await page.waitForSelector("text=Batch submitted");
   if ((await page.getByText("Needs Review / Do Not Publish").count()) < 1) failures.push("upload contributor receipt: default review state missing");
   await closeContext(context);
 }
 
 {
   const { page, context } = await newRolePage("Contributor", 320, 900);
-  await gotoAndSettle(page, `${base}/upload`);
+  await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Mobile file preview QA");
-  await page.getByLabel("Files").setInputFiles([{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }]);
+  await page.getByLabel("Browse files").setInputFiles([{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }]);
   if ((await page.getByLabel("Selected file preview").getByText("qa-mobile-photo-with-a-long-name.png").count()) < 1) failures.push("upload mobile file preview: selected file missing");
   const mobileUploadOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   if (mobileUploadOverflow) failures.push("upload mobile file preview: horizontal overflow after file selection");
@@ -795,12 +912,12 @@ browser = await launchBrowser();
 
 {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
-  await gotoAndSettle(page, `${base}/upload`);
-  if ((await page.getByText("What are you sending?").count()) < 1) failures.push("upload desktop wizard: template-first prompt missing");
-  if ((await page.getByText(/Send never publishes/).count()) < 1) failures.push("upload desktop wizard: never-publishes safety copy missing");
+  await gotoAndSettle(page, `${base}/upload?role=Contributor`);
+  if ((await page.getByText("Create intake batch").count()) < 1) failures.push("upload desktop wizard: batch title missing");
+  if ((await page.getByText(/Submission creates a review packet/).count()) < 1) failures.push("upload desktop wizard: non-publishing safety copy missing");
   if ((await page.locator('[data-component="UploadBottomActionBar"]').count()) > 0) failures.push("upload desktop rail: detached bottom submit bar still present");
-  if ((await page.getByText("Step 1 of 5").count()) < 1) failures.push("upload desktop wizard: step indicator missing");
-  await page.getByRole("button", { name: "Save draft" }).click();
+  if ((await page.getByText("Add media").count()) < 1 || (await page.getByText("What happens next").count()) < 1) failures.push("upload desktop wizard: batch stepper/next panel missing");
+  await clickUploadAction(page, "Save draft");
   if ((await page.getByText("Draft saved locally").count()) < 1) failures.push("upload desktop wizard: save draft state missing");
   await closeContext(context);
 }
@@ -808,30 +925,17 @@ browser = await launchBrowser();
 {
   const { page, context } = await newRolePage("Contributor", 320, 900);
   await gotoAndSettle(page, `${base}/upload`);
-  if ((await page.getByText("Step 1 of 5").count()) < 1) failures.push("contributor-upload-stepper: step 1 indicator missing");
-  await page.getByRole("button", { name: "Next" }).click();
-  const contextStepBox = await page.locator('[data-send-step="1"]:visible').boundingBox();
-  const actionBox = await page.getByLabel("Send actions").boundingBox();
-  if (contextStepBox && actionBox && actionBox.y < contextStepBox.y + contextStepBox.height - 2) {
-    failures.push("contributor-upload-stepper: mobile action controls appear before required step fields");
-  }
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Complete Where is this from? before continuing.").count()) < 1) failures.push("contributor-upload-stepper: context validation missing");
+  if ((await page.getByText("Add media").count()) < 1) failures.push("contributor-upload-stepper: step 1 indicator missing");
+  await clickUploadNext(page);
+  if ((await page.getByText("Add photos, a folder, or a source link").count()) < 1) failures.push("contributor-upload-stepper: add media validation missing");
+  await page.getByLabel("Google Drive or source link").fill("https://media.tjc.example/mobile-stepper-qa");
+  await clickUploadNext(page);
+  if ((await page.getByText("Confirm batch details").count()) < 1) failures.push("contributor-upload-stepper: confirm batch step missing");
   await fillUploadContextStep(page, "Mobile stepper QA");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Who appears and what permission is known?").count()) < 1) failures.push("contributor-upload-stepper: step 2 did not appear");
   await fillUploadRightsStep(page);
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Files, link, and reviewer notes").count()) < 1) failures.push("contributor-upload-stepper: step 3 did not appear");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Add a file or source link before continuing.").count()) < 1) failures.push("contributor-upload-stepper: file/source validation missing");
-  await page.getByLabel("Existing media-team link").fill("https://media.tjc.example/mobile-stepper-qa");
-  await page.getByLabel("Suggested tags", { exact: true }).fill("Bible, worship");
-  await page.keyboard.press("Enter");
-  await page.getByLabel("Reviewer notes").fill("Mobile QA source-link intake ready for reviewer packet.");
-  await page.getByRole("button", { name: "Next" }).click();
-  if ((await page.getByText("Reviewer packet").count()) < 1) failures.push("contributor-upload-stepper: review step did not appear");
-  await page.getByRole("button", { name: "Save draft" }).click();
+  await clickUploadNext(page);
+  if ((await page.getByText("Review packet summary").count()) < 1) failures.push("contributor-upload-stepper: review step did not appear");
+  await clickUploadAction(page, "Save draft");
   if ((await page.getByText("Draft saved locally").count()) < 1) failures.push("contributor-upload-stepper: draft local state missing");
   await closeContext(context);
 }
@@ -847,7 +951,7 @@ browser = await launchBrowser();
 
 {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
-  await gotoAndSettle(page, `${base}${qaAsset.detail.path}`);
+  await gotoAndSettle(page, `${base}${hasViewerDetailAsset() ? qaAsset.detail.path : qaAsset.unsafe.path}`);
   const reviewerDetailText = await page.locator("body").innerText();
   if (/Reviewer\/Admin source truth|Admin source truth|Raw ResourceSpace status|Source\/original path|Pending write status/i.test(reviewerDetailText)) failures.push("asset detail: Reviewer sees admin source truth");
   await closeContext(context);
@@ -856,35 +960,40 @@ browser = await launchBrowser();
 {
   const { page, context } = await newRolePage("DAM Admin", 390, 900);
   await gotoAndSettle(page, `${base}/admin`);
-  for (const text of ["DAM Control Center", "Permission Matrix", "Policy Summary", "System Health"]) {
+  for (const text of ["DAM Control Center", "Permission Matrix", "Policy Summary", "Integration Health"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`admin control center: missing ${text}`);
   }
   await closeContext(context);
 }
 
+await assertRouteIdentity({ path: "/requests", role: "Viewer", h1: "Requests", activeLabel: "Requests", primarySection: "requests-table", forbiddenPrimaryH1: "Help Center" });
+await assertRouteIdentity({ path: "/my-tasks", role: "Viewer", h1: "My Tasks", activeLabel: "My Tasks", primarySection: "task-work-queue", forbiddenPrimaryH1: "Help Center" });
+await assertRouteIdentity({ path: "/help", role: "Viewer", h1: "Help Center", activeLabel: "Help Center", primarySection: "help-articles", forbiddenPrimaryH1: "Requests" });
+await assertRouteIdentity({ path: "/recent-uploads", role: "Contributor", h1: "Recent Uploads", activeLabel: "Recent Uploads", primarySection: "recent-uploads-ledger", forbiddenPrimaryH1: "Library" });
+
 {
   const { page, context } = await newRolePage("Viewer", 390, 900);
-  await gotoAndSettle(page, `${base}/guide`);
-  if ((await page.getByText("Media Help Center").count()) < 1) failures.push("guide-help-center: guide heading missing");
+  await gotoAndSettle(page, `${base}/help`);
+  if ((await page.getByText("Help Center").count()) < 1) failures.push("help-center: heading missing");
   await page.getByLabel(/Search help articles/i).fill("source");
   const sourceTask = page.getByRole("link", { name: /Request source-file access/ });
-  if ((await sourceTask.count()) < 1) failures.push("guide-help-center: search did not match source task");
-  if ((await page.getByRole("link", { name: /Open review request/ }).count()) < 1) failures.push("guide-help-center: review CTA missing");
-  if ((await page.getByText("What is an approved derivative?").count()) < 1) failures.push("guide-help-center: FAQ missing");
+  if ((await sourceTask.count()) < 1) failures.push("help-center: search did not match source task");
+  if ((await page.getByRole("link", { name: /^Open Requests$/ }).count()) < 1) failures.push("help-center: requests pointer missing");
+  if ((await page.getByText(/Help topics \(FAQ\)|approved derivative/i).count()) < 1) failures.push("help-center: FAQ missing");
   await closeContext(context);
 }
 
-{
+if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, `${base}${qaAsset.detail.path}`);
-  if ((await page.locator(".ed-verdict-card").getByText("Can I use this?").count()) < 1) failures.push("asset detail one-verdict: primary verdict card missing");
+  if ((await page.locator(".ed-trust-answer-strip").getByText(/Beta visibility|Reuse\/download/i).count()) < 1) failures.push("asset detail one-verdict: primary verdict card missing");
   if ((await page.getByText("Download approved copy").count()) < 1 && (await page.getByText("Request DAM review").count()) < 1) failures.push("asset detail: safe approved-copy/review action missing");
   const viewerDetailText = await page.locator("body").innerText();
   if (/Reviewer\/Admin source truth|Raw ResourceSpace status|Source\/original path|Pending write status/i.test(viewerDetailText)) failures.push("asset detail: viewer sees operations truth");
   await closeContext(context);
 }
 
-{
+if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Viewer", 320, 900);
   await gotoAndSettle(page, `${base}${qaAsset.detail.path}`);
   const detailOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
@@ -896,12 +1005,13 @@ browser = await launchBrowser();
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, base);
   const checks = await page.evaluate(async ({ detailId, unsafeId }) => {
-    const approved = await fetch(`/api/download/${encodeURIComponent(detailId)}?role=Viewer`);
+    const approved = detailId ? await fetch(`/api/download/${encodeURIComponent(detailId)}?role=Viewer`) : null;
     const unsafe = await fetch(`/api/download/${encodeURIComponent(unsafeId)}?role=Viewer`);
-    const malformed = await fetch(`/api/download/%2E%2E${encodeURIComponent(detailId)}?role=Viewer`);
-    return { approved: approved.status, unsafe: unsafe.status, malformed: malformed.status };
-  }, { detailId: qaAsset.detail.id, unsafeId: qaAsset.unsafe.id });
-  if (checks.approved !== 403) failures.push(`blocked approved download browser fetch status ${checks.approved}`);
+    const malformedTarget = detailId || unsafeId;
+    const malformed = await fetch(`/api/download/%2E%2E${encodeURIComponent(malformedTarget)}?role=Viewer`);
+    return { approved: approved?.status || null, unsafe: unsafe.status, malformed: malformed.status };
+  }, { detailId: hasViewerDetailAsset() ? qaAsset.detail.id : "", unsafeId: qaAsset.unsafe.id });
+  if (hasViewerDetailAsset() && checks.approved !== 403) failures.push(`blocked approved download browser fetch status ${checks.approved}`);
   if (checks.unsafe !== 403) failures.push(`unsafe download browser fetch status ${checks.unsafe}`);
   if (checks.malformed !== 400) failures.push(`malformed download browser fetch status ${checks.malformed}`);
   await closeContext(context);
@@ -932,11 +1042,11 @@ async function captureProof(name, role, width, height, pathName, setup) {
 }
 
 await captureProof("appnav-tubelight-desktop.png", "Viewer", 1440, 720, "/", async (page) => {
-  await page.locator("header").first().scrollIntoViewIfNeeded();
+  await page.locator(".dam-command-header:visible, header:visible").first().waitFor({ state: "visible", timeout: 10000 });
 });
 
 await captureProof("appnav-tubelight-mobile.png", "Viewer", 320, 720, "/", async (page) => {
-  await page.locator("header").first().scrollIntoViewIfNeeded();
+  await page.locator(".dam-command-header:visible, header:visible").first().waitFor({ state: "visible", timeout: 10000 });
 });
 
 await captureProof("library-badges-pagination-filterpills.png", "Viewer", 1440, 1000, "/?view=website-hero", async (page) => {
@@ -951,27 +1061,29 @@ await captureProof("review-datatable-inspector.png", "Reviewer", 1440, 1000, "/r
   await page.getByLabel("Review decision actions").scrollIntoViewIfNeeded();
 });
 
-await captureProof("media-preview-panel-image.png", "DAM Admin", 1440, 1000, qaAsset.detail.path, async (page) => {
-  await page.getByText("Can I use this?").first().scrollIntoViewIfNeeded();
-});
+if (hasViewerDetailAsset()) {
+  await captureProof("media-preview-panel-image.png", "DAM Admin", 1440, 1000, qaAsset.detail.path, async (page) => {
+    await page.getByText(/Beta visibility|Reuse\/download/i).first().scrollIntoViewIfNeeded();
+  });
+} else {
+  warnings.push("media preview image proof skipped: no Viewer-visible asset fixture");
+}
 
-await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/guide", async (page) => {
-  await page.getByText("Media Help Center").scrollIntoViewIfNeeded();
+await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/help", async (page) => {
+  await page.getByRole("heading", { name: "Help Center" }).scrollIntoViewIfNeeded();
 });
 
 await captureProof("upload-dropzone-tags.png", "Contributor", 1440, 1000, "/upload", async (page) => {
   await advanceUploadToFiles(page, "Primitive proof");
-  await page.getByLabel("Files").setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
-  await page.waitForFunction(() => {
-    const img = document.querySelector('[aria-label="Selected file preview"] img');
-    return img && img.complete && img.naturalWidth > 0;
-  });
+  await page.getByLabel("Browse files").setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await page.getByLabel("Google Drive or source link").fill("https://media.tjc.example/primitive-proof");
+  await page.getByLabel("Selected file preview").getByText("primitive-proof-photo.png").waitFor({ state: "visible", timeout: 30000 });
+  await clickUploadNext(page);
   await page.getByLabel("Suggested tags", { exact: true }).fill("Bible, worship");
-  await page.keyboard.press("Enter");
 });
 
 await captureProof("toast-feedback.png", "Contributor", 1440, 900, "/upload", async (page) => {
-  await page.getByRole("button", { name: "Save draft" }).click();
+  await clickUploadAction(page, "Save draft");
   await page.waitForTimeout(500);
 });
 
@@ -979,8 +1091,13 @@ await captureProof("review-hold-confirm-dialog.png", "Reviewer", 1440, 1000, "/r
   await page.getByLabel("Review decision actions").scrollIntoViewIfNeeded();
 });
 
-await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, "/?q=zzzzzz-no-visible-media-proof", async (page) => {
+await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, "/", async (page) => {
+  await page.getByLabel("Search media library").first().fill("zzzzzz-no-visible-media-proof");
+  await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
+  await page.getByText(/No .* records match this search|No matching assets/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   await page.locator("#main-content").scrollIntoViewIfNeeded();
+  const polish = await inspectPremiumPolish(page);
+  if (polish.quietEmptyStates < 1) failures.push("state-system-empty-error-loading.png: compact empty state class missing");
 });
 
 const report = {

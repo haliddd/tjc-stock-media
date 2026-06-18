@@ -1,5 +1,7 @@
 # Team Beta Demo Strategy
 
+June 15 safety update: this remains a demo strategy only, not send approval. Current teammate invite posture is NO-GO until hosted protection, canonical deployment, ResourceSpace scope, Google Drive custody, durable hosted state, and renewed tester approval are proven. Hosted Reviewer/Admin access must come from trusted beta session or trusted SSO role identity, not URL query params.
+
 ## PM Verdict
 
 Run a tiny internal Team Beta demo, not a production launch. The sharp wedge is: **church teams can find, trust, request, and review media without exposing unsafe originals or pretending unfinished infrastructure is live.**
@@ -25,9 +27,9 @@ Keep the demo to five surfaces:
 
 1. `/` via `EnterpriseLibraryPage`: search `Bible`, show DAM Mission Control, Portal Ready supply, review debt, metadata readiness, and recommended next action.
 2. `/assets/[id]` via `EnterpriseAssetDetailPage`: open one ready asset and one blocked/review-required asset; show trust proof, blockers, and backend-gated approved-copy action.
-3. `/upload?role=Contributor&taskMode=1` via `UploadPage`: show that contributor intake captures rights/people/source context and always lands as Needs Review / Do Not Publish.
-4. `/review?role=Reviewer&taskMode=1` via `EnterpriseReviewPage`: try approval without evidence, show evidence lock, complete checklist/note, and queue pending-write truth.
-5. `/admin?role=DAM%20Admin&taskMode=1` via `EnterpriseAdminPage`: show Beta Command Center, invite blockers, integration status, audit evidence, and feedback export path.
+3. `/upload` after trusted Contributor session/SSO via `UploadPage`: show that contributor intake captures rights/people/source context and always lands as Needs Review / Do Not Publish.
+4. `/review` after trusted Reviewer session/SSO via `EnterpriseReviewPage`: try approval without evidence, show evidence lock, complete checklist/note, and queue pending-write truth.
+5. `/admin` after trusted DAM Admin session/SSO via `EnterpriseAdminPage`: show Beta Command Center, invite blockers, integration status, audit evidence, and feedback export path.
 
 Optional 60-second proof if time remains: `/packages` or `/brand-hub` to show package/kit readiness blocks unsafe delivery. Do not let this become the main story.
 

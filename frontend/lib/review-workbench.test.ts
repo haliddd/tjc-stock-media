@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { auditAccountabilityArea, auditEventForRolePayload, auditStorageReadiness, originalAccessAuditEvent, packageDecisionAuditEvent, renditionRequestAuditEvent, type AuditEventRecord } from "@/lib/audit-log";
 import { buildBetaReadiness } from "@/lib/beta-readiness-facts";
-import { buildDiscoveryQuery, matchesDiscoveryQuery } from "@/lib/catalog-discovery";
+import { buildCatalogDiscovery, buildDiscoveryQuery, matchesDiscoveryQuery, queryIntentPresets } from "@/lib/catalog-discovery";
 import { intentDefinitions, matchesCatalogFilter, savedViewDefinitions } from "@/lib/catalog-language";
+import { buildBrandKitGovernance } from "@/lib/brand-kit-governance";
+import { buildDeliveryReadinessManifest } from "@/lib/delivery-readiness";
 import { derivativeIndexDiagnostics, governedRenditionPolicyForVariant, originalMasterRenditionPolicy, thumbnailVariantCanSatisfyApprovedCopy } from "@/lib/derivative-index";
 import { auditCoverageMetrics, buildGovernanceMetrics, usageHealthMetrics } from "@/lib/dam-governance-metrics";
-import { fileRequiresAdminIntake, intakeDefaultsToNeedsReview, routeAssetForReview, routeUploadIntakeForReview } from "@/lib/intake-routing";
+import { fileIsVideoOrAudio, fileRequiresAdminIntake, intakeDefaultsToNeedsReview, routeAssetForReview, routeUploadIntakeForReview } from "@/lib/intake-routing";
 import { resolvePackageSections } from "@/lib/package-drafts";
 import { buildPackageGovernance } from "@/lib/package-governance";
 import { packageStorageReadiness } from "@/lib/package-store";
 import { canSeeAsset } from "@/lib/permissions";
 import { approvedCopyAccessBoundary, buildOriginalAccessRequestDecision, buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
-import { emptyReviewChecklist } from "@/lib/review-decision-presenter";
-import { missingDomainReviewEvidence } from "@/lib/review-evidence";
+import { buildReviewEvidenceDecision, emptyReviewChecklist, reviewActionDisabledReason } from "@/lib/review-decision-presenter";
+import { missingDomainReviewEvidence, sensitiveMinistryEvidenceModel } from "@/lib/review-evidence";
 import {
   buildReviewDecisionLanes,
   buildReviewDecisionRequirements,
@@ -21,6 +23,7 @@ import {
   missingReviewActionEvidence,
   reviewNextCheckLabel
 } from "@/lib/review-workbench";
+import { assetMatchesReviewQueue, reviewGovernanceGroupsForAsset } from "@/lib/workflow-policy";
 import { assetForRolePayload, sourceForRole } from "@/lib/source-redaction";
 import type { DamPackage, IntegrationReadinessItem, StockMediaAsset } from "@/lib/types";
 
@@ -98,6 +101,37 @@ describe("review workbench model", () => {
     expect(requirements.missingLabels).toContain("Review note missing");
     expect(missing).toContain("proofLinkAttached");
     expect(missing).toContain("reviewNote");
+  });
+
+  it("groups review records by enterprise governance work lanes", () => {
+    const risky = asset({
+      status: "Needs Review",
+      usageScope: "Do Not Publish",
+      peopleRisk: "Possible minors",
+      sensitivityClass: "youth-sensitive",
+      consentStatus: "Unknown",
+      usageGuidance: "Review before sharing",
+      imageUrls: { small: "/s.jpg", card: "/c.jpg", collection: "/g.jpg", detail: "/d.jpg" },
+      reviewedDate: "2025-01-01",
+      approvalRecheckDate: "2025-06-01",
+      pendingReviewWrite: {
+        id: "pending-1",
+        resourceId: "1001",
+        requestedStatus: "Approved Public",
+        createdAt: "2026-06-13T00:00:00.000Z",
+        updatedAt: "2026-06-13T00:00:00.000Z",
+        syncState: "queued"
+      }
+    });
+
+    const groups = reviewGovernanceGroupsForAsset(risky, true).filter((group) => group.active).map((group) => group.id);
+
+    expect(groups).toEqual(expect.arrayContaining(["risk", "missing-evidence", "stale-review", "derivative-gap", "pending-write"]));
+    expect(assetMatchesReviewQueue(risky, "risk")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "missing-evidence")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "stale-review")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "derivative-gap")).toBe(true);
+    expect(assetMatchesReviewQueue(risky, "pending-write")).toBe(true);
   });
 });
 
@@ -201,6 +235,9 @@ describe("Phase 1B intake routing primitives", () => {
     });
 
     expect(defaults).toEqual({ status: "Needs Review", usageScope: "Do Not Publish", publishable: false });
+    expect(fileIsVideoOrAudio({ name: "choir-service.mp4", type: "video/mp4" })).toBe(true);
+    expect(fileIsVideoOrAudio({ name: "sabbath-choir.m4a", type: "" })).toBe(true);
+    expect(fileIsVideoOrAudio({ name: "sabbath-photo.jpg", type: "image/jpeg" })).toBe(false);
     expect(fileRequiresAdminIntake({ name: "choir-service.mp4", size: 42_000_000, type: "video/mp4" })).toBe(true);
     expect(reasons.map((reason) => reason.id)).toEqual(expect.arrayContaining([
       "large-media-admin-intake",
@@ -307,6 +344,45 @@ describe("Phase 2 TJC domain governance gates", () => {
     expect(buildPortalReuseDecision(risky, "Viewer").reuse.state).not.toBe("portal-ready");
   });
 
+  it("surfaces sensitive ministry evidence locks and clear disabled reasons for public approval", () => {
+    const sensitive = asset({
+      peopleRisk: "Possible minors",
+      sensitivityClass: "testimony-sensitive",
+      sensitiveContext: "Worship testimony after prayer with youth present",
+      hymnNumberOrTitle: "Hymn 469",
+      rightsBasis: "unknown",
+      approvedChannels: [],
+      requiredNotice: undefined,
+      consentStatus: "Unknown",
+      consentReleaseRecordId: undefined,
+      domainReviewer: undefined,
+      testimonyTheme: "healing",
+      rightsNotes: "Review before sharing."
+    });
+
+    const evidence = sensitiveMinistryEvidenceModel(sensitive, "Approve Public", completeChecklist, "short");
+    const decision = buildReviewEvidenceDecision("Approve Public", completeChecklist, "short", sensitive);
+    const disabledReason = reviewActionDisabledReason({ asset: sensitive, action: "Approve Public", checklist: completeChecklist, note: "short" });
+
+    expect(evidence.filter((item) => item.active).map((item) => item.id)).toEqual(expect.arrayContaining([
+      "children-youth",
+      "worship",
+      "music-teaching",
+      "testimony-private"
+    ]));
+    expect(decision.ready).toBe(false);
+    expect(decision.missingFields).toEqual(expect.arrayContaining([
+      "consentReleaseRecord",
+      "domainReviewer:RE/minors",
+      "musicRightsBasis",
+      "domainReviewer:music-rights",
+      "domainReviewer:pastoral-sensitivity",
+      "pastoralSensitivityNote"
+    ]));
+    expect(disabledReason).toMatch(/Consent\/release record missing/);
+    expect(disabledReason).toMatch(/Music\/teaching rights basis missing/);
+  });
+
   it("keeps AI and smart suggestions as non-final review debt", () => {
     const suggested = asset({
       aiVisibleTagSuggestions: ["baptism"],
@@ -354,6 +430,74 @@ describe("package governance and discovery", () => {
 
     expect(discovery.expandedTerms).toEqual(expect.arrayContaining(["bible", "worship"]));
     expect(matchesDiscoveryQuery(asset(), "sermon slides")).toBe(true);
+  });
+
+  it("exposes trust-aware query presets as discovery hints only", () => {
+    const presetIds = queryIntentPresets.map((preset) => preset.id);
+    expect(presetIds).toEqual(expect.arrayContaining([
+      "website-hero",
+      "slide-background",
+      "newsletter",
+      "social",
+      "no-people",
+      "youth-review",
+      "worship",
+      "music",
+      "internal-only"
+    ]));
+
+    const blockedSocial = asset({
+      id: "blocked-social",
+      approvedChannels: ["social"],
+      rightsBasis: undefined,
+      rightsStatus: "Unknown",
+      consentStatus: "Unknown",
+      reviewer: undefined,
+      reviewedDate: undefined,
+      tags: ["social", "event"],
+      tjcTerms: ["social media"]
+    });
+    const packet = buildCatalogDiscovery({
+      query: "social",
+      intent: "social",
+      filters: [],
+      matchedAssets: [blockedSocial],
+      availableAssets: [blockedSocial],
+      totalVisible: 1
+    });
+
+    expect(packet.matchedIntent?.id).toBe("social");
+    expect(packet.intentPresets.find((preset) => preset.id === "social")?.suggestedFilters).toEqual(expect.arrayContaining(["portal ready", "social channel"]));
+    expect(matchesCatalogFilter(blockedSocial, "social channel")).toBe(true);
+    expect(matchesCatalogFilter(blockedSocial, "public safe")).toBe(false);
+    expect(buildPortalReuseDecision(blockedSocial, "Viewer").viewerVerdict.canDownload).toBe(false);
+    expect(packet.safetyNote).toMatch(/never grants|still pass|permission/i);
+  });
+
+  it("keeps youth review discovery separate from viewer permission truth", () => {
+    const youth = asset({
+      id: "youth-review",
+      status: "Needs Review",
+      usageScope: "Do Not Publish",
+      peopleRisk: "Possible minors",
+      consentStatus: "Needs review",
+      rightsStatus: "Unknown",
+      tags: ["youth", "students"]
+    });
+    const packet = buildCatalogDiscovery({
+      query: "youth review",
+      intent: "youth-review",
+      filters: [],
+      matchedAssets: [youth],
+      availableAssets: [youth],
+      totalVisible: 1
+    });
+
+    expect(packet.matchedIntent?.id).toBe("youth-review");
+    expect(matchesDiscoveryQuery(youth, "youth review")).toBe(true);
+    expect(matchesCatalogFilter(youth, "children/youth")).toBe(true);
+    expect(canSeeAsset("Viewer", youth)).toBe(false);
+    expect(buildPortalReuseDecision(youth, "Viewer").viewerVerdict.canDownload).toBe(false);
   });
 });
 
@@ -433,6 +577,68 @@ describe("Phase 6 rights-aware packages and collections", () => {
     expect(rawApproved.status).toBe("Approved Public");
     expect(governance.portalReadyRefs).toBe(0);
     expect(governance.actions.find((item) => item.action === "export-approved-copy-package")?.allowed).toBe(false);
+  });
+
+  it("publishes a derivative readiness manifest while keeping originals request-only", () => {
+    const ready = asset();
+    const manifest = buildDeliveryReadinessManifest(ready, "public-web");
+    const byId = Object.fromEntries(manifest.items.map((item) => [item.id, item]));
+
+    expect(manifest).toMatchObject({
+      assetId: ready.id,
+      chosenUse: "public-web",
+      portalReadyForChosenUse: true,
+      originalMasterIncluded: false,
+      storageTruth: "local-export-readiness-only"
+    });
+    expect(byId.thumbnail).toMatchObject({ status: "ready", routeBoundary: "thumbnail-preview", downloadGrade: false });
+    expect(byId.preview).toMatchObject({ status: "ready", routeBoundary: "thumbnail-preview", downloadGrade: false });
+    expect(byId["approved-web-copy"]).toMatchObject({ status: "ready", routeBoundary: "approved-copy-gate", downloadGrade: true });
+    expect(byId["approved-print-copy"]).toMatchObject({ status: "blocked", routeBoundary: "approved-copy-gate", downloadGrade: true });
+    expect(byId["original-restricted"]).toMatchObject({ status: "request-only", routeBoundary: "original-access-request" });
+  });
+
+  it("blocks package share, publish, and download when chosen-use derivative is not ready", () => {
+    const webReady = asset({ id: "web-ready", resourceSpaceId: "6001" });
+    const draft: DamPackage = {
+      id: "pkg-print",
+      title: "Print Package",
+      status: "draft",
+      sections: [{ id: "main", title: "Main", resourceSpaceAssetIds: ["6001"] }]
+    };
+    const governance = buildPackageGovernance(draft, resolvePackageSections(draft, [webReady]), "DAM Admin", "public-print");
+
+    expect(governance.chosenUse).toBe("public-print");
+    expect(governance.canShare).toBe(false);
+    expect(governance.canPublish).toBe(false);
+    expect(governance.canDownloadPackage).toBe(false);
+    expect(governance.blockedRefs).toBe(1);
+    expect(governance.reason).toMatch(/approved derivative for public print/i);
+    expect(governance.sections[0]?.assets[0]?.deliveryManifest.originalMasterIncluded).toBe(false);
+    expect(governance.sections[0]?.assets[0]?.deliveryManifest.items.find((item) => item.id === "original-restricted")?.status).toBe("request-only");
+  });
+
+  it("keeps brand readiness packet role-safe while disabling beta ZIP and share delivery", () => {
+    const ready = asset({ id: "brand-ready", resourceSpaceId: "7001" });
+    const governance = buildBrandKitGovernance({
+      configured: true,
+      assets: [ready],
+      role: "Reviewer",
+      missingSectionMappings: 0,
+      warnings: []
+    });
+
+    expect(governance.deliveryReady).toBe(true);
+    expect(governance.canShare).toBe(false);
+    expect(governance.canDownloadKit).toBe(false);
+    expect(governance.betaDeliveryDisabled).toBe(true);
+    expect(governance.readinessPacket).toMatchObject({
+      originalMasterIncluded: false,
+      shareCreatesPublicLink: false,
+      downloadCreatesZip: false,
+      deliveryMode: "disabled-beta-packet"
+    });
+    expect(JSON.stringify(governance.readinessPacket)).not.toMatch(/sourcePath|masterDrivePath|checksumSha256|originalFilename/i);
   });
 
   it("redacts Viewer package payloads and package audit read models", () => {

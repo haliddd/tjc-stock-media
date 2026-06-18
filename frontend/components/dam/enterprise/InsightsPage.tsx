@@ -6,12 +6,13 @@ import { useSearchParams } from "next/navigation";
 import { Calendar, CheckCircle2, Clock3, Database, Download, Eye, FileText, Filter, FolderOpen, ImageIcon, Info, Search, Share2, Shield, Star, Tags, UploadCloud } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAssetsSearch } from "@/components/dam/useDamApi";
+import { assetMetadataHealth } from "@/lib/asset-governance";
 import { assetRecordRef, assetType, displayTitle, formatBytes, sourceLabel } from "@/lib/enterprise-display";
 import { buildInsightsCommandCenter } from "@/lib/insights-command-center";
 import { insightHealthRows } from "@/lib/insights-dashboard";
 import { routeWithRole } from "@/lib/role-routes";
 import type { SearchResult, StockMediaAsset } from "@/lib/types";
-import { ActionButton, AssetThumb, ErrorCard, LoadingCard, PageHeader, StatusBadge } from "./EnterpriseShared";
+import { ActionButton, AssetPreviewStrip, AssetThumb, ErrorCard, LoadingCard, PageHeader, StatusBadge } from "./EnterpriseShared";
 
 type MetricRow = {
   label: string;
@@ -67,13 +68,6 @@ const metadataInsightFilters: InsightFilterState = {
   usage: false,
   source: false,
   health: true
-};
-
-const rightsUsageInsightFilters: InsightFilterState = {
-  review: true,
-  usage: true,
-  source: false,
-  health: false
 };
 
 function MetricRows({ rows }: { rows: MetricRow[] }) {
@@ -384,7 +378,7 @@ function PriorityActions({ result }: { result?: SearchResult }) {
       severity: (metadata?.needsUsage || 0) ? "Action needed" : "Healthy",
       count: `${formatCount(metadata?.needsUsage)} gaps`,
       reason: (metadata?.needsUsage || 0) ? "Self-serve users need clear reuse scope before download decisions." : "Usage guidance coverage is ready for current records.",
-      href: "/guide#policies",
+      href: "/help#policies",
       actionLabel: "Open policy center",
       tone: (metadata?.needsUsage || 0) ? "medium" : "ready"
     },
@@ -440,6 +434,143 @@ function PriorityActions({ result }: { result?: SearchResult }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function MetadataHealthDashboard({ counts, assets, result, sourceText, hasUsageRows }: { counts: SearchResult["counts"]; assets: StockMediaAsset[]; result?: SearchResult; sourceText: string; hasUsageRows: boolean }) {
+  const { role } = useDemoRole();
+  const metadata = result?.metadataHealth;
+  const rawTotal = counts?.rawTotal || counts?.visibleToRole || counts?.totalMatching || 0;
+  const averageScore = metadata?.averageScore || 0;
+  const complete = metadata?.complete || 0;
+  const completionPercent = percent(complete, rawTotal);
+  const metadataStatus = averageScore >= 90
+    ? "Field coverage strong"
+    : averageScore >= 75
+      ? "Reviewer-readable, still gaps"
+      : "Metadata cleanup needed";
+  const fieldRows = [
+    {
+      id: "source",
+      label: "Source provenance",
+      value: metadata?.needsSource || counts?.missingSource || 0,
+      detail: "Source system, album, account, or custody path missing.",
+      icon: Database
+    },
+    {
+      id: "people",
+      label: "People visibility",
+      value: metadata?.needsPeople || counts?.childrenYouth || 0,
+      detail: "People/minors confidence missing or reviewer-sensitive.",
+      icon: Eye
+    },
+    {
+      id: "rights",
+      label: "Rights basis",
+      value: metadata?.needsRights || counts?.rightsReview || 0,
+      detail: "Owner, license, consent, or proof fields incomplete.",
+      icon: Shield
+    },
+    {
+      id: "usage",
+      label: "Usage guidance",
+      value: metadata?.needsUsage || 0,
+      detail: "Approved channels or self-serve reuse copy missing.",
+      icon: FileText
+    },
+    {
+      id: "review",
+      label: "Reviewer fields",
+      value: metadata?.reviewPending || counts?.pendingReview || 0,
+      detail: "Reviewer, review date, or final status not ready.",
+      icon: CheckCircle2
+    }
+  ];
+  const recordsNeedingWork = assets
+    .map((asset) => ({ asset, health: assetMetadataHealth(asset) }))
+    .filter((row) => row.health.missing.length)
+    .sort((left, right) => left.health.score - right.health.score)
+    .slice(0, 8);
+  const requiredRows = [
+    ["Average score", `${averageScore}%`],
+    ["Complete records", `${complete.toLocaleString()} of ${rawTotal.toLocaleString()}`],
+    ["Metadata gaps", `${(metadata?.reviewPending || counts?.pendingReview || 0).toLocaleString()} records`],
+    ["Source mode", sourceText],
+    ["Usage analytics", hasUsageRows ? "Connected" : "Not connected"]
+  ];
+
+  return (
+    <>
+      <section className="ed-card ed-metadata-summary">
+        <div className="ed-readiness-primary">
+          <div>
+            <span>Metadata health</span>
+            <strong>{averageScore}%</strong>
+            <p>{complete.toLocaleString()} of {rawTotal.toLocaleString()} records pass required field checks</p>
+            <em>{metadataStatus}</em>
+          </div>
+          <a className="ed-action is-primary" href={routeWithRole("/review?queue=metadata", role)}>Open metadata queue</a>
+        </div>
+        <div className="ed-readiness-meter" aria-label={`${completionPercent}% metadata complete`}><span style={{ width: `${completionPercent}%` }} /></div>
+        <div className="ed-readiness-facts">
+          {fieldRows.map((row) => <p key={row.id}><span>{row.label}</span><strong>{row.value.toLocaleString()}</strong></p>)}
+        </div>
+      </section>
+
+      <section className="ed-card ed-priority-actions ed-metadata-gap-card">
+        <header>
+          <div>
+            <h3>Required field gaps</h3>
+            <p>Metadata page now tracks field coverage, not rights workflow workbench state.</p>
+          </div>
+          <span>{metadataStatus}</span>
+        </header>
+        <div className="ed-priority-action-grid ed-metadata-gap-grid">
+          {fieldRows.map((row) => {
+            const Icon = row.icon;
+            const tone = row.value ? "medium" : "ready";
+            return (
+              <article className={`is-${tone}`} key={row.id}>
+                <span>{row.value ? "Action needed" : "Healthy"}</span>
+                <strong><Icon size={16} /> {row.label}</strong>
+                <em>{row.value.toLocaleString()} records</em>
+                <p>{row.detail}</p>
+                <a href={routeWithRole("/review?queue=metadata", role)}>Review metadata</a>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="ed-insights-board is-metadata">
+        <InsightPanel title="Records Needing Metadata" action="Open metadata queue" actionHref="/review?queue=metadata">
+          {recordsNeedingWork.length ? (
+            <div className="ed-metadata-record-list">
+              {recordsNeedingWork.map(({ asset, health }) => (
+                <article key={asset.id}>
+                  <span>{health.score}%</span>
+                  <strong>{displayTitle(asset)}<small>{assetType(asset)} · {assetRecordRef(asset)}</small></strong>
+                  <em>{health.missing.join(", ")}</em>
+                </article>
+              ))}
+            </div>
+          ) : <p className="ed-footnote"><CheckCircle2 size={14} /> No metadata gap rows in the current result set.</p>}
+        </InsightPanel>
+        <InsightPanel title="Coverage Summary">
+          <div className="ed-risk-list">
+            {requiredRows.map(([label, value]) => <p key={label}><span>{label}</span><strong>{value}</strong></p>)}
+          </div>
+        </InsightPanel>
+        <InsightPanel title="Hosted Media Dependency" className="is-wide">
+          <div className="ed-table-mini">
+            <p><strong>Vercel portal</strong><span>Shows records and governed actions.</span></p>
+            <p><strong>ResourceSpace host</strong><span>Needed for actual previews, thumbnails, and DAM review screens.</span></p>
+            <p><strong>Photo storage</strong><span>Needs hosted ResourceSpace filestore or object storage; Google Shared Drive remains master custody.</span></p>
+            <p><strong>Current preview state</strong><span>Missing hosted media renders honest placeholders.</span></p>
+          </div>
+        </InsightPanel>
+      </div>
+    </>
   );
 }
 
@@ -540,12 +671,12 @@ function ViewerInsights({
     <>
       <div className="ed-insight-stat-grid">{stats.map((stat) => <InsightStatCard key={stat.label} stat={stat} />)}</div>
       <div className="ed-viewer-board">
-        <InsightPanel title="My Common Use Cases" action="View all use cases" actionHref="/guide">{useCases.map(([title, detail, Icon, href]) => <a className="ed-use-case" href={routeWithRole(href, role)} key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong><span>›</span></a>)}</InsightPanel>
+        <InsightPanel title="My Common Use Cases" action="View all use cases" actionHref="/help">{useCases.map(([title, detail, Icon, href]) => <a className="ed-use-case" href={routeWithRole(href, role)} key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong><span>›</span></a>)}</InsightPanel>
         <InsightPanel title="Frequently Used Topics" action="Browse all topics" actionHref="/?view=saved"><TopicsList usage={usage} savedViews={savedViews} /></InsightPanel>
         <InsightPanel title="Recently Viewed Assets"><div className="ed-recent-assets">{assets.slice(0, 5).map((asset) => <article key={asset.id}><AssetThumb asset={asset} /><strong>{displayTitle(asset)}<small>{assetType(asset)} · {formatBytes(asset.fileSizeBytes)}</small></strong><span>Visible</span></article>)}</div></InsightPanel>
         <InsightPanel title="Top Categories" action="Explore all categories" actionHref="/collections"><CategoryDonut assets={assets} visibleTotal={visible} /></InsightPanel>
-        <InsightPanel title="Approved Media Reuse Guide" action="View policies" actionHref="/guide#policies">{reuseGuide.map(([title, detail]) => <p className="ed-guide-row" key={title}><CheckCircle2 size={16} /><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
-        <InsightPanel title="Tips & Shortcuts" action="View help center" actionHref="/guide">{tips.map(([title, detail, Icon]) => <p className="ed-tip-row" key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
+        <InsightPanel title="Approved Media Reuse Guide" action="View policies" actionHref="/help#policies">{reuseGuide.map(([title, detail]) => <p className="ed-guide-row" key={title}><CheckCircle2 size={16} /><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
+        <InsightPanel title="Tips & Shortcuts" action="View help center" actionHref="/help">{tips.map(([title, detail, Icon]) => <p className="ed-tip-row" key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
       </div>
     </>
   );
@@ -556,29 +687,26 @@ export function EnterpriseInsightsPage() {
   const searchParams = useSearchParams();
   const activePanel = searchParams.get("panel");
   const metadataPanel = activePanel === "metadata";
-  const rightsUsagePanel = activePanel === "rights-usage";
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activePeriod, setActivePeriod] = useState<InsightPeriodId>("current-export");
   const [filters, setFilters] = useState<InsightFilterState>(defaultInsightFilters);
   const [exportStatus, setExportStatus] = useState("");
-  const insights = useAssetsSearch({ role, limit: 5 });
+  const insights = useAssetsSearch({ role, sort: "Approved first", limit: 5 });
   const counts = insights.data?.counts;
   const usage = insights.data?.usageAnalytics;
   const hasUsageRows = Boolean(usage?.topSearches.length || usage?.topAssets.length);
   const operationalView = role === "Reviewer" || role === "DAM Admin";
-  const title = metadataPanel ? "Metadata" : rightsUsagePanel ? "Rights & Usage" : "Insights";
+  const title = metadataPanel ? "Metadata Health" : "Insights";
   const subtitle = metadataPanel
     ? "Track field coverage, missing metadata, and reviewer-ready record quality."
-    : rightsUsagePanel
-      ? "Review rights evidence, use scope, consent, and gated-copy decisions."
     : operationalView ? "Monitor library readiness, review workload, and governance signals." : "Role-safe overview of your visible media, saved views, and collections.";
   const activePeriodLabel = insightPeriods.find((period) => period.id === activePeriod)?.label || "Current export";
 
   useEffect(() => {
-    setFilters(metadataPanel ? metadataInsightFilters : rightsUsagePanel ? rightsUsageInsightFilters : defaultInsightFilters);
+    setFilters(metadataPanel ? metadataInsightFilters : defaultInsightFilters);
     setFiltersOpen(false);
-  }, [metadataPanel, rightsUsagePanel]);
+  }, [metadataPanel]);
 
   const exportInsights = () => {
     if (!insights.data) {
@@ -619,10 +747,17 @@ export function EnterpriseInsightsPage() {
       {periodMenuOpen ? <PeriodPickerPanel activePeriod={activePeriod} onSelect={(period) => { setActivePeriod(period); setPeriodMenuOpen(false); setExportStatus(`${insightPeriods.find((item) => item.id === period)?.label || "Current export"} selected. ResourceSpace counts remain latest export.`); }} /> : null}
       {filtersOpen && operationalView ? <InsightFilterPanel filters={filters} onChange={setFilters} onReset={() => setFilters(defaultInsightFilters)} /> : null}
       {exportStatus ? <p className="ed-inline-success ed-insight-status">{exportStatus}</p> : null}
-      <section className={operationalView ? "ed-approved-banner" : "ed-role-safe-banner"}>{operationalView ? <Database size={22} /> : <Info size={22} />}<div><strong>{operationalView ? sourceLabel(insights.source) : "Role-safe insights"}</strong><span>{operationalView ? (insights.source?.detail || "Media library source unavailable.") : "These insights reflect only the content you can view based on your role and permissions."}</span></div><span>{operationalView ? (hasUsageRows ? "Usage rows from portal analytics" : "Usage analytics not connected") : "Operational diagnostics are hidden for this role."}</span></section>
+      <section className={operationalView ? "ed-approved-banner" : "ed-role-safe-banner"}>{operationalView ? <Database size={22} /> : <Info size={22} />}<div><strong>{operationalView ? sourceLabel(insights.source) : "Role-safe insights"}</strong><span>{operationalView ? (insights.source?.detail || "Media library source unavailable.") : "These insights reflect only the content you can view based on your role and permissions."}</span></div><span>{operationalView ? (hasUsageRows ? "Usage rows from portal analytics" : "Usage analytics not connected") : "Operational details are hidden for this role."}</span></section>
       {insights.loading ? <LoadingCard /> : insights.error ? <ErrorCard message={insights.error} source={insights.source} /> : <>
+        <AssetPreviewStrip
+          assets={insights.data?.assets || []}
+          title={operationalView ? "Insights preview samples" : "Recently visible media"}
+          detail={operationalView ? "Preview-backed assets are shown before operational panels for local beta review." : "Role-safe media visible to this account."}
+        />
         {operationalView
-          ? <AdminInsights counts={counts!} usage={usage} assets={insights.data?.assets || []} sourceText={sourceLabel(insights.source)} hasUsageRows={hasUsageRows} filters={filters} result={insights.data || undefined} />
+          ? metadataPanel
+            ? <MetadataHealthDashboard counts={counts!} assets={insights.data?.assets || []} result={insights.data || undefined} sourceText={sourceLabel(insights.source)} hasUsageRows={hasUsageRows} />
+            : <AdminInsights counts={counts!} usage={usage} assets={insights.data?.assets || []} sourceText={sourceLabel(insights.source)} hasUsageRows={hasUsageRows} filters={filters} result={insights.data || undefined} />
           : <ViewerInsights counts={counts!} usage={usage} assets={insights.data?.assets || []} savedViews={insights.data?.savedViews || []} collections={insights.data?.collections || []} />}
       </>}
     </div>

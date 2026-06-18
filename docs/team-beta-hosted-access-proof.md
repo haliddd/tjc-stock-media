@@ -35,25 +35,25 @@ Code/config evidence:
 
 ## Private URL Policy
 
-Only share the stable unlisted beta URL:
+Current status: **NO-GO for sharing teammate invite links.** After hosted/canonical/custody/durable gates close and Hali renews approval, use only the owner-approved stable beta URL:
 
 ```text
 https://tjc-stock-media.vercel.app
 ```
 
-Do not share deployment-specific Vercel preview URLs. Preview URLs may require Vercel login and should not become tester-facing links.
+Do not share deployment-specific Vercel preview URLs. Preview URLs may require Vercel login and should not become tester-facing links. Do not share the stable URL with teammates until the current NO-GO blockers close.
 
 Tester roster policy:
 
 - Invite only named internal Team Beta testers.
-- Assign each tester one starting role link from `docs/teammate-beta-invite-pack.md`.
+- Assign each tester one intended role, then have them enter through trusted beta session or trusted SSO role identity. Current production SSO proof means Cloudflare Access assertion/email plus mapped groups; generic trusted-header shims are local rehearsal only. Do not use role query links as access control.
 - Tell testers not to forward links outside the named group.
 - Keep the beta role switch framed as QA-only, not production auth.
 - Do not invite the next batch until the owner reviews feedback triage and P0/P1 status.
 
 ## Hosted Smoke Safety Decision
 
-Do not run `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-smoke` as read-only proof without owner approval.
+Do not run mutating hosted smoke as read-only proof without owner approval.
 
 Reason: `scripts/portal-hosted-smoke.sh` posts a new record to `/api/beta-feedback`. That mutates hosted feedback storage.
 
@@ -65,23 +65,25 @@ Safe read-only checks for owner or tech operator:
 
 ```bash
 curl -I https://tjc-stock-media.vercel.app/
-curl -I "https://tjc-stock-media.vercel.app/guide?role=Viewer&taskMode=1"
-curl -sS "https://tjc-stock-media.vercel.app/api/admin/readiness?role=DAM%20Admin" > hosted-readiness.json
+curl -I "https://tjc-stock-media.vercel.app/beta-login"
+BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe
 ```
 
-Do not paste secrets or full env dumps into proof notes. If `hosted-readiness.json` is kept, review it for source paths, storage tokens, or private identifiers before sharing.
+Do not paste secrets or full env dumps into proof notes. Keep only the hosted read-only probe summary, not raw headers, raw bodies, or secret-bearing artifacts.
 
 ## Manual Proof Checklist
 
 Owner-visible hosted checks:
 
 - Stable URL opens without Vercel login: `https://tjc-stock-media.vercel.app`.
-- Viewer role link opens: `/?role=Viewer&taskMode=1`.
-- Contributor role link opens: `/upload?role=Contributor&taskMode=1`.
-- Reviewer role link opens: `/review?role=Reviewer&taskMode=1`.
-- DAM Admin role link opens: `/admin?role=DAM%20Admin&taskMode=1`.
-- Guide link opens: `/guide?role=Viewer&taskMode=1`.
-- Task Mode panel is visible on role links.
+- Beta login opens when beta auth is enabled: `/beta-login`.
+- Viewer enters through trusted beta session/SSO and opens `/`.
+- Contributor enters through trusted beta session/SSO and opens `/upload`.
+- Reviewer enters through trusted beta session/SSO and opens `/review`.
+- DAM Admin enters through trusted beta session/SSO and opens `/admin`.
+- Guide opens through trusted beta session/SSO at `/guide`.
+- Query role URLs are not used as hosted authority.
+- Task Mode panel is visible only through the approved beta session/task flow.
 - Report issue button is visible.
 - Beta copy says role switch is simulated for QA only.
 - Beta copy says no live ResourceSpace writeback and queued review is not ResourceSpace success.
@@ -110,8 +112,8 @@ Stop invites if any condition is true:
 
 - Hosted env has `RESOURCESPACE_ENABLE_WRITEBACK=1` or `RESOURCESPACE_WRITEBACK_MODE=live`.
 - App claims live ResourceSpace success for review decisions without separate approved live-writeback proof.
-- `BETA_FEEDBACK_ENABLED=0` or Report issue is hidden on beta role links.
-- `BETA_TASK_MODE_ENABLED=0` or Task Mode is hidden on beta role links.
+- `BETA_FEEDBACK_ENABLED=0` or Report issue is hidden for trusted beta session/SSO testers.
+- `BETA_TASK_MODE_ENABLED=0` or Task Mode is hidden for trusted beta session/SSO testers.
 - `DOWNLOAD_GATE_ALLOW_DEMO_ROLES=1` for preview-only beta without a recorded temporary exception.
 - Teammate invite uses a Vercel preview URL instead of `https://tjc-stock-media.vercel.app`.
 - Tester roster is not named or links are forwarded outside internal Team Beta.

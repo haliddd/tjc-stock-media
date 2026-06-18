@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
+const routeSurfacePath = "frontend/lib/dam/enterprise-route-surface.json";
 const legacyModules = [
   "AdminPage",
   "ReviewPage",
@@ -12,19 +13,13 @@ const legacyModules = [
   "DamExperience"
 ];
 
-const enterpriseRoutes = new Map([
-  ["frontend/app/page.tsx", "EnterpriseLibraryPage"],
-  ["frontend/app/collections/page.tsx", "EnterpriseCollectionsPage"],
-  ["frontend/app/packages/page.tsx", "EnterprisePackageBuilderPage"],
-  ["frontend/app/brand-hub/page.tsx", "EnterpriseBrandHubPage"],
-  ["frontend/app/insights/page.tsx", "EnterpriseInsightsPage"],
-  ["frontend/app/admin/page.tsx", "EnterpriseAdminPage"],
-  ["frontend/app/review/page.tsx", "EnterpriseReviewPage"],
-  ["frontend/app/assets/[id]/page.tsx", "EnterpriseAssetDetailPage"]
-]);
-
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
+}
+
+function readRouteSurface() {
+  const surface = JSON.parse(read(routeSurfacePath));
+  return surface.routes.filter((route) => route.routeFile && route.pageExport);
 }
 
 function walk(dir) {
@@ -39,8 +34,17 @@ function walk(dir) {
 }
 
 const failures = [];
+let enterpriseRoutes = [];
 
-for (const [routePath, exportName] of enterpriseRoutes) {
+try {
+  enterpriseRoutes = readRouteSurface();
+} catch (error) {
+  failures.push(`missing or invalid Enterprise route surface: ${routeSurfacePath} (${error.message})`);
+}
+
+for (const route of enterpriseRoutes) {
+  const routePath = route.routeFile;
+  const exportName = route.pageExport;
   if (!fs.existsSync(path.join(root, routePath))) {
     failures.push(`missing live route: ${routePath}`);
     continue;
@@ -55,12 +59,17 @@ for (const [routePath, exportName] of enterpriseRoutes) {
   }
 }
 
-const assetDetailPage = read("frontend/app/assets/[id]/page.tsx");
-if (!assetDetailPage.includes("normalizeAssetId((await params).id)")) {
-  failures.push("asset detail page must normalize path params through normalizeAssetId before rendering the client DAM shell");
-}
-if (!assetDetailPage.includes("notFound()")) {
-  failures.push("asset detail page must render Next 404 for malformed asset ids");
+const assetDetailRoutes = enterpriseRoutes.filter((route) => route.pathParam);
+for (const route of assetDetailRoutes) {
+  const routePath = route.routeFile;
+  const paramName = route.pathParam;
+  const assetDetailPage = read(routePath);
+  if (!assetDetailPage.includes(`normalizeAssetId((await params).${paramName})`)) {
+    failures.push(`${routePath} must normalize path params through normalizeAssetId before rendering the client DAM shell`);
+  }
+  if (!assetDetailPage.includes("notFound()")) {
+    failures.push(`${routePath} must render Next 404 for malformed asset ids`);
+  }
 }
 
 const legacyImportPattern = new RegExp(`@/components/(${legacyModules.join("|")})(?:\\b|["'])`);

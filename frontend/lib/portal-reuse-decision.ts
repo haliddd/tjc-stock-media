@@ -130,7 +130,7 @@ function meaningfulValue(value?: string) {
 }
 
 const explicitRightsConcernPattern = /rights unclear|concern|not confirmed|needs review|review required|do not use|blocked/i;
-const trustedLmPhotosPattern = /\blm[\s.-]*photos\b|lm\.photos@tjc\.org/i;
+const trustedLmPhotosPattern = /\blm[\s.-]*photos?\b|lm\.photos?@tjc\.org/i;
 
 function isTrustedLmPhotosApprovedAsset(asset: StockMediaAsset) {
   const sourceText = [
@@ -291,8 +291,7 @@ export function canDownloadReuse(asset: StockMediaAsset, role: DemoRole) {
 export function canPreviewAsset(asset: StockMediaAsset, role: DemoRole) {
   const decision = buildReuseDecision(asset);
   if (role === "Reviewer" || role === "DAM Admin") return decision.previewTier !== "no-preview";
-  if (decision.previewTier === "reusable-preview") return true;
-  return decision.previewTier === "candidate-preview";
+  return decision.previewTier === "reusable-preview";
 }
 
 export function decideAccess(role: DemoRole, action: AccessAction, asset?: StockMediaAsset): AccessDecision {

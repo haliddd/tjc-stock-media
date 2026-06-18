@@ -45,8 +45,8 @@ Expected result: blocked assets explain the reason and do not download. `Approve
 ### Contributor
 
 1. Open Upload with harmless sample files or a safe source link.
-2. Fill in source, event, people/minors, rights, consent/restrictions, tags, and reviewer notes.
-3. Avoid public-use suggestions unless permission is confirmed, no children/youth are visible, and proof is available.
+2. Add photos, a folder, or a source link.
+3. Confirm event name, date, ministry/team, and source/uploader. Optional requested use and suggested tags help reviewers prioritize but do not approve publishing.
 4. Submit and confirm the response says `Needs Review / Do Not Publish`.
 
 Expected result: upload never publishes and never claims reviewer approval.
@@ -98,7 +98,7 @@ These are still product gaps to track after beta, or before live writeback/publi
 5. Testimony/pastoral sensitivity lacks a dedicated review owner and sensitivity taxonomy.
 6. Public/member/internal/archive visibility is not fully separate from `publish_status` and `usage_scope`.
 7. Review writeback can be enabled from checklist completion without proving all asset-derived blockers are resolved.
-8. Upload UI asks for proof/license details that are not fully persisted into the backend intake packet.
+8. Production durable intake storage and ResourceSpace import/writeback mapping still need final configuration before live launch.
 
 ## Stop-And-Report Triggers
 

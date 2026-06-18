@@ -1,9 +1,13 @@
 import { NextRequest } from "next/server";
 import { isKnownRole, normalizeRole, strongestRole } from "@/lib/permissions";
-import { betaAuthEnabled } from "@/lib/beta-auth";
+import { BETA_SESSION_CHURCH_LOCATION_HEADER, BETA_SESSION_ROLE_HEADER, BETA_SESSION_VERIFIED_HEADER, betaAuthEnabled } from "@/lib/beta-auth";
 import { localBetaRoleOverridesEnabled, productionRuntime, productionTrustedIdentityRequired, trustedSsoHeadersEnabled } from "@/lib/env";
 import { normalizePersistedDisplayText } from "@/lib/request-validation";
 import type { DamUser, DemoRole } from "@/lib/types";
+
+export const LOCAL_BETA_ROLE_OVERRIDE_HEADER = "x-tjc-local-beta-role";
+
+type HeaderReader = { get(name: string): string | null };
 
 export type DamSessionAdapter = "route" | "workflow" | "script-test";
 export type ClientRoleOverridePolicy = "local-beta" | "download-gate";
@@ -37,7 +41,7 @@ function downloadBodyDemoRolesAllowed() {
 
 function downloadQueryDemoRolesAllowed(request: NextRequest) {
   if (productionRuntime()) return false;
-  return downloadBodyDemoRolesAllowed() || requestIsLocalhost(request);
+  return downloadBodyDemoRolesAllowed() || localBetaRoleOverridesEnabled();
 }
 
 function normalizeIdentityOptions(explicitRoleOrOptions?: string | null | RequestIdentityOptions): Required<RequestIdentityOptions> {
@@ -57,15 +61,26 @@ function normalizeIdentityOptions(explicitRoleOrOptions?: string | null | Reques
   };
 }
 
+function verifiedBetaSessionRole(request: NextRequest) {
+  const role = request.headers.get(BETA_SESSION_ROLE_HEADER);
+  const verified = request.headers.get(BETA_SESSION_VERIFIED_HEADER) === "1";
+  return betaAuthEnabled() && verified && isKnownRole(role) ? role : null;
+}
+
+export function localBetaRoleOverrideFromRequest(request: NextRequest) {
+  return request.headers.get(LOCAL_BETA_ROLE_OVERRIDE_HEADER);
+}
+
 export function resolveClientRoleOverride(
   request: NextRequest,
   explicitRoleOrOptions?: string | null | RequestIdentityOptions
 ): ClientRoleOverrideDecision {
   const options = normalizeIdentityOptions(explicitRoleOrOptions);
-  if (betaAuthEnabled() && isKnownRole(request.headers.get("x-tjc-beta-role"))) {
+  const betaRole = verifiedBetaSessionRole(request);
+  if (betaRole) {
     return {
       requestedRole: typeof options.explicitRole === "string" && options.explicitRole.trim() ? options.explicitRole : null,
-      role: request.headers.get("x-tjc-beta-role"),
+      role: betaRole,
       source: "query",
       policy: options.overridePolicy,
       allowed: false,
@@ -92,11 +107,17 @@ export function resolveClientRoleOverride(
     return { ...base, ignored: true, reasonCode: "production-client-role-ignored" };
   }
   if (trustedSsoHeadersEnabled()) {
+    if (options.overridePolicy === "download-gate") {
+      const trustedRole = trustedRoleFromHeaders(request.headers) || "Viewer";
+      if (!isKnownRole(requestedRole) || requestedRole !== trustedRole) {
+        return { ...base, denied: true, reasonCode: "client-role-disabled" };
+      }
+    }
     return { ...base, ignored: true, reasonCode: "trusted-sso-authoritative" };
   }
 
   if (options.overridePolicy !== "download-gate") {
-    if (requestIsLocalhost(request) || localBetaRoleOverridesEnabled()) {
+    if (localBetaRoleOverridesEnabled()) {
       return { ...base, role: requestedRole, allowed: true };
     }
     return { ...base, denied: true, reasonCode: "client-role-disabled" };
@@ -123,6 +144,57 @@ function roleFromTrustedValue(value?: string | null): DemoRole | null {
   if (has("contributor") || has("uploader") || has("submitter")) return "Contributor";
   if (has("viewer") || has("member") || has("read")) return "Viewer";
   return null;
+}
+
+function cloudflareAccessHeadersPresent(headers: HeaderReader) {
+  return Boolean(
+    process.env.SSO_PROVIDER === "cloudflare-access"
+    && headers.get("cf-access-jwt-assertion")
+    && (headers.get("cf-access-authenticated-user-email") || headers.get("cf-access-user-email"))
+  );
+}
+
+function trustedSsoHeadersTrusted(headers: HeaderReader) {
+  if (!trustedSsoHeadersEnabled()) return false;
+  if (!productionRuntime()) return true;
+  return cloudflareAccessHeadersPresent(headers);
+}
+
+function trustedRoleGroups(headers: HeaderReader) {
+  if (productionRuntime()) return headers.get("cf-access-groups") || "";
+  return headers.get("cf-access-groups")
+    || headers.get("x-auth-request-groups")
+    || headers.get("x-tjc-groups")
+    || "";
+}
+
+function trustedRoleClaim(headers: HeaderReader) {
+  return productionRuntime() ? null : headers.get("x-tjc-role");
+}
+
+function trustedEmailHeader(headers: HeaderReader) {
+  if (productionRuntime()) {
+    return headers.get("cf-access-authenticated-user-email")
+      || headers.get("cf-access-user-email")
+      || undefined;
+  }
+  return headers.get("cf-access-authenticated-user-email")
+    || headers.get("cf-access-user-email")
+    || headers.get("x-auth-request-email")
+    || undefined;
+}
+
+function trustedNameHeader(headers: HeaderReader) {
+  if (productionRuntime()) return headers.get("cf-access-user");
+  return headers.get("cf-access-user") || headers.get("x-auth-request-user");
+}
+
+export function trustedRoleFromHeaders(headers: HeaderReader): DemoRole | null {
+  if (!trustedSsoHeadersTrusted(headers)) return null;
+  const rawGroups = trustedRoleGroups(headers);
+  const groups = rawGroups.split(/[,|;]/).map((item) => normalizeTrustedIdentityText(item, 80)).filter(Boolean);
+  const directRole = roleFromTrustedValue(trustedRoleClaim(headers));
+  return highestTrustedRole(directRole, mappedRole(groups), highestRole(groups)) || "Viewer";
 }
 
 function highestRole(values: string[]) {
@@ -170,12 +242,14 @@ function mappedRole(groups: string[]) {
 }
 
 export function requestIdentity(request: NextRequest, explicitRoleOrOptions?: string | null | RequestIdentityOptions): DamUser {
-  const betaRole = request.headers.get("x-tjc-beta-role");
-  if (betaAuthEnabled() && isKnownRole(betaRole)) {
+  const betaRole = verifiedBetaSessionRole(request);
+  if (betaRole) {
+    const churchLocation = normalizeTrustedIdentityText(request.headers.get(BETA_SESSION_CHURCH_LOCATION_HEADER), 80);
     return {
       id: `internal-beta:${betaRole}`,
       name: `${betaRole} beta persona`,
       role: betaRole,
+      team: churchLocation || undefined,
       sourceSystem: "local-beta"
     };
   }
@@ -184,7 +258,7 @@ export function requestIdentity(request: NextRequest, explicitRoleOrOptions?: st
   const explicitRole = override.role;
   const headers = request.headers;
   const localFallbackRole = normalizeRole(explicitRole);
-  if (!trustedSsoHeadersEnabled()) {
+  if (!trustedSsoHeadersTrusted(headers)) {
     if (productionRuntime() && productionTrustedIdentityRequired()) {
       return {
         id: "production:trusted-identity-missing",
@@ -201,19 +275,12 @@ export function requestIdentity(request: NextRequest, explicitRoleOrOptions?: st
     };
   }
 
-  const email = headers.get("cf-access-authenticated-user-email")
-    || headers.get("cf-access-user-email")
-    || headers.get("x-auth-request-email")
-    || undefined;
+  const email = trustedEmailHeader(headers);
   const trustedEmail = normalizeTrustedEmail(email);
-  const rawGroups = headers.get("cf-access-groups")
-    || headers.get("x-auth-request-groups")
-    || headers.get("x-tjc-groups")
-    || "";
+  const rawGroups = trustedRoleGroups(headers);
   const groups = rawGroups.split(/[,|;]/).map((item) => normalizeTrustedIdentityText(item, 80)).filter(Boolean);
-  const directRole = roleFromTrustedValue(headers.get("x-tjc-role"));
-  const role = highestTrustedRole(directRole, mappedRole(groups), highestRole(groups)) || "Viewer";
-  const trustedName = normalizeTrustedIdentityText(headers.get("cf-access-user") || headers.get("x-auth-request-user"), 120);
+  const role = trustedRoleFromHeaders(headers) || "Viewer";
+  const trustedName = normalizeTrustedIdentityText(trustedNameHeader(headers), 120);
 
   return {
     id: trustedEmail ? `sso:${trustedEmail}` : `sso:${role}`,

@@ -25,8 +25,8 @@ import {
   buildZeroResultInsights
 } from "@/lib/catalog-summaries";
 import { assetResourceRef } from "@/lib/asset-refs";
-import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery } from "@/lib/catalog-discovery";
-import { getActiveMediaSource } from "@/lib/media-source";
+import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery, resolveDiscoveryQuery } from "@/lib/catalog-discovery";
+import { findFilestoreDerivative, getActiveMediaSource } from "@/lib/media-source";
 import { listPendingReviewWrites } from "@/lib/pending-review-writes";
 import { safeBoundedInt } from "@/lib/persisted-record-safety";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
@@ -71,6 +71,14 @@ function statusWeight(asset: StockMediaAsset) {
   return 5;
 }
 
+function localPreviewWeight(asset: StockMediaAsset) {
+  return findFilestoreDerivative(asset.id, "small") || findFilestoreDerivative(asset.id, "card") || findFilestoreDerivative(asset.id, "detail") ? 1 : 0;
+}
+
+function previewFirstCompare(a: StockMediaAsset, b: StockMediaAsset) {
+  return localPreviewWeight(b) - localPreviewWeight(a);
+}
+
 function sortCatalogAssets(assets: StockMediaAsset[], sort?: string) {
   const normalized = normalizeCatalogSort(sort);
   const sorted = [...assets];
@@ -88,8 +96,12 @@ function sortCatalogAssets(assets: StockMediaAsset[], sort?: string) {
   if (normalized === "Recently approved") {
     return sorted.sort((a, b) => (b.reviewedDate || "").localeCompare(a.reviewedDate || ""));
   }
-  sorted.sort((a, b) => statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a) || a.title.localeCompare(b.title));
-  return diversifyAssets(sorted);
+  sorted.sort((a, b) => localPreviewWeight(b) - localPreviewWeight(a) || statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a) || a.title.localeCompare(b.title));
+  const diversified = diversifyAssets(sorted);
+  return [
+    ...diversified.filter((asset) => localPreviewWeight(asset)),
+    ...diversified.filter((asset) => !localPreviewWeight(asset))
+  ];
 }
 
 function curatedWeight(asset: StockMediaAsset) {
@@ -150,6 +162,7 @@ export async function searchAssets({
   filters,
   view,
   collection,
+  intent: requestedIntent,
   sort,
   limit = 72,
   offset = 0
@@ -159,6 +172,7 @@ export async function searchAssets({
   filters: string[];
   view?: string;
   collection?: string;
+  intent?: string;
   sort?: string;
   limit?: number;
   offset?: number;
@@ -168,11 +182,13 @@ export async function searchAssets({
   const safeLimit = safeBoundedInt(limit, { min: 1, max: 120, fallback: 72 });
   const safeOffset = safeBoundedInt(offset, { min: 0, max: Number.MAX_SAFE_INTEGER, fallback: 0 });
   const roleVisible = scopedAssets.filter((asset) => decideAccess(role, "viewAsset", asset).allowed);
-  const intent = !view && !collection ? matchSearchIntent(query) : undefined;
+  const discoveryQuery = !view && !collection ? resolveDiscoveryQuery(query, requestedIntent) : { query, matchedIntent: undefined };
+  const queryForIntent = discoveryQuery.query;
+  const intent = !view && !collection ? matchSearchIntent(queryForIntent) : undefined;
   const selectedViewId = normalizeSavedViewId(view) || intent?.matchedView;
   const selectedView = savedViewDefinitions.find((item) => item.id === selectedViewId);
   const selectedCollection = collectionDefinitions.find((item) => item.id === collection);
-  const effectiveQuery = intent?.matchedView ? "" : query;
+  const effectiveQuery = intent?.matchedView ? "" : queryForIntent;
   const visible = roleVisible
     .filter((asset) => (selectedView ? selectedView.match(asset) : true))
     .filter((asset) => collectionMatches(asset, collection))
@@ -213,16 +229,18 @@ export async function searchAssets({
     },
     metadataHealth: buildMetadataHealth(roleVisible),
     appliedIntent:
-      intent || selectedCollection
+      intent || selectedCollection || discoveryQuery.matchedIntent
         ? {
             rawQuery: query,
             matchedView: selectedViewId,
             matchedCollection: selectedCollection?.id,
+            matchedDiscoveryIntent: discoveryQuery.matchedIntent?.id,
             confidence: intent?.confidence || (selectedCollection ? "exact" : "none")
           }
         : undefined,
     discovery: buildCatalogDiscovery({
       query: effectiveQuery,
+      intent: discoveryQuery.matchedIntent?.id || requestedIntent,
       view: selectedViewId,
       collection,
       filters,
@@ -256,7 +274,7 @@ export function getRelatedAssets(assets: StockMediaAsset[], id: string) {
     .filter((item) => item.id !== id)
     .filter(assetIsApproved)
     .filter((item) => item.collection === asset.collection || includesAny(item, [...(asset.tags || []), ...(asset.tjcTerms || [])].slice(0, 4)))
-    .sort((a, b) => statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a))
+    .sort((a, b) => previewFirstCompare(a, b) || statusWeight(a) - statusWeight(b) || curatedWeight(b) - curatedWeight(a))
     .slice(0, 8);
 }
 
@@ -270,11 +288,12 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
       .map((record) => record.resourceId)
   );
   const hasPendingReviewWrite = (asset: StockMediaAsset) => pendingWriteResourceIds.has(assetResourceRef(asset));
-  const matchesQueue = (asset: StockMediaAsset, id: ReviewQueueId) => assetMatchesReviewQueue(asset, id, duplicateGroupCounts) || (id === "pending" && hasPendingReviewWrite(asset));
+  const matchesQueue = (asset: StockMediaAsset, id: ReviewQueueId) =>
+    assetMatchesReviewQueue(asset, id, duplicateGroupCounts) || ((id === "pending" || id === "pending-write") && hasPendingReviewWrite(asset));
   const reviewable = canReview
     ? assets
         .filter((asset) => hasPendingReviewWrite(asset) || reviewQueues.some((queue) => assetMatchesReviewQueue(asset, queue.id, duplicateGroupCounts)))
-        .sort((a, b) => reviewRiskFlags(b, duplicateGroupCounts).length - reviewRiskFlags(a, duplicateGroupCounts).length || statusWeight(a) - statusWeight(b) || a.title.localeCompare(b.title))
+        .sort((a, b) => previewFirstCompare(a, b) || reviewRiskFlags(b, duplicateGroupCounts).length - reviewRiskFlags(a, duplicateGroupCounts).length || statusWeight(a) - statusWeight(b) || a.title.localeCompare(b.title))
     : [];
   const selected = reviewable.filter((asset) => matchesQueue(asset, queueId));
   const reviewCounts = countAssetGovernance(reviewable);
@@ -285,6 +304,7 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
     source: status,
     governance: {
       pendingReview: reviewable.filter((asset) => matchesQueue(asset, "pending")).length,
+      pendingWrites: reviewable.filter((asset) => matchesQueue(asset, "pending-write")).length,
       childrenYouth: reviewCounts.childrenYouth,
       missingSource: reviewCounts.missingSource,
       rightsReview: reviewCounts.rightsReview,
@@ -294,7 +314,10 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
       aiEnrichment: reviewable.filter((asset) => assetMatchesReviewQueue(asset, "ai-enrichment", duplicateGroupCounts)).length,
       taxonomyDrift: reviewable.filter((asset) => assetMatchesReviewQueue(asset, "taxonomy-drift", duplicateGroupCounts)).length,
       renditionGaps: reviewable.filter(assetHasRenditionGap).length,
+      derivativeGaps: reviewable.filter((asset) => matchesQueue(asset, "derivative-gap")).length,
       staleApprovals: reviewable.filter((asset) => assetMatchesReviewQueue(asset, "stale-approvals", duplicateGroupCounts)).length,
+      staleReview: reviewable.filter((asset) => matchesQueue(asset, "stale-review")).length,
+      riskTriage: reviewable.filter((asset) => matchesQueue(asset, "risk")).length,
       missingRequiredFields: reviewable.filter((asset) => missingReviewFields(asset).length > 0).length
     },
     queues: reviewQueues.map((queue) => ({

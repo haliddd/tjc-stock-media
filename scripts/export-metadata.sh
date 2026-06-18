@@ -5,6 +5,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_CSV="${1:-}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR="$ROOT/.runtime/exports"
+
+cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-export-metadata}" node scripts/safe-lane-headroom-guard.mjs
+
 mkdir -p "$OUT_DIR"
 
 if [ -z "$SOURCE_CSV" ]; then

@@ -308,7 +308,7 @@ export function AdminPage() {
     if (!ready || role !== "DAM Admin") return;
     let cancelled = false;
     setError("");
-    fetch(`/api/admin/readiness?role=${encodeURIComponent(role)}`)
+    fetch("/api/admin/readiness")
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || "Unable to load DAM readiness");

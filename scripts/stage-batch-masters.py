@@ -9,6 +9,7 @@ import hashlib
 import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,6 +37,18 @@ MEDIA_EXTENSIONS = {
     ".aiff": "Audio",
     ".flac": "Audio",
 }
+
+
+def run_headroom_guard(context: str) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.setdefault("SAFE_LANE_HEADROOM_CONTEXT", context)
+    subprocess.run(
+        ["node", "scripts/safe-lane-headroom-guard.mjs"],
+        cwd=repo_root,
+        env=env,
+        check=True,
+    )
 
 
 def sha256(path: Path) -> str:
@@ -112,6 +125,8 @@ def main() -> int:
     if not args.source_dir.is_dir():
         print(f"FAIL: source directory not found: {args.source_dir}", file=sys.stderr)
         return 1
+
+    run_headroom_guard("stage-batch-masters")
 
     source_album = args.source_album or args.source_dir.name
     source_album_safe = safe_folder(source_album)

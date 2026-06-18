@@ -77,6 +77,135 @@ export type TaxonomyAliasGroup = {
   filters?: string[];
 };
 
+export type TaxonomyGovernanceTerm = {
+  canonical: string;
+  aliases: string[];
+  deprecatedTerms: string[];
+  forbiddenTerms: string[];
+  sensitiveMapping?: string;
+  ministryMapping: string;
+  ownerNotes: string;
+};
+
+export const taxonomyGovernanceTerms: TaxonomyGovernanceTerm[] = [
+  {
+    canonical: "Sabbath Service",
+    aliases: ["sabbath", "sabbath worship", "church service", "service"],
+    deprecatedTerms: ["Sunday service", "weekend service"],
+    forbiddenTerms: ["generic church event"],
+    sensitiveMapping: "sacrament-sensitive when communion, baptism, footwashing, or altar prayer is visible",
+    ministryMapping: "Worship / Service",
+    ownerNotes: "Use specific service context when known; generic worship alone weakens review routing."
+  },
+  {
+    canonical: "Religious Education",
+    aliases: ["RE", "children class", "youth class", "lesson"],
+    deprecatedTerms: ["kids stuff", "children event"],
+    forbiddenTerms: ["child promo", "minor marketing"],
+    sensitiveMapping: "youth-sensitive",
+    ministryMapping: "Religious Education",
+    ownerNotes: "Youth and possible-minor terms require consent and reviewer confirmation before public use."
+  },
+  {
+    canonical: "Hymns of Praise",
+    aliases: ["hymn", "hymnal", "music", "singing", "choir", "song"],
+    deprecatedTerms: ["background music", "generic song"],
+    forbiddenTerms: ["free music", "copyright-free"],
+    sensitiveMapping: "music/teaching rights",
+    ministryMapping: "Music Ministry",
+    ownerNotes: "Music terms route to rights review; do not imply license clearance from taxonomy."
+  },
+  {
+    canonical: "Testimony",
+    aliases: ["personal testimony", "healing", "illness", "vision", "family conversion"],
+    deprecatedTerms: ["storytime", "personal story"],
+    forbiddenTerms: ["medical claim", "trauma content"],
+    sensitiveMapping: "testimony-sensitive",
+    ministryMapping: "Pastoral / Testimony",
+    ownerNotes: "Private, pastoral, illness, grief, and testimony contexts default to review-required."
+  },
+  {
+    canonical: "Baptism",
+    aliases: ["water baptism", "sacrament"],
+    deprecatedTerms: ["pool event", "water ceremony"],
+    forbiddenTerms: ["stock baptism"],
+    sensitiveMapping: "sacrament-sensitive",
+    ministryMapping: "Sacrament",
+    ownerNotes: "Sacrament images need doctrinal and pastoral context review before broad reuse."
+  },
+  {
+    canonical: "Bible Study",
+    aliases: ["study", "lesson", "class", "teaching", "scripture study"],
+    deprecatedTerms: ["school", "classroom only"],
+    forbiddenTerms: ["generic education stock"],
+    sensitiveMapping: "teaching rights when sermon, slide, or publication material is visible",
+    ministryMapping: "Teaching",
+    ownerNotes: "Teaching labels should separate visible Bible object from actual teaching-content rights."
+  },
+  {
+    canonical: "Fellowship",
+    aliases: ["church life", "gathering", "meal", "potluck", "community"],
+    deprecatedTerms: ["party", "hangout"],
+    forbiddenTerms: ["public event crowd"],
+    sensitiveMapping: "member-sensitive when people are identifiable",
+    ministryMapping: "Fellowship",
+    ownerNotes: "People-visible fellowship media may be internal-only even when event seems ordinary."
+  },
+  {
+    canonical: "Stock-safe",
+    aliases: ["portal ready", "broad reuse", "ready to use", "reusable library media"],
+    deprecatedTerms: ["approved everything", "no review needed"],
+    forbiddenTerms: ["rights guaranteed", "master available"],
+    sensitiveMapping: "public-safe only after rights, people, review, and derivative checks pass",
+    ministryMapping: "Reuse Clearance",
+    ownerNotes: "Never tag source-only or unreviewed media as stock-safe."
+  }
+];
+
+export type TaxonomyHealthSummary = {
+  canonicalLabels: string[];
+  aliasCount: number;
+  deprecatedTerms: string[];
+  forbiddenTerms: string[];
+  sensitiveMinistryMappings: Array<{ canonical: string; sensitiveMapping?: string; ministryMapping: string }>;
+  ownerNotes: Array<{ canonical: string; note: string }>;
+};
+
+export function taxonomyHealthSummary(): TaxonomyHealthSummary {
+  return {
+    canonicalLabels: taxonomyGovernanceTerms.map((term) => term.canonical),
+    aliasCount: taxonomyGovernanceTerms.reduce((sum, term) => sum + term.aliases.length, 0),
+    deprecatedTerms: taxonomyGovernanceTerms.flatMap((term) => term.deprecatedTerms),
+    forbiddenTerms: taxonomyGovernanceTerms.flatMap((term) => term.forbiddenTerms),
+    sensitiveMinistryMappings: taxonomyGovernanceTerms.map((term) => ({
+      canonical: term.canonical,
+      sensitiveMapping: term.sensitiveMapping,
+      ministryMapping: term.ministryMapping
+    })),
+    ownerNotes: taxonomyGovernanceTerms.map((term) => ({ canonical: term.canonical, note: term.ownerNotes }))
+  };
+}
+
+export function taxonomyGovernanceForRole(role: "Viewer" | "Contributor" | "Reviewer" | "DAM Admin") {
+  if (role !== "DAM Admin") {
+    return {
+      terms: taxonomyGovernanceTerms.map(({ canonical, aliases, ministryMapping }) => ({ canonical, aliases, ministryMapping })),
+      health: {
+        canonicalLabels: taxonomyGovernanceTerms.map((term) => term.canonical),
+        aliasCount: taxonomyGovernanceTerms.reduce((sum, term) => sum + term.aliases.length, 0),
+        deprecatedTerms: [],
+        forbiddenTerms: [],
+        sensitiveMinistryMappings: [],
+        ownerNotes: []
+      } satisfies TaxonomyHealthSummary
+    };
+  }
+  return {
+    terms: taxonomyGovernanceTerms,
+    health: taxonomyHealthSummary()
+  };
+}
+
 export const taxonomyAliasGroups: TaxonomyAliasGroup[] = [
   {
     canonical: "Bible",

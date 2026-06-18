@@ -7,7 +7,17 @@ const repoRoot = path.resolve(frontendDir, "..");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  outputFileTracingRoot: repoRoot
+  outputFileTracingRoot: repoRoot,
+  experimental: {
+    webpackBuildWorker: false
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer && config.output) {
+      config.output.chunkFilename = "chunks/[name].js";
+    }
+
+    return config;
+  }
 };
 
 export default nextConfig;

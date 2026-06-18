@@ -80,7 +80,7 @@ export function buildCollections(assets: StockMediaAsset[], role: DemoRole): Cat
         .slice(0, 5)
         .map((asset) => {
           const payload = assetForRolePayload(role, asset);
-          return { src: collectionImageUrl(payload, role), alt: payload.thumbnailAlt || "Media preview" };
+          return { src: collectionImageUrl(asset, role), alt: payload.thumbnailAlt || "Media preview" };
         })
         .filter((image): image is { src: string; alt: string } => Boolean(image.src))
     };

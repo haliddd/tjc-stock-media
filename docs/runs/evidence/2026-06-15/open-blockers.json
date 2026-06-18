@@ -1,0 +1,178 @@
+{
+  "schema": "tjc-stock-media-beta-open-blockers.v1",
+  "checkedAt": "2026-06-16T13:46:56Z",
+  "latestLocalProtectedProofAt": "2026-06-16T13:46:56Z",
+  "latestLocalBrowserQaProofAt": "2026-06-16T16:43:07.114Z",
+  "latestLocalBrowserQaAttemptAt": "2026-06-16T16:43:07.114Z",
+  "latestHostedReadOnlyProofAt": "2026-06-16T14:22:04.520Z",
+  "worktree": "/Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run",
+  "branch": "codex/safe-ui-beta-proof-2026-06-15",
+  "baseUrl": "http://localhost:4871",
+  "decision": "NO-GO",
+  "finalVerdict": "Not beta ready",
+  "decisionReason": "Local isolated proof is strong, but hosted, canonical, ResourceSpace, Google Drive custody, durable state, and tester approval gates remain unproven.",
+  "localProofSummary": {
+    "launchReadiness": {
+      "status": "pass",
+      "failures": 0,
+      "warnings": 2,
+      "warningIds": [
+        ".env missing",
+        ".runtime/backups missing"
+      ]
+    },
+    "browserQa": {
+      "status": "pass",
+      "checkedAt": "2026-06-16T16:43:07.114Z",
+      "pages": 20,
+      "viewports": 6,
+      "screenshots": 32,
+      "failures": 0,
+      "consoleErrors": 0,
+      "networkFailures": 0,
+      "warnings": 0
+    },
+    "frontend": {
+      "typecheck": "pass",
+      "tests": "pass",
+      "testFiles": 9,
+      "testCount": 86,
+      "build": "pass"
+    },
+    "runtimeSmokes": {
+      "status": "pass",
+      "baseUrl": "http://localhost:4871",
+      "targets": [
+        "portal-api-smoke",
+        "portal-download-ticket-smoke",
+        "portal-sso-smoke",
+        "portal-delivery-smoke",
+        "portal-feedback-smoke",
+        "portal-package-smoke",
+        "portal-saved-search-smoke",
+        "portal-writeback-guard-smoke",
+        "portal-usage-smoke",
+        "portal-beta-rehearsal"
+      ]
+    }
+  },
+  "forbiddenSurfacesNotTouched": [
+    "Vercel prod env",
+    "ResourceSpace prod data",
+    "Google Drive originals",
+    "DNS",
+    "billing",
+    "live writeback",
+    "tester invites",
+    "public launch",
+    "source media"
+  ],
+  "localOperationalFollowUps": [
+    {
+      "id": "safe-lane-disk-headroom",
+      "status": "follow-up",
+      "owner": "operator",
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/08-durable-state-proof.md",
+      "currentSignal": "local free disk at least 10 GiB",
+      "latestObserved": "20 GiB",
+      "safeNextStep": "Continue running make safe-lane-headroom-guard before heavy local work. If low disk recurs, use make safe-lane-disk-report, then clean only safe isolated build/runtime artifacts if needed; never clean shared checkout, source media, prod/hosted surfaces, or evidence artifacts without replacement proof. safe isolated cleanup may not be enough for default 10 GiB headroom when low disk recurs. Lowering SAFE_LANE_MIN_FREE_GIB for a focused safe command requires SAFE_LANE_HEADROOM_OVERRIDE_REASON.",
+      "blocks": [
+        "long-local-dev-build-start-browser-reruns",
+        "long-local-dev-build-start-browser-smoke-reruns",
+        "long-local-dev-build-start-browser-smoke-bootstrap-docker-reruns",
+        "long-local-dev-build-start-browser-smoke-bootstrap-docker-import-media-backup-reruns"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "id": "canonical-deployment",
+      "status": "blocked",
+      "owner": "Hali",
+      "blocks": [
+        "teammate-invite",
+        "hosted-beta-go",
+        "public-launch"
+      ],
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/01-canonical-repo-deploy.md",
+      "requiredProof": "Confirm canonical GitHub repo, branch, Vercel project, stable URL, and deployed commit.",
+      "safeNextStep": "Owner supplies canonical repo/project/deployed commit evidence without mutating prod env."
+    },
+    {
+      "id": "hosted-access-protection",
+      "status": "partial",
+      "owner": "Hali + operator",
+      "blocks": [
+        "teammate-invite",
+        "hosted-beta-go",
+        "public-launch"
+      ],
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/03-hosted-access-proof.md",
+      "requiredProof": "Authenticated hosted SSO/session boundary proof, including spoofing checks and hosted redaction/download checks.",
+      "safeNextStep": "Run approved read-only or owner-approved hosted access proof; do not run mutating hosted smokes without approval env."
+    },
+    {
+      "id": "vercel-env-confirmation",
+      "status": "blocked",
+      "owner": "Hali",
+      "blocks": [
+        "teammate-invite",
+        "hosted-beta-go",
+        "public-launch"
+      ],
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/03-hosted-access-proof.md",
+      "requiredProof": "Confirm hosted env names/settings with secrets redacted, including role override disabled and writeback not live.",
+      "safeNextStep": "Owner provides redacted env proof; do not mutate Vercel production env."
+    },
+    {
+      "id": "resourcespace-scope",
+      "status": "blocked",
+      "owner": "Hali + DAM owner",
+      "blocks": [
+        "teammate-invite",
+        "hosted-beta-go",
+        "public-launch"
+      ],
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/04-resourcespace-read-proof.md",
+      "requiredProof": "Confirm real read-only ResourceSpace path or explicitly mark the beta as non-real rehearsal scope.",
+      "safeNextStep": "Provide safe read-only ResourceSpace proof or explicit non-real rehearsal decision; do not mutate ResourceSpace prod data."
+    },
+    {
+      "id": "google-drive-custody",
+      "status": "blocked",
+      "owner": "Hali + custody owner",
+      "blocks": [
+        "teammate-invite",
+        "hosted-beta-go",
+        "public-launch"
+      ],
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/06-google-drive-custody-proof.md",
+      "requiredProof": "Provide sanitized custody manifest/proof showing Google Shared Drive originals remain the master copy and portal outputs are not source mutation.",
+      "safeNextStep": "Provide sanitized manifest only; do not touch Google Drive originals."
+    },
+    {
+      "id": "durable-hosted-state",
+      "status": "blocked",
+      "owner": "Hali + operator",
+      "blocks": [
+        "teammate-invite",
+        "hosted-beta-go",
+        "public-launch"
+      ],
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/08-durable-state-proof.md",
+      "requiredProof": "Confirm durable hosted store or fail-closed/disabled behavior for feedback, audit-critical workflows, pending review writes, and download tickets.",
+      "safeNextStep": "Choose durable store or disable/fail-close critical workflows; do not fake backup/restore proof."
+    },
+    {
+      "id": "tester-list-and-signoff",
+      "status": "blocked",
+      "owner": "Hali",
+      "blocks": [
+        "teammate-invite"
+      ],
+      "evidenceDoc": "docs/runs/evidence/2026-06-15/09-beta-packet.md",
+      "requiredProof": "Confirm named testers, roles, send owner, stop-test owner, and renewed Team Beta signoff after June 15 P0 proof.",
+      "safeNextStep": "Owner fills signoff record; Codex does not send invites."
+    }
+  ]
+}

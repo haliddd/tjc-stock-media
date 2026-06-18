@@ -8,14 +8,14 @@ import { useDemoRole } from "@/components/RoleProvider";
 import { useDownloadGate, useReviewQueue } from "@/components/dam/useDamApi";
 import { assetRecordRef, assetType, displayTitle, formatBytes } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus, type EnterpriseStatus } from "@/lib/enterprise-status";
-import { presentReviewContext } from "@/lib/portal-context-presenters";
-import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewChecklistItems, reviewDecisionMissingLabels, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
+import { betaVisibilityLabel, presentReviewContext, reuseAnswerLabel } from "@/lib/portal-context-presenters";
+import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
 import { buildReviewQueueMetrics, buildReviewSignals, buildSelectedReviewGuidance, checklistActionLabel, reviewEvidenceGroups, reviewMetadataCompleteness, reviewWaitingDays, reviewWorkbenchTabs, type PendingReviewDecisionSummary } from "@/lib/review-workbench";
 import { routeWithRole } from "@/lib/role-routes";
 import type { ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
-import { normalizeReviewQueueId, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
+import { normalizeReviewQueueId, reviewGovernanceGroupsForAsset, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
 import { cn } from "@/lib/ui";
-import { ActionButton, AssetThumb, ErrorCard, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
+import { ActionButton, AssetPreviewStrip, AssetThumb, ErrorCard, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
 
 const reviewQueuePageSizeOptions = [8, 12, 20];
 const evidenceRequiredBeforeCompletion = new Set<keyof ReviewEvidenceChecklist>([
@@ -27,11 +27,12 @@ const evidenceRequiredBeforeCompletion = new Set<keyof ReviewEvidenceChecklist>(
 function reviewChipLabels(asset: StockMediaAsset) {
   const flags = reviewRiskFlags(asset);
   const chips = new Set<string>();
+  reviewGovernanceGroupsForAsset(asset, Boolean(asset.pendingReviewWrite)).filter((group) => group.active).forEach((group) => chips.add(group.label));
   if (assetEnterpriseStatus(asset) === "Needs Review") chips.add("Needs review");
   if (flags.includes("Rights unclear")) chips.add("Rights missing");
   if (flags.includes("People/minors status unresolved")) chips.add("People unresolved");
   if (flags.some((flag) => /source/i.test(flag))) chips.add("Source missing");
-  return [...chips].slice(0, 3);
+  return [...chips].slice(0, 4);
 }
 
 export function EnterpriseReviewPage() {
@@ -42,9 +43,9 @@ export function EnterpriseReviewPage() {
   const review = useReviewQueue(role, queueId);
   const rawQueue = review.data?.assets || [];
   const pendingWritesByAssetId = review.data?.pendingWrites || {};
-  const [pageSize, setPageSize] = useState(8);
+  const [pageSize, setPageSize] = useState(12);
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
+  const [sortOrder, setSortOrder] = useState<"preview" | "oldest" | "newest">("preview");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingDecisionById, setPendingDecisionById] = useState<Record<string, PendingReviewDecisionSummary>>({});
   const [comment, setComment] = useState("");
@@ -55,9 +56,11 @@ export function EnterpriseReviewPage() {
   const [reviewSignalQuery, setReviewSignalQuery] = useState("");
   const [activeWorkbenchTab, setActiveWorkbenchTab] = useState(reviewWorkbenchTabs[0]);
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
   const downloadGate = useDownloadGate(selectedId || "", role);
   const queue = useMemo(() => {
     const dateValue = (asset: (typeof rawQueue)[number]) => Date.parse(asset.importDate || asset.capturedDate || asset.reviewedDate || "") || 0;
+    if (sortOrder === "preview") return rawQueue;
     return [...rawQueue].sort((left, right) => sortOrder === "oldest" ? dateValue(left) - dateValue(right) : dateValue(right) - dateValue(left));
   }, [rawQueue, sortOrder]);
   const filteredQueue = useMemo(() => {
@@ -107,6 +110,7 @@ export function EnterpriseReviewPage() {
     setComment("");
     setDecisionMessage("");
     setActiveWorkbenchTab(reviewWorkbenchTabs[0]);
+    setMoreActionsOpen(false);
   }, [queue, selectedId]);
 
   if (!ready) return <div className="enterprise-page"><LoadingCard label="Loading role..." /></div>;
@@ -147,6 +151,11 @@ export function EnterpriseReviewPage() {
   }) : null;
   const detailRows = reviewPresentation?.detailRows || [];
   const evidenceTableRows = reviewPresentation?.evidenceTableRows || [];
+  const governanceGroups = selectedGuidance.governanceGroups || [];
+  const sensitiveEvidence = selectedGuidance.sensitiveMinistryEvidence || [];
+  const publicDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Approve Public", checklist, note: comment }) : "";
+  const requestInfoDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Request More Info", checklist, note: comment }) : "";
+  const restrictDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Do Not Use", checklist, note: comment }) : "";
   const selectQueue = (nextQueue: ReviewQueueId) => {
     setQueueId(nextQueue);
     setCurrentPage(1);
@@ -164,9 +173,9 @@ export function EnterpriseReviewPage() {
   };
   const decide = async (nextStatus: EnterpriseStatus, action: "Approve Public" | "Request More Info" | "Do Not Use") => {
     if (!selectedAsset) return;
-    const missing = reviewDecisionMissingLabels(action, checklist, comment);
-    if (missing.length) {
-      setDecisionMessage(`Review blocked. Missing evidence: ${missing.join(", ")}.`);
+    const disabledReason = reviewActionDisabledReason({ asset: selectedAsset, action, checklist, note: comment });
+    if (disabledReason) {
+      setDecisionMessage(`Review blocked. ${disabledReason}.`);
       return;
     }
     const response = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role, id: selectedAsset.id, action, notes: comment || `Reviewer decision for ${displayTitle(selectedAsset)}. Pending ResourceSpace sync required.`, checklist, reviewerName: "Alex Kim" }) });
@@ -190,11 +199,23 @@ export function EnterpriseReviewPage() {
     if (!selectedAsset) return;
     const payload = await downloadGate.requestDownload({ reason: `Reviewer gated download check for ${displayTitle(selectedAsset)}`, variant: "review-preview" });
     if (payload.allowed && payload.downloadUrl) {
-      setDecisionMessage("Download gate approved by backend. Opening approved copy.");
+      setDecisionMessage("Download gate approved. Opening approved copy.");
       window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
       return;
     }
     setDecisionMessage(payload.message || payload.reason || "Download gate blocked this request.");
+  };
+  const runMoreAction = (action: "details" | "rights" | "download-gate") => {
+    setMoreActionsOpen(false);
+    if (action === "details") {
+      setActiveWorkbenchTab("Details");
+      return;
+    }
+    if (action === "rights") {
+      setActiveWorkbenchTab("Rights");
+      return;
+    }
+    void requestGatedDownload();
   };
   return (
     <div className="enterprise-page enterprise-review">
@@ -233,6 +254,12 @@ export function EnterpriseReviewPage() {
               <p>Next safe action: {nextSafeAction}.</p>
             </article>
           </div>
+          <AssetPreviewStrip
+            assets={filteredQueue}
+            title="Review preview samples"
+            detail="Preview-backed review records stay first for local beta; source files remain hidden."
+            limit={4}
+          />
         </section>
         <aside className="ed-review-list ed-panel">
           <header className="ed-review-list-head">
@@ -254,7 +281,7 @@ export function EnterpriseReviewPage() {
           </label>
           <div className="ed-review-taxonomy" aria-label="Review taxonomy rail and evidence signals">
             <section>
-              <header><span>Global saved views</span><em>{(review.data?.queues || []).length.toLocaleString()}</em></header>
+              <header><span>Review queues</span><em>{(review.data?.queues || []).length.toLocaleString()}</em></header>
               <div>
                 {(review.data?.queues || []).map((tab) => (
                   <button className={cn(queueId === tab.id && "is-active")} type="button" key={tab.id} aria-current={queueId === tab.id ? "true" : undefined} onClick={() => selectQueue(normalizeReviewQueueId(tab.id))}>
@@ -298,7 +325,8 @@ export function EnterpriseReviewPage() {
           {reviewListMessage ? <p className="ed-inline-success">{reviewListMessage}</p> : null}
           <div className="ed-review-list-tools" aria-label="Review queue paging controls">
             <span>Sort by</span>
-            <button className="ed-sort" type="button" onClick={() => { setSortOrder((order) => order === "oldest" ? "newest" : "oldest"); setCurrentPage(1); }}>{sortOrder === "oldest" ? "Oldest first" : "Newest first"} <ChevronDown size={14} /></button>
+            <button className="ed-sort" type="button" onClick={() => { setSortOrder((order) => order === "preview" ? "oldest" : order === "oldest" ? "newest" : "preview"); setCurrentPage(1); }}>{sortOrder === "preview" ? "Preview first" : sortOrder === "oldest" ? "Oldest first" : "Newest first"} <ChevronDown size={14} /></button>
+            <button type="button" aria-label="Sort preview first" onClick={() => { setSortOrder("preview"); setCurrentPage(1); }}><Grid3X3 size={14} /></button>
             <button type="button" aria-label="Sort ascending" onClick={() => { setSortOrder("oldest"); setCurrentPage(1); }}><ArrowUp size={14} /></button>
             <button type="button" aria-label="Sort descending" onClick={() => { setSortOrder("newest"); setCurrentPage(1); }}><ArrowDown size={14} /></button>
             <label className="ed-page-size">
@@ -335,52 +363,82 @@ export function EnterpriseReviewPage() {
                 <div className="ed-review-title-row">
                   <div>
                     <h1 title={displayTitle(selectedAsset)}>{displayTitle(selectedAsset)}</h1>
-                    <span className="ed-file-soft">{selectedStatus} · {selectedAsset.usageScope || "Do Not Publish"} · {(selectedAsset.fileExtension || assetType(selectedAsset)).toUpperCase()}</span>
+                    <span className="ed-file-soft">{selectedStatus} · {selectedAsset.usageScope || "Not published"} · {(selectedAsset.fileExtension || assetType(selectedAsset)).toUpperCase()}</span>
                   </div>
                   <div className="ed-detail-actions">
                     <ActionButton tone="primary" icon={Save} onClick={() => queuePortalNote("Reviewer progress saved")}>Save progress</ActionButton>
                     <ActionButton icon={ArrowRight} onClick={selectNextAsset}>Next asset</ActionButton>
-                    <ActionButton icon={MoreVertical} onClick={() => queuePortalNote("More reviewer actions opened")}>More actions</ActionButton>
+                    <div className="ed-review-more-menu">
+                      <button className="ed-action" type="button" aria-haspopup="menu" aria-expanded={moreActionsOpen} onClick={() => setMoreActionsOpen((open) => !open)}>
+                        <MoreVertical size={16} aria-hidden="true" />
+                        More actions
+                      </button>
+                      {moreActionsOpen ? (
+                        <div className="ed-review-more-popover" role="menu" aria-label="More reviewer actions">
+                          <button type="button" role="menuitem" onClick={() => runMoreAction("details")}>Open details tab</button>
+                          <button type="button" role="menuitem" onClick={() => runMoreAction("rights")}>Review rights tab</button>
+                          <button type="button" role="menuitem" onClick={() => runMoreAction("download-gate")}>Check download gate</button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </header>
-              <section className="ed-review-next-action">
-                <span>Next</span>
+              <section className="ed-review-next-action" aria-label="Next required review evidence">
+                <span>Next required evidence</span>
                 <strong>{reviewPresentation?.nextAction}</strong>
                 <p>{reviewPresentation?.nextDetail}</p>
                 <button type="button" onClick={() => queuePortalNote("Reviewer guidance viewed")}>View guidance</button>
               </section>
+              <section className="ed-review-summary-strip ed-review-trust-strip" aria-label="Selected review trust answers">
+                <span><small>Beta visibility</small><strong>{reviewPresentation?.betaVisibility || betaVisibilityLabel(selectedAsset)}</strong></span>
+                <span><small>Reuse/download</small><strong>{reviewPresentation?.reuseAnswer || reuseAnswerLabel("blocked-needs-review")}</strong></span>
+                <span><small>Source truth</small><strong>Hosted DAM instance</strong></span>
+                <span><small>Next blocker</small><strong>{topBlocker}</strong></span>
+              </section>
               <div className={cn("ed-hero-preview is-review", previewExpanded && "is-expanded")}>
                 <span className="ed-preview-derivative-label">Portal-safe preview derivative</span>
                 <AssetThumb asset={selectedAsset} className="ed-review-preview-image" fit="contain" />
+                <div className="ed-preview-redaction-note" aria-label="Preview redaction notice">
+                  <Lock size={14} aria-hidden="true" />
+                  <span>Role-safe derivative only. Source/original hidden.</span>
+                </div>
                 <button className="ed-preview-corner" type="button" aria-label="Open preview record" onClick={() => queuePortalNote("Preview record opened")}>▣</button>
                 <div className="ed-preview-toolbar" aria-label="Preview zoom controls">
-                  <button type="button" aria-label="Zoom out" disabled title="Zoom controls are disabled for beta fixtures."><Minus size={15} /></button>
-                  <button type="button" aria-label="Zoom in" disabled title="Zoom controls are disabled for beta fixtures."><Plus size={15} /></button>
+                  <button type="button" aria-label="Zoom out" disabled title="Zoom controls are disabled until safe preview tooling is connected."><Minus size={15} /></button>
+                  <button type="button" aria-label="Zoom in" disabled title="Zoom controls are disabled until safe preview tooling is connected."><Plus size={15} /></button>
                   <strong>100%</strong>
                   <button type="button" aria-label={previewExpanded ? "Collapse preview" : "Expand preview"} onClick={() => setPreviewExpanded((expanded) => !expanded)}><Grid3X3 size={15} /></button>
                 </div>
                 <button className="ed-preview-ratio" type="button" onClick={() => setPreviewExpanded((expanded) => !expanded)}>1:1</button>
               </div>
-              <section className="ed-review-summary-strip" aria-label="Selected review record summary">
+              <section className="ed-review-summary-strip" aria-label="Selected review record details">
                 <span><small>Record ID</small><strong>{assetRecordRef(selectedAsset)}</strong></span>
                 <span><small>Rights status</small><strong>{selectedAsset.rightsStatus || "Needs evidence"}</strong></span>
                 <span><small>Policy</small><strong>{selectedAsset.downloadPolicy || "not-downloadable"}</strong></span>
-                <span><small>Next required action</small><strong>{topBlocker}</strong></span>
+                <span><small>Review queue</small><strong>{currentQueueLabel}</strong></span>
+              </section>
+              <section className="ed-review-governance-groups" aria-label="Review queue governance groups">
+                {governanceGroups.map((group) => (
+                  <span className={group.active ? "is-active" : ""} key={group.id} title={group.detail}>
+                    <strong>{group.label}</strong>
+                    <small>{group.active ? group.detail : "clear"}</small>
+                  </span>
+                ))}
               </section>
               <nav className="ed-tabs is-large" role="tablist" aria-label="Review workbench sections">{reviewWorkbenchTabs.map((tab) => <button className={activeWorkbenchTab === tab ? "is-active" : ""} type="button" role="tab" aria-selected={activeWorkbenchTab === tab} key={tab} onClick={() => setActiveWorkbenchTab(tab)}>{tab}</button>)}</nav>
               <section className="ed-card ed-metadata-card"><dl className="ed-metadata is-two">{detailRows.map(([l, v]) => <div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section>
               <div className="ed-review-cards">
                 <section className="ed-card ed-score-card"><h3>Metadata completeness</h3><div className="ed-score-ring">{metadataCompleteness.percent}%</div><p>{metadataCompleteness.label} required</p><button type="button" onClick={() => setActiveWorkbenchTab("Details")}>View details</button></section>
                 <section className="ed-card"><h3>Risk signals</h3>{selectedGuidance.riskFlags.length ? selectedGuidance.riskFlags.slice(0, 3).map((row, index) => <p className="ed-checkline" key={`${row}-${index}`}><ShieldAlert size={16} />{row}</p>) : <p className="ed-review-muted">No elevated signal exported.</p>}{selectedGuidance.riskFlags.length > 3 ? <button type="button" onClick={() => setActiveWorkbenchTab("Rights")}>View all signals ({selectedGuidance.riskFlags.length})</button> : null}</section>
-                <section className="ed-card"><h3>Review policy</h3><p>ResourceSpace remains final approval truth.</p><button type="button" onClick={() => queuePortalNote("Review policy opened")}>View policy</button><button type="button" onClick={requestGatedDownload}>Open gated copy</button></section>
+                <section className="ed-card"><h3>Review policy</h3><p>Workflow state creates next action. ResourceSpace remains final approval truth; portal queueing is not live sync unless verified.</p><button type="button" onClick={() => queuePortalNote("Review policy opened")}>View policy</button><button type="button" onClick={requestGatedDownload}>Check download gate</button></section>
               </div>
             </main>
             <aside className="ed-review-rail">
               <section className="ed-card ed-review-evidence-panel">
                 <header className="ed-evidence-head">
                   <div>
-                    <h3>Review Evidence</h3>
+                    <h3>Evidence and next action</h3>
                     <p>{selectedStatus}</p>
                   </div>
                   <strong>{evidenceCompletion.completed}/{evidenceCompletion.total}</strong>
@@ -397,6 +455,15 @@ export function EnterpriseReviewPage() {
                   ))}
                 </div>
                 {selectedGuidance.approveMissingLabels.length ? <p className="ed-review-missing"><AlertTriangle size={16} />Approval blocked until required evidence is complete.<span>Missing: {selectedGuidance.approveMissingLabels.slice(0, 3).join(", ")}.</span></p> : <p className="ed-inline-success">Evidence packet can be queued for approval review.</p>}
+                <div className="ed-sensitive-evidence" aria-label="Sensitive ministry evidence model">
+                  <h4>Sensitive ministry evidence</h4>
+                  {sensitiveEvidence.map((item) => (
+                    <p className={cn(item.active && "is-active", item.blocked && "is-blocked")} key={item.id}>
+                      <span><strong>{item.label}</strong><small>{item.owner} · {item.detail}</small></span>
+                      <em>{item.blocked ? item.missingEvidence.slice(0, 2).join(", ") : item.active ? "evidence required" : "not signaled"}</em>
+                    </p>
+                  ))}
+                </div>
                 {decisionMessage ? <p className="ed-inline-success">{decisionMessage}</p> : null}
                 <div className="ed-evidence-checks">
                   {reviewEvidenceGroups.map((group) => (
@@ -423,10 +490,11 @@ export function EnterpriseReviewPage() {
                   <ActionButton icon={FileText} onClick={() => queuePortalNote("Submission package review requested")}>View details</ActionButton>
                 </div>
                 <nav className="ed-review-decision-actions" aria-label="Review decision actions">
-                  <button type="button" onClick={() => decide("Approved", "Approve Public")}>Approve public</button>
-                  <button type="button" onClick={() => decide("Needs Review", "Request More Info")}>Request info</button>
-                  <button type="button" onClick={() => decide("Restricted", "Do Not Use")}>Restrict use</button>
+                  <button type="button" disabled={Boolean(publicDisabledReason)} title={publicDisabledReason || "Evidence complete for decision queueing."} onClick={() => decide("Approved", "Approve Public")}>Approve</button>
+                  <button type="button" disabled={Boolean(requestInfoDisabledReason)} title={requestInfoDisabledReason || "Evidence complete for request decision."} onClick={() => decide("Needs Review", "Request More Info")}>Needs evidence</button>
+                  <button type="button" disabled={Boolean(restrictDisabledReason)} title={restrictDisabledReason || "Evidence complete for restriction decision."} onClick={() => decide("Restricted", "Do Not Use")}>Reject</button>
                 </nav>
+                <p className="ed-action-disabled-reason">{publicDisabledReason || "Public approval evidence checks are complete; ResourceSpace still remains final truth."}</p>
               </section>
             </aside>
           </>

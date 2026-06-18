@@ -2,10 +2,24 @@
 import argparse
 import csv
 import json
+import os
+import subprocess
 import sys
 import zipfile
 from collections import Counter
 from pathlib import Path
+
+
+def run_headroom_guard(context: str) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.setdefault("SAFE_LANE_HEADROOM_CONTEXT", context)
+    subprocess.run(
+        ["node", "scripts/safe-lane-headroom-guard.mjs"],
+        cwd=repo_root,
+        env=env,
+        check=True,
+    )
 
 
 def extension_for(name: str) -> str:
@@ -66,6 +80,8 @@ def main() -> int:
     if not args.zip_dir.is_dir():
         print(f"FAIL: ZIP directory not found: {args.zip_dir}", file=sys.stderr)
         return 1
+
+    run_headroom_guard("lm-photos-zip-inventory")
 
     rows = []
     for path in sorted(args.zip_dir.glob("*.zip"), key=lambda p: (p.name == "Open Album-3-001.zip", p.name.lower())):

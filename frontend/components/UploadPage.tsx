@@ -29,9 +29,9 @@ const requiredHint = <span className="text-xs font-black text-[#7a5a19]">Require
 const intakeTypes = [
   { id: "event-photo", label: "Event photos", detail: "Event, people visibility, source, and use case.", icon: UploadCloud },
   { id: "youth", label: "Youth/children", detail: "Consent and visibility evidence required.", icon: Users },
-  { id: "sermon", label: "Sermon/teaching", detail: "Speaker, context, and usage scope.", icon: FileText },
+  { id: "sermon", label: "Sermon/teaching photos", detail: "Speaker, context, and usage scope for review.", icon: FileText },
   { id: "graphics", label: "Graphics/flyers", detail: "Design rights, fonts, and channel fit.", icon: FileCheck2 },
-  { id: "music", label: "Hymn/music", detail: "Recording and copyright basis.", icon: ShieldCheck },
+  { id: "music", label: "Hymn/music context", detail: "Future audio/video route; beta only flags related photos or graphics.", icon: ShieldCheck },
   { id: "source-link", label: "Source link only", detail: "Media-team link or shared source for reviewer intake.", icon: LinkIcon }
 ] as const;
 
@@ -83,11 +83,11 @@ export function UploadPage() {
   }, [sourceLink]);
   const hasFileOrSource = selectedFiles.length > 0 || hasValidSourceLink;
   const tagCount = parseUploadTags(suggestedTags).length;
-  const submitReady = hasFileOrSource && tagCount > 0 && intakeNotes.trim().length > 0;
+  const submitReady = hasFileOrSource && intakeNotes.trim().length > 0;
   const packetItems = [
     { id: "type", label: `Media type selected: ${selectedType.label}`, complete: Boolean(intakeType) },
     { id: "file", label: hasFileOrSource ? "File or source link included" : "File or source link needed", complete: hasFileOrSource },
-    { id: "tags", label: tagCount ? `${tagCount} suggested tags` : "Suggested tags needed", complete: tagCount > 0 },
+    { id: "tags", label: tagCount ? `${tagCount} suggested tags` : "Suggested tags optional", complete: true },
     { id: "notes", label: intakeNotes.trim() ? "Reviewer notes included" : "Reviewer notes needed", complete: intakeNotes.trim().length > 0 },
     { id: "evidence", label: "Rights evidence requested for reviewer", complete: true },
     { id: "blocked", label: "Media stays blocked until review", complete: true }
@@ -134,10 +134,6 @@ export function UploadPage() {
       }
       if (!hasFileOrSource) {
         showIssue(index, "Add a file or source link before continuing.", sourceLinkRef.current);
-        return false;
-      }
-      if (!tagCount) {
-        showIssue(index, "Add at least one suggested tag before continuing.");
         return false;
       }
       if (!intakeNotes.trim()) {
@@ -257,7 +253,7 @@ export function UploadPage() {
         <EmptyState
           title="Send media requires Contributor access"
           description="Contributors provide source, people, rights, files, tags, and reviewer notes. New media stays blocked until review."
-          primary={<PrimaryAction href="/" icon={Search}>Find approved media</PrimaryAction>}
+          primary={<PrimaryAction href="/library" icon={Search}>Find approved media</PrimaryAction>}
         />
       </div>
     );
@@ -279,6 +275,7 @@ export function UploadPage() {
         <dl className="send-command-ledger" aria-label="Send media safety summary">
           {[
             ["Intake", "Review packet"],
+            ["Media scope", "Image intake"],
             ["Default", uploadDefaultState.status],
             ["Publish", "Never from Send"],
             ["Truth", "DAM review"]
@@ -295,6 +292,7 @@ export function UploadPage() {
         signals={[
           { label: "Send behavior", value: "Never publishes", tone: "blocked" },
           { label: "Reviewer packet", value: "Source, people, rights", tone: "info" },
+          { label: "Hosted beta", value: "Photos only", tone: "info" },
           { label: "Default state", value: uploadDefaultState.status, tone: "review" },
           { label: "Safe outcome", value: "Approval creates usable copy", tone: "approved" }
         ]}
@@ -337,12 +335,12 @@ export function UploadPage() {
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={labelClass}>
-              <span className="flex items-center justify-between gap-2">Date {requiredHint}</span>
-              <input className={inputClass} name="eventDate" type="date" defaultValue={today} required />
+              <span>Date</span>
+              <input className={inputClass} name="eventDate" type="date" defaultValue={today} />
             </label>
             <label className={labelClass}>
-              <span className="flex items-center justify-between gap-2">Ministry/team {requiredHint}</span>
-              <input className={inputClass} name="ministry" placeholder="Internet Ministry" required />
+              <span>Ministry/team</span>
+              <input className={inputClass} name="ministry" placeholder="Internet Ministry" />
             </label>
           </div>
           <label className={labelClass}>
@@ -350,11 +348,11 @@ export function UploadPage() {
             <input className={inputClass} name="source" placeholder="Volunteer name, media team, source owner..." required />
           </label>
           <label className={labelClass}>
-            <span className="flex items-center justify-between gap-2">Source class {requiredHint}</span>
-            <select className={inputClass} name="sourceClass" defaultValue="" required>
-              <option value="" disabled>Choose one</option>
+            <span>Source class</span>
+            <select className={inputClass} name="sourceClass" defaultValue="">
+              <option value="">Choose one</option>
               <option>Church photographer / TJC-created</option>
-              <option>Existing media archive master</option>
+              <option>Existing media archive record</option>
               <option>Existing media library record</option>
               <option>Online/free source</option>
               <option>Third-party stock/license</option>
@@ -429,6 +427,35 @@ export function UploadPage() {
             <span className="flex items-center justify-between gap-2">Consent/restrictions {requiredHint}</span>
             <textarea className="min-h-28 rounded-[12px] border border-[#d8e1da] bg-white p-3 text-sm font-semibold text-tjc-ink placeholder:text-[#68756d]" name="notes" placeholder="Known permissions, consent, internal-only limits, or restrictions..." rows={4} required />
           </label>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className={labelClass}>
+              <span>Doctrine/sacrament sensitivity</span>
+              <select className={inputClass} name="doctrineSacramentSensitive" defaultValue="">
+                <option value="">Choose one</option>
+                <option>No</option>
+                <option>Yes</option>
+                <option>Unknown - reviewer must check</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              <span>Testimony/pastoral sensitivity</span>
+              <select className={inputClass} name="testimonyPastoralSensitive" defaultValue="">
+                <option value="">Choose one</option>
+                <option>No</option>
+                <option>Yes</option>
+                <option>Unknown - reviewer must check</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              <span>Hymn/music present</span>
+              <select className={inputClass} name="hymnMusicPresent" defaultValue="">
+                <option value="">Choose one</option>
+                <option>No</option>
+                <option>Yes - future rights route</option>
+                <option>Unknown - reviewer must check</option>
+              </select>
+            </label>
+          </div>
         </section>
 
         <section data-send-step="3" className={cn("dam-packet-panel grid gap-4 rounded-[14px] border border-[#e5e7eb] bg-white p-4", step !== 3 && "hidden")}>
@@ -448,10 +475,9 @@ export function UploadPage() {
             label="Suggested tags"
             value={suggestedTags}
             onChange={setSuggestedTags}
-            required
             placeholder="Bible, fellowship, welcome, youth..."
             suggestions={uploadTagSuggestions}
-            helperText="Use visible-content or TJC terms. Reviewers approve final tags."
+            helperText="Optional. Use visible-content or TJC terms. Reviewers approve final tags."
           />
           <label className={labelClass}>
             <span className="flex items-center justify-between gap-2">Reviewer notes {requiredHint}</span>
@@ -527,7 +553,7 @@ export function UploadPage() {
       >
         <EvidenceChecklist items={packetItems} />
         <div className="rounded-xl border border-[#ead6a8] bg-[#fff8e8] p-3 text-sm font-black leading-relaxed text-[#71500f]">
-          New media remains Needs Review / Do Not Publish. Missing proof blocks public/external download.
+          New media remains Status: Submitted, Gate: Not published. Missing proof blocks public/external download.
         </div>
       </PacketSummary>
       </div>

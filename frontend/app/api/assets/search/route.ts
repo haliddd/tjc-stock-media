@@ -3,6 +3,7 @@ import { searchAssets } from "@/lib/catalog";
 import { readCatalogSearchRequest } from "@/lib/catalog-search-request";
 import { createDamRouteSession } from "@/lib/dam-route-session";
 import { canReview } from "@/lib/permissions";
+import { localBetaRoleOverrideFromRequest } from "@/lib/request-identity";
 import { usageAnalyticsDiagnostics } from "@/lib/usage-analytics";
 import type { SearchResult } from "@/lib/types";
 
@@ -40,7 +41,7 @@ function searchResultForRole(session: ReturnType<typeof createDamRouteSession>, 
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const session = createDamRouteSession(request, params.get("role"));
+  const session = createDamRouteSession(request, localBetaRoleOverrideFromRequest(request));
   const role = session.role;
   const searchRequest = readCatalogSearchRequest(params);
   if (searchRequest.error) {
@@ -59,10 +60,31 @@ export async function GET(request: NextRequest) {
     };
   }
   session.recordUsage({
-    type: "search",
+    type: "search_query",
     route: "/api/assets/search",
-    query: input.query || input.view || input.collection || "default",
-    metadata: { rendered: result.pagination.rangeEnd - result.pagination.rangeStart + (result.pagination.rangeStart ? 1 : 0), total: result.total }
+    query: input.query || input.intent || input.view || input.collection || "default",
+    metadata: {
+      rendered: result.pagination.rangeEnd - result.pagination.rangeStart + (result.pagination.rangeStart ? 1 : 0),
+      total: result.total,
+      filterCount: input.filters.length,
+      intent: input.intent || result.appliedIntent?.matchedDiscoveryIntent || null
+    }
   });
+  input.filters.forEach((filter) => {
+    session.recordUsage({
+      type: "filter_click",
+      route: "/api/assets/search",
+      query: input.query || input.intent || input.view || input.collection || "default",
+      metadata: { filter, total: result.total }
+    });
+  });
+  if (result.total === 0) {
+    session.recordUsage({
+      type: "search_zero_result",
+      route: "/api/assets/search",
+      query: input.query || input.intent || input.view || input.collection || "default",
+      metadata: { filterCount: input.filters.length, intent: input.intent || result.appliedIntent?.matchedDiscoveryIntent || null }
+    });
+  }
   return NextResponse.json(searchResultForRole(session, result));
 }

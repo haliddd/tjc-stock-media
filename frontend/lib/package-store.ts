@@ -19,9 +19,11 @@ export type StoredPackageDraft = {
   createdBy: string;
   role: DemoRole;
   governance: {
+    chosenUse: string;
     canPreview: boolean;
     canShare: boolean;
     canPublish: boolean;
+    canDownloadPackage: boolean;
     totalRefs: number;
     portalReadyRefs: number;
     blockedRefs: number;
@@ -99,9 +101,11 @@ function normalizeStoredPackageDraft(input: unknown): StoredPackageDraft | null 
     createdBy: normalizePersistedDisplayText(raw.createdBy, 120) || "local-beta:unknown",
     role: normalizeContributingRoleWithFallback(raw.role, "Contributor"),
     governance: {
+      chosenUse: normalizePersistedDisplayText(governance.chosenUse, 40) || "public-web",
       canPreview: safeBoolean(governance.canPreview),
       canShare: safeBoolean(governance.canShare),
       canPublish: safeBoolean(governance.canPublish),
+      canDownloadPackage: safeBoolean(governance.canDownloadPackage),
       totalRefs: safeNonNegativeInt(governance.totalRefs),
       portalReadyRefs: safeNonNegativeInt(governance.portalReadyRefs),
       blockedRefs: safeNonNegativeInt(governance.blockedRefs),
@@ -234,9 +238,11 @@ export async function savePackageDraft(record: Omit<StoredPackageDraft, "storage
 
 function storedGovernanceSnapshot(governance: PackageGovernancePacket): StoredPackageDraft["governance"] {
   return {
+    chosenUse: governance.chosenUse,
     canPreview: governance.canPreview,
     canShare: governance.canShare,
     canPublish: governance.canPublish,
+    canDownloadPackage: governance.canDownloadPackage,
     totalRefs: governance.totalRefs,
     portalReadyRefs: governance.portalReadyRefs,
     blockedRefs: governance.blockedRefs,

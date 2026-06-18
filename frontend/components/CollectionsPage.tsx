@@ -41,7 +41,7 @@ export function CollectionsPage() {
   const mobileInspectorRef = useRef<HTMLDivElement>(null);
   const opsView = role === "Reviewer" || role === "DAM Admin";
 
-  const apiUrl = useMemo(() => `/api/assets/search?role=${encodeURIComponent(role)}&sort=Approved+first&limit=36`, [role]);
+  const apiUrl = useMemo(() => "/api/assets/search?sort=Approved+first&limit=36", []);
 
   useEffect(() => {
     if (!ready) return;

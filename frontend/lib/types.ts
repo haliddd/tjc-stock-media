@@ -62,6 +62,26 @@ export type MasterCustodyPathStatus = "verified" | "planned" | "missing" | "not-
 
 export type WithdrawalStatus = "active" | "withdrawn" | "takedown-requested" | "embargoed" | "expired";
 
+export type DamRendition = "orig" | "web" | "social" | "thumb" | "print";
+
+export type DamFilenameDateSource = "captured_date" | "event_date" | "file_modified_date" | "import_date" | "undated";
+
+export type DamGeneratedFilenames = {
+  baseName: string;
+  original: string;
+  web: string;
+  social: string;
+  thumb: string;
+  print: string;
+  datePart: string;
+  dateSource: DamFilenameDateSource;
+  collectionSlug: string;
+  sequence: string;
+  originalExtension: string;
+  derivativeExtension: string;
+  subjectSlug?: string;
+};
+
 export type StockMediaAsset = {
   id: string;
   title: string;
@@ -93,6 +113,7 @@ export type StockMediaAsset = {
   eventSeries?: string;
   eventDate?: string;
   capturedDate?: string;
+  fileModifiedDate?: string;
   importDate?: string;
   imageDimensions?: string;
   rightsStatus?: string;
@@ -118,6 +139,7 @@ export type StockMediaAsset = {
   masterDrivePath?: string;
   masterCustodyPathStatus?: MasterCustodyPathStatus;
   originalFilename?: string;
+  damFilenames?: DamGeneratedFilenames;
   fileExtension?: string;
   fileSizeBytes?: number;
   tags?: string[];
@@ -630,12 +652,27 @@ export type SearchResult = {
     rawQuery: string;
     matchedView?: string;
     matchedCollection?: string;
+    matchedDiscoveryIntent?: string;
     confidence: "exact" | "synonym" | "none";
   };
   discovery: {
     mode: "browse" | "smart-query" | "saved-view" | "collection";
     summary: string;
     expandedTerms: string[];
+    matchedIntent?: {
+      id: string;
+      label: string;
+      query: string;
+      description: string;
+      safetyNote: string;
+    };
+    intentPresets: Array<{
+      id: string;
+      label: string;
+      query: string;
+      description: string;
+      suggestedFilters: string[];
+    }>;
     suggestedFilters: Array<{
       label: string;
       filter: string;
@@ -658,6 +695,11 @@ export type SearchResult = {
       }>;
     };
     scoreHint: string;
+    rankingExplanation: Array<{
+      label: string;
+      detail: string;
+    }>;
+    safetyNote: string;
   };
   zeroResultInsights: ZeroResultInsight[];
   operationalInsights: OperationalInsight[];
@@ -673,7 +715,7 @@ export type SearchResult = {
 };
 
 export type MediaSourceStatus = {
-  adapter: "resourcespace-api" | "exported-metadata" | "demo-fallback" | "media-library";
+  adapter: "resourcespace-api" | "exported-metadata" | "bundled-beta-catalog" | "demo-fallback" | "media-library";
   label: string;
   detail: string;
   readOnly: boolean;

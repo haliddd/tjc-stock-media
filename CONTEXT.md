@@ -15,6 +15,15 @@ A TJC user can find a rights-safe asset for a real communication need in under 6
 - **Master warehouse**: `TJC Stock Media Library` Google Shared Drive. It stores selected master originals by year/source album.
 - **Approved delivery copy**: curated output copy, shortcut, or derivative placed in Approved Public/Internal folders after review. It is not the only master record.
 - **DAM**: Digital Asset Management system. ResourceSpace is the DAM layer for tags, search, previews, rights review, and approved downloads.
+- **Hosted DAM instance**: cloud-hosted ResourceSpace runtime for metadata, previews, review workflow, and approved-copy delivery during controlled beta. It is not master-original custody; Google Shared Drive remains the master warehouse.
+- **Operational DAM behavior**: user-facing DAM workflow behavior such as search, asset inspection, review request, intake, review, and visible safety gates against a current photo sample. It does not imply production readiness, public launch, or live writeback.
+- **Demo rehearsal**: presenter-led walkthrough used to prove product behavior before users receive access. It may use local fallback and is not a team beta.
+- **Controlled team beta**: named internal users performing role-specific DAM tasks against a hosted portal and Hosted DAM instance after access, source-truth, and safety gates pass. Local supervised use remains a demo rehearsal, not a controlled team beta.
+- **Admin observer**: beta participant allowed to view governance readiness, blockers, and redacted operational status. Admin observer access does not grant configuration, secret access, source custody, or mutation authority.
+- **Beta operator**: named person allowed to configure hosted beta operations and DAM integration settings. Beta operator authority is narrower than production ownership and does not grant source media mutation or public launch approval.
+- **Beta photo sample**: bounded subset of imported photos approved for beta visibility, capped under the current beta media limit. It excludes video, audio, and sensitive, youth-identifiable, private, or unclear-rights media unless a rights reviewer explicitly approves beta visibility.
+- **Beta visibility approval**: rights reviewer decision that a beta tester may see an asset preview or metadata during the controlled team beta. It does not grant reuse, publication, or download rights.
+- **Reuse approval**: rights reviewer decision that an asset may be used or downloaded for a defined scope. Beta visibility approval never becomes reuse approval by itself.
 - **Media source session**: one request-time view of the active media source, including whether the portal is reading ResourceSpace live, ResourceSpace export, local fixture fallback, or role-safe media-library copy. It is the portal's way to keep source truth honest without exposing operational details to roles that should not see them.
 - **Source system**: where media originally came from, such as Google Photos, old Drive folders, IA DME folders, or local downloads.
 - **Source album**: original Google Photos album name. It is provenance and collection context, not the whole taxonomy.
@@ -33,6 +42,7 @@ A TJC user can find a rights-safe asset for a real communication need in under 6
 - **Portal reuse state**: computed user-facing answer to whether an asset can be reused now, previewed only, or blocked for source/rights/people/derivative reasons. It does not replace ResourceSpace approval fields.
 - **Batch Approved With Blockers**: raw ResourceSpace-approved asset that still lacks one or more portal reuse requirements. User-facing label: `Needs portal review`.
 - **Pending Review Write**: local queued review decision that has not yet been written to ResourceSpace; audit evidence and retry state, not source of truth.
+- **Confirmed ResourceSpace write**: review decision written to ResourceSpace and verified by reading the ResourceSpace record back. Until this exists, the portal must describe the decision as queued or pending, not synced.
 - **Needs Review**: default state for imported assets.
 - **Do Not Publish**: default usage scope until reviewed.
 - **Exact duplicate**: same SHA-256 checksum. ResourceSpace should keep one canonical asset while preserving all source album memberships and source paths.

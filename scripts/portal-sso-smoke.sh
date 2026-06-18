@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:4868}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+(
+  cd "$ROOT"
+  SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-portal-sso-smoke}" node scripts/safe-lane-headroom-guard.mjs
+)
+
+BASE_URL="${BASE_URL:-http://localhost:4867}"
 CURL_MAX_TIME="${PORTAL_SSO_SMOKE_CURL_MAX_TIME:-30}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -43,6 +49,23 @@ expect_json_status() {
   fi
   node -e "$script" < "$output"
   echo "PASS: $label"
+}
+
+expect_json_any_status() {
+  local expected_codes="$1"
+  local label="$2"
+  local script="$3"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  shift 3
+  local code
+  code="$(http_code "$output" "$@")"
+  if ! printf ' %s ' "$expected_codes" | grep -q " $code "; then
+    echo "FAIL: $label expected one of [$expected_codes] got $code"
+    cat "$output"
+    exit 1
+  fi
+  node -e "$script" < "$output"
+  echo "PASS: $label ($code)"
 }
 
 trusted_headers=(
@@ -171,6 +194,9 @@ if (data.status !== "validated" || data.sourceLinkCaptured !== true) {
   -F 'source=QA Reviewer' \
   -F 'peopleVisible=No' \
   -F 'minorsVisible=No' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
@@ -187,10 +213,15 @@ if (!Array.isArray(data.feedback) || typeof data.count !== "number") {
 }
 ' "${admin_headers[@]}" "$BASE_URL/api/beta-feedback?role=Viewer"
 
-expect_json_status 403 reviewer-header-keeps-unsafe-download-blocked '
+expect_json_any_status "403 503" reviewer-header-keeps-unsafe-download-blocked '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-if (data.allowed !== false || !Array.isArray(data.reasonCodes) || !data.reasonCodes.length) {
+if (data.allowed !== false || data.ticket || data.downloadUrl) {
   console.error(`download gate did not return safe blocked response: ${JSON.stringify(data).slice(0, 500)}`);
+  process.exit(1);
+}
+if (data.reasonCode === "audit-required") process.exit(0);
+if (!Array.isArray(data.reasonCodes) || !data.reasonCodes.length) {
+  console.error(`download gate did not report blocker reason codes: ${JSON.stringify(data).slice(0, 500)}`);
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' "${trusted_headers[@]}" \

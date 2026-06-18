@@ -11,5 +11,6 @@ export function mediaSourceKind(source?: MediaSourceStatus | null): MediaSourceK
 }
 
 export function mediaSourceIsLive(source?: MediaSourceStatus | null) {
+  if (typeof source?.live === "boolean") return source.live;
   return Boolean(source && mediaSourceKind(source) === "resourcespace");
 }

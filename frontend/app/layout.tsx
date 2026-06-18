@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Crimson_Text, Geist_Mono, Noto_Sans_TC, Playfair_Display, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import "./dam-v3-final.css";
@@ -8,6 +8,7 @@ import "./dam-senior-staff.css";
 import { AppChrome } from "@/components/AppChrome";
 import { RoleProvider } from "@/components/RoleProvider";
 import { BETA_SESSION_COOKIE, betaAuthEnabled, verifyBetaSessionCookieValue } from "@/lib/beta-auth";
+import { trustedRoleFromHeaders } from "@/lib/request-identity";
 
 const sourceSans = Source_Sans_3({
   variable: "--font-source-sans",
@@ -48,10 +49,11 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const betaEnabled = betaAuthEnabled();
   const cookieStore = await cookies();
+  const headerStore = await headers();
   const betaSession = betaEnabled
     ? await verifyBetaSessionCookieValue(cookieStore.get(BETA_SESSION_COOKIE)?.value)
     : null;
-  const role = betaSession?.role || "Viewer";
+  const role = betaSession?.role || trustedRoleFromHeaders(headerStore) || "Viewer";
 
   return (
     <html lang="en">

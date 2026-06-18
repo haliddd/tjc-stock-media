@@ -5,16 +5,16 @@ Scope: PM/CTO readiness map for TJC Stock Media. This distinguishes a narrow, ho
 
 ## PM/CTO Verdict
 
-TJC Stock Media is ready to demo as a YC-quality internal wedge: a governed media workbench where a small church team can search safe seed media, understand reuse state, see unsafe downloads blocked, submit harmless intake, test review evidence locks, and inspect Admin readiness without pretending production infrastructure is finished.
+June 15 safety update: this map is historical PM/CTO context, not current send approval. TJC Stock Media is locally credible as a governed media workbench, but teammate invite posture is **NO-GO** until the June 15 evidence blockers close: canonical deployment, hosted authenticated protection, ResourceSpace scope, Google Drive custody, durable/fail-closed hosted state, and renewed tester approval.
 
-It is not enterprise-production ready. Production blockers should not poison the demo unless the demo claims live SSO, live ResourceSpace writeback, signed S3 delivery, durable audit/compliance storage, clean-host restore, or full archive scale. Keep the story narrow: "excellent, safe Team Beta workflow" rather than "finished enterprise DAM."
+It is not enterprise-production ready. Production blockers should not be hidden. Keep the story narrow: local proof improved, hosted send is blocked, and the product must not claim live SSO, live ResourceSpace writeback, signed S3 delivery, durable audit/compliance storage, clean-host restore, or full archive scale.
 
 ## Evidence Read
 
 - `AGENTS.md`: Shared Drive remains master, ResourceSpace remains DAM/search/review layer, source media cannot be mutated, all imports default to `Needs Review / Do Not Publish`.
 - `tasks/prd-enterprise-tjc-media-library.md`: launch ladder separates Team Beta, production internal, and full-archive-capable infrastructure.
 - `tasks/prd-approved-library-pilot.md`: pilot is normal-user Approved Library plus governance mode, with no production SSO or live writeback as explicit non-goals.
-- `docs/beta-readiness-command-center.md`: code gates are green for tiny Team Beta, but invites remain gated on human access, seed/media safety, and hosted writeback proof.
+- `docs/beta-readiness-command-center.md`: June 15 local gates are green, but invites remain NO-GO until hosted/canonical/custody/durable/tester gates close.
 - `docs/resourcespace-integration.md`: ResourceSpace reads/writeback/S3/SSO/durable analytics are truthfully staged, with no fake live claims.
 - `docs/metadata-schema.md`, `docs/data-engineering-playbook.md`, `docs/rights-workflow.md`: canonical metadata, rights, provenance, and AI-human approval boundaries are clear.
 - `docs/backup-restore-runbook.md`, `docs/production-runbook.md`, `docs/launch-plan.md`: production requires separate backup target, clean-host restore, access protection, and church IT ownership.
@@ -59,7 +59,7 @@ These improve learning quality and prevent "enterprise theater," but they can fo
 1. Curated "Approved Library" seed set with 5-20 clearly reusable assets and plain-language use scope.
 2. One scripted wedge: Viewer search/detail/trust, blocked unsafe download, Reviewer evidence lock, Admin readiness.
 3. Feedback export packet reviewed after every tester batch.
-4. Admin command center copy that says "Team Beta ready" separately from "Production blocked."
+4. Admin command center copy that separates local proof from hosted invite readiness and production readiness.
 5. A small list of learning questions: Can testers find an asset in under 60 seconds? Do they understand why blocked media is blocked? Do reviewers trust pending-write language?
 
 ## Enterprise Post-Beta
@@ -90,7 +90,7 @@ Production internal launch should not proceed until these are closed.
 
 ## Architecture Risk Notes
 
-- Auth/SSO: `requestIdentity` has a good trusted-header boundary, but production needs an actual IdP/proxy decision and production mode that rejects local role switching.
+- Auth/SSO: `requestIdentity` has a good local trusted-header boundary and now fails closed for generic production header shims. Production currently requires Cloudflare Access assertion/email proof; Google Workspace or church proxy headers would need an approved adapter before they can be trusted.
 - Durable storage: local JSON/SQLite is honest and fine for beta; it is not enough for production accountability, multi-user concurrency, retention, or recovery.
 - ResourceSpace writeback: pending-write-first design is strong. Live writeback needs field-map verification, staging proof, retries, and reconciliation.
 - Audit durability: current JSONL audit is valuable beta evidence. Enterprise needs durable append-only storage, backup inclusion, retention, and export controls.
@@ -128,4 +128,4 @@ Do not say yet:
 - "Audit is compliance-grade."
 - "Full archive is imported and approved."
 
-Final call: Go for a tiny internal Team Beta after the three human invite gates close: seed/media safety, private access policy, and hosted writeback queued/disabled proof. No-go for production internal launch until SSO, durable storage, live writeback/staging or explicit queued policy, audit durability, clean-host restore, and backup ownership are proven.
+Final call: **NO-GO for teammate invite/send under the June 15 packet.** Reconsider only after hosted protection, canonical deployment, ResourceSpace scope, Google Drive custody, durable/fail-closed hosted state, and renewed tester approval are proven. Production internal launch remains NO-GO until SSO, durable storage, live writeback/staging or explicit queued policy, audit durability, clean-host restore, and backup ownership are proven.

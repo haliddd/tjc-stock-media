@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-approve-mvp-batch}" node scripts/safe-lane-headroom-guard.mjs
+
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR=".runtime/audits"
 mkdir -p "$OUT_DIR"

@@ -1,7 +1,18 @@
 import { normalizeDateField, normalizeDisplayTextField, normalizePublicTextField, normalizeUrlField } from "@/lib/request-validation";
 import { fileRequiresAdminIntake, routeUploadIntakeForReview, type IntakeRoutingReason } from "@/lib/intake-routing";
-import { nonCanonicalUploadTags } from "@/lib/upload-tags";
+import { nonCanonicalUploadTags, parseUploadTags } from "@/lib/upload-tags";
 import { uploadDefaultState } from "@/lib/workflow-policy";
+import { persistIntakeBatch } from "@/lib/intake-batch-store";
+import {
+  buildDuplicateHints,
+  buildMediaInventory,
+  buildRiskFlags,
+  parseIntakeSourceName,
+  type DetectedBatchMetadata,
+  type DuplicateHint,
+  type MediaInventory
+} from "@/lib/upload-intake-detection";
+import type { PersistIntakeBatchResult } from "@/lib/intake-batch-store";
 import type { AuditEventRecord } from "@/lib/audit-log";
 import type { DemoRole } from "@/lib/types";
 
@@ -13,6 +24,9 @@ export type UploadIntakePacket = {
   eventDate: string;
   ministry: string;
   source: string;
+  location: string;
+  collection: string;
+  language: string;
   sourceFolder: string;
   sourceAccount: string;
   importBatch: string;
@@ -24,14 +38,27 @@ export type UploadIntakePacket = {
   usageRights: string;
   approvalSuggestion: string;
   consentRestrictions: string;
+  doctrineSacramentSensitive: string;
+  testimonyPastoralSensitive: string;
+  hymnMusicPresent: string;
+  requestedUse: string[];
   suggestedTags: string;
   intakeNotes: string;
+  contributorRequired: string[];
   missingRequired: string[];
   invalidTags: string[];
   largeFiles: File[];
+  mediaInventory: MediaInventory;
+  detected: DetectedBatchMetadata;
+  duplicateHints: DuplicateHint[];
+  riskFlags: string[];
+  reviewerTasks: string[];
+  adminTasks: string[];
+  systemWarnings: string[];
   reviewWarnings: string[];
   smartRoutingReasons: IntakeRoutingReason[];
 };
+
 export type UploadIntakeValidationError = {
   body: {
     error: string;
@@ -39,12 +66,61 @@ export type UploadIntakeValidationError = {
     invalidTags?: string[];
     guidance?: string;
   };
-  status: 400 | 403;
+  status: 400 | 403 | 503;
 };
+
+export type SubmitUploadIntakeResult = {
+  body: ReturnType<typeof buildUploadIntakeResponse>;
+  status: 200 | 503;
+};
+
 type UploadIntakeAuditPacket = Pick<UploadIntakePacket, "eventName" | "files" | "sourceLink"> &
-  Partial<Pick<UploadIntakePacket, "largeFiles" | "reviewWarnings" | "smartRoutingReasons">>;
+  Partial<Pick<UploadIntakePacket, "largeFiles" | "reviewWarnings" | "smartRoutingReasons" | "mediaInventory" | "reviewerTasks" | "adminTasks">>;
 type UploadIntakeAuditEvent = Omit<AuditEventRecord, "id" | "createdAt" | "actor"> & { actor?: string };
 const MAX_UPLOAD_INTAKE_FILES = 80;
+
+function firstFormValue(form: FormData, names: string[]) {
+  for (const name of names) {
+    const value = form.get(name);
+    if (value !== null && value !== undefined && String(value).trim()) return value;
+  }
+  return "";
+}
+
+function formValues(form: FormData, names: string[]) {
+  return names.flatMap((name) => form.getAll(name))
+    .map((value) => normalizePublicTextField(value, "", 80))
+    .filter(Boolean);
+}
+
+function unique(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function task(label: string, active: boolean) {
+  return active ? label : "";
+}
+
+function detectedWithManualFallback(detected: DetectedBatchMetadata, input: { eventName: string; eventDate: string; ministry: string; source: string; location: string }) {
+  const filled = {
+    ...detected,
+    eventName: input.eventName || detected.eventName,
+    eventDate: input.eventDate || detected.eventDate,
+    ministry: input.ministry || detected.ministry,
+    location: input.location || detected.location,
+    photographer: input.source || detected.photographer
+  };
+  const strong = Number(Boolean(filled.eventName)) + Number(Boolean(filled.eventDate)) + Number(Boolean(filled.photographer));
+  return {
+    ...filled,
+    confidence: strong >= 3 ? filled.confidence === "low" ? "medium" : filled.confidence : filled.confidence,
+    confirmationNeeded: [
+      !filled.eventName && "event name",
+      !filled.eventDate && "date",
+      !filled.photographer && "source/uploader"
+    ].filter((item): item is string => Boolean(item))
+  };
+}
 
 export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
   const files = form
@@ -52,37 +128,45 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     .filter((value): value is File => value instanceof File && Boolean(value.name) && value.size > 0)
     .slice(0, MAX_UPLOAD_INTAKE_FILES + 1);
   const sourceLink = normalizeUrlField(form.get("sourceLink"), "", 500);
-  const title = normalizeDisplayTextField(form.get("title"), "", 160);
-  const eventName = normalizeDisplayTextField(form.get("eventName"), "", 120);
-  const eventDate = normalizeDateField(form.get("eventDate"));
-  const ministry = normalizeDisplayTextField(form.get("ministry"), "", 120);
-  const source = normalizeDisplayTextField(form.get("source"), "", 160);
-  const sourceFolder = normalizeDisplayTextField(form.get("sourceFolder"), "", 240);
+  const mediaInventory = buildMediaInventory(files);
+  const rawFolderName = normalizeDisplayTextField(firstFormValue(form, ["folderName", "sourceName", "batchSourceName"]), mediaInventory.folderName || "", 180);
+  const detectionSeed = rawFolderName || mediaInventory.folderName || normalizeDisplayTextField(firstFormValue(form, ["eventName", "batchName", "title"]), "", 180);
+  const parsed = parseIntakeSourceName(detectionSeed);
+  const title = normalizeDisplayTextField(firstFormValue(form, ["batchName", "title", "eventName"]), parsed.eventName || "", 160);
+  const eventName = normalizeDisplayTextField(firstFormValue(form, ["eventName", "batchName", "title"]), parsed.eventName || title, 160);
+  const eventDate = normalizeDateField(firstFormValue(form, ["eventDate", "captureDate"])) || parsed.eventDate || "";
+  const ministry = normalizeDisplayTextField(form.get("ministry"), parsed.ministry || "", 120);
+  const source = normalizeDisplayTextField(firstFormValue(form, ["source", "photographer", "uploader"]), parsed.photographer || "", 160);
+  const location = normalizeDisplayTextField(form.get("location"), parsed.location || "", 160);
+  const collection = normalizeDisplayTextField(form.get("collection"), "", 120);
+  const language = normalizeDisplayTextField(form.get("language"), "", 80);
+  const sourceFolder = normalizeDisplayTextField(form.get("sourceFolder"), rawFolderName || mediaInventory.folderName || "", 240);
   const sourceAccount = normalizeDisplayTextField(form.get("sourceAccount"), source, 160);
   const importBatch = normalizeDisplayTextField(form.get("importBatch"), "", 160);
   const checksumManifest = normalizePublicTextField(form.get("checksumManifest"), "", 600);
   const originalFilenames = files.map((file) => file.name).filter(Boolean);
   const peopleVisible = normalizePublicTextField(form.get("peopleVisible"), "Unknown", 40);
   const minorsVisible = normalizePublicTextField(form.get("minorsVisible"), "Unknown", 40);
-  const usageRights = normalizePublicTextField(form.get("usageRights"), "Unknown - needs review", 80);
+  const usageRights = normalizePublicTextField(form.get("usageRights"), "Unknown - reviewer verifies", 80);
   const approvalSuggestion = normalizePublicTextField(form.get("approvalSuggestion"), "Reviewer decides", 80);
   const consentRestrictions = normalizePublicTextField(form.get("notes"), "", 600);
-  const suggestedTags = normalizePublicTextField(form.get("tags"), "", 300);
-  const intakeNotes = normalizePublicTextField(form.get("intakeNotes"), "", 600);
-  const missingRequired = [
-    !title && "title",
-    !eventName && "event name",
-    !eventDate && "event date",
-    !ministry && "ministry/team",
-    !source && "source/photographer",
-    peopleVisible === "Unknown" && "people visible",
-    minorsVisible === "Unknown" && "children/youth visible",
-    /unknown|needs review/i.test(usageRights) && "usage rights",
-    !consentRestrictions && "consent/restrictions",
-    !approvalSuggestion && "suggested approval direction",
-    !suggestedTags && "suggested tags",
-    !intakeNotes && "intake notes"
-  ].filter((item): item is string => Boolean(item));
+  const doctrineSacramentSensitive = normalizePublicTextField(form.get("doctrineSacramentSensitive"), "", 80);
+  const testimonyPastoralSensitive = normalizePublicTextField(form.get("testimonyPastoralSensitive"), "", 80);
+  const hymnMusicPresent = normalizePublicTextField(form.get("hymnMusicPresent"), "", 80);
+  const requestedUse = unique(formValues(form, ["requestedUse", "requestedUsageScope"]));
+  const suggestedTags = normalizePublicTextField(firstFormValue(form, ["tags", "suggestedTags"]), "", 300);
+  const intakeNotes = normalizePublicTextField(firstFormValue(form, ["intakeNotes", "notes"]), "", 600);
+  const detected = detectedWithManualFallback(parsed, { eventName, eventDate, ministry, source, location });
+  const invalidTags = nonCanonicalUploadTags(suggestedTags);
+  const duplicateHints = buildDuplicateHints(files);
+  const riskFlags = buildRiskFlags({
+    folderName: sourceFolder,
+    filenames: originalFilenames,
+    notes: intakeNotes,
+    tags: suggestedTags,
+    eventName,
+    ministry
+  });
   const smartRoutingReasons = routeUploadIntakeForReview({
     files,
     sourceFolder,
@@ -97,17 +181,46 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     peopleVisible,
     minorsVisible,
     usageRights,
-    consentRestrictions
+    consentRestrictions,
+    doctrineSacramentSensitive,
+    testimonyPastoralSensitive,
+    hymnMusicPresent
   });
-  const reviewWarnings = [
-    !source && "Source/photographer missing",
-    peopleVisible === "Unknown" && "People visibility unknown",
-    minorsVisible === "Unknown" && "Children/youth visibility unknown",
-    minorsVisible === "Yes" && "Children/youth visible",
-    /unknown|needs review/i.test(usageRights) && "Usage rights unclear",
-    /church-wide|public/i.test(approvalSuggestion) && (!/permission confirmed|tjc-owned/i.test(usageRights) || peopleVisible === "Unknown" || minorsVisible !== "No") && "Public approval suggestion conflicts with rights/people fields",
+  const largeFiles = files.filter(fileRequiresAdminIntake);
+  const contributorRequired = [
+    !files.length && !sourceLink && "files or source link",
+    !eventName && "batch/event name",
+    !eventDate && "event date",
+    !ministry && "ministry/team",
+    !source && "source/photographer"
+  ].filter((item): item is string => Boolean(item));
+  const reviewerTasks = unique([
+    task("Rights reviewer verifies ownership/license before public use", /unknown|needs review|reviewer verifies/i.test(usageRights)),
+    task("People visibility reviewer confirmation", peopleVisible === "Unknown"),
+    task("Children/youth visibility reviewer confirmation", minorsVisible === "Unknown" || minorsVisible === "Yes"),
+    task("Consent/release required before public/external approval if people/youth appear", peopleVisible !== "No" || minorsVisible !== "No"),
+    task("Taxonomy reviewer maps or rejects noncanonical suggested tags", invalidTags.length > 0 || parseUploadTags(suggestedTags).length === 0),
+    task("Duplicate candidates need reviewer/admin decision", duplicateHints.length > 0),
+    ...riskFlags,
     ...smartRoutingReasons.map((reason) => reason.label)
-  ].filter((warning): warning is string => Boolean(warning));
+  ]);
+  const adminTasks = unique([
+    task("Large media/admin intake required", largeFiles.length > 0),
+    task("Checksum processing pending", files.length > 0),
+    task("Duplicate group processing pending", duplicateHints.length > 0),
+    task("Derivative generation after review", files.length > 0 || Boolean(sourceLink)),
+    task("DAM sync pending; upload does not write approval truth", true),
+    task("Field map readiness required before live writeback", true)
+  ]);
+  const systemWarnings = unique([
+    ...detected.confirmationNeeded.map((item) => `${item} needs confirmation`),
+    task("Video/audio and large files route to admin intake", largeFiles.length > 0)
+  ]);
+  const reviewWarnings = unique([
+    ...systemWarnings,
+    ...reviewerTasks,
+    ...adminTasks
+  ]);
 
   return {
     files,
@@ -117,6 +230,9 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     eventDate,
     ministry,
     source,
+    location,
+    collection,
+    language,
     sourceFolder,
     sourceAccount,
     importBatch,
@@ -128,11 +244,23 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     usageRights,
     approvalSuggestion,
     consentRestrictions,
+    doctrineSacramentSensitive,
+    testimonyPastoralSensitive,
+    hymnMusicPresent,
+    requestedUse,
     suggestedTags,
     intakeNotes,
-    missingRequired,
-    invalidTags: nonCanonicalUploadTags(suggestedTags),
-    largeFiles: files.filter(fileRequiresAdminIntake),
+    contributorRequired,
+    missingRequired: contributorRequired,
+    invalidTags,
+    largeFiles,
+    mediaInventory,
+    detected,
+    duplicateHints,
+    riskFlags,
+    reviewerTasks,
+    adminTasks,
+    systemWarnings,
     reviewWarnings,
     smartRoutingReasons
   };
@@ -145,24 +273,14 @@ export function uploadIntakeAuditDetails(intake: UploadIntakeAuditPacket) {
     sourceLinkCaptured: Boolean(intake.sourceLink),
     largeFileCount: intake.largeFiles?.length || 0,
     routingReasonIds: intake.smartRoutingReasons?.map((reason) => reason.id) || [],
-    reviewWarnings: intake.reviewWarnings || []
+    reviewWarnings: intake.reviewWarnings || [],
+    reviewerTaskCount: intake.reviewerTasks?.length || 0,
+    adminTaskCount: intake.adminTasks?.length || 0,
+    mediaFileCount: intake.mediaInventory?.fileCount || intake.files.length
   };
 }
 
 export function uploadIntakeValidationError(intake: UploadIntakePacket): UploadIntakeValidationError | null {
-  if (intake.missingRequired.length) {
-    return { body: { error: "Intake is missing required review context.", missingRequired: intake.missingRequired }, status: 400 };
-  }
-  if (intake.invalidTags.length) {
-    return {
-      body: {
-        error: "Suggested tags must use the current media-library taxonomy.",
-        invalidTags: intake.invalidTags,
-        guidance: "Add new wording to intake notes for reviewer consideration."
-      },
-      status: 400
-    };
-  }
   if (intake.files.length > MAX_UPLOAD_INTAKE_FILES) {
     return {
       body: {
@@ -172,8 +290,11 @@ export function uploadIntakeValidationError(intake: UploadIntakePacket): UploadI
       status: 400
     };
   }
-  if (!intake.files.length && !intake.sourceLink) {
-    return { body: { error: "Add at least one file or existing media link before submitting intake." }, status: 400 };
+  if (intake.contributorRequired.length) {
+    const error = intake.contributorRequired.includes("files or source link")
+      ? "Add photos, a folder, or source link before submitting intake batch."
+      : "Intake batch needs basic batch identity before review.";
+    return { body: { error, missingRequired: intake.contributorRequired }, status: 400 };
   }
   return null;
 }
@@ -183,13 +304,13 @@ export function uploadIntakeRoleDeniedError(): UploadIntakeValidationError {
 }
 
 export function uploadIntakeAuditStatus(intake: UploadIntakePacket) {
-  return intake.largeFiles.length ? "blocked" as const : "preview" as const;
+  return intake.largeFiles.length ? "blocked" as const : "queued" as const;
 }
 
 export function uploadIntakeAuditSummary(intake: UploadIntakePacket) {
   return intake.largeFiles.length
     ? "Large-media intake routed away from browser upload."
-    : "Intake validated for DAM review; no media-library write performed.";
+    : "Intake batch created for DAM review; no media-library approval write performed.";
 }
 
 export function uploadIntakeDeniedAuditEvent(role: DemoRole, actor: string): UploadIntakeAuditEvent {
@@ -214,24 +335,80 @@ export function uploadIntakeSubmittedAuditEvent(intake: UploadIntakePacket, role
   };
 }
 
-export function buildUploadIntakeResponse(intake: UploadIntakePacket) {
-  if (intake.largeFiles.length) {
-    return {
-      status: "large-media-intake",
-      message: uploadDefaultState.largeMediaMessage,
-      defaultReviewState: uploadDefaultState.status,
-      fileCount: intake.files.length,
-      largeFileCount: intake.largeFiles.length,
-      sourceLinkCaptured: Boolean(intake.sourceLink),
-    };
-  }
+export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?: PersistIntakeBatchResult) {
+  const storageMode = persisted?.storageMode || "source-link-only";
   return {
-    status: "validated",
-    defaultReviewState: uploadDefaultState.status,
-    message: "Upload intake validated. New media remains Needs Review / Do Not Publish until a reviewer clears the record.",
+    ok: storageMode !== "blocked-no-durable-store",
+    batchId: persisted?.batchId,
+    status: intake.largeFiles.length ? "large-media-intake" : "needs-review",
+    defaultReviewState: "Needs Review",
+    defaultUsageScope: "Do Not Publish",
+    message: storageMode === "blocked-no-durable-store"
+      ? persisted?.blockedReason || "Durable storage is required before browser file intake can continue."
+      : intake.largeFiles.length
+        ? uploadDefaultState.largeMediaMessage
+        : "Batch submitted. Your review packet has been created. Nothing is public yet.",
     eventName: intake.eventName,
     fileCount: intake.files.length,
     sourceLinkCaptured: Boolean(intake.sourceLink),
-    reviewWarnings: intake.reviewWarnings
+    mediaInventory: intake.mediaInventory,
+    detected: intake.detected,
+    riskFlags: intake.riskFlags,
+    reviewerTasks: intake.reviewerTasks,
+    adminTasks: intake.adminTasks,
+    systemWarnings: intake.systemWarnings,
+    storageMode,
+    custodyMode: storageMode === "local-runtime" ? "local-private-beta-staging" : storageMode,
+    resourceSpaceWritten: false
+  };
+}
+
+function uploadIntakeSuggestedTags(value: string) {
+  return value.split(/[|,]/).map((tag) => tag.trim()).filter(Boolean);
+}
+
+async function persistUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRole, actor: string) {
+  if (intake.largeFiles.length) return undefined;
+  const sourceLinkCaptured = Boolean(intake.sourceLink);
+  return persistIntakeBatch({
+    actor,
+    role,
+    defaultAssetStatus: "Needs Review",
+    defaultUsageScope: "Do Not Publish",
+    source: {
+      kind: intake.mediaInventory.folderName ? "folder-upload" : intake.files.length ? "browser-upload" : "drive-link",
+      sourceLink: sourceLinkCaptured ? "captured-redacted" : undefined,
+      folderName: intake.mediaInventory.folderName || intake.sourceFolder || undefined,
+      uploader: intake.source
+    },
+    detected: {
+      eventName: intake.detected.eventName,
+      eventDate: intake.detected.eventDate,
+      ministry: intake.detected.ministry,
+      location: intake.detected.location,
+      photographer: intake.detected.photographer,
+      confidence: intake.detected.confidence
+    },
+    mediaInventory: intake.mediaInventory,
+    suggestions: {
+      tags: uploadIntakeSuggestedTags(intake.suggestedTags),
+      tjcTerms: [],
+      collections: intake.collection ? [intake.collection] : [],
+      requestedUse: intake.requestedUse
+    },
+    riskFlags: intake.riskFlags,
+    reviewerTasks: intake.reviewerTasks,
+    adminTasks: intake.adminTasks,
+    files: intake.files,
+    sourceLinkCaptured
+  });
+}
+
+export async function submitUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRole, actor: string): Promise<SubmitUploadIntakeResult> {
+  const persisted = await persistUploadIntakeBatch(intake, role, actor);
+  const body = buildUploadIntakeResponse(intake, persisted);
+  return {
+    body,
+    status: body.storageMode === "blocked-no-durable-store" ? 503 : 200
   };
 }

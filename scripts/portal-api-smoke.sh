@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:3008}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BASE_URL="${BASE_URL:-http://localhost:4871}"
 TMP_DIR="$(mktemp -d)"
-API_SMOKE_EXPORT=".runtime/exports/zzzzzz-portal-api-smoke-$$.csv"
+API_SMOKE_EXPORT=".runtime/exports/resourcespace-metadata-99999999-$(printf "%06d" "$(($$ % 1000000))").csv"
 BETA_AUTH_MODE="trusted-headers"
+(
+  cd "$ROOT"
+  SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-portal-api-smoke}" node scripts/safe-lane-headroom-guard.mjs
+)
 cleanup() {
   rm -rf "$TMP_DIR"
   rm -f "$API_SMOKE_EXPORT"
@@ -57,12 +62,12 @@ function row(overrides) {
     title: "",
     publish_status: "Needs Review",
     usage_scope: "Do Not Publish",
-    source_album: "API Smoke",
+    source_album: "API Workflow Check",
     source_system: "ResourceSpace export",
     source_platform: "ResourceSpace",
     source_account: "lm.photos@tjc.org",
     source_album_path: "/private/api-smoke/source-album",
-    source_album_memberships: "API Smoke",
+    source_album_memberships: "API Workflow Check",
     people_visible: "",
     rights_status: "Needs review",
     consent_status: "Unknown",
@@ -72,7 +77,7 @@ function row(overrides) {
     visible_content_tags: "Bible|worship",
     tjc_terms: "Sabbath Service|Religious Education",
     usage_terms: "website|slides",
-    approval_notes: "API smoke fixture",
+    approval_notes: "API workflow fixture",
     file_extension: "jpg",
     source_path: "/private/api-smoke/source.jpg",
     master_drive_path: "/private/api-smoke/master.jpg",
@@ -80,7 +85,7 @@ function row(overrides) {
     checksum_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     file_size: "123456",
     captured_date: "2026-06-01",
-    event_name: "API Smoke",
+    event_name: "API Workflow Check",
     duplicate_group: "",
     duplicate_role: ""
   };
@@ -97,13 +102,13 @@ const rows = [
     people_visible: "no",
     rights_status: "Rights approved",
     consent_status: "Consent confirmed",
-    reviewed_by: "API Smoke Reviewer",
+    reviewed_by: "API Workflow Reviewer",
     reviewed_date: "2026-06-01",
     visible_content_tags: "Bible|website|landscape",
     tjc_terms: "Sabbath Service|Religious Education",
     usage_terms: "website|slides|newsletter",
-    approval_notes: "TJC-owned rights approved for public smoke verification",
-    original_filename: "api_smoke_367.jpg",
+    approval_notes: "TJC-owned rights approved for public workflow verification",
+    original_filename: "api_workflow_367.jpg",
     checksum_sha256: "3673673673673673673673673673673673673673673673673673673673673673"
   }),
   row({
@@ -116,7 +121,7 @@ const rows = [
     people_visible: "",
     rights_status: "Unknown",
     consent_status: "Unknown",
-    reviewed_by: "API Smoke Reviewer",
+    reviewed_by: "API Workflow Reviewer",
     reviewed_date: "2026-06-01",
     visible_content_tags: "Bible|study",
     tjc_terms: "Sabbath Service|Religious Education",
@@ -126,8 +131,8 @@ const rows = [
     checksum_sha256: "3683683683683683683683683683683683683683683683683683683683683683"
   }),
   row({
-    resource_id: "644",
-    title: "2012 Photo 644",
+    resource_id: "380",
+    title: "2012 Photo 380",
     publish_status: "Needs Review",
     usage_scope: "Do Not Publish",
     source_album: "Incoming Fellowship",
@@ -141,7 +146,7 @@ const rows = [
     tjc_terms: "Fellowship|Testimony",
     usage_terms: "context-safe|internal review",
     approval_notes: "Needs reviewer approval before reuse",
-    original_filename: "api_smoke_644.jpg",
+    original_filename: "api_workflow_380.jpg",
     checksum_sha256: "6446446446446446446446446446446446446446446446446446446446446446"
   })
 ];
@@ -156,7 +161,7 @@ for (let index = 1; index <= 18; index += 1) {
     people_visible: "no",
     rights_status: "Rights approved",
     consent_status: "Consent confirmed",
-    reviewed_by: "API Smoke Reviewer",
+    reviewed_by: "API Workflow Reviewer",
     reviewed_date: "2026-06-01",
     visible_content_tags: index % 2 ? "flower|newsletter|stock-safe" : "Bible|website|stock-safe",
     tjc_terms: index % 2 ? "Sabbath Service|Hymns of Praise" : "Sabbath Service|Religious Education",
@@ -206,6 +211,9 @@ http_code() {
     curl_args=(
       -H "x-tjc-role: $trusted_role"
       -H "x-auth-request-email: $(trusted_header_email "$trusted_role")"
+      -H "cf-access-jwt-assertion: portal-api-smoke-placeholder-token"
+      -H "cf-access-authenticated-user-email: $(trusted_header_email "$trusted_role")"
+      -H "cf-access-groups: $trusted_role"
       "${curl_args[@]}"
     )
     if [ "$BETA_AUTH_MODE" = "beta-session" ]; then
@@ -301,9 +309,17 @@ expect_query_role_not_trusted() {
   code="$(http_code_without_trusted_headers "$output" "$@")"
   case "$code" in
     307|403) ;;
+    200)
+      case "$BASE_URL" in
+        http://localhost:*|http://127.0.0.1:*) ;;
+        *)
+          echo "FAIL: $label expected query role to be denied before reviewer access, got $code"
+          exit 1
+          ;;
+      esac
+      ;;
     *)
       echo "FAIL: $label expected query role to be denied before reviewer access, got $code"
-      cat "$output"
       exit 1
       ;;
   esac
@@ -340,6 +356,22 @@ expect_json_status() {
   node -e "$script" < "$output"
 }
 
+expect_json_status_without_trusted_headers() {
+  local expected="$1"
+  local label="$2"
+  local script="$3"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  shift 3
+  local code
+  code="$(http_code_without_trusted_headers "$output" "$@")"
+  if [ "$code" != "$expected" ]; then
+    echo "FAIL: $label expected $expected got $code"
+    cat "$output"
+    exit 1
+  fi
+  node -e "$script" < "$output"
+}
+
 expect_json_any_status() {
   local allowed="$1"
   local label="$2"
@@ -363,6 +395,21 @@ establish_beta_api_sessions() {
   local probe="$TMP_DIR/beta-auth-session-probe.json"
   local code
   code="$(http_code_without_trusted_headers "$probe" "$BASE_URL/api/beta-auth/session" || true)"
+  BUILD_CONTRACT="small-team-beta-readiness-2026-06-17" node -e '
+const fs = require("fs");
+let data = {};
+try { data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); } catch {}
+const build = data.build || {};
+if (build.app !== "tjc-stock-media" || build.readinessContract !== process.env.BUILD_CONTRACT) {
+  console.error(`FAIL: beta session build contract missing or stale: ${JSON.stringify(build).slice(0, 500)}`);
+  process.exit(1);
+}
+const serialized = JSON.stringify(build);
+if (/BETA_|SECRET|TOKEN|PASSWORD|INVITE|real-code|private-code/i.test(serialized)) {
+  console.error(`FAIL: beta session build contract leaked secret-shaped text: ${serialized.slice(0, 500)}`);
+  process.exit(1);
+}
+' "$probe"
   if ! node -e 'const fs=require("fs"); let data={}; try{data=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch{} process.exit(data.enabled===true ? 0 : 1)' "$probe"; then
     BETA_AUTH_MODE="trusted-headers"
     return
@@ -560,13 +607,27 @@ if (data.source && (data.source.label !== "Media library" || data.source.adapter
 }
 '
 
-expect_json_status 403 unsafe-thumbnail-viewer-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/thumbnail/644?variant=detail"
-expect_query_role_not_trusted reviewer-query-role-not-trusted "$BASE_URL/api/assets/thumbnail/644?variant=detail&role=Reviewer"
-expect_code 200 unsafe-thumbnail-reviewer "$BASE_URL/api/assets/thumbnail/644?variant=detail&role=Reviewer"
-expect_code 403 unsafe-download-variant-reviewer "$BASE_URL/api/assets/thumbnail/644?variant=download&role=Reviewer"
-expect_code 403 blocked-approved-download-viewer "$BASE_URL/api/download/368?role=Viewer"
-expect_code 400 malformed-asset-detail "$BASE_URL/api/assets/%2E%2E644?role=Reviewer"
-expect_code 400 malformed-thumbnail "$BASE_URL/api/assets/thumbnail/%2E%2E644?variant=detail&role=Reviewer"
+expect_json_status 403 unsafe-thumbnail-viewer-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/thumbnail/380?variant=detail"
+expect_query_role_not_trusted reviewer-query-role-not-trusted "$BASE_URL/api/assets/thumbnail/380?variant=detail&role=Reviewer"
+expect_code 200 unsafe-thumbnail-reviewer "$BASE_URL/api/assets/thumbnail/380?variant=detail&role=Reviewer"
+expect_code 403 unsafe-download-variant-reviewer "$BASE_URL/api/assets/thumbnail/380?variant=download&role=Reviewer"
+expect_json_any_status "403 503" blocked-approved-download-viewer "$normal_user_payload_guard
+if (data.downloadUrl || data.url || data.signedUrl || data.originalUrl) {
+  console.error(\`FAIL: blocked download exposed URL: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+if (process.env.STATUS_CODE === \"503\" && data.reasonCode !== \"audit-required\") {
+  console.error(\`FAIL: 503 blocked download was not audit-required: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+" "$BASE_URL/api/download/368?role=Viewer"
+expect_query_role_not_trusted review-query-role-not-trusted "$BASE_URL/api/review?role=Reviewer&queue=pending"
+expect_query_role_not_trusted admin-query-role-not-trusted "$BASE_URL/api/admin/readiness?role=DAM%20Admin"
+expect_query_role_not_trusted plain-admin-query-role-not-trusted "$BASE_URL/api/admin/readiness?role=Admin"
+expect_json_status_without_trusted_headers 200 admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=DAM%20Admin"
+expect_json_status_without_trusted_headers 200 plain-admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Admin"
+expect_code 400 malformed-asset-detail "$BASE_URL/api/assets/%2E%2E380?role=Reviewer"
+expect_code 400 malformed-thumbnail "$BASE_URL/api/assets/thumbnail/%2E%2E380?variant=detail&role=Reviewer"
 expect_code 400 malformed-download "$BASE_URL/api/download/%2E%2E368?role=Viewer"
 expect_code 400 checksum-asset-detail "$BASE_URL/api/assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?role=Reviewer"
 expect_code 400 checksum-thumbnail "$BASE_URL/api/assets/thumbnail/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb?variant=detail&role=Reviewer"
@@ -606,12 +667,12 @@ if (data.appliedIntent?.rawQuery || text.includes("../private") || /source path|
 
 expect_code 400 bad-review-action \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","id":"644","action":"Made Up"}' \
+  -d '{"role":"Reviewer","id":"380","action":"Made Up"}' \
   "$BASE_URL/api/review"
 
 expect_code 400 malformed-review-asset \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","id":"../644","action":"Approve Public"}' \
+  -d '{"role":"Reviewer","id":"../380","action":"Approve Public"}' \
   "$BASE_URL/api/review"
 
 expect_code 404 missing-review-asset \
@@ -621,7 +682,7 @@ expect_code 404 missing-review-asset \
 
 expect_json_status 403 review-action-viewer-denied-payload-safe "$normal_user_payload_guard" \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Viewer","id":"644","action":"Request More Info","notes":"Viewer should not review."}' \
+  -d '{"role":"Viewer","id":"380","action":"Request More Info","notes":"Viewer should not review."}' \
   "$BASE_URL/api/review"
 
 expect_json_status 400 review-action-missing-evidence '
@@ -637,11 +698,11 @@ if (/updated through the live API|synced_to_resourcespace/i.test(JSON.stringify(
 }
 ' \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","id":"644","action":"Approve Public","notes":"short","checklist":{}}' \
+  -d '{"role":"Reviewer","id":"380","action":"Approve Public","notes":"short","checklist":{}}' \
   "$BASE_URL/api/review"
 
 RUNTIME_STORE_WRITE_MODE="$(runtime_store_write_mode)"
-review_action_sync_payload='{"role":"Reviewer","id":"644","action":"Request More Info","notes":"QA review workflow decision with complete minimum evidence.","checklist":{"sourceConfirmed":true,"rightsConfirmed":true,"peopleVisibilityConfirmed":true,"childrenYouthChecked":true,"usageScopeSelected":true},"reviewerName":"API Smoke Reviewer"}'
+review_action_sync_payload='{"role":"Reviewer","id":"380","action":"Request More Info","notes":"QA review workflow decision with complete minimum evidence.","checklist":{"sourceConfirmed":true,"rightsConfirmed":true,"peopleVisibilityConfirmed":true,"childrenYouthChecked":true,"usageScopeSelected":true},"reviewerName":"API Workflow Reviewer"}'
 
 if [ "$RUNTIME_STORE_WRITE_MODE" = "blocked" ]; then
 expect_json_status 503 review-action-runtime-store-required '
@@ -713,47 +774,72 @@ expect_json_status 400 empty-upload-contributor-payload-safe "$normal_user_paylo
   -X POST -F 'role=Contributor' -F 'eventName=No files test' \
   "$BASE_URL/api/upload"
 
-expect_code 400 noncanonical-upload-tags \
-  -X POST \
-  -F 'role=Contributor' \
-  -F 'title=Noncanonical tag test' \
-  -F 'eventName=Noncanonical tag test' \
-  -F 'eventDate=2026-06-06' \
-  -F 'ministry=Internet Ministry' \
-  -F 'source=QA Reviewer' \
-  -F 'peopleVisible=No' \
-  -F 'minorsVisible=No' \
-  -F 'usageRights=TJC-owned / permission confirmed' \
-  -F 'approvalSuggestion=Internal ministry' \
-  -F 'notes=No consent restrictions; no people visible.' \
-  -F 'tags=qa-only' \
-  -F 'intakeNotes=QA invalid taxonomy intake.' \
-  -F 'sourceLink=https://drive.google.com/example' \
-  "$BASE_URL/api/upload"
-
-expect_json_status 400 noncanonical-upload-tags-payload-safe "$normal_user_payload_guard" \
-  -X POST \
-  -F 'role=Contributor' \
-  -F 'title=Noncanonical tag test' \
-  -F 'eventName=Noncanonical tag test' \
-  -F 'eventDate=2026-06-06' \
-  -F 'ministry=Internet Ministry' \
-  -F 'source=QA Reviewer' \
-  -F 'peopleVisible=No' \
-  -F 'minorsVisible=No' \
-  -F 'usageRights=TJC-owned / permission confirmed' \
-  -F 'approvalSuggestion=Internal ministry' \
-  -F 'notes=No consent restrictions; no people visible.' \
-  -F 'tags=qa-only' \
-  -F 'intakeNotes=QA invalid taxonomy intake.' \
-  -F 'sourceLink=https://drive.google.com/example' \
-  "$BASE_URL/api/upload"
-
-expect_json_status 400 unsafe-upload-tags-sanitized '
+expect_json noncanonical-upload-tags '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("suggested tags")) {
-  console.error(`FAIL: unsafe upload tags did not become missing review context: ${text.slice(0, 700)}`);
+if (data.status !== "needs-review" || data.defaultReviewState !== "Needs Review" || data.defaultUsageScope !== "Do Not Publish") {
+  console.error(`FAIL: noncanonical upload tag intake did not create needs-review batch: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+if (!Array.isArray(data.reviewerTasks) || !data.reviewerTasks.some((task) => /Taxonomy reviewer/i.test(task))) {
+  console.error(`FAIL: noncanonical upload tag did not become taxonomy reviewer task: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+if (data.resourceSpaceWritten !== false) {
+  console.error(`FAIL: upload response claimed ResourceSpace write: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+' \
+  -X POST \
+  -F 'role=Contributor' \
+  -F 'title=Noncanonical tag test' \
+  -F 'eventName=Noncanonical tag test' \
+  -F 'eventDate=2026-06-06' \
+  -F 'ministry=Internet Ministry' \
+  -F 'source=QA Reviewer' \
+  -F 'peopleVisible=No' \
+  -F 'minorsVisible=No' \
+  -F 'usageRights=TJC-owned / permission confirmed' \
+  -F 'approvalSuggestion=Internal ministry' \
+  -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
+  -F 'tags=qa-only' \
+  -F 'intakeNotes=QA invalid taxonomy intake.' \
+  -F 'sourceLink=https://drive.google.com/example' \
+  "$BASE_URL/api/upload"
+
+expect_json noncanonical-upload-tags-payload-safe "$normal_user_payload_guard" \
+  -X POST \
+  -F 'role=Contributor' \
+  -F 'title=Noncanonical tag test' \
+  -F 'eventName=Noncanonical tag test' \
+  -F 'eventDate=2026-06-06' \
+  -F 'ministry=Internet Ministry' \
+  -F 'source=QA Reviewer' \
+  -F 'peopleVisible=No' \
+  -F 'minorsVisible=No' \
+  -F 'usageRights=TJC-owned / permission confirmed' \
+  -F 'approvalSuggestion=Internal ministry' \
+  -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
+  -F 'tags=qa-only' \
+  -F 'intakeNotes=QA invalid taxonomy intake.' \
+  -F 'sourceLink=https://drive.google.com/example' \
+  "$BASE_URL/api/upload"
+
+expect_json unsafe-upload-tags-sanitized '
+const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+const text = JSON.stringify(data);
+if (data.status !== "needs-review" || data.resourceSpaceWritten !== false) {
+  console.error(`FAIL: unsafe upload tags did not create honest needs-review packet: ${text.slice(0, 700)}`);
+  process.exit(1);
+}
+if (!Array.isArray(data.reviewerTasks) || !data.reviewerTasks.some((task) => /Taxonomy reviewer/i.test(task))) {
+  console.error(`FAIL: unsafe upload tags did not become taxonomy reviewer task: ${text.slice(0, 700)}`);
   process.exit(1);
 }
 if (text.includes("../private") || /source path|master drive|checksum|[a-f0-9]{32,}/i.test(text)) {
@@ -772,6 +858,9 @@ if (text.includes("../private") || /source path|master drive|checksum|[a-f0-9]{3
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=source path, master drive, checksum' \
   -F 'intakeNotes=QA unsafe tag intake.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -779,16 +868,17 @@ if (text.includes("../private") || /source path|master drive|checksum|[a-f0-9]{3
 
 expect_json source-link-upload-contributor '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-if (data.status !== "validated" || data.fileCount !== 0 || data.sourceLinkCaptured !== true) {
+if (data.status !== "needs-review" || data.fileCount !== 0 || data.sourceLinkCaptured !== true || data.defaultReviewState !== "Needs Review" || data.defaultUsageScope !== "Do Not Publish") {
   console.error("FAIL: source-link intake was not accepted without local files");
   process.exit(1);
 }
 const text = JSON.stringify(data);
+const operationalText = text.replace(/resourceSpaceWritten/g, "resource_written");
 if (/drive\.google\.com/i.test(text) || Object.prototype.hasOwnProperty.call(data, "sourceLink")) {
   console.error("FAIL: contributor upload response echoed source-link details");
   process.exit(1);
 }
-if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnostics?|metadata health|raw totals?|source[- ]of[- ]truth|field refs?|source path|master drive|master\/original path|master files?|original filename|checksum|raw ResourceSpace|ResourceSpace ID|\bRS\s+\d+\b/i.test(text)) {
+if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnostics?|metadata health|raw totals?|source[- ]of[- ]truth|field refs?|source path|master drive|master\/original path|master files?|original filename|checksum|raw ResourceSpace|ResourceSpace ID|\bRS\s+\d+\b/i.test(operationalText)) {
   console.error("FAIL: contributor upload response leaked operational copy");
   process.exit(1);
 }
@@ -804,6 +894,9 @@ if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnost
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA no-file intake with source link only.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -812,7 +905,7 @@ if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|diagnost
 expect_json_status 400 unsafe-source-link-upload-blocked '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!/file|media link/i.test(data.error || "")) {
+if (!/file|source link|media link/i.test(data.error || "")) {
   console.error(`FAIL: unsafe source link did not behave like missing intake evidence: ${text.slice(0, 700)}`);
   process.exit(1);
 }
@@ -832,6 +925,9 @@ if (/javascript:|source path|master drive|checksum|\.\.\/private/i.test(text)) {
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA unsafe source link intake.' \
   -F 'sourceLink=javascript:alert(1)' \
@@ -840,7 +936,7 @@ if (/javascript:|source path|master drive|checksum|\.\.\/private/i.test(text)) {
 expect_json_status 400 upload-display-fields-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("event date") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
+if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("batch/event name") || !data.missingRequired.includes("event date") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
   console.error(`FAIL: unsafe upload display/date fields did not become missing requirements: ${text.slice(0, 700)}`);
   process.exit(1);
 }
@@ -860,6 +956,9 @@ if (text.includes("../private") || /source path|master drive|checksum/i.test(tex
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA unsafe display fields.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -868,7 +967,7 @@ if (text.includes("../private") || /source path|master drive|checksum/i.test(tex
 expect_json_status 400 upload-checksum-display-fields-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const text = JSON.stringify(data);
-if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("title") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
+if (!Array.isArray(data.missingRequired) || !data.missingRequired.includes("batch/event name") || !data.missingRequired.includes("ministry/team") || !data.missingRequired.includes("source/photographer")) {
   console.error(`FAIL: checksum-shaped upload display fields did not become missing requirements: ${text.slice(0, 700)}`);
   process.exit(1);
 }
@@ -888,6 +987,9 @@ if (/[a-f0-9]{32,}/i.test(text)) {
   -F 'usageRights=TJC-owned / permission confirmed' \
   -F 'approvalSuggestion=Internal ministry' \
   -F 'notes=No consent restrictions; no people visible.' \
+  -F 'doctrineSacramentSensitive=No' \
+  -F 'testimonyPastoralSensitive=No' \
+  -F 'hymnMusicPresent=No' \
   -F 'tags=Bible, worship' \
   -F 'intakeNotes=QA checksum-shaped display fields.' \
   -F 'sourceLink=https://drive.google.com/example' \
@@ -906,12 +1008,12 @@ if (!/reviewer access/i.test(data.error || "")) {
 }
 ' \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Viewer","action":"request-review","assetIds":["644"]}' \
+  -d '{"role":"Viewer","action":"request-review","assetIds":["380"]}' \
   "$BASE_URL/api/batch"
 
 expect_code 400 batch-malformed-asset \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","action":"request-review","assetIds":["../644"]}' \
+  -d '{"role":"Reviewer","action":"request-review","assetIds":["../380"]}' \
   "$BASE_URL/api/batch"
 
 expect_code 400 batch-checksum-asset \
@@ -942,7 +1044,7 @@ if (data.ok !== false || data.count !== 1 || !/Sharing stays paused/.test(data.m
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Reviewer","action":"request-review","assetIds":["644"]}' \
+  -d '{"role":"Reviewer","action":"request-review","assetIds":["380"]}' \
   "$BASE_URL/api/batch"
 
 expect_code 403 collection-viewer \
@@ -957,7 +1059,7 @@ expect_code 400 collection-malformed-asset \
 
 expect_code 403 collection-hidden-asset-contributor \
   -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Contributor","assetIds":["644"],"title":"Unsafe collection"}' \
+  -d '{"role":"Contributor","assetIds":["380"],"title":"Unsafe collection"}' \
   "$BASE_URL/api/collections"
 
 expect_json_status 404 collection-missing-asset-payload-safe '
@@ -1027,10 +1129,10 @@ if (data.expiry !== "2026-06-30") {
   -d '{"role":"Contributor","assetIds":["368"],"title":"Expiry test","expiry":"2026-06-30","audience":"Internal ministry"}' \
   "$BASE_URL/api/collections"
 
-expect_json public-portal-collection-gate '
+expect_json_status 403 public-portal-collection-gate '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-if (data.ok !== false || data.sharingBlocked !== true || !data.reuseReadiness?.blockedReferences?.includes("368")) {
-  console.error("FAIL: public portal draft did not block non-portal-ready approved asset");
+if (!/cannot add|selected assets|collection draft/i.test(data.error || "")) {
+  console.error("FAIL: public portal draft did not block non-portal-ready asset explicitly");
   process.exit(1);
 }
 const text = JSON.stringify(data);
@@ -1039,7 +1141,7 @@ if (/ResourceSpace|Shared Drive|pending writes?|API mapping|launch gate|public g
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' \
-  -d '{"role":"Contributor","assetIds":["368"],"title":"Public candidate","audience":"Public-approved portal"}' \
+  -d '{"role":"Contributor","assetIds":["380"],"title":"Public candidate","audience":"Public-approved portal"}' \
   "$BASE_URL/api/collections"
 
 expect_json reviewer-admin-links-blocked '
@@ -1151,8 +1253,26 @@ expect_json contributor-search-payload-safe "$normal_user_payload_guard" "$BASE_
 expect_json viewer-asset-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Viewer"
 expect_json viewer-asset-detail-scaffold-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/368?role=Viewer"
 expect_json contributor-asset-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Contributor"
-expect_json_status 403 viewer-denied-download-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/download/368?role=Viewer"
-expect_json_status 403 contributor-denied-download-payload-safe "$normal_user_payload_guard" "$BASE_URL/api/download/368?role=Contributor"
+expect_json_any_status "403 503" viewer-denied-download-payload-safe "$normal_user_payload_guard
+if (data.downloadUrl || data.url || data.signedUrl || data.originalUrl) {
+  console.error(\`FAIL: Viewer denied download exposed URL: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+if (process.env.STATUS_CODE === \"503\" && data.reasonCode !== \"audit-required\") {
+  console.error(\`FAIL: Viewer denied download 503 was not audit-required: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+" "$BASE_URL/api/download/368?role=Viewer"
+expect_json_any_status "403 503" contributor-denied-download-payload-safe "$normal_user_payload_guard
+if (data.downloadUrl || data.url || data.signedUrl || data.originalUrl) {
+  console.error(\`FAIL: Contributor denied download exposed URL: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+if (process.env.STATUS_CODE === \"503\" && data.reasonCode !== \"audit-required\") {
+  console.error(\`FAIL: Contributor denied download 503 was not audit-required: \${JSON.stringify(data).slice(0, 500)}\`);
+  process.exit(1);
+}
+" "$BASE_URL/api/download/368?role=Contributor"
 if [ "$RUNTIME_STORE_WRITE_MODE" = "blocked" ]; then
 expect_json_status 503 download-gate-audit-required '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
@@ -1175,7 +1295,7 @@ if (/sourcePath|masterDrivePath|sourceAlbumPath|sourceAlbumMemberships|originalF
 }
 ' -X POST -H 'Content-Type: application/json' \
   -d '{"role":"Viewer","termsAccepted":true,"variant":"../private-source-path","usageChannel":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reason":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}' \
-  "$BASE_URL/api/download/368"
+  "$BASE_URL/api/download/380"
 else
 expect_json_status 403 download-gate-metadata-sanitized '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
@@ -1186,7 +1306,7 @@ if (data.downloadUrl || text.includes("../private") || /source path|master drive
 }
 ' -X POST -H 'Content-Type: application/json' \
   -d '{"role":"Viewer","termsAccepted":true,"variant":"../private-source-path","usageChannel":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reason":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}' \
-  "$BASE_URL/api/download/368"
+  "$BASE_URL/api/download/380"
 fi
 
 expect_json rights-status-not-publish-status '

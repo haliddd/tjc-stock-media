@@ -1,5 +1,6 @@
 import type { DemoRole, StockMediaAsset } from "@/lib/types";
 import { decideAccess } from "@/lib/access-decisions";
+import { routeAccessForPathname, routePathname } from "@/lib/dam/enterprise-route-surface";
 
 export const roles: DemoRole[] = ["Viewer", "Contributor", "Reviewer", "DAM Admin"];
 export type ReviewRole = "Reviewer" | "DAM Admin";
@@ -58,6 +59,20 @@ export function canUpload(role: DemoRole) {
 
 export function canOpenResourceSpace(role: DemoRole) {
   return decideAccess(role, "viewResourceSpaceAdminLink").allowed;
+}
+
+export function canAccessRoute(role: DemoRole, route: string) {
+  switch (routeAccessForPathname(routePathname(route))) {
+    case "admin":
+      return canAdmin(role);
+    case "review":
+      return canReview(role);
+    case "upload":
+      return canUpload(role);
+    case "public":
+    default:
+      return true;
+  }
 }
 
 export function canSeeAsset(role: DemoRole, asset: StockMediaAsset) {

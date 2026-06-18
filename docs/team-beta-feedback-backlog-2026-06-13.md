@@ -10,10 +10,10 @@ This artifact does not approve production launch, public publishing, public down
 
 | Source | Status | Result |
 |---|---|---|
-| Hosted agent-ready export | Checked via `/api/beta-feedback/export?role=DAM%20Admin&status=agent-ready` | 0 records, 0 critical, 0 high, 0 agent-ready |
+| Hosted agent-ready export | Historical June 13 check superseded; any new hosted export must use trusted beta session/SSO Admin identity, not query-role authority | No current June 15 hosted export proof; invite posture remains NO-GO |
 | Repo feedback export folder | `docs/feedback/` | No reviewed teammate feedback exports yet |
 | Local runtime feedback | `data/runtime/beta-feedback.json` | 7 `new` / `medium` Viewer records from hosted smoke feedback loop; treat as QA smoke evidence, not teammate feedback |
-| Invite packet | `docs/team-beta-internal-test-packet.md` | Ready for six named testers only |
+| Invite packet | `docs/team-beta-internal-test-packet.md` | Historical June 13 status superseded; June 15 packet is NO-GO until renewed approval |
 | Incident runbook | `docs/team-beta-feedback-incident-runbook.md` | Active triage source of truth |
 
 Current backlog call: no confirmed teammate-submitted P0/P1 issue is available for code triage. Weekend hardening did find launch-safety P0/P1 issues through code audit, not teammate feedback. Treat those as weekend hardening PRs, not teammate feedback volume.

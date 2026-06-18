@@ -1,14 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_URL="${BASE_URL:-https://tjc-stock-media.vercel.app}"
+local_runtime_probe=0
+case "$BASE_URL" in
+  http://localhost:*|http://127.0.0.1:*|http://[::1]:*) local_runtime_probe=1 ;;
+esac
+
+if [ "$local_runtime_probe" != "1" ]; then
+  if [ "${PORTAL_HOSTED_SMOKE_ALLOW_MUTATION:-}" != "1" ] || [ -z "${PORTAL_HOSTED_SMOKE_APPROVED_BY:-}" ]; then
+    cat >&2 <<EOF
+FAIL: portal-hosted-smoke is mutating for non-local BASE_URL=$BASE_URL.
+This script can POST beta login/feedback state and must not run against hosted targets by default.
+For explicit owner-approved hosted mutation only, set:
+  PORTAL_HOSTED_SMOKE_ALLOW_MUTATION=1
+  PORTAL_HOSTED_SMOKE_APPROVED_BY=<owner-name-or-ticket>
+Optional:
+  PORTAL_HOSTED_SMOKE_APPROVAL_REF=<approval-link-or-note>
+Use portal-hosted-readonly-probe for unauthenticated hosted read-only proof.
+EOF
+    exit 2
+  fi
+  echo "PASS: hosted mutation smoke approved by $PORTAL_HOSTED_SMOKE_APPROVED_BY${PORTAL_HOSTED_SMOKE_APPROVAL_REF:+ ($PORTAL_HOSTED_SMOKE_APPROVAL_REF)}"
+fi
+
+(
+  cd "$ROOT"
+  SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-portal-hosted-smoke}" node scripts/safe-lane-headroom-guard.mjs
+)
+
 MARKER="hosted-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
-local_runtime_probe=0
-case "$BASE_URL" in
-  http://localhost:*|http://127.0.0.1:*) local_runtime_probe=1 ;;
-esac
 
 http_code() {
   local output="$1"
@@ -112,6 +136,28 @@ beta_password_for_role() {
   fi
 }
 
+beta_invite_code_for_role() {
+  case "$1" in
+    Contributor|Reviewer|"DAM Admin") ;;
+    *) return 0 ;;
+  esac
+  node -e '
+const raw = process.env.BETA_CHURCH_INVITE_CODES_JSON || "";
+try {
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) process.exit(0);
+  for (const value of Object.values(parsed)) {
+    const codes = Array.isArray(value) ? value : [value];
+    const code = codes.find((item) => typeof item === "string" && item.trim());
+    if (code) {
+      process.stdout.write(code.trim());
+      process.exit(0);
+    }
+  }
+} catch {}
+'
+}
+
 role_url() {
   local role="$1"
   local path="$2"
@@ -171,6 +217,31 @@ expect_json_status_role() {
   expect_json_status "$expected" "$label" "$script" ${role_args[@]+"${role_args[@]}"} "$@" "$url"
 }
 
+expect_json_status_any_role() {
+  local expected_codes="$1"
+  local label="$2"
+  local role="$3"
+  local path="$4"
+  local script="$5"
+  shift 5
+  local url
+  url="$(role_url "$role" "$path")"
+  read_role_curl_args "$role"
+  local output="$TMP_DIR/${label//[^a-zA-Z0-9_-]/_}.json"
+  local code
+  code="$(http_code "$output" ${role_args[@]+"${role_args[@]}"} "$@" "$url")"
+  case " $expected_codes " in
+    *" $code "*) ;;
+    *)
+      echo "FAIL: $label expected one of $expected_codes got $code"
+      cat "$output"
+      exit 1
+      ;;
+  esac
+  node -e "$script" < "$output"
+  echo "PASS: $label ($code)"
+}
+
 select_json_value_role() {
   local label="$1"
   local role="$2"
@@ -194,8 +265,13 @@ if node -e 'const fs=require("fs"); let data={}; try{data=JSON.parse(fs.readFile
       echo "FAIL: beta auth is enabled at $BASE_URL but ${role} password env is missing for portal-hosted-smoke"
       exit 1
     fi
+    invitation_code="$(beta_invite_code_for_role "$role")"
+    if [ "$role" != "Viewer" ] && [ -z "$invitation_code" ]; then
+      echo "FAIL: beta auth is enabled at $BASE_URL but ${role} invite code env is missing for portal-hosted-smoke"
+      exit 1
+    fi
     payload="$TMP_DIR/login-${role// /-}.json"
-    ROLE="$role" PASSWORD="$password" node -e 'process.stdout.write(JSON.stringify({role:process.env.ROLE,password:process.env.PASSWORD,returnTo:"/"}))' > "$payload"
+    ROLE="$role" PASSWORD="$password" INVITATION_CODE="$invitation_code" node -e 'process.stdout.write(JSON.stringify({role:process.env.ROLE,password:process.env.PASSWORD,invitationCode:process.env.INVITATION_CODE || undefined,returnTo:"/"}))' > "$payload"
     expect_json_status 200 "beta-login-${role// /-}" '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 if (data.ok !== true || !data.role) {
@@ -211,7 +287,7 @@ else
     cat "$BETA_SESSION_PROBE"
     exit 1
   fi
-  echo "PASS: local smoke using query/local trusted-header fallback; beta auth session endpoint status $BETA_SESSION_CODE"
+  echo "PASS: local smoke using trusted-header helper path; beta auth session endpoint status $BETA_SESSION_CODE"
 fi
 
 blocked_asset_id_script='
@@ -264,7 +340,7 @@ if (!Array.isArray(data.feedback) || typeof data.count !== "number") {
 
 BLOCKED_DOWNLOAD_ID="$(select_json_value_role hosted-blocked-download-id Reviewer "/api/assets/search?view=needs-review&limit=25" "$blocked_asset_id_script")"
 
-expect_json_status_role 403 hosted-viewer-download-blocked Viewer "/api/download/$BLOCKED_DOWNLOAD_ID" '
+expect_json_status_any_role "403 503" hosted-viewer-download-blocked Viewer "/api/download/$BLOCKED_DOWNLOAD_ID" '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const forbiddenKeys = new Set([
   "downloadUrl",
@@ -318,6 +394,10 @@ if (leaks.length) {
 }
 if (!data.error && !data.reason) {
   console.error(`FAIL: blocked Viewer download missing reason/error: ${JSON.stringify(data).slice(0, 500)}`);
+  process.exit(1);
+}
+if (data.reasonCode && data.reasonCode !== "audit-required" && data.reasonCode !== "not-downloadable") {
+  console.error(`FAIL: blocked Viewer download returned unexpected reasonCode: ${JSON.stringify(data).slice(0, 500)}`);
   process.exit(1);
 }
 '

@@ -5,32 +5,56 @@ import { workspaceCopyForPath } from "@/components/dam/shell/damShellNav";
 
 const FIRST_LEVEL_PATHS = new Set([
   "/",
+  "/library",
   "/collections",
   "/review",
   "/packages",
+  "/distribution-sets",
   "/upload",
+  "/recent-uploads",
+  "/requests",
+  "/my-tasks",
+  "/tasks",
   "/insights",
   "/admin",
+  "/admin/users",
+  "/admin/roles",
+  "/admin/taxonomy",
+  "/admin/settings",
+  "/governance",
+  "/governance/rights-consent",
+  "/governance/metadata-health",
+  "/governance/policy-center",
+  "/governance/audit-log",
+  "/governance/integrations",
   "/guide",
-  "/brand-hub"
+  "/help"
 ]);
 
 const ROOT_LABELS: Record<string, string> = {
   admin: "Admin",
   assets: "Library",
-  "brand-hub": "Brand Hub",
   collections: "Collections",
-  guide: "Help",
+  "distribution-sets": "Distribution Sets",
+  governance: "Governance",
+  guide: "Help Center",
+  help: "Help Center",
   insights: "Insights",
-  packages: "Packages",
+  library: "Library",
+  "my-tasks": "My Tasks",
+  packages: "Distribution Sets",
+  "recent-uploads": "Recent Uploads",
+  requests: "Requests",
   review: "Review Queue",
+  tasks: "My Tasks",
   upload: "Upload"
 };
 
 const DETAIL_LABELS: Record<string, string> = {
   assets: "Asset Detail",
   collections: "Collection Detail",
-  packages: "Package Detail",
+  "distribution-sets": "Distribution Set Detail",
+  packages: "Distribution Set Detail",
   review: "Review Detail"
 };
 
@@ -71,7 +95,7 @@ export function DamCommandHeader() {
 
   return (
     <header className="dam-command-header sticky top-0 z-30 border-b border-[#d8e2dc] bg-[#fbfdfb]/95 px-3 backdrop-blur md:px-5">
-      <div className="mx-auto flex h-full w-full max-w-[1760px] items-center">
+      <div className="dam-command-header-inner">
         {nestedBreadcrumb ? (
           <nav className="dam-nested-breadcrumb" aria-label="Breadcrumb">
             <ol>

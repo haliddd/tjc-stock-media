@@ -1,13 +1,18 @@
 import { appendAuditEvent } from "@/lib/audit-log";
-import { assetResourceRef } from "@/lib/asset-refs";
 import { getAssetRecordById } from "@/lib/catalog";
 import { createDamWorkflowSession } from "@/lib/dam-route-session";
 import { sourceEnvelope } from "@/lib/media-source/session";
 import { updateResourceReviewStatus } from "@/lib/media-source/resourcespace-api";
 import { canReview } from "@/lib/permissions";
-import { normalizeAssetId, normalizeDisplayTextField, readJsonObject } from "@/lib/request-validation";
-import { missingReviewEvidence, normalizeReviewChecklist, queuePendingReviewDecision } from "@/lib/review-decision";
-import { missingDomainReviewEvidence } from "@/lib/review-evidence";
+import { normalizeAssetId, readJsonObject } from "@/lib/request-validation";
+import {
+  buildReviewEvidencePacket,
+  queueReviewEvidencePacketDecision,
+  reviewEvidencePacketAuditRecord,
+  reviewEvidencePacketBlockedAuditEvent,
+  reviewEvidencePacketBlockedBody,
+  reviewEvidencePacketQueuedAuditEvent
+} from "@/lib/review-evidence-packet";
 import { recordUsageEvent } from "@/lib/usage-analytics";
 import { isReviewActionBackend, reviewActions, type ReviewActionBackend } from "@/lib/workflow-policy";
 import type { NextRequest } from "next/server";
@@ -65,37 +70,31 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
   }
 
   const action = reviewActions.find((item) => item.backend === body.action);
-  const checklist = normalizeReviewChecklist(body.checklist);
-  const note = normalizeDisplayTextField(body.notes, "", 1200);
-  const missingEvidence = missingReviewEvidence(body.action, checklist, note);
-  const missingDomainEvidence = missingDomainReviewEvidence(asset, body.action, checklist, note);
-  const missingAllEvidence = Array.from(new Set([...missingEvidence, ...missingDomainEvidence]));
-  if (missingAllEvidence.length) {
-    const resourceSpaceId = assetResourceRef(asset);
-    appendAuditEvent({
-      type: "review_evidence_incomplete",
-      role,
-      actor: identity.id,
-      assetId: asset.id,
-      resourceSpaceId,
-      status: "blocked",
-      summary: "Review decision blocked by missing evidence.",
-      details: { action: body.action, missingEvidence: missingAllEvidence }
-    });
-    return { status: 400, body: { error: "Review evidence is incomplete.", missingEvidence: missingAllEvidence, ...envelope } };
+  const packet = buildReviewEvidencePacket({
+    asset,
+    action: body.action,
+    actionDefinition: action,
+    label: body.label,
+    note: body.notes,
+    checklist: body.checklist
+  });
+  if (packet.blocked) {
+    appendAuditEvent(reviewEvidencePacketBlockedAuditEvent(packet, role, identity.id));
+    return {
+      status: 400,
+      body: {
+        ...reviewEvidencePacketBlockedBody(packet),
+        ...envelope
+      }
+    };
   }
 
-  const requestedStatus = action?.targetStatus || asset.status;
-  const resourceSpaceId = assetResourceRef(asset);
-  let pending: ReturnType<typeof queuePendingReviewDecision>;
+  let pending: ReturnType<typeof queueReviewEvidencePacketDecision>;
   try {
-    pending = queuePendingReviewDecision({
-      asset,
-      requestedStatus,
+    pending = queueReviewEvidencePacketDecision({
+      packet,
       role,
       reviewerName: body.reviewerName,
-      note,
-      checklist
     });
   } catch (error) {
     return {
@@ -109,28 +108,15 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
     };
   }
 
-  appendAuditEvent({
-    type: "review_pending_write_queued",
-    role,
-    actor: identity.id,
-    assetId: asset.id,
-    resourceSpaceId,
-    status: "queued",
-    summary: "Review decision queued for media-team follow-up.",
-    details: {
-      action: body.action,
-      requestedStatus,
-      pendingWriteId: pending.id
-    }
-  });
+  appendAuditEvent(reviewEvidencePacketQueuedAuditEvent(packet, role, identity.id, pending.id));
   const usageEvent = recordUsageEvent({
     type: "review_action",
     role,
     actor: identity.id,
     assetId: asset.id,
-    resourceSpaceId,
+    resourceSpaceId: packet.resourceSpaceId,
     route: "/api/review",
-    metadata: { action: body.action, requestedStatus }
+    metadata: { action: packet.action, requestedStatus: packet.requestedStatus }
   });
 
   const sync = await updateResourceReviewStatus(pending);
@@ -139,9 +125,9 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
     body: {
       ok: true,
       id: assetId,
-      action: body.action,
-      label: normalizeDisplayTextField(body.label, "", 120) || body.action,
-      notes: note,
+      action: packet.action,
+      label: packet.label,
+      notes: packet.note,
       message: sync.ok
         ? "ResourceSpace review fields were updated through the live API."
         : `Review decision queued for media-team follow-up. Record status remains unchanged until review is completed. ${sync.message}`,
@@ -149,15 +135,7 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
       syncState: sync.ok ? "synced_to_resourcespace" : sync.record?.syncState || pending.syncState,
       sync,
       auditRecord: {
-        assetId: asset.id,
-        resourceSpaceId,
-        previousStatus: asset.status,
-        requestedStatus,
-        actor: identity.id,
-        reviewerRole: role,
-        timestamp: pending.createdAt,
-        notes: note,
-        checklist,
+        ...reviewEvidencePacketAuditRecord(packet, role, identity.id, pending.createdAt),
         blockers: pending.blockers
       },
       usageRecord: {

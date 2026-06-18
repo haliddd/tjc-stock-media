@@ -1,7 +1,8 @@
 import type { DemoRole, DamPackage, ReuseBlocker, ReuseState, StockMediaAsset } from "@/lib/types";
+import { buildDeliveryReadinessManifest, type DeliveryReadinessManifest, type DeliveryReadinessUse } from "@/lib/delivery-readiness";
 import type { ResolvedPackageSection } from "@/lib/package-drafts";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
-import { canContribute, canReview } from "@/lib/permissions";
+import { canReview } from "@/lib/permissions";
 import { packageAssetRef as normalizedPackageAssetRef } from "@/lib/package-refs";
 import { assetForRolePayload } from "@/lib/source-redaction";
 
@@ -16,6 +17,8 @@ export type PackageGovernanceAsset = {
   canDownload: boolean;
   publishReady: boolean;
   shareReady: boolean;
+  portalReadyForChosenUse: boolean;
+  deliveryManifest: DeliveryReadinessManifest;
   blockers: ReuseBlocker[];
   blockerCategories: PackageBlockerCategory[];
   reason: string;
@@ -71,9 +74,11 @@ export type PackageGovernanceSection = {
 
 export type PackageGovernancePacket = {
   role: DemoRole;
+  chosenUse: DeliveryReadinessUse;
   canPreview: boolean;
   canShare: boolean;
   canPublish: boolean;
+  canDownloadPackage: boolean;
   totalRefs: number;
   resolvedRefs: number;
   missingRefs: number;
@@ -100,10 +105,6 @@ function uniqueStrings(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
-function roleCanShareInternal(role: DemoRole) {
-  return canContribute(role);
-}
-
 function opsView(role: DemoRole) {
   return canReview(role);
 }
@@ -124,7 +125,7 @@ const blockerCategoryLabels: Record<PackageBlockerCategory, string> = {
   "required-notice": "Required notice missing",
   "sensitivity-domain-review": "Sensitivity/domain review",
   "missing-source": "Source/provenance missing",
-  "original-master-restricted": "Original/master excluded",
+  "original-master-restricted": "Source file excluded",
   "review-required": "Review required"
 };
 
@@ -211,7 +212,7 @@ export function buildPackageActionDecisions(input: {
       allowed: input.canShare && input.missingRefs === 0,
       status: input.canShare && input.missingRefs === 0 ? "preview" : "blocked",
       reason: input.canShare && input.missingRefs === 0
-        ? "Share decision can be prepared, but no durable public share link is created here."
+        ? "Internal access decision can be prepared, but no durable public link is created here."
         : input.reason,
       originalMasterIncluded: false,
       requiresApprovedCopyGate: true,
@@ -224,12 +225,12 @@ function packageGovernanceRef(asset: StockMediaAsset) {
   return normalizedPackageAssetRef(asset) || "media-reference";
 }
 
-function classifyAsset(sectionId: string, sectionTitle: string, asset: StockMediaAsset, role: DemoRole): PackageGovernanceAsset {
+function classifyAsset(sectionId: string, sectionTitle: string, asset: StockMediaAsset, role: DemoRole, chosenUse: DeliveryReadinessUse): PackageGovernanceAsset {
   const packet = buildPortalReuseDecision(asset, role);
   const ref = packageGovernanceRef(asset);
   const portalReady = packet.reuse.state === "portal-ready";
-  const internalReady = packet.reuse.state === "internal-ready";
-  const canShare = portalReady || (internalReady && roleCanShareInternal(role));
+  const deliveryManifest = buildDeliveryReadinessManifest(asset, chosenUse);
+  const portalReadyForChosenUse = portalReady && deliveryManifest.portalReadyForChosenUse;
 
   return {
     ref,
@@ -240,11 +241,18 @@ function classifyAsset(sectionId: string, sectionTitle: string, asset: StockMedi
     reuseLabel: packet.reuse.label,
     canPreview: packet.access.viewDetailPreview.allowed,
     canDownload: packet.access.downloadApprovedCopy.allowed,
-    publishReady: portalReady,
-    shareReady: canShare,
+    publishReady: portalReadyForChosenUse,
+    shareReady: portalReadyForChosenUse,
+    portalReadyForChosenUse,
+    deliveryManifest,
     blockers: packet.reuse.blockers,
-    blockerCategories: packet.reuse.blockers.map((blocker) => categoryForBlocker(asset, blocker)),
-    reason: assetReason(asset, packet.reuse.blockers)
+    blockerCategories: [
+      ...packet.reuse.blockers.map((blocker) => categoryForBlocker(asset, blocker)),
+      ...(portalReady && !deliveryManifest.portalReadyForChosenUse ? ["missing-derivative" as const] : [])
+    ],
+    reason: portalReady && !deliveryManifest.portalReadyForChosenUse
+      ? `Missing approved derivative for ${chosenUse.replace("-", " ")}.`
+      : assetReason(asset, packet.reuse.blockers)
   };
 }
 
@@ -289,21 +297,27 @@ function sectionReadinessSummary(section: {
   internalOnlyRefs: number;
   reviewRequiredRefs: number;
 }) {
-  if (!section.totalRefs) return "No refs selected. Section will stay out of package output.";
+  if (!section.totalRefs) return "No refs selected. Section will stay out of distribution draft output.";
   if (section.missingRefs.length) return `${section.missingRefs.length} ref${section.missingRefs.length === 1 ? "" : "s"} no longer resolves.`;
   if (section.reviewRequiredRefs) return `${section.reviewRequiredRefs} ref${section.reviewRequiredRefs === 1 ? "" : "s"} need rights review before publish.`;
   if (section.internalOnlyRefs) return `${section.internalOnlyRefs} internal-only ref${section.internalOnlyRefs === 1 ? "" : "s"} block public publish.`;
   return `${section.portalReadyRefs}/${section.totalRefs} refs are Portal Ready.`;
 }
 
-export function buildPackageGovernance(draft: DamPackage, resolvedSections: ResolvedPackageSection[], role: DemoRole): PackageGovernancePacket {
+export function buildPackageGovernance(
+  draft: DamPackage,
+  resolvedSections: ResolvedPackageSection[],
+  role: DemoRole,
+  chosenUse: DeliveryReadinessUse = "public-web"
+): PackageGovernancePacket {
   const canSeeOpsCopy = opsView(role);
   const sections = resolvedSections.map((section): PackageGovernanceSection => {
-    const assets = section.assets.map((asset) => classifyAsset(section.id, section.title, asset, role));
+    const assets = section.assets.map((asset) => classifyAsset(section.id, section.title, asset, role, chosenUse));
     const portalReadyRefs = assets.filter((item) => item.reuseState === "portal-ready").length;
     const internalOnlyRefs = assets.filter((item) => item.reuseState === "internal-ready").length;
     const reviewRequiredRefs = assets.filter((item) => item.reuseState !== "portal-ready" && item.reuseState !== "internal-ready").length;
-    const blockedRefs = section.missingResourceSpaceAssetIds.length + internalOnlyRefs + reviewRequiredRefs;
+    const chosenUseBlockedRefs = assets.filter((item) => item.reuseState === "portal-ready" && !item.portalReadyForChosenUse).length;
+    const blockedRefs = section.missingResourceSpaceAssetIds.length + internalOnlyRefs + reviewRequiredRefs + chosenUseBlockedRefs;
     const blockers = uniqueStrings([
       ...section.missingResourceSpaceAssetIds.map((ref) => canSeeOpsCopy ? `Missing ResourceSpace ref ${ref}` : `Missing media reference ${ref}`),
       ...assets.flatMap((item) => item.publishReady ? [] : [`${item.ref}: ${item.reason}`])
@@ -346,12 +360,15 @@ export function buildPackageGovernance(draft: DamPackage, resolvedSections: Reso
   const portalReadyRefs = allAssets.filter((item) => item.reuseState === "portal-ready").length;
   const internalOnlyRefs = allAssets.filter((item) => item.reuseState === "internal-ready").length;
   const reviewRequiredRefs = allAssets.filter((item) => item.reuseState !== "portal-ready" && item.reuseState !== "internal-ready").length;
-  const blockedRefs = missingRefs + internalOnlyRefs + reviewRequiredRefs;
+  const chosenUseBlockedRefs = allAssets.filter((item) => item.reuseState === "portal-ready" && !item.portalReadyForChosenUse).length;
+  const blockedRefs = missingRefs + internalOnlyRefs + reviewRequiredRefs + chosenUseBlockedRefs;
   const hasRefs = totalRefs > 0;
   const refNoun = canSeeOpsCopy ? "refs" : "references";
   const canPreview = hasRefs && missingRefs === 0 && allAssets.every((item) => item.canPreview);
-  const canShare = canPreview && allAssets.every((item) => item.shareReady);
-  const canPublish = hasRefs && missingRefs === 0 && allAssets.every((item) => item.publishReady);
+  const allPortalReadyForChosenUse = hasRefs && missingRefs === 0 && allAssets.every((item) => item.publishReady);
+  const canShare = allPortalReadyForChosenUse;
+  const canPublish = allPortalReadyForChosenUse;
+  const canDownloadPackage = allPortalReadyForChosenUse;
   const packageScore = readinessScore(totalRefs, portalReadyRefs);
   const packageStatus = readinessStatus({ totalRefs, missingRefs, blockedRefs });
   const reason = !hasRefs
@@ -361,16 +378,20 @@ export function buildPackageGovernance(draft: DamPackage, resolvedSections: Reso
       : internalOnlyRefs
         ? "Publish blocked because some refs are Internal ready only."
         : reviewRequiredRefs
-          ? "Publish blocked until every ref is Portal Ready."
-          : "Every ref is Portal Ready for package publishing.";
+          ? "Readiness blocked until every ref is Portal Ready."
+          : chosenUseBlockedRefs
+            ? `Readiness blocked until every ref has an approved derivative for ${chosenUse.replace("-", " ")}.`
+          : "Every ref is Portal Ready for distribution readiness review.";
   const blockerSummary = packageBlockerSummary(sections);
   const actions = buildPackageActionDecisions({ hasRefs, canPreview, canShare, canPublish, missingRefs, blockedRefs, reason });
 
   return {
     role,
+    chosenUse,
     canPreview,
     canShare,
     canPublish,
+    canDownloadPackage,
     totalRefs,
     resolvedRefs,
     missingRefs,
@@ -386,9 +407,9 @@ export function buildPackageGovernance(draft: DamPackage, resolvedSections: Reso
     blockerSummary,
     actions,
     commandCenter: [
-      command("Preview package", canPreview, canPreview ? `All ${refNoun} can render a role-safe preview.` : `Preview waits for resolvable ${refNoun} and role-safe previews.`, !canPreview && hasRefs),
-      command("Prepare share packet", canShare, canShare ? "Share stays policy-scoped; no public link is created here." : `Share waits for Portal Ready ${refNoun} or internal-ready ${refNoun} allowed for this role.`, !canShare && hasRefs),
-      command("Queue publish review", canPublish, canPublish ? (canSeeOpsCopy ? "All refs are Portal Ready; ResourceSpace originals stay canonical." : "All references are Portal Ready; original files stay protected.") : reason, !canPublish && hasRefs)
+      command("Preview distribution set", canPreview, canPreview ? `All ${refNoun} can render a role-safe preview.` : `Preview waits for resolvable ${refNoun} and role-safe previews.`, !canPreview && hasRefs),
+      command("Prepare internal access packet", canShare, canShare ? "Access stays policy-scoped; no public link is created here." : `Access waits until every selected ${refNoun} is Portal Ready for ${chosenUse.replace("-", " ")}.`, !canShare && hasRefs),
+      command("Queue readiness review", canPublish, canPublish ? (canSeeOpsCopy ? "All refs are Portal Ready; DAM source files stay canonical." : "All references are Portal Ready; source files stay protected.") : reason, !canPublish && hasRefs)
     ],
     sections
   };

@@ -35,6 +35,11 @@ export function parseDownloadGateHref(href?: string): DownloadHrefParts | null {
   }
 }
 
+function downloadGateUrl(assetId: string, role: DemoRole) {
+  const params = new URLSearchParams({ role });
+  return `/api/download/${encodeURIComponent(assetId)}?${params.toString()}`;
+}
+
 export function GatedDownloadButton({
   href,
   assetId,
@@ -64,11 +69,14 @@ export function GatedDownloadButton({
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/download/${encodeURIComponent(resolvedAssetId)}`, {
+      const response = await fetch(downloadGateUrl(resolvedAssetId, resolvedRole), {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "x-tjc-local-beta-role": resolvedRole
+        },
         body: JSON.stringify({
-          role: resolvedRole,
           termsAccepted,
           usageChannel,
           reason,

@@ -326,7 +326,7 @@ export function AssetDetailPage({ id }: { id: string }) {
     if (!ready) return;
     let cancelled = false;
     setError("");
-    fetch(`/api/assets/${id}?role=${encodeURIComponent(role)}`)
+    fetch(`/api/assets/${encodeURIComponent(id)}`)
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || "Unable to load media record.");
@@ -391,6 +391,7 @@ export function AssetDetailPage({ id }: { id: string }) {
     { label: "Ministry / event", value: asset.eventName || asset.collection },
     { label: "People sensitivity", value: asset.peopleRisk || "Unknown" },
     { label: "Usage scope", value: asset.usageScope },
+    { label: "DAM filename", value: asset.damFilenames?.web || asset.damFilenames?.original || "Generated at delivery" },
     { label: "Review date", value: asset.reviewedDate || "Review pending" },
     { label: referenceLabel, value: referenceCode },
     { label: "Source file", value: verdict.canDownload ? "Approved copy available; source access restricted" : "Request-only" },

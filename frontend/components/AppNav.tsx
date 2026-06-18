@@ -21,7 +21,7 @@ const appNav: AppNavItem[] = [
   { href: "/", label: "Assets", mobileLabel: "Assets", icon: Library, group: "Browse" },
   { href: "/collections", label: "Collections", mobileLabel: "Collections", icon: Grid3X3, group: "Browse" },
   { href: "/packages", label: "Package Builder", mobileLabel: "Builder", icon: Box, group: "Workflow" },
-  { href: "/guide", label: "Help Guide", mobileLabel: "Guide", icon: HelpCircle, group: "Workflow" },
+  { href: "/help", label: "Help Center", mobileLabel: "Help", icon: HelpCircle, group: "Workflow" },
   { href: "/review", label: "Review", mobileLabel: "Review", icon: ClipboardList, group: "Operations", reviewerOnly: true },
   { href: "/insights", label: "Insights", mobileLabel: "Insights", icon: BarChart3, group: "Operations" },
   { href: "/admin", label: "Admin", mobileLabel: "Admin", icon: Settings, group: "Operations", adminOnly: true },

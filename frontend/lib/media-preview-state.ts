@@ -12,7 +12,7 @@ export function mediaPreviewState(asset?: StockMediaAsset, failed = false): Medi
   if (!asset) return "Preview loading";
   if (failed) return "Preview failed";
   if (asset.mediaType === "audio") return "Unsupported file type";
-  if (!asset.thumbnail) {
+  if (!asset.thumbnail && !asset.preview && !asset.imageUrls?.small && !asset.imageUrls?.detail) {
     if (asset.reuseDecision?.previewTier === "no-preview" || asset.reuseDecision?.state.startsWith("blocked-")) return "Preview restricted";
     return "Preview unavailable";
   }

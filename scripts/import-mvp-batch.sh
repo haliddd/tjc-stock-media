@@ -17,6 +17,7 @@ CONTAINER_STAGING_MANIFEST=""
 OUT_DIR="$ROOT/.runtime/audits"
 
 cd "$ROOT"
+SAFE_LANE_HEADROOM_CONTEXT="${SAFE_LANE_HEADROOM_CONTEXT:-import-mvp-batch}" node scripts/safe-lane-headroom-guard.mjs
 
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "FAIL: source directory not found: $SOURCE_DIR"
