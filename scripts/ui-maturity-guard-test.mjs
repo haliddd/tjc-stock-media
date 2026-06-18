@@ -28,6 +28,7 @@ const fixtureFiles = [
   "frontend/components/dam/enterprise/RecentUploadsPage.tsx",
   "frontend/components/dam/enterprise/ReviewPage.tsx",
   "frontend/app/dam-enterprise.css",
+  "frontend/app/dam-senior-staff.css",
   "frontend/components/RoleProvider.tsx",
   "docs/runs/evidence/2026-06-15/12-safe-30-40h-ui-run.md",
   "docs/runs/evidence/2026-06-15/screenshots/README.md",

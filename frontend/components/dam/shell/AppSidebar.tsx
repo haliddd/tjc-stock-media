@@ -28,6 +28,14 @@ import {
 import { cn } from "@/lib/utils";
 import { routeWithRole } from "@/lib/role-routes";
 
+const sidebarGroupCopy: Record<string, { label: string; detail: string }> = {
+  Media: { label: "Media", detail: "" },
+  Workflow: { label: "Workflow", detail: "" },
+  Governance: { label: "Governance", detail: "" },
+  Admin: { label: "Admin", detail: "" },
+  Support: { label: "Support", detail: "" }
+};
+
 function useCurrentHash(pathname: string, currentSearch: string) {
   const [hash, setHash] = useState("");
 
@@ -68,7 +76,7 @@ function SidebarLink({ item, compact = false }: { item: DamShellNavItem; compact
         isActive={active}
         size={compact ? "default" : "lg"}
         className={cn(
-          "dam-sidebar-menu-button text-sidebar-foreground/82 hover:bg-white/10 hover:text-white focus-visible:ring-sidebar-ring data-active:bg-white data-active:text-[#0e294b]",
+          "dam-sidebar-menu-button text-[#202020] hover:bg-[#f1f2f3] hover:text-black focus-visible:ring-sidebar-ring data-active:bg-[#eff3ef] data-active:text-black",
           active && "font-black"
         )}
         render={(
@@ -93,7 +101,7 @@ function BrandLockup() {
   const { role } = useDemoRole();
   const { toggleSidebar } = useSidebar();
   return (
-    <div className="dam-sidebar-brand flex min-h-12 min-w-0 items-center gap-3 px-2 text-white">
+    <div className="dam-sidebar-brand flex min-h-12 min-w-0 items-center gap-3 px-2 text-[#111111]">
       <button
         type="button"
         className="dam-sidebar-collapsed-menu"
@@ -173,9 +181,13 @@ export function AppSidebar() {
         {damShellNavGroups.map((group) => {
           const groupItems = visibleItems.filter((item) => item.group === group);
           if (!groupItems.length) return null;
+          const copy = sidebarGroupCopy[group] || { label: group, detail: "" };
           return (
             <SidebarGroup key={group} className="px-0 py-1">
-              <SidebarGroupLabel className="text-white/54">{group}</SidebarGroupLabel>
+              <SidebarGroupLabel className="dam-sidebar-group-label text-[#555555]">
+                <span>{copy.label}</span>
+                {copy.detail ? <em>{copy.detail}</em> : null}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="gap-1">
                   {groupItems.map((item) => <SidebarLink key={`${item.group}-${item.href}`} item={item} />)}
@@ -194,7 +206,7 @@ export function AppSidebar() {
 
         <Link
           href={routeWithRole("/help", role)}
-          className="hidden min-h-10 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:grid"
+          className="hidden min-h-10 place-items-center rounded-lg text-[#202020] transition hover:bg-[#f1f2f3] hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:grid"
           aria-label="Help Center"
           title="Help Center"
         >

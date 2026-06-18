@@ -12,8 +12,10 @@ import {
   ShieldAlert,
   ShieldCheck
 } from "lucide-react";
+import { useDemoRole } from "@/components/RoleProvider";
 import { PageHeader } from "./EnterpriseShared";
 import { cn } from "@/lib/utils";
+import type { DemoRole } from "@/lib/types";
 
 type RequestStatus = "Waiting on me" | "Assigned" | "Blocked" | "Resolved";
 
@@ -29,12 +31,13 @@ type RequestRow = {
   requiredEvidence: string[];
   timeline: string[];
   nextAction: string;
+  roleFit: DemoRole[];
 };
 
 const requestKpis = [
-  { label: "Open requests", value: "18", detail: "Across source access, review, and unlock work" },
+  { label: "Open requests", value: "18", detail: "Across source access, review, and derivative request work" },
   { label: "Waiting on me", value: "5", detail: "Needs evidence, scope, or requester reply" },
-  { label: "Blocked", value: "4", detail: "Rights, people, or approved derivative missing" },
+  { label: "Blocked", value: "4", detail: "Rights, people, or reviewed derivative evidence missing" },
   { label: "Resolved this week", value: "11", detail: "Closed with reviewer notes and scope recorded" }
 ];
 
@@ -43,7 +46,7 @@ const requestTabs = [
   "Team queue",
   "Source access",
   "Rights issues",
-  "Download unlocks",
+  "Derivative requests",
   "DAM review"
 ];
 
@@ -59,7 +62,8 @@ const requestRows: RequestRow[] = [
     updated: "Today 10:14 AM",
     requiredEvidence: ["Intended channel", "Ministry owner approval", "Deadline"],
     timeline: ["Opened today", "Assigned to media reviewer", "Waiting on requester scope"],
-    nextAction: "Add ministry use scope"
+    nextAction: "Add ministry use scope",
+    roleFit: ["Viewer", "Contributor", "Reviewer", "DAM Admin"]
   },
   {
     id: "REQ-1027",
@@ -72,20 +76,22 @@ const requestRows: RequestRow[] = [
     updated: "Today 9:42 AM",
     requiredEvidence: ["Visible people review", "Guardian or organizer confirmation", "Public use decision"],
     timeline: ["Rights issue reported", "Distribution paused", "Evidence request sent"],
-    nextAction: "Resolve people/minors evidence"
+    nextAction: "Resolve people/minors evidence",
+    roleFit: ["Reviewer", "DAM Admin"]
   },
   {
     id: "REQ-1031",
-    type: "Download unlock",
+    type: "Derivative request",
     relatedAsset: "Choir Practice Wide Shot",
     requestedBy: "Communications",
     status: "Assigned",
-    blocker: "Approved derivative missing",
+    blocker: "Reviewed derivative evidence missing",
     assignedTo: "Derivative queue",
     updated: "Yesterday 4:18 PM",
-    requiredEvidence: ["Approved copy request", "Usage scope", "Reviewer date"],
-    timeline: ["Unlock requested", "Approved copy gap found", "Derivative work queued"],
-    nextAction: "Create approved derivative"
+    requiredEvidence: ["Derivative request", "Usage scope", "Reviewer date"],
+    timeline: ["Derivative requested", "Reviewed copy gap found", "Derivative work queued"],
+    nextAction: "Create derivative request packet",
+    roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
     id: "REQ-1034",
@@ -98,7 +104,8 @@ const requestRows: RequestRow[] = [
     updated: "Yesterday 2:03 PM",
     requiredEvidence: ["Third-party design check", "Teaching series scope", "Reviewer note"],
     timeline: ["Review requested", "Rights queue assigned", "Awaiting reviewer decision"],
-    nextAction: "Complete rights review"
+    nextAction: "Complete rights review",
+    roleFit: ["Reviewer", "DAM Admin"]
   },
   {
     id: "REQ-1038",
@@ -111,16 +118,24 @@ const requestRows: RequestRow[] = [
     updated: "Mon 11:20 AM",
     requiredEvidence: ["Uploader declaration", "Event context", "People visibility"],
     timeline: ["Upload cleanup requested", "Missing event context added", "Closed with review packet"],
-    nextAction: "No action needed"
+    nextAction: "No action needed",
+    roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   }
 ];
 
 const actionButtons = [
-  { label: "Request source access", icon: FileLock2 },
-  { label: "Report rights issue", icon: ShieldAlert },
-  { label: "Request DAM review", icon: FileCheck2 },
-  { label: "Request approved derivative", icon: Download }
+  { label: "Request source access", icon: FileLock2, roles: ["Viewer", "Contributor", "Reviewer", "DAM Admin"] satisfies DemoRole[] },
+  { label: "Report rights issue", icon: ShieldAlert, roles: ["Viewer", "Contributor", "Reviewer", "DAM Admin"] satisfies DemoRole[] },
+  { label: "Request DAM review", icon: FileCheck2, roles: ["Contributor", "Reviewer", "DAM Admin"] satisfies DemoRole[] },
+  { label: "Request reviewed derivative", icon: Download, roles: ["Contributor", "Reviewer", "DAM Admin"] satisfies DemoRole[] }
 ];
+
+const roleRequestGuidance: Record<DemoRole, string> = {
+  Viewer: "Viewer requests capture need and context only. Media team approval still required.",
+  Contributor: "Contributor requests attach upload/context evidence before reviewer decisions.",
+  Reviewer: "Reviewer queue emphasizes evidence review, blockers, and pending decisions.",
+  "DAM Admin": "Admin view spans all request lanes for triage; source custody still stays in DAM."
+};
 
 function statusClass(status: RequestStatus) {
   if (status === "Resolved") return "is-ready";
@@ -130,34 +145,43 @@ function statusClass(status: RequestStatus) {
 }
 
 export function RequestsPage() {
+  const { role } = useDemoRole();
   const [activeTab, setActiveTab] = useState("My requests");
   const [selectedId, setSelectedId] = useState(requestRows[0].id);
   const [message, setMessage] = useState("");
+  const visibleTabs = useMemo(() => {
+    if (role === "Viewer") return ["My requests", "Source access", "Rights issues"];
+    if (role === "Contributor") return ["My requests", "Source access", "Derivative requests", "DAM review"];
+    return requestTabs;
+  }, [role]);
+  const activeVisibleTab = visibleTabs.includes(activeTab) ? activeTab : visibleTabs[0];
   const filteredRows = useMemo(() => {
-    if (activeTab === "My requests") return requestRows.filter((row) => row.requestedBy === "Leanne Chu" || row.status === "Waiting on me");
-    if (activeTab === "Team queue") return requestRows;
-    if (activeTab === "Source access") return requestRows.filter((row) => row.type === "Source access");
-    if (activeTab === "Rights issues") return requestRows.filter((row) => row.type === "Rights issue");
-    if (activeTab === "Download unlocks") return requestRows.filter((row) => row.type === "Download unlock");
-    return requestRows.filter((row) => row.type === "DAM review" || row.type === "Upload intake");
-  }, [activeTab]);
-  const selected = requestRows.find((row) => row.id === selectedId) || filteredRows[0] || requestRows[0];
+    const roleRows = requestRows.filter((row) => row.roleFit.includes(role));
+    if (activeVisibleTab === "My requests") return roleRows.filter((row) => row.requestedBy === "Leanne Chu" || row.status === "Waiting on me");
+    if (activeVisibleTab === "Team queue") return roleRows;
+    if (activeVisibleTab === "Source access") return roleRows.filter((row) => row.type === "Source access");
+    if (activeVisibleTab === "Rights issues") return roleRows.filter((row) => row.type === "Rights issue");
+    if (activeVisibleTab === "Derivative requests") return roleRows.filter((row) => row.type === "Derivative request");
+    return roleRows.filter((row) => row.type === "DAM review" || row.type === "Upload intake");
+  }, [activeVisibleTab, role]);
+  const selected = filteredRows.find((row) => row.id === selectedId) || filteredRows[0] || requestRows.find((row) => row.roleFit.includes(role)) || requestRows[0];
+  const visibleActions = actionButtons.filter((action) => action.roles.includes(role));
 
   return (
     <div className="enterprise-page enterprise-requests route-identity-page" data-route-identity="requests">
       <PageHeader
         title="Requests"
-        subtitle="Track source access, rights issues, download unlocks, and DAM review requests."
+        subtitle={roleRequestGuidance[role]}
       />
 
       <section className="ed-route-actions" aria-label="Request actions">
-        {actionButtons.map((action) => {
+        {visibleActions.map((action) => {
           const Icon = action.icon;
           return (
             <button
               type="button"
               key={action.label}
-              onClick={() => setMessage(`${action.label} draft opened. No email, approval, download, or source access was granted.`)}
+              onClick={() => setMessage(`${action.label} draft opened for ${role}. No email, approval, download, public link, or source access was granted.`)}
             >
               <Icon size={16} aria-hidden="true" />
               <span>{action.label}</span>
@@ -178,8 +202,8 @@ export function RequestsPage() {
       </section>
 
       <nav className="ed-route-tabs" aria-label="Request queue tabs">
-        {requestTabs.map((tab) => (
-          <button type="button" key={tab} className={tab === activeTab ? "is-active" : undefined} onClick={() => setActiveTab(tab)} aria-pressed={tab === activeTab}>
+        {visibleTabs.map((tab) => (
+          <button type="button" key={tab} className={tab === activeVisibleTab ? "is-active" : undefined} onClick={() => setActiveTab(tab)} aria-pressed={tab === activeVisibleTab}>
             {tab}
           </button>
         ))}
@@ -189,12 +213,12 @@ export function RequestsPage() {
         <main className="ed-route-main" data-primary-section="requests-table">
           <header className="ed-section-heading">
             <div>
-              <h2>{activeTab}</h2>
-              <p>Requests are operational records. They do not approve public use, grant source access, or unlock downloads by themselves.</p>
+              <h2>{activeVisibleTab}</h2>
+              <p>Requests are operational records. They do not approve public use, grant source access, or create delivery rights by themselves.</p>
             </div>
             <span>{filteredRows.length} visible</span>
           </header>
-          <div className="ed-route-table-wrap">
+          {filteredRows.length ? <div className="ed-route-table-wrap">
             <table className="ed-table ed-route-table" aria-label="Requests operations table">
               <thead>
                 <tr>
@@ -225,7 +249,13 @@ export function RequestsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div> : (
+            <section className="ed-empty-state is-quiet">
+              <MessageSquareText size={24} aria-hidden="true" />
+              <h2>No {activeVisibleTab.toLowerCase()} for {role}</h2>
+              <p>Queue is clear in this role view. Create a draft request to capture need; it still will not approve public use or grant file access.</p>
+            </section>
+          )}
         </main>
 
         <aside className="ed-route-inspector" aria-label="Request inspector">
@@ -257,7 +287,7 @@ export function RequestsPage() {
             <h3>Next safe action</h3>
             <p>{selected.nextAction}</p>
           </section>
-          <p className="ed-route-safety-note"><AlertTriangle size={14} aria-hidden="true" />Requests queue work. Approval, download, and source access stay gated until evidence is reviewed.</p>
+          <p className="ed-route-safety-note"><AlertTriangle size={14} aria-hidden="true" />Requests queue work. Approval, delivery rights, and source access stay gated until evidence is reviewed.</p>
         </aside>
       </div>
     </div>

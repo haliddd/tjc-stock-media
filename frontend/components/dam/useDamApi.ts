@@ -88,6 +88,23 @@ export type DownloadGateResponse = {
   allowed: boolean;
   downloadUrl?: string;
   auditId?: string;
+  ticketId?: string | null;
+  ticketExpiresAt?: string;
+  reasonCode?: string;
+  reasonCodes?: string[];
+  deliveryManifest?: {
+    portalReadyForChosenUse?: boolean;
+    originalMasterIncluded?: false;
+    storageTruth?: string;
+    items?: Array<{
+      id: string;
+      label: string;
+      status: string;
+      routeBoundary?: string;
+      downloadGrade?: boolean;
+      detail?: string;
+    }>;
+  };
   reason?: string;
   requiredAction?: string;
   message?: string;

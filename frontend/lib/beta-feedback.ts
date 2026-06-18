@@ -6,7 +6,7 @@ import { isKnownRole, normalizeRoleFilter, normalizeRoleWithFallback } from "@/l
 import { isSafeHttpUrl } from "@/lib/private-source-text";
 import { normalizeFeedbackId, normalizePersistedDisplayText, normalizeSafeRoutePath, readFormData, readJsonObject } from "@/lib/request-validation";
 import type { AuditEventRecord } from "@/lib/audit-log";
-import type { BetaFeedbackRecord, BetaFeedbackSeverity, BetaFeedbackStatus, DemoRole } from "@/lib/types";
+import type { BetaFeedbackIncidentState, BetaFeedbackOwner, BetaFeedbackRecord, BetaFeedbackSeverity, BetaFeedbackStatus, DemoRole } from "@/lib/types";
 
 const feedbackIndexKey = "tjc-stock-media:beta-feedback:index";
 const feedbackRecordPrefix = "tjc-stock-media:beta-feedback:record:";
@@ -17,14 +17,18 @@ export const maxBetaFeedbackAttachmentBytes = 2 * 1024 * 1024;
 
 export const betaFeedbackSeverities: BetaFeedbackSeverity[] = ["low", "medium", "high", "critical"];
 export const betaFeedbackStatuses: BetaFeedbackStatus[] = ["new", "triaged", "agent-ready", "fixed", "wont-fix"];
+export const betaFeedbackOwners: BetaFeedbackOwner[] = ["unassigned", "Hali", "Enoch", "Reviewer", "Codex", "Admin"];
+export const betaFeedbackIncidentStates: BetaFeedbackIncidentState[] = ["none", "watch", "triggered", "resolved"];
 export const betaFeedbackSeverityFilters = [...betaFeedbackSeverities, "all"] as const;
 export const betaFeedbackStatusFilters = [...betaFeedbackStatuses, "all"] as const;
 
-type FeedbackPatch = Partial<Pick<BetaFeedbackRecord, "severity" | "status" | "notes">>;
+type FeedbackPatch = Partial<Pick<BetaFeedbackRecord, "severity" | "status" | "owner" | "incidentState" | "notes">>;
 type FeedbackGlobal = typeof globalThis & { __tjcStockMediaBetaFeedback?: BetaFeedbackRecord[] };
 type BetaFeedbackPatchBody = {
   status?: unknown;
   severity?: unknown;
+  owner?: unknown;
+  incidentState?: unknown;
   notes?: unknown;
 };
 type BetaFeedbackAuditEvent = Omit<AuditEventRecord, "id" | "createdAt" | "actor"> & { actor?: string };
@@ -46,7 +50,7 @@ export type BetaFeedbackExportFilters = {
 };
 export type BetaFeedbackPatchInput = {
   patch: FeedbackPatch;
-  invalidField?: "status" | "severity";
+  invalidField?: "status" | "severity" | "owner" | "incidentState";
 };
 export type BetaFeedbackInput = {
   role?: unknown;
@@ -104,6 +108,14 @@ export function normalizeFeedbackSeverity(value: unknown, fallback: BetaFeedback
 
 export function normalizeFeedbackStatus(value: unknown, fallback: BetaFeedbackStatus = "new"): BetaFeedbackStatus {
   return safeEnumValue(value, betaFeedbackStatuses, fallback);
+}
+
+export function normalizeFeedbackOwner(value: unknown, fallback: BetaFeedbackOwner = "unassigned"): BetaFeedbackOwner {
+  return safeEnumValue(value, betaFeedbackOwners, fallback);
+}
+
+export function normalizeFeedbackIncidentState(value: unknown, fallback: BetaFeedbackIncidentState = "none"): BetaFeedbackIncidentState {
+  return safeEnumValue(value, betaFeedbackIncidentStates, fallback);
 }
 
 export function normalizeFeedbackSeverityFilter(value: unknown): BetaFeedbackSeverity | "all" {
@@ -218,6 +230,10 @@ function normalizeStoredFeedback(input: unknown): BetaFeedbackRecord | null {
     expected: normalizePersistedDisplayText(raw.expected, 1200),
     actual: normalizePersistedDisplayText(raw.actual, 1200),
     status: normalizeFeedbackStatus(raw.status),
+    owner: normalizeFeedbackOwner(raw.owner),
+    incidentState: normalizeFeedbackIncidentState(raw.incidentState),
+    incidentId: raw.incidentId === undefined ? undefined : normalizePersistedDisplayText(raw.incidentId, 120),
+    incidentTriggeredAt: raw.incidentTriggeredAt === undefined ? undefined : safeIsoTimestamp(raw.incidentTriggeredAt) || undefined,
     notes: raw.notes === undefined ? undefined : normalizePersistedDisplayText(raw.notes, 1200),
     reporterName: raw.reporterName === undefined ? undefined : normalizePersistedDisplayText(raw.reporterName, 120),
     browser: raw.browser === undefined ? undefined : normalizePersistedDisplayText(raw.browser, 280),
@@ -322,14 +338,22 @@ export async function readBetaFeedbackPatchInput(request: { json(): Promise<unkn
   const body = await readJsonObject<BetaFeedbackPatchBody>(request);
   const status = normalizeFeedbackText(body.status, 40);
   const severity = normalizeFeedbackText(body.severity, 40);
+  const owner = normalizeFeedbackText(body.owner, 40);
+  const incidentState = normalizeFeedbackText(body.incidentState, 40);
   const normalizedStatus = status ? normalizeFeedbackStatus(status) : "";
   const normalizedSeverity = severity ? normalizeFeedbackSeverity(severity) : "";
+  const normalizedOwner = owner ? normalizeFeedbackOwner(owner) : "";
+  const normalizedIncidentState = incidentState ? normalizeFeedbackIncidentState(incidentState) : "";
   if (status && normalizedStatus !== status) return { patch: {}, invalidField: "status" };
   if (severity && normalizedSeverity !== severity) return { patch: {}, invalidField: "severity" };
+  if (owner && normalizedOwner !== owner) return { patch: {}, invalidField: "owner" };
+  if (incidentState && normalizedIncidentState !== incidentState) return { patch: {}, invalidField: "incidentState" };
   return {
     patch: {
       status: normalizedStatus ? normalizedStatus as BetaFeedbackStatus : undefined,
       severity: normalizedSeverity ? normalizedSeverity as BetaFeedbackSeverity : undefined,
+      owner: normalizedOwner ? normalizedOwner as BetaFeedbackOwner : undefined,
+      incidentState: normalizedIncidentState ? normalizedIncidentState as BetaFeedbackIncidentState : undefined,
       notes: body.notes === undefined ? undefined : normalizePersistedDisplayText(body.notes, 1200)
     }
   };
@@ -447,10 +471,16 @@ export function betaFeedbackPatchValidationError(input: BetaFeedbackPatchInput):
   if (input.invalidField === "severity") {
     return { body: { error: "Feedback severity is invalid." }, status: 400 };
   }
+  if (input.invalidField === "owner") {
+    return { body: { error: "Feedback owner is invalid." }, status: 400 };
+  }
+  if (input.invalidField === "incidentState") {
+    return { body: { error: "Feedback incident state is invalid." }, status: 400 };
+  }
   return null;
 }
 
-export async function createBetaFeedback(input: Omit<BetaFeedbackRecord, "id" | "createdAt" | "updatedAt" | "status" | "storageMode"> & { id?: string }) {
+export async function createBetaFeedback(input: Omit<BetaFeedbackRecord, "id" | "createdAt" | "updatedAt" | "status" | "storageMode" | "owner" | "incidentState"> & { id?: string; owner?: BetaFeedbackOwner; incidentState?: BetaFeedbackIncidentState }) {
   const id = input.id || crypto.randomUUID();
   const createdAt = new Date().toISOString();
   const kvAvailable = Boolean(await getKvClient());
@@ -460,6 +490,8 @@ export async function createBetaFeedback(input: Omit<BetaFeedbackRecord, "id" | 
     createdAt,
     updatedAt: createdAt,
     status: "new",
+    owner: input.owner || "unassigned",
+    incidentState: input.incidentState || "none",
     storageMode: kvAvailable ? "vercel-kv" : "local-json"
   };
   const wroteKv = kvAvailable ? await writeKvFeedback(record).catch(() => false) : false;
@@ -541,7 +573,10 @@ export function buildBetaFeedbackExport(records: BetaFeedbackRecord[], filters: 
       critical: filtered.filter((record) => record.severity === "critical").length,
       high: filtered.filter((record) => record.severity === "high").length,
       agentReady: filtered.filter((record) => record.status === "agent-ready").length,
-      open: filtered.filter((record) => !["fixed", "wont-fix"].includes(record.status)).length
+      open: filtered.filter((record) => !["fixed", "wont-fix"].includes(record.status)).length,
+      incidentWatch: filtered.filter((record) => record.incidentState === "watch").length,
+      incidentsTriggered: filtered.filter((record) => record.incidentState === "triggered").length,
+      unassigned: filtered.filter((record) => record.owner === "unassigned").length
     },
     records: filtered
   };
@@ -571,13 +606,21 @@ export function betaFeedbackSubmittedAuditEvent(record: BetaFeedbackRecord, role
 }
 
 export function betaFeedbackTriagedAuditEvent(record: BetaFeedbackRecord, role: DemoRole, actor: string): BetaFeedbackAuditEvent {
+  const incidentTriggered = record.incidentState === "triggered";
   return {
-    type: "beta_feedback_triaged",
+    type: incidentTriggered ? "beta_feedback_incident_triggered" : "beta_feedback_triaged",
     role,
     actor,
-    status: "preview",
-    summary: `Beta feedback ${record.id} updated to ${record.status}.`,
-    details: { feedbackId: record.id, severity: record.severity, status: record.status }
+    status: incidentTriggered ? "blocked" : "preview",
+    summary: incidentTriggered ? `Beta feedback ${record.id} triggered incident watch.` : `Beta feedback ${record.id} updated to ${record.status}.`,
+    details: {
+      feedbackId: record.id,
+      severity: record.severity,
+      status: record.status,
+      owner: record.owner,
+      incidentState: record.incidentState,
+      incidentId: record.incidentId || null
+    }
   };
 }
 
@@ -614,6 +657,14 @@ export async function patchBetaFeedback(id: string, patch: FeedbackPatch) {
     ...existing,
     severity: patch.severity ? normalizeFeedbackSeverity(patch.severity, existing.severity) : existing.severity,
     status: patch.status ? normalizeFeedbackStatus(patch.status, existing.status) : existing.status,
+    owner: patch.owner ? normalizeFeedbackOwner(patch.owner, existing.owner) : existing.owner,
+    incidentState: patch.incidentState ? normalizeFeedbackIncidentState(patch.incidentState, existing.incidentState) : existing.incidentState,
+    incidentId: patch.incidentState === "triggered" && existing.incidentState !== "triggered"
+      ? `incident-${new Date().toISOString().slice(0, 10)}-${cleanId.slice(0, 8)}`
+      : existing.incidentId,
+    incidentTriggeredAt: patch.incidentState === "triggered" && existing.incidentState !== "triggered"
+      ? new Date().toISOString()
+      : existing.incidentTriggeredAt,
     notes: patch.notes === undefined ? existing.notes : normalizePersistedDisplayText(patch.notes, 1200),
     updatedAt: new Date().toISOString()
   };

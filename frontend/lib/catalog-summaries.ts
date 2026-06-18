@@ -11,9 +11,11 @@ import {
   buildDuplicateGroupCounts
 } from "@/lib/asset-governance";
 import {
+  collectionDefinitionForId,
   collectionDefinitions,
   includesAny,
   matchesCatalogQuery,
+  matchesCatalogFilter,
   savedViewDefinitions
 } from "@/lib/catalog-language";
 import { collectionImageUrl } from "@/lib/presentation";
@@ -55,7 +57,11 @@ function approvalSummary(assets: StockMediaAsset[]) {
 export function buildCollections(assets: StockMediaAsset[], role: DemoRole): CatalogCollection[] {
   const approvedOrInternal = assets.filter(assetIsApproved);
   return collectionDefinitions.map((definition) => {
-    const matching = approvedOrInternal.filter((asset) => includesAny(asset, definition.terms));
+    const routeMatches = definition.routeFilter
+      ? assets.filter((asset) => matchesCatalogFilter(asset, definition.routeFilter || ""))
+      : [];
+    const termMatches = approvedOrInternal.filter((asset) => includesAny(asset, definition.terms));
+    const matching = routeMatches.length ? routeMatches : termMatches;
     const warning = matching.some((asset) => asset.peopleRisk === "Possible minors")
       ? "Contains children/youth review items"
       : matching.some((asset) => asset.peopleRisk === "Adults visible")
@@ -85,6 +91,10 @@ export function buildCollections(assets: StockMediaAsset[], role: DemoRole): Cat
         .filter((image): image is { src: string; alt: string } => Boolean(image.src))
     };
   });
+}
+
+export function collectionRouteFilter(collectionId: string) {
+  return collectionDefinitionForId(collectionId)?.routeFilter;
 }
 
 export function buildMetadataHealth(assets: StockMediaAsset[]): MetadataHealthSummary {

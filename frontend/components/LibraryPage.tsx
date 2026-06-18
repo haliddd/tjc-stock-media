@@ -11,7 +11,7 @@ import { LibraryPagination } from "@/components/LibraryPagination";
 import { useDemoRole } from "@/components/RoleProvider";
 import { RawStatusBadge, UsageBadge } from "@/components/StatusBadge";
 import type { CatalogSort, DemoRole, SearchResult, StockMediaAsset } from "@/lib/types";
-import { assetMetadataHealth } from "@/lib/asset-governance";
+import { assetLibraryScanSummary, assetMetadataHealth } from "@/lib/asset-governance";
 import { assetPresentation } from "@/lib/presentation";
 import { cn } from "@/lib/ui";
 import { viewerVerdictForAsset } from "@/lib/viewer-verdict";
@@ -34,6 +34,7 @@ function healthTone(score: number) {
 function OpsAssetRow({ asset, selected }: { asset: StockMediaAsset; selected?: boolean }) {
   const display = assetPresentation(asset, "Reviewer");
   const health = assetMetadataHealth(asset);
+  const scan = assetLibraryScanSummary(asset, "Reviewer");
   return (
     <Link
       href={`/assets/${asset.id}`}
@@ -51,9 +52,9 @@ function OpsAssetRow({ asset, selected }: { asset: StockMediaAsset; selected?: b
       </span>
       <span data-badge-slot="ops-status"><RawStatusBadge status={asset.status} size="xs" /></span>
       <span data-badge-slot="ops-usage"><UsageBadge scope={asset.usageScope} size="xs" /></span>
-      <span className="text-xs font-semibold text-tjc-muted">{asset.peopleRisk || "Unknown"}</span>
+      <span className="text-xs font-semibold text-tjc-muted">{scan.rightsRiskLabel} · {scan.peopleLabel}</span>
       <span className="truncate text-xs font-semibold text-tjc-muted">RS {asset.resourceSpaceId || asset.id}</span>
-      <span className={cn("h-fit rounded-[10px] border px-2 py-1 text-xs font-black tabular-nums", healthTone(health.score))}>{health.score}%</span>
+      <span className={cn("h-fit rounded-[10px] border px-2 py-1 text-xs font-black tabular-nums", healthTone(health.score))} title={scan.nextActionDetail}>{scan.nextAction}</span>
     </Link>
   );
 }
@@ -61,6 +62,7 @@ function OpsAssetRow({ asset, selected }: { asset: StockMediaAsset; selected?: b
 function ViewerAssetListRow({ asset, role }: { asset: StockMediaAsset; role: DemoRole }) {
   const display = assetPresentation(asset, role);
   const verdict = viewerVerdictForAsset(asset, role);
+  const scan = assetLibraryScanSummary(asset, role);
   return (
     <Link
       href={`/assets/${asset.id}`}
@@ -73,10 +75,11 @@ function ViewerAssetListRow({ asset, role }: { asset: StockMediaAsset; role: Dem
         <strong className="line-clamp-2 text-base font-black leading-tight text-[var(--dam-ink)]">{display.title}</strong>
         <span className="mt-1 block truncate text-sm font-semibold text-[var(--dam-muted)]">{display.cardSubtitle}</span>
       </span>
-      <span className={cn("w-fit rounded-full border px-2.5 py-1 text-xs font-black", verdict.canDownload ? "border-[#b8d9c6] bg-[#edf8f1] text-[#22563a]" : "border-[#ead6a8] bg-[#fff7e5] text-[#725216]")}>
-        {verdict.label}
+      <span className={cn("grid w-fit gap-0.5 rounded-md border px-2.5 py-1 text-xs font-black", verdict.canDownload ? "border-[#b8d9c6] bg-[#edf8f1] text-[#22563a]" : "border-[#ead6a8] bg-[#fff7e5] text-[#725216]")}>
+        <strong>{verdict.label}</strong>
+        <small className="font-semibold">{scan.nextAction}</small>
       </span>
-      <span className="truncate text-xs font-semibold text-[var(--dam-muted)]">{asset.mediaType}</span>
+      <span className="truncate text-xs font-semibold text-[var(--dam-muted)]">{scan.reuseTierLabel} · {asset.mediaType}</span>
       <span className="truncate text-xs font-black text-[var(--dam-muted)]">Ref {asset.id}</span>
     </Link>
   );

@@ -18,8 +18,8 @@ import { assetPresentation, detailImageUrl, provenanceSummary } from "@/lib/pres
 import { emptyReviewChecklist, reviewChecklistItems } from "@/lib/review-decision-presenter";
 import { buildReviewDecisionLanes, buildReviewDecisionRequirements, formatMissingReviewEvidence, missingReviewActionEvidence, reviewNextCheckLabel } from "@/lib/review-workbench";
 import { toastPendingWriteQueued, toastReviewQueued, toastSaveFailed } from "@/lib/tjc-toasts";
-import { missingReviewFields, reviewActions, reviewQueues, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
-import type { MediaSourceStatus, ReviewEvidenceChecklist, ReviewWriteRecordSummary, StockMediaAsset } from "@/lib/types";
+import { missingReviewFields, reviewActions, reviewQueues, reviewRiskFlags, type ReviewActionBackend, type ReviewQueueId } from "@/lib/workflow-policy";
+import type { MediaSourceStatus, ReviewEvidenceChecklist, ReviewWriteRecordSummary, StockMediaAsset, UsageScope } from "@/lib/types";
 import { cn } from "@/lib/ui";
 
 type QueueSummary = {
@@ -68,6 +68,7 @@ const desktopReviewRowsPageSize = 12;
 const mobileReviewRowsPageSize = 6;
 const highRiskActionIds = new Set(["archive-only", "do-not-publish"]);
 const keyReviewerQueueIds: ReviewQueueId[] = ["pending", "rights-review", "children-youth", "usage-guidance", "archive-candidates"];
+const approvalScopes: UsageScope[] = ["Public", "Public and Internal", "Internal", "Archive Only", "Do Not Publish", "Do Not Use"];
 const advancedMetricCards: Array<{ key: keyof Governance; label: string }> = [
   { key: "missingSource", label: "Missing source" },
   { key: "duplicateCandidates", label: "Duplicates" },
@@ -117,6 +118,9 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
   const [activeQueue, setActiveQueue] = useState<ReviewQueueId>(() => normalizeInitialQueue(initialQueue));
   const [auditPreview, setAuditPreview] = useState<AuditPreview | null>(null);
   const [reviewNote, setReviewNote] = useState("");
+  const [reviewerName, setReviewerName] = useState("");
+  const [reviewDate, setReviewDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [approvalScope, setApprovalScope] = useState<UsageScope | "">("");
   const [checklist, setChecklist] = useState<ReviewEvidenceChecklist>(emptyReviewChecklist);
   const [pendingAction, setPendingAction] = useState<ReviewAction | null>(null);
   const [activeInspectorTab, setActiveInspectorTab] = useState<ReviewInspectorTab>("Overview");
@@ -182,6 +186,9 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
 
   useEffect(() => {
     setReviewNote("");
+    setReviewerName("");
+    setReviewDate(new Date().toISOString().slice(0, 10));
+    setApprovalScope("");
     setChecklist(emptyReviewChecklist);
     setPendingAction(null);
     setAuditPreview(null);
@@ -238,6 +245,17 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
     setChecklist((current) => ({ ...current, [field]: !current[field] }));
   }
 
+  function approvalMetadataMissing(action: ReviewActionBackend) {
+    if (action !== "Approve Public" && action !== "Approve Internal") return [];
+    const missing: string[] = [];
+    if (reviewerName.trim().length < 2) missing.push("Reviewer name missing");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(reviewDate) || reviewDate > new Date().toISOString().slice(0, 10)) missing.push("Review date missing or future");
+    if (!approvalScope) missing.push("Approval usage scope missing");
+    if (action === "Approve Public" && approvalScope && !["Public", "Public and Internal"].includes(approvalScope)) missing.push("Public approval requires Public or Public and Internal scope");
+    if (action === "Approve Internal" && approvalScope && !["Internal", "Public and Internal"].includes(approvalScope)) missing.push("Internal approval requires Internal or Public and Internal scope");
+    return missing;
+  }
+
   useEffect(() => {
     if (!reviewer || !data?.assets.length || !workbenchRef.current) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -267,8 +285,9 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
 
   function requestAction(action: ReviewAction) {
     const missing = missingReviewActionEvidence(action.backend, checklist, reviewNote);
-    if (missing.length) {
-      setMessage("Review evidence is incomplete. Add required checklist items and a review note before submitting.");
+    const approvalMissing = approvalMetadataMissing(action.backend);
+    if (missing.length || approvalMissing.length) {
+      setMessage(`Review evidence is incomplete. ${approvalMissing.length ? `Missing: ${approvalMissing.slice(0, 3).join(", ")}.` : "Add required checklist items and a review note before submitting."}`);
       toastSaveFailed("Checklist and reviewer note are required before queueing.");
       return;
     }
@@ -306,7 +325,7 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
       const response = await fetch("/api/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, id: selectedAsset.id, action: pendingAction.backend, label: pendingAction.label, notes: reviewNote, checklist })
+        body: JSON.stringify({ role, id: selectedAsset.id, action: pendingAction.backend, label: pendingAction.label, notes: reviewNote, checklist, reviewerName, reviewDate, approvalScope })
       });
       const body = await response.json();
       setMessage(body.message || body.error || "Review route responded.");
@@ -329,6 +348,11 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
   }
 
   const confirmedChecklistLabels = reviewChecklistItems.filter((item) => checklist[item.field]).map((item) => item.label);
+  const approvalEvidenceSummary = [
+    reviewerName.trim() ? `Reviewer: ${reviewerName.trim()}` : "",
+    reviewDate ? `Review date: ${reviewDate}` : "",
+    approvalScope ? `Approval scope: ${approvalScope}` : ""
+  ].filter(Boolean);
   const selectedAuditPreview = selectedAsset && auditPreview?.assetId === selectedAsset.id ? auditPreview : null;
   const completedEvidenceCount = reviewChecklistItems.filter((item) => checklist[item.field]).length;
   const decisionRequirements = buildReviewDecisionRequirements(checklist, reviewNote);
@@ -354,6 +378,40 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
           rows={3}
         />
       </label>
+      <div className="mt-3 grid gap-2 rounded-xl border border-[#d6dfd8] bg-[#fbfcfa] p-3" aria-label="Required approval evidence">
+        <h3 className="text-sm font-semibold text-tjc-evergreen">Required approval evidence</h3>
+        <label className="grid gap-1 text-xs font-black text-tjc-muted">
+          Reviewer
+          <input
+            className="min-h-10 rounded-lg border border-tjc-line bg-white px-3 text-sm font-semibold text-tjc-ink"
+            value={reviewerName}
+            onChange={(event) => setReviewerName(event.target.value)}
+            placeholder="Name of reviewer approving this decision"
+          />
+        </label>
+        <label className="grid gap-1 text-xs font-black text-tjc-muted">
+          Review date
+          <input
+            className="min-h-10 rounded-lg border border-tjc-line bg-white px-3 text-sm font-semibold text-tjc-ink"
+            type="date"
+            value={reviewDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(event) => setReviewDate(event.target.value)}
+          />
+        </label>
+        <label className="grid gap-1 text-xs font-black text-tjc-muted">
+          Usage scope for this approval
+          <select
+            className="min-h-10 rounded-lg border border-tjc-line bg-white px-3 text-sm font-semibold text-tjc-ink"
+            value={approvalScope}
+            onChange={(event) => setApprovalScope(event.target.value as UsageScope | "")}
+          >
+            <option value="">Select approval scope</option>
+            {approvalScopes.map((scope) => <option key={scope} value={scope}>{scope}</option>)}
+          </select>
+        </label>
+        <p className="text-xs font-semibold leading-relaxed text-tjc-muted">Approval status and usage scope are separate. Rights evidence decides what can be reused; queued status does not publish media.</p>
+      </div>
       <div className="mt-3">
         <DamEvidenceMatrix
           items={reviewChecklistItems.map((item) => ({ id: item.field, label: item.label, complete: checklist[item.field] }))}
@@ -369,14 +427,16 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
       <DamDecisionActions>
         {reviewActions.map((action) => {
           const missing = missingReviewActionEvidence(action.backend, checklist, reviewNote);
-          const title = missing.length ? `Missing: ${formatMissingReviewEvidence(missing)}` : "Review evidence and queue decision for sync";
+          const approvalMissing = approvalMetadataMissing(action.backend);
+          const missingTitle = [...(missing.length ? [formatMissingReviewEvidence(missing)] : []), ...approvalMissing].join(", ");
+          const title = missing.length || approvalMissing.length ? `Missing: ${missingTitle}` : "Review evidence and queue decision for sync";
           const icon = action.backend === "Do Not Use" ? <ShieldX size={15} strokeWidth={1.8} aria-hidden="true" /> : <ShieldCheck size={15} strokeWidth={1.8} aria-hidden="true" />;
           if (highRiskActionIds.has(action.id)) {
             return (
               <div key={action.id} data-component="HoldButtonLocation">
                 <HoldToConfirmButton
-                  disabled={!reviewer || missing.length > 0}
-                  title={missing.length ? title : `Hold to queue ${action.label}`}
+                  disabled={!reviewer || missing.length > 0 || approvalMissing.length > 0}
+                  title={missing.length || approvalMissing.length ? title : `Hold to queue ${action.label}`}
                   ariaLabel={`Hold to queue ${action.label}`}
                   onComplete={() => requestAction(action)}
                   className="w-full min-w-0 justify-center whitespace-normal text-center disabled:opacity-45"
@@ -389,7 +449,7 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
           }
           return (
             <div className="grid gap-1" key={action.id}>
-              <button className="inline-flex min-h-9 w-full min-w-0 max-w-full items-center justify-center gap-2 whitespace-normal rounded-md border border-tjc-line bg-white px-3 text-center text-sm font-semibold text-[#354139] transition hover:bg-[#eef7f1] active:translate-y-px disabled:cursor-not-allowed disabled:bg-[#f8faf8] disabled:text-[#77827a] disabled:opacity-55" type="button" disabled={!reviewer || missing.length > 0} title={title} onClick={() => requestAction(action)}>
+              <button className="inline-flex min-h-9 w-full min-w-0 max-w-full items-center justify-center gap-2 whitespace-normal rounded-md border border-tjc-line bg-white px-3 text-center text-sm font-semibold text-[#354139] transition hover:bg-[#eef7f1] active:translate-y-px disabled:cursor-not-allowed disabled:bg-[#f8faf8] disabled:text-[#77827a] disabled:opacity-55" type="button" disabled={!reviewer || missing.length > 0 || approvalMissing.length > 0} title={title} onClick={() => requestAction(action)}>
                 {icon}
                 {action.label}
               </button>
@@ -639,6 +699,20 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
                 <StatusBadge status={selectedAsset.status} />
                 <UsageBadge scope={selectedAsset.usageScope} />
               </div>
+              <dl className="grid gap-2 rounded-md border border-[#d6dfd8] bg-[#fbfcfa] p-3 text-xs font-semibold text-[#4d554d] sm:grid-cols-3" aria-label="Publish, rights, and scope split">
+                <div>
+                  <dt className="font-black text-tjc-evergreen">Publish status</dt>
+                  <dd className="mt-1">{selectedAsset.status}</dd>
+                </div>
+                <div>
+                  <dt className="font-black text-tjc-evergreen">Rights status</dt>
+                  <dd className="mt-1">{selectedAsset.rightsStatus || "Rights evidence missing"}</dd>
+                </div>
+                <div>
+                  <dt className="font-black text-tjc-evergreen">Usage scope</dt>
+                  <dd className="mt-1">{selectedAsset.usageScope || "Scope missing"}</dd>
+                </div>
+              </dl>
               <div className="rounded-md border border-[#ead6a8] bg-[#fff8e6] p-3 text-sm text-[#684a10]">
                 <strong className="block font-black">{reviewRiskFlags(selectedAsset)[0] || "Standard review"}</strong>
                 <span className="mt-1 block leading-snug">{reviewNextCheckLabel(selectedAsset)}</span>
@@ -772,6 +846,7 @@ export function ReviewPage({ initialQueue = "pending" }: { initialQueue?: string
           assetTitle={assetPresentation(selectedAsset, role).title}
           resourceSpaceId={selectedAsset.resourceSpaceId || selectedAsset.id}
           rawStatus={selectedAsset.status}
+          reviewEvidence={approvalEvidenceSummary}
           portalReuseState={selectedAsset.reuseDecision ? `${selectedAsset.reuseDecision.label} - ${selectedAsset.reuseDecision.summary}` : "Computed by TJC Stock Media policy"}
           blockers={(selectedAsset.reuseDecision?.blockers || []).map((blocker) => blocker.label)}
           checklistSummary={confirmedChecklistLabels}

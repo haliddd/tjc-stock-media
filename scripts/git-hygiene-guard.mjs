@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.env.GIT_HYGIENE_GUARD_ROOT || process.cwd();
-const mediaPattern = /\.(jpg|jpeg|png|heic|heif|gif|tif|tiff|mp4|mov|m4v|mp3|wav|m4a|aac|flac)$/i;
+const mediaPattern = /\.(jpg|jpeg|png|webp|heic|heif|gif|tif|tiff|arw|mp4|mov|m4v|mp3|wav|m4a|aac|flac|zip)$/i;
 const primitiveProofDir = "docs/screenshots/primitive-proof/";
 const expectedPrimitiveProofScreenshots = [
   "admin-datatable.png",
@@ -24,6 +24,8 @@ const allowedMediaPatterns = [
   /^frontend\/public\/brand\/[^/]+\.png$/i,
   /^docs\/screenshots\/free-internal-beta-2026-06-12\/[^/]+\.png$/i,
 ];
+const modelArtifactPattern = /\.(safetensors|ckpt|pt|pth|onnx)$/i;
+const credentialArtifactPattern = /(^|\/)(credentials|secrets)\/|(^|\/)(service-account|google-credentials|credentials|secret)[^/]*\.(json|env|pem|key|p12|pfx)$|\.(pem|key|p12|pfx)$/i;
 const runtimePattern = /(^|\/)(\.runtime|\.next|data\/runtime|filestore|mariadb|ComfyUI|models\/)/;
 const osMetadataPattern = /(^|\/)(\.DS_Store|Thumbs\.db)$/;
 const requiredTrackedProofHarness = [
@@ -50,7 +52,8 @@ function isTrackedEnvFile(file) {
 const tracked = gitLsFiles();
 const trackedSet = new Set(tracked);
 const mediaFiles = tracked.filter((file) => mediaPattern.test(file) && !isAllowedMedia(file));
-const runtimeFiles = tracked.filter((file) => runtimePattern.test(file) || isTrackedEnvFile(file));
+const runtimeFiles = tracked.filter((file) => runtimePattern.test(file) || modelArtifactPattern.test(file) || isTrackedEnvFile(file));
+const credentialFiles = tracked.filter((file) => credentialArtifactPattern.test(file));
 const osMetadataFiles = tracked.filter((file) => osMetadataPattern.test(file));
 const failures = [];
 
@@ -65,6 +68,11 @@ if (mediaFiles.length) {
 if (runtimeFiles.length) {
   failures.push("env/runtime/model files tracked by Git:");
   failures.push(...runtimeFiles.map((file) => `  ${file}`));
+}
+
+if (credentialFiles.length) {
+  failures.push("credential/key files tracked by Git:");
+  failures.push(...credentialFiles.map((file) => `  ${file}`));
 }
 
 if (osMetadataFiles.length) {

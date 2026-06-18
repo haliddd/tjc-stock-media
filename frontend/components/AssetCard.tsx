@@ -8,6 +8,7 @@ import { GatedDownloadButton } from "@/components/GatedDownloadButton";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReuseStateBadge } from "@/components/StatusBadge";
 import type { DemoRole, StockMediaAsset } from "@/lib/types";
+import { assetLibraryScanSummary } from "@/lib/asset-governance";
 import { assetPresentation } from "@/lib/presentation";
 import { cn } from "@/lib/ui";
 
@@ -97,6 +98,7 @@ export function AssetCard({
   const blocker = compactCardReason(display.download.reuse.blockers[0]?.label || confidence[0]?.state || display.download.reuse.label || display.quickLabel);
   const verdict = simpleVerdict(asset, canDownload, hasWarnings, blocker);
   const VerdictIcon = verdict.icon;
+  const scan = assetLibraryScanSummary(asset, role);
   const previewLabel = display.image ? "Preview export pending" : `${asset.mediaType} preview restricted`;
   const previewDetail = display.image
     ? undefined
@@ -174,14 +176,14 @@ export function AssetCard({
           >
             <VerdictIcon className="mt-0.5 shrink-0" size={14} strokeWidth={1.9} aria-hidden="true" />
             <span>
-              <strong className="block font-black">{verdict.label}</strong>
-              <span className="mt-0.5 block line-clamp-2 font-semibold">{verdict.detail}</span>
+              <strong className="block font-black">{scan.trustLabel}</strong>
+              <span className="mt-0.5 block line-clamp-2 font-semibold">{scan.nextAction}: {scan.nextActionDetail}</span>
             </span>
           </span>
-          <span className="line-clamp-1 font-semibold">{asset.collection || display.cardSubtitle}</span>
+          <span className="line-clamp-1 font-semibold">{scan.reuseTierLabel} · {scan.rightsRiskLabel} · {asset.collection || display.cardSubtitle}</span>
         </div>
         <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-[#eef1ef] pt-2 text-[10px] font-bold leading-snug text-tjc-muted max-sm:hidden" aria-label="Source metadata">
-          <span className="truncate">{asset.peopleRisk === "Possible minors" ? "Children/youth check" : asset.rightsStatus || "Credit/source guidance"}</span>
+          <span className="truncate">{scan.peopleLabel} · {scan.sourceCustodyLabel}</span>
           <span className="rounded-md bg-[#f6f8f5] px-2 py-1 tabular-nums text-[#6f7a72]">{opsView ? asset.resourceSpaceId ? `RS ${asset.resourceSpaceId}` : "RS export" : "Use guidance"}</span>
         </div>
         <div className="mt-auto grid">

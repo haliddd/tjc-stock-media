@@ -1,7 +1,7 @@
 import { normalizeDateField, normalizeDisplayTextField, normalizePublicTextField, normalizeUrlField } from "@/lib/request-validation";
 import { fileRequiresAdminIntake, routeUploadIntakeForReview, type IntakeRoutingReason } from "@/lib/intake-routing";
 import { nonCanonicalUploadTags, parseUploadTags } from "@/lib/upload-tags";
-import { uploadDefaultState } from "@/lib/workflow-policy";
+import { uploadBetaBoundaries, uploadDefaultState } from "@/lib/workflow-policy";
 import { persistIntakeBatch } from "@/lib/intake-batch-store";
 import {
   buildDuplicateHints,
@@ -285,7 +285,7 @@ export function uploadIntakeValidationError(intake: UploadIntakePacket): UploadI
     return {
       body: {
         error: "Upload intake supports one focused batch at a time.",
-        guidance: `Submit ${MAX_UPLOAD_INTAKE_FILES} or fewer files, or route larger batches through Shared Drive Incoming.`
+        guidance: `Submit ${MAX_UPLOAD_INTAKE_FILES} or fewer files, or route larger batches through the admin intake path.`
       },
       status: 400
     };
@@ -341,6 +341,12 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     ok: storageMode !== "blocked-no-durable-store",
     batchId: persisted?.batchId,
     status: intake.largeFiles.length ? "large-media-intake" : "needs-review",
+    intakeState: {
+      received: true,
+      review: uploadBetaBoundaries.defaultState.review,
+      usage: uploadBetaBoundaries.defaultState.usage,
+      publishable: false
+    },
     defaultReviewState: "Needs Review",
     defaultUsageScope: "Do Not Publish",
     message: storageMode === "blocked-no-durable-store"
@@ -357,6 +363,8 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     reviewerTasks: intake.reviewerTasks,
     adminTasks: intake.adminTasks,
     systemWarnings: intake.systemWarnings,
+    reviewWarnings: intake.reviewWarnings,
+    betaBoundaries: uploadBetaBoundaries,
     storageMode,
     custodyMode: storageMode === "local-runtime" ? "local-private-beta-staging" : storageMode,
     resourceSpaceWritten: false

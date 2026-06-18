@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAssetsSearch } from "@/components/dam/useDamApi";
-import { assetRecordRef, displayTitle, sourceNoun } from "@/lib/enterprise-display";
+import { assetRecordRef, displayTitle, sourceTruthLabel } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus } from "@/lib/enterprise-status";
 import { canContribute, canReview } from "@/lib/permissions";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
@@ -128,7 +128,7 @@ export function EnterpriseDashboardPage() {
           <dl>
             <div><dt>Beta scope</dt><dd>Photo-only beta</dd></div>
             <div><dt>Source files</dt><dd>Restricted</dd></div>
-            <div><dt>Source truth</dt><dd>{search.live ? "Hosted DAM instance" : sourceNoun(search.source)}</dd></div>
+            <div><dt>Source truth</dt><dd>{sourceTruthLabel(search.source)}</dd></div>
           </dl>
           <p>Reuse/download depends on item evidence. Non-photo records may remain reference or review items.</p>
         </aside>
@@ -183,7 +183,7 @@ export function EnterpriseDashboardPage() {
                 <span><small>Primary decision</small><strong>{selectedPacket.viewerVerdict.canDownload ? "Can use" : selectedPacket.reuse.state === "blocked-do-not-use" ? "Restricted" : "Needs review"}</strong></span>
                 <span><small>Approved copy</small><strong>{selectedPacket.access.downloadApprovedCopy.allowed ? "Available" : "Review required"}</strong></span>
                 <span><small>Source/original</small><strong>Restricted source</strong></span>
-                <span><small>Source truth</small><strong>{search.live ? "Hosted DAM instance" : sourceNoun(search.source)}</strong></span>
+                <span><small>Source truth</small><strong>{sourceTruthLabel(search.source)}</strong></span>
               </div>
               <Link className="ed-action is-primary" href={routeWithRole(`/assets/${selected.id}`, role)}>View details</Link>
             </>

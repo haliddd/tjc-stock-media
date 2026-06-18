@@ -124,8 +124,16 @@ expectFail("tracked-source-photo", (repo) => {
   track(repo, "source-media/photo.jpg", "not real media\n");
 });
 
+expectFail("tracked-source-webp", (repo) => {
+  track(repo, "source-media/photo.webp", "not real media\n");
+});
+
 expectFail("tracked-source-video", (repo) => {
   track(repo, "source-media/video.mov", "not real media\n");
+});
+
+expectFail("tracked-source-zip", (repo) => {
+  track(repo, "source-media/album-export.zip", "not real media\n");
 });
 
 expectFail("tracked-env-file", (repo) => {
@@ -134,6 +142,14 @@ expectFail("tracked-env-file", (repo) => {
 
 expectFail("tracked-env-local-file", (repo) => {
   track(repo, ".env.local", "SECRET=do-not-track\n");
+});
+
+expectFail("tracked-service-account-json", (repo) => {
+  track(repo, "ops/google-credentials.json", "{}\n");
+});
+
+expectFail("tracked-private-key", (repo) => {
+  track(repo, "ops/deploy.pem", "not a real key\n");
 });
 
 expectFail("tracked-runtime-json", (repo) => {
@@ -162,6 +178,10 @@ expectFail("tracked-comfyui-artifact", (repo) => {
 
 expectFail("tracked-model-artifact", (repo) => {
   track(repo, "models/model.bin", "fixture\n");
+});
+
+expectFail("tracked-model-weight-file", (repo) => {
+  track(repo, "weights/embedding.safetensors", "fixture\n");
 });
 
 expectFail("tracked-ds-store", (repo) => {

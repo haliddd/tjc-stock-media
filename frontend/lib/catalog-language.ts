@@ -29,9 +29,11 @@ export type SavedViewDefinition = {
 export type CollectionDefinition = {
   id: string;
   name: string;
+  group: "Source collections" | "Ministry collections" | "Channel collections" | "Governance collections";
   description: string;
   searchQuery: string;
   terms: string[];
+  routeFilter?: string;
 };
 
 export type SearchIntentDefinition = {
@@ -60,6 +62,7 @@ export function includesAny(asset: StockMediaAsset, terms: string[]) {
 function assetTextValues(asset: StockMediaAsset) {
   return [
     asset.collection,
+    asset.status,
     asset.eventName,
     asset.eventSeries,
     asset.church,
@@ -68,10 +71,15 @@ function assetTextValues(asset: StockMediaAsset) {
     asset.language,
     asset.versionOrEdition,
     asset.fileExtension,
+    asset.rightsStatus,
+    asset.workflowState,
+    asset.qualityStatus,
     asset.reuseTier,
     asset.visibilityTier,
     asset.sensitivityClass,
     asset.rightsBasis,
+    asset.usageScope,
+    asset.duplicateRole,
     asset.domainReviewer,
     asset.consentStatus,
     asset.withdrawalStatus,
@@ -123,7 +131,7 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
   },
   {
     id: "batch-approved-blockers",
-    label: "Needs review",
+    label: "Approved with blockers",
     description: "Approved-status media that still has reuse blockers.",
     reason: "Keeps batch approval separate from actual public-safe reuse.",
     match: (asset) => asset.status === "Approved Public" && !assetIsPortalReady(asset)
@@ -183,7 +191,7 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
   },
   {
     id: "children-youth-review",
-    label: "Children/youth review",
+    label: "People/minors",
     description: "Assets needing extra care before public use.",
     reason: "Uses minors, children/youth, and sensitive-context metadata.",
     match: (asset) => asset.peopleRisk === "Possible minors" || !asset.peopleRisk || asset.peopleRisk === "Unknown" || includesAny(asset, ["children", "youth", "minor"])
@@ -271,7 +279,7 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
   },
   {
     id: "rights-basis-review",
-    label: "Rights basis review",
+    label: "Missing rights",
     description: "Records with unknown, internal-only, missing, or expiring rights basis.",
     reason: "Keeps rights basis separate from raw approval state.",
     match: (asset) => assetNeedsRightsReview(asset) || !asset.rightsBasis || asset.rightsBasis === "unknown" || asset.rightsBasis === "fair-use-internal-only"
@@ -299,14 +307,14 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
   },
   {
     id: "stale-approvals",
-    label: "Stale approvals",
+    label: "Stale approval",
     description: "Previously approved assets old enough for periodic review.",
     reason: "Keeps permissions and public-use assumptions from going stale.",
     match: (asset) => assetNeedsStaleApprovalReview(asset)
   },
   {
     id: "rendition-gaps",
-    label: "Rendition gaps",
+    label: "Missing derivative",
     description: "Assets missing downloadable/detail derivatives or dimensions.",
     reason: "Good DAMs expose correct sizes and approved derivatives for each channel.",
     match: assetHasRenditionGap
@@ -322,8 +330,45 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
 
 export const collectionDefinitions: CollectionDefinition[] = [
   {
+    id: "approved-public-delivery",
+    name: "Approved Public",
+    group: "Source collections",
+    description: "Public delivery set built from reviewed asset records",
+    searchQuery: "approved public ready to use public delivery",
+    terms: ["approved public", "public", "ready", "website", "social", "print"],
+    routeFilter: "approved public"
+  },
+  {
+    id: "approved-internal-delivery",
+    name: "Approved Internal",
+    group: "Source collections",
+    description: "Internal delivery set for ministry teams and member-facing material",
+    searchQuery: "approved internal ministry internal use",
+    terms: ["approved internal", "internal", "ministry", "member"],
+    routeFilter: "approved internal"
+  },
+  {
+    id: "review-intake",
+    name: "Review Intake",
+    group: "Source collections",
+    description: "Records awaiting review before reuse",
+    searchQuery: "needs review pending review missing rights people minors",
+    terms: ["needs review", "pending review", "review", "rights", "consent", "minor"],
+    routeFilter: "needs review"
+  },
+  {
+    id: "archive-reference",
+    name: "Archive Reference",
+    group: "Source collections",
+    description: "Searchable reference records not promoted for reuse",
+    searchQuery: "archive searchable archive reference",
+    terms: ["archive", "searchable archive", "reference", "preservation"],
+    routeFilter: "archive only"
+  },
+  {
     id: "sabbath",
     name: "Sabbath",
+    group: "Ministry collections",
     description: "Worship, Sabbath service, and church life",
     searchQuery: "worship Sabbath service church life Bible fellowship",
     terms: ["sabbath", "worship", "bible", "scripture", "church", "service", "sermon", "fellowship"]
@@ -331,6 +376,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
   {
     id: "teaching-study",
     name: "Teaching & Study",
+    group: "Ministry collections",
     description: "Bible study, sermon, and teaching visuals",
     searchQuery: "Bible teaching study sermon slides",
     terms: ["teaching", "study", "bible", "scripture", "lesson", "sermon", "slide"]
@@ -338,6 +384,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
   {
     id: "seasonal-details",
     name: "Seasonal Details",
+    group: "Ministry collections",
     description: "Flowers, decorations, and visual textures",
     searchQuery: "flowers seasonal plant decoration",
     terms: ["seasonal", "flower", "flowers", "plant", "detail", "decoration"]
@@ -345,6 +392,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
   {
     id: "welcome-team",
     name: "Welcome Team",
+    group: "Ministry collections",
     description: "Hospitality and gathering details",
     searchQuery: "welcome fellowship church hospitality",
     terms: ["welcome", "fellowship", "church", "people", "hospitality"]
@@ -352,6 +400,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
   {
     id: "fellowship",
     name: "Fellowship",
+    group: "Ministry collections",
     description: "Church Life and ministry gatherings",
     searchQuery: "fellowship church life gathering",
     terms: ["fellowship", "church life", "gathering", "people"]
@@ -359,11 +408,96 @@ export const collectionDefinitions: CollectionDefinition[] = [
   {
     id: "web-slides",
     name: "Web & Slides",
+    group: "Channel collections",
     description: "Graphics, slide backgrounds, and web-ready assets",
     searchQuery: "graphic slide website hero",
-    terms: ["graphic", "graphics", "slide", "website", "stage", "hero"]
+    terms: ["graphic", "graphics", "slide", "website", "stage", "hero"],
+    routeFilter: "website channel"
+  },
+  {
+    id: "social-ready",
+    name: "Social Ready",
+    group: "Channel collections",
+    description: "Square, event, and detail assets cleared for social use",
+    searchQuery: "social channel square event detail",
+    terms: ["social", "instagram", "facebook", "square", "event", "fellowship"],
+    routeFilter: "social channel"
+  },
+  {
+    id: "projection-ready",
+    name: "Projection Ready",
+    group: "Channel collections",
+    description: "Slides, worship backgrounds, and presentation-friendly records",
+    searchQuery: "projection channel slide worship background",
+    terms: ["projection", "slide", "presentation", "worship", "background", "stage"],
+    routeFilter: "projection channel"
+  },
+  {
+    id: "print-ready",
+    name: "Print Ready",
+    group: "Channel collections",
+    description: "Newsletter, bulletin, and print-use records",
+    searchQuery: "print channel newsletter bulletin",
+    terms: ["print", "newsletter", "bulletin", "publication", "document"],
+    routeFilter: "print channel"
+  },
+  {
+    id: "missing-rights",
+    name: "Missing Rights",
+    group: "Governance collections",
+    description: "Records needing rights basis or consent evidence",
+    searchQuery: "missing rights rights review consent review",
+    terms: ["rights", "consent", "permission", "license", "unknown rights"],
+    routeFilter: "rights basis missing"
+  },
+  {
+    id: "people-minors-governance",
+    name: "People / Minors",
+    group: "Governance collections",
+    description: "People visibility and minors review worklist",
+    searchQuery: "people minors children youth consent",
+    terms: ["people", "minor", "minors", "children", "youth", "consent"],
+    routeFilter: "children/youth"
+  },
+  {
+    id: "missing-derivative",
+    name: "Missing Derivative",
+    group: "Governance collections",
+    description: "Approved records missing derivative or dimension readiness",
+    searchQuery: "missing derivative rendition gap dimensions",
+    terms: ["derivative", "rendition", "dimensions", "download", "preview"],
+    routeFilter: "rendition gap"
+  },
+  {
+    id: "duplicate-cleanup",
+    name: "Duplicate Cleanup",
+    group: "Governance collections",
+    description: "Potential duplicate/version records needing cleanup decisions",
+    searchQuery: "duplicate cleanup version canonical",
+    terms: ["duplicate", "version", "canonical", "cleanup"],
+    routeFilter: "duplicate candidate"
+  },
+  {
+    id: "stale-approval",
+    name: "Stale Approval",
+    group: "Governance collections",
+    description: "Previously approved records due for recheck",
+    searchQuery: "stale approval recheck due lifecycle review",
+    terms: ["stale", "approval", "recheck", "lifecycle", "expired"],
+    routeFilter: "stale approval"
   }
 ];
+
+export const collectionGroupOrder: CollectionDefinition["group"][] = [
+  "Source collections",
+  "Ministry collections",
+  "Channel collections",
+  "Governance collections"
+];
+
+export function collectionDefinitionForId(id: string) {
+  return collectionDefinitions.find((definition) => definition.id === id);
+}
 
 export const viewAliases = new Map([
   ["portal-ready", "approved-church-wide"],
@@ -390,6 +524,7 @@ export function matchesCatalogFilter(asset: StockMediaAsset, filter: string) {
   const dimensions = asset.imageDimensions?.match(/(\d+)\D+(\d+)/);
   const width = safeNonNegativeInt(dimensions?.[1]);
   const height = safeNonNegativeInt(dimensions?.[2]);
+  if (value === "ready to use") return assetIsPortalReady(asset);
   if (value === "approved public" || value === "church-wide use") return asset.status === "Approved Public";
   if (value === "approved internal" || value === "internal ministry") return asset.status === "Approved Internal";
   if (value === "needs review") return asset.status === "Needs Review" || asset.status === "Possible Minors";
@@ -436,6 +571,7 @@ export function matchesCatalogFilter(asset: StockMediaAsset, filter: string) {
   if (value === "ai enrichment" || value === "metadata enrichment") return assetNeedsAiEnrichment(asset);
   if (value === "taxonomy drift") return assetHasTaxonomyDrift(asset);
   if (value === "duplicate candidate") return assetIsDuplicateCandidate(asset);
+  if (value === "recently approved") return Boolean(asset.reviewedDate) && assetIsApproved(asset);
   if (value === "stale approval" || value === "recheck due") return assetNeedsStaleApprovalReview(asset);
   if (value === "expired" || value === "expired approval") return asset.withdrawalStatus === "expired" || Boolean(asset.expirationDate || asset.rightsExpirationDate || asset.consentExpirationDate) && assetNeedsStaleApprovalReview(asset);
   if (value === "embargoed") return asset.withdrawalStatus === "embargoed" || Boolean(asset.embargoDate) && assetNeedsStaleApprovalReview(asset);

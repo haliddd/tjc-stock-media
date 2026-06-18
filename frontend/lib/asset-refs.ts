@@ -8,3 +8,7 @@ export function assetResourceRef(asset?: Pick<StockMediaAsset, "id" | "resourceS
 export function resourceSpaceRecordRef(asset?: Pick<StockMediaAsset, "resourceSpaceId">) {
   return normalizeResourceSpaceRef(asset?.resourceSpaceId);
 }
+
+export function publicAssetRef(asset?: Pick<StockMediaAsset, "id">) {
+  return normalizeAssetId(asset?.id) || "media-record";
+}

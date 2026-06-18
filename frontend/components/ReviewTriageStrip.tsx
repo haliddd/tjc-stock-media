@@ -31,7 +31,7 @@ export function ReviewTriageStrip({ assets, role, selectedId, onSelect }: Review
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
         {stripAssets.map((asset) => {
           const display = assetPresentation(asset, role);
-          const risk = reviewRiskFlags(asset)[0] || "Standard review";
+          const risks = reviewRiskFlags(asset).slice(0, 3);
           const selected = asset.id === selectedId;
           return (
             <button
@@ -48,7 +48,11 @@ export function ReviewTriageStrip({ assets, role, selectedId, onSelect }: Review
                 <MediaPreview src={display.image} alt={asset.thumbnailAlt} imgClassName="transition duration-300 group-hover:scale-[1.035]" className="px-2" loading="eager" />
               </span>
               <span className="line-clamp-1 text-sm font-black text-tjc-ink">{display.title}</span>
-              <span className="line-clamp-1 rounded-md border border-[#ead6a8] bg-[#fff8e8] px-2 py-1 text-[11px] font-black text-[#684a10]">{risk}</span>
+              <span className="flex min-h-7 flex-wrap gap-1 overflow-hidden">
+                {risks.map((risk) => (
+                  <span className="line-clamp-1 rounded-md border border-[#ead6a8] bg-[#fff8e8] px-2 py-1 text-[11px] font-black text-[#684a10]" key={risk}>{risk}</span>
+                ))}
+              </span>
             </button>
           );
         })}

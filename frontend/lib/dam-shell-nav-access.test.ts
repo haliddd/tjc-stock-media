@@ -41,7 +41,7 @@ describe("DAM shell role-aware navigation", () => {
       "Library",
       "Collections",
       "Distribution Sets",
-      "Upload / Intake",
+      "Share Photos",
       "Recent Uploads",
       "Review Queue",
       "Requests",
@@ -65,6 +65,7 @@ describe("DAM shell role-aware navigation", () => {
 
     expect(canSeeDamShellGroup("Governance", "DAM Admin")).toBe(true);
     expect(canSeeDamShellGroup("Admin", "DAM Admin")).toBe(true);
+    expect(labels).not.toContain("Governance Dashboard");
     expect(labels).toEqual(expect.arrayContaining([
       "Rights & Consent",
       "Metadata Health",
@@ -84,7 +85,7 @@ describe("DAM shell role-aware navigation", () => {
     const labels = mobileLabelsFor("Reviewer");
     const hrefs = mobileHrefsFor("Reviewer");
 
-    expect(labels).toEqual(["Library", "Upload", "Review", "Collections", "Help"]);
+    expect(labels).toEqual(["Library", "Share", "Review", "Collections", "Help"]);
     expect(labels).not.toContain("Governance");
     expect(labels).not.toContain("Admin");
     expect(labels).not.toContain("Policy Center");
@@ -104,13 +105,13 @@ describe("DAM shell role-aware navigation", () => {
     expect(labels).not.toContain("Review Queue");
   });
 
-  it("keeps Contributor mobile Upload visible only through route access", () => {
+  it("keeps Contributor mobile Share visible only through route access", () => {
     expect(canAccessRoute("Contributor", "/upload")).toBe(true);
-    expect(mobileLabelsFor("Contributor")).toEqual(["Library", "Upload", "Collections", "Recent Uploads", "Help"]);
+    expect(mobileLabelsFor("Contributor")).toEqual(["Library", "Share", "Collections", "Recent Uploads", "Help"]);
   });
 
   it("keeps DAM Admin mobile nav focused while retaining Governance and Admin access", () => {
-    expect(mobileLabelsFor("DAM Admin")).toEqual(["Library", "Upload", "Review", "Collections", "Help"]);
+    expect(mobileLabelsFor("DAM Admin")).toEqual(["Library", "Share", "Review", "Collections", "Help"]);
     expect(canSeeDamShellGroup("Governance", "DAM Admin")).toBe(true);
     expect(canSeeDamShellGroup("Admin", "DAM Admin")).toBe(true);
     expect(canAccessRoute("DAM Admin", "/admin/users")).toBe(true);
@@ -122,5 +123,17 @@ describe("DAM shell role-aware navigation", () => {
 
     expect(css).toContain(".dam-mobile-topbar,\n.dam-mobile-bottom-nav {\n  display: none;\n}");
     expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*\.dam-mobile-bottom-nav\s*\{[\s\S]*display: grid/);
+  });
+
+  it("keeps desktop sidebar on a white rail with black text", () => {
+    const css = [
+      readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
+      readFileSync(new URL("../app/dam-enterprise.css", import.meta.url), "utf8")
+    ].join("\n");
+
+    expect(css).toContain("background: #ffffff !important;");
+    expect(css).toContain("color: #111111 !important;");
+    expect(css).toContain("box-shadow: inset 3px 0 0 #111111 !important;");
+    expect(css).toContain("background: #f3f5f4 !important;");
   });
 });

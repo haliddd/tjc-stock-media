@@ -6,6 +6,7 @@ import {
   createBetaFeedback,
   maxBetaFeedbackAttachmentBytes,
   putBetaFeedbackAttachment,
+  readBetaFeedbackPatchInput,
   resetBetaFeedbackForTests
 } from "@/lib/beta-feedback";
 
@@ -83,5 +84,33 @@ describe("beta feedback durability and attachment safety", () => {
     expect(betaFeedbackAttachmentValidationError(new File(["safe"], "safe.txt", { type: "text/plain" }))).toBeNull();
     expect(betaFeedbackAttachmentValidationError(new File(["bad"], "bad.svg", { type: "image/svg+xml" }))?.body.error).toMatch(/type is not allowed/i);
     expect(betaFeedbackAttachmentValidationError(new File([new Uint8Array(maxBetaFeedbackAttachmentBytes + 1)], "large.png", { type: "image/png" }))?.body.error).toMatch(/too large/i);
+  });
+
+  it("normalizes admin triage owner and incident patch fields", async () => {
+    const input = await readBetaFeedbackPatchInput({
+      json: async () => ({
+        status: "triaged",
+        severity: "critical",
+        owner: "Hali",
+        incidentState: "triggered",
+        notes: "Pause next batch until owner review."
+      })
+    });
+
+    expect(input).toEqual({
+      patch: {
+        status: "triaged",
+        severity: "critical",
+        owner: "Hali",
+        incidentState: "triggered",
+        notes: "Pause next batch until owner review."
+      }
+    });
+  });
+
+  it("rejects invalid admin triage owner fields", async () => {
+    await expect(readBetaFeedbackPatchInput({
+      json: async () => ({ owner: "external vendor" })
+    })).resolves.toEqual({ patch: {}, invalidField: "owner" });
   });
 });

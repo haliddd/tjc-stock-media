@@ -10,13 +10,6 @@ const nextConfig = {
   outputFileTracingRoot: repoRoot,
   experimental: {
     webpackBuildWorker: false
-  },
-  webpack: (config, { isServer }) => {
-    if (isServer && config.output) {
-      config.output.chunkFilename = "chunks/[name].js";
-    }
-
-    return config;
   }
 };
 

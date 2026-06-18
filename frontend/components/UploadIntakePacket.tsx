@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Clock3, FileCheck2, FileWarning, FolderInput, ShieldCheck, Tags } from "lucide-react";
 import { parseUploadTags } from "@/lib/upload-tags";
-import { LARGE_MEDIA_BYTES, uploadDefaultState } from "@/lib/workflow-policy";
+import { LARGE_MEDIA_BYTES, uploadBetaBoundaries, uploadDefaultState } from "@/lib/workflow-policy";
 import { cn } from "@/lib/ui";
 
 type UploadIntakePacketProps = {
@@ -75,6 +75,13 @@ export function UploadIntakePacket({ selectedFiles, suggestedTags, hasSourceLink
               <span className="mt-1 block text-xs font-semibold leading-snug text-current/75">
                 {opsView ? "Server-routed intake only. Final library updates happen through media-team review." : "Send-for-review only. A reviewer must approve media before anyone can reuse it."}
               </span>
+            </span>
+          </div>
+          <div className="grid grid-cols-[auto_1fr] gap-3 rounded-md border border-[#ead6a8] bg-[#fff8e8] p-3 text-[#725216]">
+            <FileWarning size={18} strokeWidth={1.9} aria-hidden="true" />
+            <span>
+              <strong className="block text-sm font-black">Beta boundary</strong>
+              <span className="mt-1 block text-xs font-semibold leading-snug text-current/75">{uploadBetaBoundaries.forbidden[0]}</span>
             </span>
           </div>
           <div className="grid grid-cols-[auto_1fr] gap-3 rounded-md border border-[#b8d9c6] bg-white p-3 text-tjc-evergreen">

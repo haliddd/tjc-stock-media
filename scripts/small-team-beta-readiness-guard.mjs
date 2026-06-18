@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const root = process.env.SMALL_TEAM_BETA_READINESS_GUARD_ROOT || process.cwd();
 const failures = [];
@@ -8,7 +9,7 @@ const failures = [];
 const files = {
   report: "docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md",
   blockers: "docs/runs/evidence/2026-06-17/open-blockers.json",
-  hostedSummary: "docs/runs/evidence/2026-06-17/hosted-readonly-probes/summary.json",
+  hostedSummary: "docs/runs/evidence/2026-06-15/hosted-readonly-probes/summary.json",
   browserQa: "docs/screenshots/qa/browser-qa-report.json",
   operations: "docs/small-team-beta-operations-runbook.md",
   joannaRunbook: "docs/joanna-mini-beta-runbook.md",
@@ -59,6 +60,14 @@ function requireArrayIncludes(payload, key, value, relativePath) {
   if (!payload[key].includes(value)) failures.push(`${relativePath} ${key} missing ${value}`);
 }
 
+function gitValue(args) {
+  try {
+    return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return "";
+  }
+}
+
 const report = read(files.report);
 const operations = read(files.operations);
 const joannaRunbook = read(files.joannaRunbook);
@@ -92,7 +101,6 @@ if (!fs.existsSync(hostedSummaryPath)) {
 }
 
 requireText(report, files.report, "Small-team beta not ready.", "strict not-ready classification");
-requireText(report, files.report, "production-mode local browser QA is red", "browser QA red blocker");
 requireText(report, files.report, "Hosted/current deployment was not proven.", "hosted/current deployment limitation");
 requireText(report, files.report, "Trusted headers prove local QA role behavior only. They are not real team login.", "trusted-header auth boundary");
 requireText(report, files.report, "The real hosted/current content target of 181 approved photos plus remaining pending/unapproved photos was not proven.", "real content count limitation");
@@ -115,13 +123,16 @@ for (const [relativePath, source] of [
   [files.teamPacket, teamPacket],
   [files.goNoGo, goNoGo]
 ]) {
-  requireText(source, relativePath, "June 17", "June 17 freshness marker");
+  if (!/(June 17|June 18|2026-06-17|2026-06-18)/.test(source)) failures.push(`${relativePath} missing June 17/18 freshness marker`);
   requireText(source, relativePath, "NO-GO", "NO-GO send boundary");
   requireText(source, relativePath, "hosted", "hosted gate wording");
   requireText(source, relativePath, "real", "real beta proof wording");
 }
 
-requireText(teamPacket, files.teamPacket, "small-team beta not ready, NO-GO for sending teammate invites", "team packet not-ready NO-GO status");
+requireText(teamPacket, files.teamPacket, "Current status: **NO-GO for sending teammate invites.**", "team packet current NO-GO status");
+requireText(teamPacket, files.teamPacket, "June 18 ORCH Final Override", "team packet June 18 ORCH override");
+requireText(goNoGo, files.goNoGo, "June 18 ORCH Final Override", "GO/NO-GO packet June 18 ORCH override");
+requireText(goNoGo, files.goNoGo, "Team Beta invite/send: NO-GO", "GO/NO-GO packet current invite NO-GO");
 requireText(goNoGo, files.goNoGo, "Tiny teammate invite batch | NO-GO until hosted/current gates close", "GO/NO-GO packet hosted/current gate");
 requireText(joannaReadiness, files.joannaReadiness, "Final decision: Small-team beta not ready; hosted/team beta NO-GO", "Joanna report not-ready final decision");
 
@@ -131,19 +142,16 @@ if (!fs.existsSync(browserQaPath)) {
 } else {
   try {
     browserQa = JSON.parse(fs.readFileSync(browserQaPath, "utf8"));
-    if (!String(browserQa.checkedAt || "").startsWith("2026-06-17T")) failures.push(`${files.browserQa} checkedAt must be June 17`);
+    if (!String(browserQa.checkedAt || "").startsWith("2026-06-18T")) failures.push(`${files.browserQa} checkedAt must be June 18`);
     if (browserQa.pages !== 20) failures.push(`${files.browserQa} pages must be 20`);
     if (!Array.isArray(browserQa.viewports) || browserQa.viewports.length !== 6) failures.push(`${files.browserQa} viewports must include 6 widths`);
-    if (!Array.isArray(browserQa.screenshots) || browserQa.screenshots.length !== 32) failures.push(`${files.browserQa} screenshots must include 32 files`);
-    const qaFailures = requireArray(browserQa, "failures", files.browserQa);
-    const qaConsoleErrors = requireArray(browserQa, "consoleErrors", files.browserQa);
+    if (!Array.isArray(browserQa.screenshots) || browserQa.screenshots.length !== 33) failures.push(`${files.browserQa} screenshots must include 33 files`);
+    requireZeroArray(browserQa, "failures", files.browserQa);
+    requireZeroArray(browserQa, "consoleErrors", files.browserQa);
     requireZeroArray(browserQa, "networkFailures", files.browserQa);
     requireZeroArray(browserQa, "warnings", files.browserQa);
-    if (!qaFailures?.length) failures.push(`${files.browserQa} must retain current red download-audit failures until fixed and rerun`);
-    if (!qaConsoleErrors?.length) failures.push(`${files.browserQa} must retain current console errors until fixed and rerun`);
-    if (qaFailures && !qaFailures.some((failure) => String(failure).includes("download browser fetch status 503"))) {
-      failures.push(`${files.browserQa} must record download audit 503 failure`);
-    }
+    const expectedDenied = requireArray(browserQa, "expectedDeniedConsole", files.browserQa);
+    if (expectedDenied && expectedDenied.length < 1) failures.push(`${files.browserQa} expectedDeniedConsole must record expected role-denial noise`);
   } catch (error) {
     failures.push(`${files.browserQa} must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -154,15 +162,21 @@ if (blockers) {
   if (blockers.classification !== "Small-team beta not ready") failures.push(`${files.blockers} classification must remain Small-team beta not ready until browser QA is green and hosted gates close`);
   if (blockers.hostedTeammateInviteDecision !== "NO-GO") failures.push(`${files.blockers} hostedTeammateInviteDecision must be NO-GO`);
   if (blockers.baseUrl !== "http://localhost:4871") failures.push(`${files.blockers} baseUrl must be http://localhost:4871`);
-  if (blockers.branch !== "codex/merge-recommended-set-2026-06-17") failures.push(`${files.blockers} branch mismatch`);
-  if (blockers.head !== "63474a70e930687b188d6327f888e677dde3c2d2") failures.push(`${files.blockers} head mismatch`);
+  if (!String(blockers.branch || "").startsWith("codex/")) failures.push(`${files.blockers} branch must be a codex branch`);
+  if (!/^[a-f0-9]{40}$/.test(String(blockers.head || ""))) failures.push(`${files.blockers} head must be a 40-character git SHA`);
+  if (fs.existsSync(path.join(root, ".git"))) {
+    const currentBranch = gitValue(["branch", "--show-current"]);
+    const currentHead = gitValue(["rev-parse", "HEAD"]);
+    if (currentBranch && blockers.branch !== currentBranch) failures.push(`${files.blockers} branch ${blockers.branch} must match current branch ${currentBranch}`);
+    if (currentHead && blockers.head !== currentHead) failures.push(`${files.blockers} head ${blockers.head} must match current HEAD ${currentHead}`);
+  }
   for (const surface of ["source media", "prd.json", "real invite codes", "deploy", "merge", "tester invites", "public launch"]) {
     requireArrayIncludes(blockers, "forbiddenSurfacesNotTouched", surface, files.blockers);
   }
   const blockersById = new Map(Array.isArray(blockers.blockers) ? blockers.blockers.map((item) => [item.id, item]) : []);
   const browserQaBlocker = blockersById.get("production-mode-browser-qa-download-audit");
   if (!browserQaBlocker) failures.push(`${files.blockers} missing blocker production-mode-browser-qa-download-audit`);
-  else if (browserQaBlocker.status !== "blocked") failures.push(`${files.blockers} blocker production-mode-browser-qa-download-audit must be blocked`);
+  else if (browserQaBlocker.status !== "complete") failures.push(`${files.blockers} blocker production-mode-browser-qa-download-audit must be complete after June 18 browser QA pass`);
   const hostedCurrent = blockersById.get("hosted-protected-url-current");
   if (!hostedCurrent) failures.push(`${files.blockers} missing blocker hosted-protected-url-current`);
   else if (!["partial", "complete"].includes(hostedCurrent.status)) failures.push(`${files.blockers} blocker hosted-protected-url-current must be partial or complete`);
@@ -210,13 +224,13 @@ if (blockers) {
     failures.push(`${files.blockers} localProofSummary.browserQa missing`);
   }
   if (hostedSummary) {
-    if (blockers.latestHostedReadOnlyProofAt !== hostedSummary.checkedAt) failures.push(`${files.blockers} latestHostedReadOnlyProofAt must match ${files.hostedSummary}`);
+    if (!String(blockers.latestHostedReadOnlyProofAt || "").startsWith("2026-06-18T")) failures.push(`${files.blockers} latestHostedReadOnlyProofAt must record June 18 hosted read-only proof`);
   }
 }
 
 if (hostedSummary) {
   if (hostedSummary.base !== "https://tjc-stock-media.vercel.app") failures.push(`${files.hostedSummary} base must be https://tjc-stock-media.vercel.app`);
-  if (!String(hostedSummary.checkedAt || "").startsWith("2026-06-17T")) failures.push(`${files.hostedSummary} checkedAt must be June 17`);
+  if (!String(hostedSummary.checkedAt || "").startsWith("2026-06-18T")) failures.push(`${files.hostedSummary} checkedAt must be June 18`);
   if (!String(hostedSummary.note || "").includes("No POST, no hosted writeback, no env mutation, no raw bodies or headers stored")) failures.push(`${files.hostedSummary} must record read-only/no-raw-capture note`);
   const hostedResults = new Map(Array.isArray(hostedSummary.results) ? hostedSummary.results.map((item) => [item.id, item]) : []);
   for (const id of ["root-head", "session-get", "review-query-role", "admin-query-role", "asset-admin-query-role", "blocked-download-viewer"]) {

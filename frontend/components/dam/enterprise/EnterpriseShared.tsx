@@ -35,18 +35,18 @@ import type { DamReadinessResult, DemoRole, MediaSourceStatus, ReuseBlocker, Sto
 import { useDemoRole } from "@/components/RoleProvider";
 import { custodyMapRows, custodyMapStatus } from "@/lib/admin-control";
 import { inspectorDrawerTabs } from "@/lib/asset-record-workbench";
-import { assetDate, assetRecordRef, assetType, displayTitle, formatBytes, recordIdLabel, sourceLabel, sourceNoun } from "@/lib/enterprise-display";
+import { assetDate, assetRecordRef, assetType, displayTitle, formatBytes, recordIdLabel, sourceNoun, sourceTruthLabel } from "@/lib/enterprise-display";
 import { inspectorMetadataRows } from "@/lib/enterprise-metadata";
 import { assetEnterpriseStatus, statusToneClass, type EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaPreviewState, mediaPreviewUnavailableReason } from "@/lib/media-preview-state";
-import { betaVisibilityLabel, presentAssetCardContext, presentAssetDetailContext, reuseAnswerLabel } from "@/lib/portal-context-presenters";
+import { betaVisibilityLabel, presentAssetDetailContext, reuseAnswerLabel } from "@/lib/portal-context-presenters";
 import { routeWithRole } from "@/lib/role-routes";
 import { matchesCatalogFilter } from "@/lib/catalog-language";
 import { cn } from "@/lib/ui";
 
 export function StatusBadge({ status }: { status: EnterpriseStatus }) {
   const label = status === "Approved"
-    ? "Approved for reuse"
+    ? "Portal Ready"
     : status === "Missing Consent"
       ? "Consent needed"
       : status === "Restricted"
@@ -179,7 +179,7 @@ export function ClearanceStatusPanel({
       <TrustAnswerStrip
         visible={presentation ? betaVisibilityLabel(asset) : "Visibility unknown"}
         reuse={presentation ? reuseAnswerLabel(presentation.packet.reuse.state) : "Needs review before reuse"}
-        source={sourceTruthDisplay(source)}
+        source={sourceTruthLabel(source)}
       />
       <div className="ed-verdict-body">
         <span aria-hidden="true">{approved ? <Check size={24} /> : <Lock size={22} />}</span>
@@ -632,17 +632,8 @@ export function DamToolbar({
   );
 }
 
-function sourceTruthDisplay(source?: MediaSourceStatus | null) {
-  const label = sourceLabel(source);
-  if (source?.adapter === "bundled-beta-catalog") return "Beta metadata snapshot";
-  if (/fixture|fallback|demo/i.test(label)) return "Local demo data";
-  if (/resourcespace|dam/i.test(label)) return "Hosted DAM instance";
-  if (/local/i.test(label)) return "Local demo data";
-  return label;
-}
-
 export function SourcePill({ source, live }: { source?: MediaSourceStatus | null; live?: boolean }) {
-  return <span className={cn("ed-source-pill", live && "is-live", source?.adapter === "demo-fallback" && "is-fallback")}>{sourceTruthDisplay(source)}</span>;
+  return <span className={cn("ed-source-pill", live && "is-live", source?.adapter === "demo-fallback" && "is-fallback")}>{sourceTruthLabel(source)}</span>;
 }
 
 export function LoadingCard({ label = "Loading ResourceSpace data..." }: { label?: string }) {
@@ -745,19 +736,7 @@ export function AssetCard({
 }) {
   const { role } = useDemoRole();
   const title = displayTitle(asset);
-  const recordLabel = recordIdLabel();
   const recordRef = assetRecordRef(asset);
-  const cardContext = presentAssetCardContext(asset, role);
-  const tagChips = Array.from(new Set([
-    asset.eventName,
-    asset.collection,
-    asset.mediaType === "photo" ? "Photo" : `${assetType(asset)} future-review`,
-    ...(asset.tjcTerms || []),
-    ...(asset.tags || [])
-  ]))
-      .filter((tag) => tag && !/^(not provided|unknown|media library)$/i.test(tag))
-      .filter((tag) => tag !== cardContext.approvalLabel)
-      .slice(0, 3);
   const handleCardSelect = (event: MouseEvent<HTMLElement>) => {
     if ((event.target as HTMLElement).closest("button,a,input,select,textarea,[role='button']")) return;
     onSelect?.(event);
@@ -780,12 +759,17 @@ export function AssetCard({
         <button className="ed-card-preview-button" type="button" onClick={onQuickLook || onSelect} aria-label={`Open quick look for ${title}`}>
           <AssetThumb asset={asset} />
         </button>
-        <span className="ed-file-chip">{assetType(asset)}</span>
-        <span className="ed-check">{selected ? <Check size={13} /> : null}</span>
+        <button
+          className="ed-card-select-control"
+          type="button"
+          onClick={(event) => onSelect?.(event)}
+          aria-pressed={selected}
+          aria-label={selected ? `Deselect ${title}` : `Select ${title}`}
+        >
+          {selected ? <Check size={13} aria-hidden="true" /> : null}
+        </button>
+        <span className="ed-card-status"><StatusBadge status={assetEnterpriseStatus(asset)} /></span>
         <span className="ed-card-tools" aria-label="Asset quick actions">
-          <button type="button" onClick={(event) => onSelect?.(event)} aria-pressed={selected} aria-label={selected ? `Deselect ${title}` : `Select ${title}`}>
-            <Check size={14} aria-hidden="true" />
-          </button>
           <button type="button" onClick={onQuickLook || onSelect} aria-label={`Preview ${title}`}>
             <Star size={14} aria-hidden="true" />
           </button>
@@ -795,21 +779,15 @@ export function AssetCard({
         </span>
       </div>
       <strong title={title}>{title}</strong>
-      <small>
-        <span>{recordLabel} {recordRef}</span>
-        <span aria-hidden="true"> · </span>
-        <span>{formatBytes(asset.fileSizeBytes)}</span>
+      <small className="ed-card-meta-row">
+        <span>{asset.collection || "Unassigned"}</span>
+        <span>{assetType(asset)}</span>
       </small>
-      {tagChips.length ? (
-        <div className="ed-card-tags" aria-label={`Tags for ${title}`}>
-          {tagChips.map((tag) => <span key={tag}>{tag}</span>)}
-        </div>
-      ) : null}
-      <div className="ed-card-footer">
-        <StatusBadge status={assetEnterpriseStatus(asset)} />
-        <span className="ed-card-date">{cardContext.reuseAnswerLabel} · {cardContext.betaVisibilityLabel} · {assetDate(asset)}</span>
-        <button className="ed-card-hover-action" type="button" onClick={onQuickLook || onSelect}>View details</button>
-      </div>
+      <small className="ed-card-meta-row">
+        <span>{recordRef}</span>
+        <span>{formatBytes(asset.fileSizeBytes)}</span>
+        <span>{assetDate(asset)}</span>
+      </small>
     </article>
   );
 }
@@ -934,18 +912,11 @@ export function PremiumTaxonomyRail({
     <aside className="ed-panel ed-facet-panel ed-smart-filter-rail" aria-label="Governed facet rail">
       <header className="ed-filter-rail-head">
         <div>
-          <span>Governed facets</span>
-          <strong>Find evidence, not permission</strong>
+          <span>Collections / Saved searches / Filters</span>
+          <strong>Governed facet rail</strong>
         </div>
         {activeFilters.length ? <button type="button" onClick={onClearFilters}>Clear all</button> : null}
       </header>
-      <details open className="ed-filter-section">
-        <summary><span>Saved views</span><button type="button" onClick={(event) => { event.preventDefault(); onSavedViewsExpand?.(); }} aria-label="Create or manage saved views"><Plus size={14} /></button></summary>
-        <div className="ed-saved-view-list">
-          {firstViews.map((view) => <button className={cn(activeView === view.id && "is-active")} type="button" key={view.id} aria-current={activeView === view.id ? "true" : undefined} onClick={() => onViewSelect?.(view.id)}><span>{view.label}</span><em>{view.count.toLocaleString()}</em></button>)}
-          {!firstViews.length ? <p>No saved views mapped yet.</p> : <button className="ed-link-button" type="button" onClick={onSavedViewsExpand}>Show more</button>}
-        </div>
-      </details>
       <details open className="ed-filter-section">
         <summary><span>Collections</span><ChevronDown size={14} /></summary>
         <div className="ed-filter-options">
@@ -954,7 +925,14 @@ export function PremiumTaxonomyRail({
         </div>
       </details>
       <details open className="ed-filter-section">
-        <summary><span>Discovery tags</span><ChevronDown size={14} /></summary>
+        <summary><span>Saved searches</span><button type="button" onClick={(event) => { event.preventDefault(); onSavedViewsExpand?.(); }} aria-label="Create or manage saved searches"><Plus size={14} /></button></summary>
+        <div className="ed-saved-view-list">
+          {firstViews.map((view) => <button className={cn(activeView === view.id && "is-active")} type="button" key={view.id} aria-current={activeView === view.id ? "true" : undefined} onClick={() => onViewSelect?.(view.id)}><span>{view.label}</span><em>{view.count.toLocaleString()}</em></button>)}
+          {!firstViews.length ? <p>No saved searches mapped yet.</p> : <button className="ed-link-button" type="button" onClick={onSavedViewsExpand}>Show more</button>}
+        </div>
+      </details>
+      <details open className="ed-filter-section">
+        <summary><span>Filters</span><ChevronDown size={14} /></summary>
         <label className="ed-taxonomy-search">
           <Search size={14} aria-hidden="true" />
           <span className="sr-only">Search tags</span>
@@ -1011,11 +989,27 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
     );
   }
   const presentation = presentAssetDetailContext(asset, role, source);
-  const tabRows = inspectorMetadataRows({ asset, tab, source });
+  const tabRows = inspectorMetadataRows({ asset, tab, source, role });
+  const allowedRenditions = new Set(presentation.packet.reuse.allowedRenditions || []);
+  const renditionRows = [
+    { label: "Original", state: "Restricted", detail: "Master/source remains request-only" },
+    { label: "Thumbnail", state: asset.thumbnail ? "Available" : "Missing", detail: "Role-safe preview derivative" },
+    { label: "Web copy", state: allowedRenditions.has("web") || asset.imageUrls?.download ? "Gate required" : "Request", detail: "Approved-copy download only" },
+    { label: "Social crop", state: asset.damFilenames?.social ? "Planned" : "Not generated", detail: "Draft rendition slot" },
+    { label: "Print", state: asset.damFilenames?.print ? "Planned" : "Restricted", detail: "Reviewer request required" }
+  ];
+  const readyRenditions = renditionRows.filter((item) => item.state === "Available" || item.state === "Gate required").length;
+  const inspectorSummaryRows = [
+    { label: "Metadata", value: asset.collection || "Unassigned", detail: `${assetType(asset)} / ${assetRecordRef(asset)}` },
+    { label: "Rights", value: asset.rightsStatus || asset.usageScope || "Needs Review", detail: asset.peopleRisk || "People/minors unknown" },
+    { label: "Renditions", value: `${readyRenditions}/5 ready`, detail: "Original restricted; approved copies gated" },
+    { label: "Versions", value: asset.versionOrEdition || asset.damFilenames?.web || "No replacement", detail: asset.duplicateGroup ? "Duplicate group tracked" : "No duplicate group visible" },
+    { label: "Activity", value: asset.reviewedDate || asset.importDate || "Review pending", detail: asset.reviewer ? "Reviewer recorded" : "No reviewer yet" }
+  ];
   return (
     <aside className="ed-inspector ed-panel">
       <header className="ed-inspector-record-header">
-        <span>Selected asset</span>
+        <span>Inspector</span>
         <strong>{recordIdLabel(source)} {assetRecordRef(asset)}</strong>
         <button type="button" onClick={() => setMessage("Inspector stays pinned on desktop. Select another record to change context.")}>Pinned</button>
       </header>
@@ -1033,12 +1027,31 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
         <span>{asset.collection || "Unassigned collection"}</span>
         <SourcePill source={source} live={live} />
       </div>
-      <TrustAnswerStrip
-        visible={betaVisibilityLabel(asset)}
-        reuse={reuseAnswerLabel(presentation.packet.reuse.state)}
-        source={sourceTruthDisplay(source)}
-      />
-      <RightsVerdictCard asset={asset} source={source} />
+      <dl className="ed-inspector-decision-list" aria-label="Selected asset DAM state">
+        <div><dt>Reuse</dt><dd>{reuseAnswerLabel(presentation.packet.reuse.state)}</dd></div>
+        <div><dt>Visibility</dt><dd>{betaVisibilityLabel(asset)}</dd></div>
+        <div><dt>Rights</dt><dd>{asset.rightsStatus || asset.usageScope || "Needs review"}</dd></div>
+        <div><dt>People</dt><dd>{asset.peopleRisk || "Unknown"}</dd></div>
+      </dl>
+      <section className="ed-inspector-summary-grid" aria-label="Metadata rights renditions versions and activity summary">
+        {inspectorSummaryRows.map((item) => (
+          <div key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <small>{item.detail}</small>
+          </div>
+        ))}
+      </section>
+      <section className="ed-inspector-renditions" aria-label="Renditions">
+        <header><span>Renditions</span><strong>{readyRenditions}/5 ready</strong></header>
+        {renditionRows.map((item) => (
+          <p key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.state}</strong>
+            <small>{item.detail}</small>
+          </p>
+        ))}
+      </section>
       <nav className="ed-tabs" aria-label="Asset inspector tabs">{inspectorDrawerTabs.map((item) => <button className={cn(tab === item && "is-active")} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</nav>
       <dl className="ed-metadata">
         {tabRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
@@ -1077,7 +1090,7 @@ export function AssetQuickLookDrawer({
     return () => window.clearTimeout(timeout);
   }, [open, asset?.id]);
   if (!asset) return null;
-  const tabRows = inspectorMetadataRows({ asset, tab, source });
+  const tabRows = inspectorMetadataRows({ asset, tab, source, role });
   const presentation = presentAssetDetailContext(asset, role, source);
   const canUseAsset = presentation.approved;
 

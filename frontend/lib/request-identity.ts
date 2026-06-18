@@ -24,12 +24,87 @@ export type ClientRoleOverrideDecision = {
   reasonCode: string | null;
 };
 
+export type IdentityTruthState = "local-only" | "prototype-login" | "ignored" | "header-shim" | "not-proven";
+
+export type IdentityTruthRow = {
+  id: string;
+  label: string;
+  state: IdentityTruthState;
+  acceptedInProduction: boolean;
+  source: string;
+  truth: string;
+  blocker: string;
+};
+
 export type RequestIdentityOptions = {
   explicitRole?: string | null;
   adapter?: DamSessionAdapter;
   overridePolicy?: ClientRoleOverridePolicy;
   overrideSource?: ClientRoleOverrideSource;
 };
+
+export function requestIdentityTruthMatrix(): IdentityTruthRow[] {
+  const betaAuth = betaAuthEnabled();
+  const overrides = localBetaRoleOverridesEnabled();
+  const ssoHeaders = trustedSsoHeadersEnabled();
+  const production = productionRuntime();
+  const productionTrustedRequired = productionTrustedIdentityRequired();
+  return [
+    {
+      id: "demo-role",
+      label: "Demo role",
+      state: "local-only",
+      acceptedInProduction: false,
+      source: "Client demo role provider",
+      truth: "Useful for local prototype browsing only; not authentication and not audit-grade identity.",
+      blocker: "Replace with verified user identity before beta or production access claims."
+    },
+    {
+      id: "beta-login",
+      label: "Prototype login",
+      state: betaAuth ? "prototype-login" : "local-only",
+      acceptedInProduction: false,
+      source: "Signed prototype session cookie and middleware headers",
+      truth: betaAuth
+        ? "Middleware-verified role session exists for local rehearsal, but it is not an IdP-backed user account."
+        : "Prototype login is disabled; role falls back to local-only demo behavior.",
+      blocker: "Needs real user account, group mapping, lifecycle, and audit actor proof."
+    },
+    {
+      id: "query-body-script-override",
+      label: "Query/body/script override",
+      state: production ? "ignored" : overrides ? "local-only" : "ignored",
+      acceptedInProduction: false,
+      source: "Explicit role strings from query, body, or script adapters",
+      truth: production
+        ? "Production ignores client role overrides."
+        : overrides
+          ? "Overrides are enabled only by explicit local server env for rehearsal."
+          : "Overrides are disabled unless an explicit local override env is set.",
+      blocker: "Never count client role overrides as trusted identity."
+    },
+    {
+      id: "sso-headers",
+      label: "SSO headers",
+      state: ssoHeaders ? "header-shim" : "not-proven",
+      acceptedInProduction: Boolean(production && ssoHeaders),
+      source: "Trusted headers; production requires Cloudflare Access assertion",
+      truth: ssoHeaders
+        ? "Header mapping code exists, but header presence is not hosted proof by itself."
+        : "Trusted SSO headers are not enabled.",
+      blocker: "Needs hosted IdP assertion, group claims, role map, and route smoke evidence."
+    },
+    {
+      id: "production-trusted-identity",
+      label: "Production trusted identity",
+      state: "not-proven",
+      acceptedInProduction: false,
+      source: productionTrustedRequired ? "Required production identity gate" : "Production identity gate can be disabled by env",
+      truth: "Production identity not proven. Missing trusted headers fail closed to Viewer with production:trusted-identity-missing.",
+      blocker: "Prove IdP assertion, groups, audit actor integrity, session expiry, and no client override authority."
+    }
+  ];
+}
 
 function requestIsLocalhost(request: NextRequest) {
   return ["localhost", "127.0.0.1", "::1"].includes(request.nextUrl.hostname);

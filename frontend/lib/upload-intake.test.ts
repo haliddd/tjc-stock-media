@@ -36,8 +36,17 @@ describe("upload intake batch validation", () => {
       ["ministry", "Internet Ministry"],
       ["source", "Media Team"]
     ]));
+    const response = buildUploadIntakeResponse(intake);
     expect(uploadIntakeValidationError(intake)).toBeNull();
     expect(intake.files).toHaveLength(0);
+    expect(response.intakeState).toEqual({
+      received: true,
+      review: "Needs Review",
+      usage: "Do Not Publish",
+      publishable: false
+    });
+    expect(response.resourceSpaceWritten).toBe(false);
+    expect(response.betaBoundaries.forbidden).toContain("Public approval, download enablement, or ResourceSpace approval writeback from upload");
   });
 
   it("blocks no files/link and missing batch identity only", () => {
@@ -76,5 +85,11 @@ describe("upload intake batch validation", () => {
     expect(response.resourceSpaceWritten).toBe(false);
     expect(response.defaultReviewState).toBe("Needs Review");
     expect(response.defaultUsageScope).toBe("Do Not Publish");
+    expect(response.status).toBe("large-media-intake");
+    expect(response.message).toContain("large-media/admin intake path");
+    expect(response.reviewWarnings).toEqual(expect.arrayContaining([
+      "Large media/admin intake required",
+      "Video/audio and large files route to admin intake"
+    ]));
   });
 });

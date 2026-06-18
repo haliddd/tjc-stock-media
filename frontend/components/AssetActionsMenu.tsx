@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Copy, ExternalLink, Link as LinkIcon } from "lucide-react";
 import { DropdownActionMenu, type DropdownAction } from "@/components/DropdownActionMenu";
+import { assetResourceRef, publicAssetRef } from "@/lib/asset-refs";
 import { toastSaveFailed, toastShareCopied } from "@/lib/tjc-toasts";
 import type { StockMediaAsset } from "@/lib/types";
 
@@ -16,7 +17,7 @@ type AssetActionsMenuProps = {
 
 export function AssetActionsMenu({ asset, resourceSpaceUrl, canOpenResourceSpace, canExposeResourceSpaceId = false, label = "Asset actions" }: AssetActionsMenuProps) {
   const [status, setStatus] = useState("");
-  const resourceSpaceId = asset.resourceSpaceId || asset.id;
+  const copyRef = canExposeResourceSpaceId ? assetResourceRef(asset) : publicAssetRef(asset);
   const recordLabel = canExposeResourceSpaceId ? "ResourceSpace ID" : "reference code";
 
   async function copyText(value: string, label: string) {
@@ -39,9 +40,9 @@ export function AssetActionsMenu({ asset, resourceSpaceUrl, canOpenResourceSpace
     {
       id: "copy-resource-id",
       label: canExposeResourceSpaceId ? "Copy ResourceSpace ID" : "Copy reference code",
-      detail: canExposeResourceSpaceId ? resourceSpaceId : "Use this when asking the media team for help",
+      detail: canExposeResourceSpaceId ? copyRef : "Use this when asking the media team for help",
       icon: <Copy size={15} strokeWidth={1.8} aria-hidden="true" />,
-      onSelect: () => copyText(resourceSpaceId, recordLabel)
+      onSelect: () => copyText(copyRef, recordLabel)
     },
     {
       id: "copy-portal-link",

@@ -9,7 +9,6 @@ const navItems = [
   { label: "Policy Center", href: "/governance/policy-center", activeHrefs: ["/help?section=policies#policies", "/guide?section=policies#policies"] },
   { label: "Recent Uploads", href: "/recent-uploads" },
   { label: "Review Queue", href: "/review" },
-  { label: "Governance Dashboard", href: "/governance" },
   { label: "Rights & Consent", href: "/governance/rights-consent", activeHrefs: ["/review?queue=rights-review"] },
   { label: "Metadata Health", href: "/governance/metadata-health" },
   { label: "Audit Log", href: "/governance/audit-log", activeHrefs: ["/admin#audit-logs"] },
@@ -50,7 +49,7 @@ describe("DAM route identity", () => {
   });
 
   it("keeps governance and admin sidebar identity exact", () => {
-    expect(activeLabels("/governance")).toEqual(["Governance Dashboard"]);
+    expect(activeLabels("/governance")).toEqual([]);
     expect(activeLabels("/governance/rights-consent", "", "rights-policies")).toEqual(["Rights & Consent"]);
     expect(activeLabels("/governance/metadata-health")).toEqual(["Metadata Health"]);
     expect(activeLabels("/governance/policy-center")).toEqual(["Policy Center"]);

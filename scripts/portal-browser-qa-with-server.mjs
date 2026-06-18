@@ -11,6 +11,12 @@ const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
 const logDir = path.join(root, ".runtime", "browser-qa-server");
 const stamp = new Date().toISOString().replace(/[:.]/g, "").replace("T", "T").replace("Z", "Z");
 const logPath = path.join(logDir, `${stamp}.log`);
+const latestLogPath = path.join(logDir, "latest.log");
+const nextBin = path.join(frontendDir, "node_modules", "next", "dist", "bin", "next");
+const hasProductionBuild = fs.existsSync(path.join(frontendDir, ".next", "BUILD_ID"));
+const serverArgs = hasProductionBuild
+  ? [nextBin, "start", "--port", String(port)]
+  : [nextBin, "dev", "--port", String(port)];
 let server;
 
 if (!Number.isInteger(port) || port <= 0 || port > 65535) {
@@ -78,6 +84,9 @@ function terminateServer() {
 
 function runQa() {
   return new Promise((resolve) => {
+    const heartbeat = setInterval(() => {
+      console.log("[browser-qa] running...");
+    }, 10000);
     const qa = spawn(process.execPath, ["scripts/portal-browser-qa.mjs"], {
       cwd: root,
       stdio: "inherit",
@@ -88,6 +97,7 @@ function runQa() {
       }
     });
     qa.on("exit", (code, signal) => {
+      clearInterval(heartbeat);
       resolve({ code: code ?? 1, signal });
     });
   });
@@ -105,13 +115,21 @@ if (await portOpen()) {
   process.exit(1);
 }
 
+try {
+  fs.rmSync(latestLogPath, { force: true });
+  fs.symlinkSync(path.basename(logPath), latestLogPath);
+} catch {
+  // Non-critical convenience pointer; timestamped log remains authoritative.
+}
+
 const log = fs.createWriteStream(logPath, { flags: "a" });
-server = spawn("npx", ["next", "dev", "--port", String(port)], {
+server = spawn(process.execPath, serverArgs, {
   cwd: frontendDir,
   detached: true,
   stdio: ["ignore", "pipe", "pipe"],
   env: {
     ...process.env,
+    SSO_PROVIDER: "cloudflare-access",
     SSO_TRUSTED_HEADERS: "1",
     PORTAL_ALLOW_BETA_ROLE_OVERRIDE: "0",
     NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH: "0",
