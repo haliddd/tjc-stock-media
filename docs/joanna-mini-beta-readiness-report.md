@@ -72,6 +72,9 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 - `node scripts/api-payload-guard.mjs`: PASS.
 - `node scripts/api-audit-guard.mjs`: PASS.
 - `node scripts/storage-honesty-guard.mjs`: PASS.
+- `make launch-readiness`: PASS with `failures=0`, `warnings=1`; remaining warning is `.env` placeholder values.
+- `make backup`: PASS, wrote `.runtime/backups/20260617-201323`; database dump skipped because Docker daemon was unavailable.
+- `make restore-test`: PASS for archive restore; database dump not present in latest backup.
 - `BASE_URL=http://localhost:4869 make portal-api-smoke`: PASS.
 - `BASE_URL=http://localhost:4869 make portal-beta-rehearsal`: PASS.
 - `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe`: PASS for read-only protection only.
@@ -91,7 +94,6 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 
 - First Vercel deploy attempt failed before release because local artifacts/deps were included in the upload. `.vercelignore` now excludes local build/dependency/runtime/media artifacts; retry succeeded.
 - One Vercel build attempt failed before release because local-only safe-lane disk guard expected a git checkout. The guard now skips only in `VERCEL=1`; local guard self-test passes.
-- `make launch-readiness`: FAIL due stale June 15 broad-beta evidence, open-blocker metadata, missing/old screenshot packet, and external durable-state proof language. This is broader than Joanna mini beta.
 - `BASE_URL=http://127.0.0.1:4869` production-mode download POST/GET fails closed with `503 audit-required` because required audit/ticket writes are blocked without durable runtime storage. This is safe, but hosted production needs a durable runtime store before download can work there.
 - `BASE_URL=http://localhost:4869 make portal-browser-qa`: FAIL after producing 20-page / 6-viewport report. Main failures: clipped collection/package/request controls, normal-user detail copy flagged for operational phrases, viewer upload block expectation mismatch, broken preview images for some thumbnails.
 - Hosted authenticated role-path proof remains blocked until Hali provides usable Viewer/Contributor/Reviewer/Admin credentials and real invite codes privately, or confirms Hali will test those roles first. No hosted upload/review/download mutation was run.
@@ -121,7 +123,7 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 - Original/source download remains blocked for normal roles.
 - Approved derivative download works locally in dev with audit/ticket storage; hosted production download fails closed until durable audit/ticket storage exists.
 - Browser QA shows UI overflow/copy issues that should be fixed before a broader team beta.
-- Hosted durable storage/backup/restore remains unproven.
+- Hosted durable storage remains unproven. Local archive backup/restore passed, but database backup/restore remains unproven because Docker/MariaDB was unavailable.
 
 Final decision: Small-team beta not ready; hosted/team beta NO-GO until the stable hosted URL is redeployed/probed with the 181-record bundled beta snapshot, hosted upload/review persistence boundaries or fail-closed instructions are documented, and owner signoff is renewed.
 

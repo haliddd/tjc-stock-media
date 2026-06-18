@@ -1,6 +1,6 @@
 # Team Beta GO/NO-GO Packet
 
-Last updated: 2026-06-17
+Last updated: 2026-06-18
 
 Purpose: one canonical decision packet for the TJC Stock Media internal Team Beta test round. This packet is the final place to check whether the current build is ready for owner-led dry run, teammate invite batch, or production launch.
 
@@ -15,11 +15,21 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 | Tiny teammate invite batch | NO-GO until hosted/current gates close, Joanna feedback lands, and renewed owner signoff exists | Teammate invites require hosted/current proof, Joanna proof first, named tester list, send owner, stop-test owner, and feedback triage owner. |
 | Production/internal launch | NO-GO | Production SSO, durable storage, live ResourceSpace writeback, full rights review, production delivery, and full archive readiness are not proven. |
 
+Current gap audit: `docs/team-beta-gap-audit-2026-06-18.md`.
+
+## Gap Sort
+
+| Bucket | Current Call |
+|---|---|
+| Must fix before beta | Hosted 181-record count proof, hosted runtime/download persistence boundary, production-mode browser QA contract, DB-capable backup/restore or explicit read-only scope, hosted env confirmation, renewed owner signoff, and live ResourceSpace/Docker smoke or explicit snapshot-only scope. |
+| Can wait | Live ResourceSpace writeback, Google Drive connector/sync, full archive import, video/audio, production SSO, public downloads/sharing, broad analytics, and clean-machine production DR drills. |
+| Demo polish | UI overflow/copy, empty/loading states, search wording, sample task wording, and screenshot polish. |
+
 ## What Is Ready
 
 | Area | Evidence | Status |
 |---|---|---|
-| Core local readiness | `make launch-readiness` currently passes with `failures=0`, `warnings=2`; warnings are `.env` missing and `.runtime/backups` missing. | PASS local proof / warnings remain |
+| Core local readiness | `make launch-readiness` currently passes with `failures=0`, `warnings=1`; warning is `.env` placeholder values. | PASS local proof / env warning remains |
 | Type safety | `npm --prefix frontend run typecheck` passes. | PASS local |
 | API payload safety | `node scripts/api-payload-guard.mjs` passes. | PASS local |
 | API audit coverage | `node scripts/api-audit-guard.mjs` passes. | PASS local |
@@ -30,6 +40,7 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 | Real beta auth/invite | Hosted smoke passed beta-session login for Viewer, Contributor, Reviewer, and DAM Admin. Contributor and above used a church/location invite code. Values stay in Vercel env and `.runtime/beta-credentials-2026-06-17.env`, not Git/docs/logs/chat. | PASS private proof |
 | Hosted content counts | Current code adds a sanitized `bundled-beta-catalog` fallback with 181 MVP 2024 LM Photos records, no source paths/checksums, and search anchors for Bible, Plant, and Fountain. Last stable hosted proof before this code still returned demo fallback: 16 total. | PARTIAL / redeploy and hosted count probe required |
 | Hosted persistence/fail-closed | Hosted feedback POST/Admin visibility passed. Hosted blocked download failed closed with `503 audit-required` and no source/original/private/checksum leak. Upload/review persistence still needs scoped proof against real beta content. | PARTIAL |
+| Local backup/restore | `make backup` wrote `.runtime/backups/20260617-201323`; `make restore-test` passed archive restore and wrote a restore marker. Docker daemon was unavailable, so database dump was skipped. | PARTIAL local / DB proof still open |
 | Local beta rehearsal | `.runtime/beta-rehearsals/20260615T064029Z-43364/summary.json` passes Viewer search/open/download-block/review-block, Reviewer evidence lock, honest queued write, and Admin readiness. | PASS local |
 | Seed/media signoff packet | `docs/team-beta-seed-media-signoff.md` includes counts, sample searches, fail conditions, research-derived categories, and signoff text. | Signed for preview-only tiny internal beta |
 | Hosted access/env packet | `docs/team-beta-hosted-access-proof.md` defines required hosted env, private URL policy, smoke safety, fail conditions, and owner signoff text. | Signed for queued/disabled writeback |

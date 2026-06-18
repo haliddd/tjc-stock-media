@@ -22,8 +22,10 @@ mkdir -p "$OUT_DIR"
 file_count="$(find "$SOURCE_DIR" -maxdepth 1 -type f | wc -l | tr -d ' ')"
 total_size="$(du -sh "$SOURCE_DIR" | awk '{print $1}')"
 extension_counts="$(
-  find "$SOURCE_DIR" -maxdepth 1 -type f |
-    sed 's/.*\\.//' |
+  while IFS= read -r -d '' file; do
+    filename="$(basename "$file")"
+    printf '%s\n' "${filename##*.}"
+  done < <(find "$SOURCE_DIR" -maxdepth 1 -type f -print0) |
     tr '[:upper:]' '[:lower:]' |
     sort |
     uniq -c |
