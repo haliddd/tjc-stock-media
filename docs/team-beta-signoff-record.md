@@ -14,7 +14,7 @@ Decision timestamp: 2026-06-17T19:29:57Z
 
 Decision owner: Codex recovery execution update, pending Hali + Enoch renewed approval
 
-Decision notes: June 17 local route/auth smoke improved, and hosted/current plus real beta-session auth now pass after production deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND`. Latest browser QA remains red on download audit probes that fail closed without durable runtime storage. Hosted feedback persistence and blocked-download fail-closed behavior pass. Hosted content remains demo fallback, not the expected real beta content, so Joanna/team invites remain blocked until real content is configured or Hali explicitly scopes Joanna to demo-fallback workflow testing only. Prior June 11 tiny Team Beta approval is superseded for send/invite decisions.
+Decision notes: June 17 local route/auth smoke improved, and hosted/current plus real beta-session auth now pass after production deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND`. Latest browser QA remains red on download audit probes that fail closed without durable runtime storage. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot for hosted fallback, but stable hosted count proof still needs redeploy/probe evidence. Joanna/team invites remain blocked until snapshot proof, hosted persistence/fail-closed instructions, and renewed owner approval close. Prior June 11 tiny Team Beta approval is superseded for send/invite decisions.
 
 ## Required Gates
 
@@ -22,7 +22,7 @@ Decision notes: June 17 local route/auth smoke improved, and hosted/current plus
 |---|---|---|---|---|---|
 | Seed/media safety | Enoch Liu primary; Hali Ding backup | 2026-06-11T21:36:44Z; renewed proof still required after June 15 P0 | Historical preview-only owner values exist, but June 15 packet still needs renewed seed/media approval before any hosted invite. | NO-GO pending renewed approval | No public reuse or download approval. Official TJC websites are the authority source for doctrine, hymn, RE/minors, testimony, and taxonomy gates. |
 | Access/private URL | Enoch Liu | 2026-06-17T20:04:00Z; renewed owner proof still required | Stable URL is current/protected and real beta-session auth passed for Viewer, Contributor, Reviewer, and DAM Admin. Named tester list and invite send approval are still not renewed. | NO-GO pending renewed owner approval | Stakeholders/supervisors: Jackie, Alan, Joanna, Richard. Credentials live in Vercel env and `.runtime/beta-credentials-2026-06-17.env`, not Git/docs/logs/chat. |
-| Hosted env/writeback | Hali Ding | 2026-06-17T20:04:00Z; renewed owner proof still required | Hosted current marker passes. Hosted feedback persistence/Admin visibility passes. Hosted blocked download fails closed with `503 audit-required`. Hosted content source is demo fallback, and upload/review persistence against real beta content remains unproven. | NO-GO pending real content source or explicit demo-fallback scope | No secrets or full env dumps recorded. Live ResourceSpace writeback is not approved. Recommended recovery default keeps hosted downloads fail-closed for Joanna. |
+| Hosted env/writeback | Hali Ding | 2026-06-17T20:04:00Z; renewed owner proof still required | Hosted current marker passes. Hosted feedback persistence/Admin visibility passes. Hosted blocked download fails closed with `503 audit-required`. Current code adds sanitized 181-record hosted fallback content, but stable hosted count proof and upload/review persistence against that beta content remain unproven. | NO-GO pending hosted snapshot proof and persistence/fail-closed instructions | No secrets or full env dumps recorded. Live ResourceSpace writeback is not approved. Recommended recovery default keeps hosted downloads fail-closed for Joanna. |
 | Feedback triage | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z; renewed assignment still required before invite | Historical triage assignment exists, but no June 15 send window or renewed tester approval exists. | NO-GO pending renewed approval | Next-batch review happens only after a renewed approved first invite. |
 | Stop-test response | Hali Ding primary; Enoch Liu backup | 2026-06-11T21:36:44Z; renewed assignment still required before invite | Stop-test rule exists, but hosted invite is blocked until current P0 and external evidence gates close. | NO-GO pending renewed approval | P0 stops active testing. |
 
@@ -50,7 +50,7 @@ Research-authority response captured: official TJC websites are the authority so
 
 ## Final Send Approval
 
-Do not fill as GO until June 17 hosted/current beta gates close and Hali renews approval. Current record remains NO-GO:
+Do not fill as GO until June 17 hosted/current beta gates, 181-record hosted snapshot proof, and Hali approval close. Current record remains NO-GO:
 
 ```text
 Final decision: NO-GO
@@ -113,4 +113,4 @@ Next-batch review time:
 Final decision: <GO or NO-GO>
 ```
 
-Current status: **NO-GO for teammate invite batch until June 17 hosted/current beta gates close.**
+Current status: **NO-GO for teammate invite batch until the 181-record hosted snapshot is redeployed/probed and owner gates close.**

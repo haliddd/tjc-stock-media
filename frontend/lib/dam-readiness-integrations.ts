@@ -47,14 +47,14 @@ export function buildIntegrationReadiness({
   const derivativeIndex = derivativeIndexDiagnostics();
   const liveWritebackReady = apiConfigured && resourceSpaceWritebackEnabled() && writebackFieldMap.valid;
   const brandHubConfigured = Boolean(brandKitCollectionId("BRAND_KIT_MVP_2024_COLLECTION_ID"));
-  const sourceIsResourceSpace = status.adapter === "resourcespace-api" || status.adapter === "exported-metadata";
+  const sourceIsResourceSpace = status.adapter === "resourcespace-api" || status.adapter === "exported-metadata" || status.adapter === "bundled-beta-catalog";
   return [
     {
       id: "metadata-source",
       label: "ResourceSpace metadata export",
       ready: sourceIsResourceSpace,
       owner: "ResourceSpace",
-      state: status.adapter === "exported-metadata" ? "Read-only" : sourceIsResourceSpace ? "Operational" : "Blocked",
+      state: status.adapter === "exported-metadata" || status.adapter === "bundled-beta-catalog" ? "Read-only" : sourceIsResourceSpace ? "Operational" : "Blocked",
       detail: status.detail
     },
     {

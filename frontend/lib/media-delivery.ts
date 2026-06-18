@@ -5,6 +5,7 @@ import type { AuditEventRecord } from "@/lib/audit-log";
 import type { getAssetRecordById } from "@/lib/catalog";
 import type { createDamRouteSession } from "@/lib/dam-route-session";
 import type { DownloadTicketRecord } from "@/lib/download-tickets";
+import { productionRuntime } from "@/lib/env";
 import type { ImageVariant } from "@/lib/images";
 import { damFilenameForRendition } from "@/lib/dam-filenames";
 import { findFilestoreDerivative } from "@/lib/media-source";
@@ -93,10 +94,17 @@ export function readDeliveredImage(filePath: string): DeliveredImage | null {
 
 function generatedFallbackApprovedCopy(id: string, source?: AssetRecordResult["source"]): DeliveredImage | null {
   if (source?.adapter !== "demo-fallback" || !generatedFallbackApprovedCopyIds.has(id)) return null;
+  if (generatedFallbackApprovedCopyBlocked(id, source)) return null;
   const fileBytes = Buffer.from(generatedFallbackJpegBase64, "base64");
   const bytes = new ArrayBuffer(fileBytes.byteLength);
   new Uint8Array(bytes).set(fileBytes);
   return { bytes, contentType: "image/jpeg" };
+}
+
+function generatedFallbackApprovedCopyBlocked(id: string, source?: AssetRecordResult["source"]) {
+  return source?.adapter === "demo-fallback"
+    && generatedFallbackApprovedCopyIds.has(id)
+    && (process.env.VERCEL === "1" || productionRuntime());
 }
 
 export function thumbnailMalformedIdError(): ThumbnailDeliveryRouteError {
@@ -347,11 +355,13 @@ export function approvedCopyFileName(titleOrAsset: unknown, id: string) {
 }
 
 export function hasApprovedCopyDerivative(id: string, source?: AssetRecordResult["source"]) {
+  if (generatedFallbackApprovedCopyBlocked(id, source)) return false;
   return Boolean(findFilestoreDerivative(id, "download") || generatedFallbackApprovedCopy(id, source));
 }
 
 export function readApprovedCopyDelivery(id: string, titleOrAsset: unknown, source?: AssetRecordResult["source"]): ApprovedCopyDelivery {
   const fileName = approvedCopyFileName(titleOrAsset, id);
+  if (generatedFallbackApprovedCopyBlocked(id, source)) return { status: "missing-derivative" };
   const filePath = findFilestoreDerivative(id, "download");
   if (!filePath) {
     const generated = generatedFallbackApprovedCopy(id, source);

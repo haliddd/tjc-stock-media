@@ -104,11 +104,11 @@ export function shouldShowBulkBar(selectedCount: number) {
   return selectedCount > 0;
 }
 
-function actionStatus(eligibleCount: number, totalCount: number, enabled: boolean) {
+function actionStatus(eligibleCount: number, totalCount: number) {
   if (!totalCount) return "Select assets";
   if (eligibleCount === totalCount) return `${eligibleCount} of ${totalCount} eligible`;
   if (eligibleCount > 0) return `${eligibleCount} of ${totalCount} eligible`;
-  return enabled ? `${totalCount} selected` : "None eligible";
+  return "None eligible";
 }
 
 function downloadEligible(asset: StockMediaAsset, role: DemoRole) {
@@ -125,6 +125,26 @@ function assetTypeLabel(asset: StockMediaAsset) {
   return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
 }
 
+function csvCell(value: string | number | undefined | null) {
+  return `"${String(value ?? "").replaceAll("\"", "\"\"")}"`;
+}
+
+export function buildLibraryMetadataCsv(assets: StockMediaAsset[]) {
+  const headers = ["id", "title", "status", "type", "collection", "rights", "usage-scope", "reference"];
+  const rows = assets.map((asset) => [
+    asset.id,
+    asset.title || "",
+    asset.status,
+    assetTypeLabel(asset),
+    asset.collection || "",
+    asset.rightsStatus || asset.consentStatus || "",
+    asset.usageScope,
+    assetRecordRef(asset)
+  ]);
+
+  return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+}
+
 export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRole): LibraryBulkAction[] {
   const totalCount = assets.length;
   const downloadCount = assets.filter((asset) => downloadEligible(asset, role)).length;
@@ -134,47 +154,52 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
   const restrictedCount = assets.filter((asset) => !downloadEligible(asset, role)).length;
   const unclearCount = assets.filter(rightsUnclear).length;
   const sourceRestrictedReason = "Bulk download uses approved-copy gate only. Source/original files remain restricted.";
-  const comingSoonReason = "Safe workflow is visible, but bulk writeback is not enabled in beta.";
+  const bulkWorkflowReason = "Requires an existing governed workflow. Bulk writeback is not enabled in beta.";
+  const collectionWorkflowReason = "Use the Collections page or existing collection draft workflow. Bulk collection writeback is not enabled in beta.";
+  const reuseWorkflowReason = "Use asset record or Help request workflow. Bulk reuse requests are not enabled in beta.";
+  const reviewWorkflowReason = "Use the Review queue or upload workflow. Bulk review writeback is not enabled in beta.";
 
   const actions: LibraryBulkAction[] = [
     {
       id: "add-to-collection",
       label: "Add to collection",
       visible: true,
-      enabled: totalCount > 0,
+      enabled: false,
       eligibleCount: totalCount,
       totalCount,
-      statusLabel: actionStatus(totalCount, totalCount, totalCount > 0)
+      statusLabel: actionStatus(totalCount, totalCount),
+      disabledReason: collectionWorkflowReason
     },
     {
       id: "create-collection",
       label: "Create collection",
       visible: true,
-      enabled: totalCount > 0,
+      enabled: false,
       eligibleCount: totalCount,
       totalCount,
-      statusLabel: actionStatus(totalCount, totalCount, totalCount > 0)
+      statusLabel: actionStatus(totalCount, totalCount),
+      disabledReason: collectionWorkflowReason
     },
     {
       id: "request-reuse",
       label: "Request reuse",
       visible: true,
-      enabled: reusableRequestCount > 0,
+      enabled: false,
       eligibleCount: reusableRequestCount,
       totalCount,
-      statusLabel: actionStatus(reusableRequestCount, totalCount, reusableRequestCount > 0),
+      statusLabel: actionStatus(reusableRequestCount, totalCount),
       warning: unclearCount ? `${unclearCount} selected item${unclearCount === 1 ? "" : "s"} have unclear rights or consent.` : undefined,
-      disabledReason: reusableRequestCount ? undefined : "Do Not Use or archive-only assets cannot start reuse requests."
+      disabledReason: reusableRequestCount ? reuseWorkflowReason : "Do Not Use or archive-only assets cannot start reuse requests."
     },
     {
       id: "send-review",
       label: "Send to review",
       visible: canContribute(role),
-      enabled: reviewCount > 0,
+      enabled: false,
       eligibleCount: reviewCount,
       totalCount,
-      statusLabel: actionStatus(reviewCount, totalCount, reviewCount > 0),
-      disabledReason: reviewCount ? undefined : "Selected assets have no review-required signal in current role-safe view."
+      statusLabel: actionStatus(reviewCount, totalCount),
+      disabledReason: reviewCount ? reviewWorkflowReason : "Selected assets have no review-required signal in current role-safe view."
     },
     {
       id: "assign-tags",
@@ -183,8 +208,8 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
       enabled: false,
       eligibleCount: metadataCount,
       totalCount,
-      statusLabel: actionStatus(metadataCount, totalCount, false),
-      disabledReason: comingSoonReason
+      statusLabel: actionStatus(metadataCount, totalCount),
+      disabledReason: bulkWorkflowReason
     },
     {
       id: "mark-internal",
@@ -193,19 +218,19 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
       enabled: false,
       eligibleCount: metadataCount,
       totalCount,
-      statusLabel: actionStatus(metadataCount, totalCount, false),
-      disabledReason: comingSoonReason
+      statusLabel: actionStatus(metadataCount, totalCount),
+      disabledReason: bulkWorkflowReason
     },
     {
       id: "download-approved",
       label: "Download approved copies",
       visible: true,
-      enabled: downloadCount > 0,
+      enabled: false,
       eligibleCount: downloadCount,
       totalCount,
-      statusLabel: actionStatus(downloadCount, totalCount, downloadCount > 0),
+      statusLabel: actionStatus(downloadCount, totalCount),
       warning: restrictedCount ? `${restrictedCount} selected item${restrictedCount === 1 ? "" : "s"} excluded by approved-copy gate.` : sourceRestrictedReason,
-      disabledReason: downloadCount ? sourceRestrictedReason : `No selected asset has an approved derivative available. ${sourceRestrictedReason}`
+      disabledReason: downloadCount ? `Open full records to run individual approved-copy download gates. ${sourceRestrictedReason}` : `No selected asset has an approved derivative available. ${sourceRestrictedReason}`
     },
     {
       id: "export-metadata",
@@ -214,7 +239,7 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
       enabled: totalCount > 0,
       eligibleCount: totalCount,
       totalCount,
-      statusLabel: actionStatus(totalCount, totalCount, totalCount > 0)
+      statusLabel: actionStatus(totalCount, totalCount)
     },
     {
       id: "approve",
@@ -223,7 +248,7 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
       enabled: false,
       eligibleCount: reviewCount,
       totalCount,
-      statusLabel: actionStatus(reviewCount, totalCount, false),
+      statusLabel: actionStatus(reviewCount, totalCount),
       disabledReason: "Use Review queue for evidence checklist and reviewer notes. Bulk approval writeback is disabled in beta."
     },
     {
@@ -233,7 +258,7 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
       enabled: false,
       eligibleCount: reviewCount,
       totalCount,
-      statusLabel: actionStatus(reviewCount, totalCount, false),
+      statusLabel: actionStatus(reviewCount, totalCount),
       disabledReason: "Use Review queue for evidence checklist and reviewer notes. Bulk rejection writeback is disabled in beta."
     },
     {
@@ -243,7 +268,7 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
       enabled: false,
       eligibleCount: metadataCount,
       totalCount,
-      statusLabel: actionStatus(metadataCount, totalCount, false),
+      statusLabel: actionStatus(metadataCount, totalCount),
       disabledReason: "Archive is admin-only and disabled in beta until ResourceSpace writeback is verified."
     }
   ];

@@ -41,6 +41,7 @@ const noGoRecord = baseRecord
 const validGo = baseRecord
   .replace("Decision: NO-GO", "Decision: GO")
   .replace(/^Current status:.*$/m, "Current status: **GO for tiny internal Team Beta invite batch. Production remains blocked.**")
+  .replace(/^Decision notes:.*$/m, "Decision notes: Owner approval, hosted snapshot count proof, fail-closed download boundary, and queued review scope approved for tiny internal beta. Production remains blocked.")
   .replace(
     /^\| Seed\/media safety \|.*\|$/m,
     "| Seed/media safety | Enoch Liu primary; Hali Ding backup | 2026-06-15T07:29:52Z | Renewed June 15 seed/media approval captured for preview-only tiny internal beta with 181 Viewer-visible records and 0 portal-ready/downloadable records. | Approved | No public reuse or download approval. |"

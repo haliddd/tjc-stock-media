@@ -16,6 +16,7 @@ import {
   savedViewDefinitions,
   viewAliases
 } from "@/lib/catalog-language";
+import { scopedCatalogAssetsForRole } from "@/lib/catalog-scope";
 import {
   buildCollections,
   buildMetadataHealth,
@@ -177,9 +178,10 @@ export async function searchAssets({
   offset?: number;
 }): Promise<SearchResult> {
   const { assets, status } = await getActiveMediaSource();
+  const scopedAssets = scopedCatalogAssetsForRole(role, assets, status);
   const safeLimit = safeBoundedInt(limit, { min: 1, max: 120, fallback: 72 });
   const safeOffset = safeBoundedInt(offset, { min: 0, max: Number.MAX_SAFE_INTEGER, fallback: 0 });
-  const roleVisible = assets.filter((asset) => decideAccess(role, "viewAsset", asset).allowed);
+  const roleVisible = scopedAssets.filter((asset) => decideAccess(role, "viewAsset", asset).allowed);
   const discoveryQuery = !view && !collection ? resolveDiscoveryQuery(query, requestedIntent) : { query, matchedIntent: undefined };
   const queryForIntent = discoveryQuery.query;
   const intent = !view && !collection ? matchSearchIntent(queryForIntent) : undefined;
@@ -218,7 +220,7 @@ export async function searchAssets({
     source: status,
     counts: {
       ...counts,
-      rawTotal: assets.length,
+      rawTotal: scopedAssets.length,
       matching: sorted.length,
       rendered,
       currentlyShown: rendered,
@@ -253,14 +255,16 @@ export async function searchAssets({
   };
 }
 
-export async function getAssetRecordById(id: string) {
+export async function getAssetRecordById(id: string, role?: DemoRole) {
   const { assets, status } = await getActiveMediaSource();
-  return { asset: assets.find((item) => item.id === id) || null, source: status };
+  const scopedAssets = role ? scopedCatalogAssetsForRole(role, assets, status) : assets;
+  return { asset: scopedAssets.find((item) => item.id === id) || null, source: status };
 }
 
-export async function getAssetById(id: string) {
+export async function getAssetById(id: string, role?: DemoRole) {
   const { assets, status } = await getActiveMediaSource();
-  return { asset: assets.find((item) => item.id === id) || null, source: status, related: getRelatedAssets(assets, id) };
+  const scopedAssets = role ? scopedCatalogAssetsForRole(role, assets, status) : assets;
+  return { asset: scopedAssets.find((item) => item.id === id) || null, source: status, related: getRelatedAssets(scopedAssets, id) };
 }
 
 export function getRelatedAssets(assets: StockMediaAsset[], id: string) {

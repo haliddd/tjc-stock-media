@@ -2,13 +2,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { BETA_SESSION_ROLE_HEADER, BETA_SESSION_VERIFIED_HEADER } from "@/lib/beta-auth";
 import { decideAccess } from "@/lib/access-decisions";
+import { buildBrandKitResponse, getBrandKitConfig } from "@/lib/brand-kits";
+import { scopedCatalogAssetsForRole } from "@/lib/catalog-scope";
+import { buildCollections } from "@/lib/catalog-summaries";
 import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
 import { durableRuntimeStoreConfigured } from "@/lib/env";
+import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
 import { isRuntimeWriteBlockedError, runtimeStoreDiagnostics, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
+import { assetForRolePayload } from "@/lib/source-redaction";
 import { taxonomyGovernanceForRole } from "@/lib/taxonomy";
 import type { StockMediaAsset } from "@/lib/types";
 
@@ -368,5 +373,52 @@ describe("metadata schema contract", () => {
     expect(serialized).not.toContain("master available");
     expect(serialized).not.toContain("rights guaranteed");
     expect(serialized).not.toContain("reviewer-owned policy");
+  });
+});
+
+describe("photo-only beta fixture scope", () => {
+  it("keeps normal beta roles in photo-only scope while preserving reviewer diagnostics", () => {
+    const viewerScoped = scopedCatalogAssetsForRole("Viewer", demoFallbackAssets, demoFallbackStatus);
+    const contributorScoped = scopedCatalogAssetsForRole("Contributor", demoFallbackAssets, demoFallbackStatus);
+    const reviewerScoped = scopedCatalogAssetsForRole("Reviewer", demoFallbackAssets, demoFallbackStatus);
+
+    expect(viewerScoped.every((asset) => asset.mediaType === "photo")).toBe(true);
+    expect(contributorScoped.every((asset) => asset.mediaType === "photo")).toBe(true);
+    expect(reviewerScoped.some((asset) => asset.mediaType === "audio")).toBe(true);
+  });
+
+  it("redacts fallback fixture labels from normal role asset payloads", () => {
+    const fixture = demoFallbackAssets.find((asset) => /Beta Library Sample/i.test(asset.title));
+    expect(fixture).toBeTruthy();
+
+    const payload = assetForRolePayload("Viewer", fixture!);
+    const text = JSON.stringify(payload);
+
+    expect(text).not.toMatch(/Beta Library Sample|Hosted Pagination Fixture|Hosted beta fixture|Read-only sample record|qa\.fixture|API Smoke|demo-fallback/i);
+    expect(payload.title).toBe("Media record");
+    expect(payload.collection).toBe("Media library");
+  });
+
+  it("redacts fallback fixture labels from normal role collection thumbnails", () => {
+    const fixtureAssets = demoFallbackAssets.filter((asset) => /Beta Library Sample/i.test(asset.title));
+    expect(fixtureAssets.length).toBeGreaterThan(0);
+
+    const collections = buildCollections(fixtureAssets, "Viewer");
+    const text = JSON.stringify(collections);
+
+    expect(text).not.toMatch(/Beta Library Sample|Hosted Pagination Fixture|Hosted beta fixture|Read-only sample record|qa\.fixture|API Smoke|demo-fallback/i);
+    expect(collections.flatMap((collection) => collection.images).some((image) => image.alt === "Media preview")).toBe(true);
+  });
+
+  it("hides raw media source envelopes from normal role brand kit payloads", async () => {
+    const config = getBrandKitConfig("mvp-2024");
+    expect(config).toBeTruthy();
+
+    const viewer = await buildBrandKitResponse(config!, "Viewer");
+    const reviewer = await buildBrandKitResponse(config!, "Reviewer");
+
+    expect("rawSource" in viewer).toBe(false);
+    expect(JSON.stringify(viewer)).not.toMatch(/demo-fallback|fixture fallback|Hosted pagination fixture/i);
+    expect("rawSource" in reviewer).toBe(true);
   });
 });

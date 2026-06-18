@@ -4,6 +4,7 @@ import { betaFeedbackEnabled } from "@/lib/env";
 import {
   betaFeedbackAdminDeniedAuditEvent,
   betaFeedbackAdminDeniedError,
+  betaFeedbackAttachmentValidationError,
   betaFeedbackDurableStorageRouteError,
   betaFeedbackDisabledError,
   betaFeedbackStorageUnavailableError,
@@ -57,6 +58,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(storageUnavailable.body, { status: storageUnavailable.status });
   }
   const { fields, file } = await readBetaFeedbackRequestInput(request);
+  const attachmentError = betaFeedbackAttachmentValidationError(file);
+  if (attachmentError) {
+    return NextResponse.json(attachmentError.body, { status: attachmentError.status });
+  }
   const submission = normalizeBetaFeedbackSubmission(fields, request.headers.get("user-agent"));
   const validationError = betaFeedbackSubmissionValidationError(submission);
   if (validationError) {

@@ -1,5 +1,6 @@
 import { clearDerivativeFileIndex, findResourceSpaceImageDerivative, type ImageVariant } from "@/lib/images";
 import type { ApprovedChannel, MediaSourceStatus, PublishStatus, StockMediaAsset, UsageScope } from "@/lib/types";
+import { bundledBetaCatalogStatus, getBundledBetaCatalogAssets } from "@/lib/media-source/bundled-beta-catalog";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { exportedMetadataStatus, getAssetsFromExport, latestMetadataExportPath } from "@/lib/media-source/exported-metadata";
 import { getAssetsFromResourceSpaceApi, resourceSpaceApiStatus } from "@/lib/media-source/resourcespace-api";
@@ -105,7 +106,7 @@ export async function getActiveMediaSource() {
   if (cachedAssets && cachedStatus) {
     const nextSourceKey = cachedStatus.adapter === "exported-metadata"
       ? exportPath
-      : cachedStatus.adapter === "demo-fallback" && exportPath
+      : (cachedStatus.adapter === "demo-fallback" || cachedStatus.adapter === "bundled-beta-catalog") && exportPath
         ? exportPath
         : cachedSourceKey;
     if (cachedSourceKey === nextSourceKey) {
@@ -132,6 +133,14 @@ export async function getActiveMediaSource() {
         : exportedMetadataStatus.detail
     };
     cachedSourceKey = exportPath;
+    return { assets: cachedAssets, status: cachedStatus };
+  }
+
+  const bundledAssets = getBundledBetaCatalogAssets();
+  if (bundledAssets.length) {
+    cachedAssets = applyLmPhotoMiniBetaRelease(bundledAssets);
+    cachedStatus = bundledBetaCatalogStatus;
+    cachedSourceKey = "bundled-beta-catalog";
     return { assets: cachedAssets, status: cachedStatus };
   }
 

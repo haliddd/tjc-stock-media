@@ -11,7 +11,7 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 | Scope | Decision | Reason |
 |---|---|---|
 | Owner-led internal dry run | PASS local route/auth smoke only; browser QA still red | June 17 local route, role, upload/review/library, invite, redaction, and tests improved, but latest production-mode browser QA is red on download audit safety probes. This is not hosted invite approval. |
-| Joanna mini beta | NO-GO until hosted/current gates close or Hali explicitly accepts hosted downloads fail-closed | Hosted protection exists, but `/api/beta-auth/session` does not expose the June 17 build marker on the stable URL. Real beta login/invite codes, real content counts, hosted persistence/fail-closed boundary, and renewed owner approval remain open. |
+| Joanna mini beta | NO-GO until hosted snapshot proof, persistence boundary, and owner signoff close | Hosted current marker and real beta-session auth now pass. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot for hosted fallback, but stable hosted count proof still needs a redeploy/probe, hosted persistence/fail-closed boundary, and renewed owner approval. |
 | Tiny teammate invite batch | NO-GO until hosted/current gates close, Joanna feedback lands, and renewed owner signoff exists | Teammate invites require hosted/current proof, Joanna proof first, named tester list, send owner, stop-test owner, and feedback triage owner. |
 | Production/internal launch | NO-GO | Production SSO, durable storage, live ResourceSpace writeback, full rights review, production delivery, and full archive readiness are not proven. |
 
@@ -28,7 +28,7 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 | June 17 readiness pass | `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md` records local route, upload, review, library, invite-smoke, typecheck, test, and build proof. It also records browser QA red on download audit probes. | PARTIAL local / hosted gates open |
 | Hosted current marker | `curl https://tjc-stock-media.vercel.app/api/beta-auth/session` after deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND` returns 401 unauthenticated session JSON with `build.readinessContract: small-team-beta-readiness-2026-06-17`. | PASS hosted/current |
 | Real beta auth/invite | Hosted smoke passed beta-session login for Viewer, Contributor, Reviewer, and DAM Admin. Contributor and above used a church/location invite code. Values stay in Vercel env and `.runtime/beta-credentials-2026-06-17.env`, not Git/docs/logs/chat. | PASS private proof |
-| Hosted content counts | Hosted Reviewer count proof returns demo fallback: 16 total, 12 raw approved, 2 needs review, 1 archive, 1 portal ready. Expected real beta source is 181 approved photos plus pending/unapproved records. | FAIL real content source |
+| Hosted content counts | Current code adds a sanitized `bundled-beta-catalog` fallback with 181 MVP 2024 LM Photos records, no source paths/checksums, and search anchors for Bible, Plant, and Fountain. Last stable hosted proof before this code still returned demo fallback: 16 total. | PARTIAL / redeploy and hosted count probe required |
 | Hosted persistence/fail-closed | Hosted feedback POST/Admin visibility passed. Hosted blocked download failed closed with `503 audit-required` and no source/original/private/checksum leak. Upload/review persistence still needs scoped proof against real beta content. | PARTIAL |
 | Local beta rehearsal | `.runtime/beta-rehearsals/20260615T064029Z-43364/summary.json` passes Viewer search/open/download-block/review-block, Reviewer evidence lock, honest queued write, and Admin readiness. | PASS local |
 | Seed/media signoff packet | `docs/team-beta-seed-media-signoff.md` includes counts, sample searches, fail conditions, research-derived categories, and signoff text. | Signed for preview-only tiny internal beta |
@@ -86,7 +86,7 @@ Use `docs/team-beta-internal-test-packet.md` as the send packet. Keep this frami
 
 ## Verification Commands
 
-June 17 override: current decision is **Small-team beta not ready**. Production-mode local browser QA is red on download audit safety probes, and hosted teammate invites remain **NO-GO** until hosted/current URL, real beta auth/invite codes, real content counts, hosted persistence or explicit fail-closed hosted download instructions, and owner approval are proven.
+June 17 override: current decision is **Small-team beta not ready**. Production-mode local browser QA is red on download audit safety probes, and hosted teammate invites remain **NO-GO** until the stable URL is redeployed/probed with the 181-record beta snapshot, hosted persistence or explicit fail-closed hosted download instructions, and owner approval are proven.
 
 Hosted download behavior for this recovery pass: use the conservative default from `docs/runs/pm-no-go-recovery-plan-2026-06-17.md`. Hosted approved-copy downloads stay intentionally fail-closed for Joanna unless Hali separately approves and proves durable audit/ticket storage. No audit-required behavior may be loosened to make tests pass.
 
@@ -117,7 +117,7 @@ Do not run hosted mutating smokes without owner approval. `portal-hosted-smoke` 
 
 ## Final Signoff Block
 
-Do not convert this block to GO or use it for teammate invite send until June 17 hosted/current beta gates close and Hali renews approval. `docs/team-beta-signoff-record.md` is the source of truth:
+Do not convert this block to GO or use it for teammate invite send until the June 17 hosted/current beta gates, 181-record snapshot proof, and Hali approval close. `docs/team-beta-signoff-record.md` is the source of truth:
 
 ```text
 Decision: NO-GO
@@ -144,6 +144,6 @@ Notes: Tiny internal Team Beta only. Production, public launch, public downloads
 
 For fastest completion, use the fast final reply template in `docs/team-beta-signoff-record.md` and keep `docs/team-beta-internal-test-packet.md` as the invite copy source.
 
-Do not claim invite GO while hosted/current URL, real beta auth/invite codes, real content counts, hosted persistence, and owner approval remain blank, stale, or unproven.
+Do not claim invite GO while hosted/current URL, 181-record beta snapshot proof, hosted persistence/fail-closed instructions, and owner approval remain blank, stale, or unproven.
 
-Current final call: **NO-GO for teammate invite batch until June 17 hosted/current beta gates close.**
+Current final call: **NO-GO for teammate invite batch until the 181-record hosted snapshot is redeployed/probed and owner gates close.**

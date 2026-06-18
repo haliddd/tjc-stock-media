@@ -8,7 +8,7 @@
   "baseUrl": "http://localhost:4871",
   "classification": "Small-team beta not ready",
   "hostedTeammateInviteDecision": "NO-GO",
-  "decisionReason": "Route/API/build proof improved and hosted/current plus real beta-session auth now pass. Latest production-mode local browser QA is red on approved/unsafe download probes because required audit writes fail closed without durable runtime state. Hosted feedback and blocked-download fail-closed behavior pass, but hosted content source is demo fallback instead of the expected real beta content.",
+  "decisionReason": "Route/API/build proof improved and hosted/current plus real beta-session auth now pass. Latest production-mode local browser QA is red on approved/unsafe download probes because required audit writes fail closed without durable runtime state. Hosted feedback and blocked-download fail-closed behavior pass. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot before demo fallback, but stable hosted redeploy/count proof is still required.",
   "localProofSummary": {
     "browserQa": {
       "status": "fail",
@@ -116,8 +116,8 @@
         "real-small-team-beta"
       ],
       "evidenceDoc": "docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md",
-      "requiredProof": "Failed with exact delta. Hosted Reviewer count proof returned demo fallback: rawTotal 16, approvedRaw 12, needsReview 2, archive 1, portalReady 1. Expected real beta source remains 181 approved photos plus pending/unapproved records.",
-      "safeNextStep": "Configure ResourceSpace API/export-backed beta source for hosted or explicitly scope Joanna to demo-fallback workflow testing. Do not mutate ResourceSpace, Google Drive, or source media."
+      "requiredProof": "Current code adds bundled-beta-catalog as a sanitized hosted fallback with 181 MVP 2024 LM Photos records and no source paths/checksums. Last stable hosted Reviewer count proof still returned demo fallback: rawTotal 16, approvedRaw 12, needsReview 2, archive 1, portalReady 1. Stable hosted redeploy and count probe remain required.",
+      "safeNextStep": "Redeploy after review, then run read-only hosted count proof. Do not mutate ResourceSpace, Google Drive, source media, or hosted env without owner approval."
     },
     {
       "id": "durable-hosted-runtime-state",

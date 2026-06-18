@@ -31,6 +31,7 @@ import { betaVisibilityLabel, reuseAnswerLabel } from "@/lib/portal-context-pres
 import { routeWithRole } from "@/lib/role-routes";
 import {
   buildLibraryBulkActions,
+  buildLibraryMetadataCsv,
   buildLibrarySelectionSummary,
   reconcileVisibleSelection,
   selectRangeInVisibleOrder,
@@ -577,26 +578,17 @@ export function EnterpriseLibraryPage() {
   };
   const announceLibraryAction = (message: string) => setLibraryMessage(message);
   const exportSelectedMetadata = () => {
-    const escapeCsv = (value: string | number | undefined) => `"${String(value || "").replace(/"/g, '""')}"`;
-    const headers = ["id", "title", "status", "usageScope", "mediaType", "collection", "reference"];
-    const rows = selectedAssets.map((asset) => [
-      asset.id,
-      displayTitle(asset),
-      asset.status,
-      asset.usageScope,
-      asset.mediaType,
-      asset.collection,
-      assetRecordRef(asset)
-    ]);
-    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
+    const csv = buildLibraryMetadataCsv(selectedAssets);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `library-selected-metadata-${selectedAssets.length}.csv`;
+    link.download = `tjc-library-selected-metadata-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
-    announceLibraryAction(`Exported safe metadata for ${selectedAssets.length.toLocaleString()} selected asset${selectedAssets.length === 1 ? "" : "s"}. Source paths and originals were not included.`);
+    announceLibraryAction(`Export metadata: ${selectedAssets.length.toLocaleString()} role-safe visible asset${selectedAssets.length === 1 ? "" : "s"} exported. Source/original fields were excluded.`);
   };
   const runBulkAction = (action: LibraryBulkAction) => {
     if (!action.enabled) {

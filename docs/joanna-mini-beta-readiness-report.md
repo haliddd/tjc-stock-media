@@ -4,7 +4,7 @@ Date: 2026-06-17
 
 ## Final Decision
 
-Current state is small-team beta not ready. Production-mode local browser QA is red on approved/unsafe download safety probes because audit writes fail closed without durable runtime state. For this recovery pass, the conservative hosted behavior is to keep approved-copy downloads intentionally fail-closed for Joanna unless Hali separately approves and proves durable audit/ticket storage. It is not real Joanna/team beta readiness until hosted protected URL currency, real login/invite codes, real content counts, and hosted runtime persistence or fail-closed instructions are proven. The formal final decision is the last line of this report.
+Current state is small-team beta not ready. Production-mode local browser QA is red on approved/unsafe download safety probes because audit writes fail closed without durable runtime state. For this recovery pass, the conservative hosted behavior is to keep approved-copy downloads intentionally fail-closed for Joanna unless Hali separately approves and proves durable audit/ticket storage. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot for hosted fallback, but it is not Joanna/team beta ready until the stable hosted URL is redeployed/probed with that snapshot, hosted runtime persistence or fail-closed instructions are proven, and owner signoff is renewed. The formal final decision is the last line of this report.
 
 Latest local evidence: `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md`.
 
@@ -85,8 +85,8 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 
 - June 17 production-mode local browser QA is red: 2 failures and 3 console errors in `docs/screenshots/qa/browser-qa-report.json`, both tied to download audit writes failing closed with `503 audit-required`.
 - June 17 local invite smoke is green with placeholder codes, but real invite codes were not created or tested.
-- June 17 local content proof used local/export-backed data and fixtures, but the expected 181 approved photos plus pending/unapproved set was not proven on hosted/current.
-- Hosted content proof remains blocked: Reviewer search on hosted returned `sourceAdapter: demo-fallback`, `rawTotal: 16`, `approvedRaw: 12`, `needsReview: 2`, `archive: 1`, and `portalReady: 1`, not the expected 181 approved photos plus pending/unapproved beta content.
+- June 17 local content proof used local/export-backed data and fixtures. Current code now adds a sanitized `bundled-beta-catalog` fallback with 181 MVP 2024 LM Photos records and no source paths/checksums, but stable hosted count proof still needs redeploy/probe evidence.
+- Historical hosted content proof remains superseded but unresolved on the stable URL until redeploy: Reviewer search returned `sourceAdapter: demo-fallback`, `rawTotal: 16`, `approvedRaw: 12`, `needsReview: 2`, `archive: 1`, and `portalReady: 1`.
 - Hosted runtime persistence is partial: feedback POST/Admin visibility passed, blocked download failed closed with `503 audit-required`, and no source/original/private/checksum leak was found. Hosted upload intake and review decision persistence were not separately proven against real beta content.
 
 - First Vercel deploy attempt failed before release because local artifacts/deps were included in the upload. `.vercelignore` now excludes local build/dependency/runtime/media artifacts; retry succeeded.
@@ -111,19 +111,19 @@ Worktree had many unrelated dirty files before this run. They were not reverted.
 
 ## Known Limitations
 
-- June 17 final call is local-only. Do not invite Joanna or team testers until hosted/current beta gates are proven.
+- June 17 final call is local-only. Do not invite Joanna or team testers until the stable hosted URL is redeployed/probed with the 181-record beta snapshot and owner gates are proven.
 - Hosted reviewer/admin login was not exercised because usable persona credentials were not available to this run.
 - Hosted mutating upload/review was not run.
 - Hosted deployment has the newest deploy-package/build fixes and LM Photos runtime overlay code from this working tree, but it is a Vercel CLI deploy of a dirty worktree rather than a clean Git commit deployment.
 - All current LM Photos assets are treated as TJC-owned and public-ready by a runtime-only overlay. About 90% are `Approved Public`; about 10% are intentionally left across other statuses for test rounds.
-- ResourceSpace export/API was unavailable in June 16 count report; portal uses media-library/export/local fallback for beta proof.
+- ResourceSpace export/API was unavailable in June 16 count report; current code falls back to a sanitized 181-record bundled beta snapshot before demo data when hosted export/API are unavailable.
 - Review decisions are queued/pending portal evidence, not live ResourceSpace truth.
 - Original/source download remains blocked for normal roles.
 - Approved derivative download works locally in dev with audit/ticket storage; hosted production download fails closed until durable audit/ticket storage exists.
 - Browser QA shows UI overflow/copy issues that should be fixed before a broader team beta.
 - Hosted durable storage/backup/restore remains unproven.
 
-Final decision: Small-team beta not ready; hosted/team beta NO-GO until real hosted content source is configured or Hali explicitly scopes Joanna to demo-fallback workflow testing only, hosted upload/review persistence boundaries are documented, and owner signoff is renewed.
+Final decision: Small-team beta not ready; hosted/team beta NO-GO until the stable hosted URL is redeployed/probed with the 181-record bundled beta snapshot, hosted upload/review persistence boundaries or fail-closed instructions are documented, and owner signoff is renewed.
 
 ## Risk Owners
 
@@ -152,4 +152,4 @@ Final decision: Small-team beta not ready; hosted/team beta NO-GO until real hos
 - Confirm conservative recovery default: keep hosted downloads blocked for this Joanna round, or override it by configuring durable hosted runtime storage for audit/tickets and proving hosted download-ticket smoke.
 - Decide whether browser QA overflow/copy failures must block Joanna or can wait until after her content feedback.
 
-Current owner-ready answer: NO-GO for Joanna/team invite against real beta content. Recommended next owner decision is either configure the hosted real beta content source, or explicitly run a narrower Joanna workflow test against demo fallback with downloads fail-closed.
+Current owner-ready answer: NO-GO for Joanna/team invite until the hosted 181-record beta snapshot and no-download/queued-review boundary are proven on the stable URL.

@@ -25,11 +25,16 @@ const fallback = read("frontend/lib/media-source/demo-fallback.ts");
 const approvedPublic = (fallback.match(/status: "Approved Public"/g) || []).length;
 const needsReview = (fallback.match(/status: "Needs Review"/g) || []).length;
 const archive = (fallback.match(/status: "Searchable Archive"/g) || []).length;
-if (approvedPublic !== 2 || needsReview !== 1 || archive !== 1) {
-  failures.push(`fallback distribution expected 2/1/1 got ${approvedPublic}/${needsReview}/${archive}`);
+if (approvedPublic !== 5 || needsReview !== 2 || archive !== 1) {
+  failures.push(`fallback distribution expected 5/2/1 got ${approvedPublic}/${needsReview}/${archive}`);
 }
 if (!fallback.includes("lm.photos@tjc.org") || !fallback.includes("stock-safe") || !fallback.includes("context-safe") || !fallback.includes("archive-only")) {
   failures.push("fallback fixtures missing trusted source or reuse tier tags");
+}
+
+const catalogScope = read("frontend/lib/catalog-scope.ts");
+if (!catalogScope.includes("currentBetaPhotoOnlyRole") || !catalogScope.includes('asset.mediaType !== "photo"')) {
+  failures.push("catalog scope must keep normal beta roles photo-only");
 }
 
 if (failures.length) {

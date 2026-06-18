@@ -634,6 +634,7 @@ export function DamToolbar({
 
 function sourceTruthDisplay(source?: MediaSourceStatus | null) {
   const label = sourceLabel(source);
+  if (source?.adapter === "bundled-beta-catalog") return "Beta metadata snapshot";
   if (/fixture|fallback|demo/i.test(label)) return "Local demo data";
   if (/resourcespace|dam/i.test(label)) return "Hosted DAM instance";
   if (/local/i.test(label)) return "Local demo data";

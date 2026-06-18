@@ -805,11 +805,11 @@ if node scripts/team-beta-signoff-guard.mjs >"$team_beta_signoff_output" 2>&1; t
     if grep -q 'Owner-led internal dry run | PASS local route/auth smoke only; browser QA still red' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Tiny teammate invite batch | NO-GO until hosted/current gates close' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Production/internal launch | NO-GO' docs/team-beta-go-no-go-packet.md \
-      && grep -q 'Do not claim invite GO while hosted/current URL, real beta auth/invite codes, real content counts, hosted persistence, and owner approval remain blank, stale, or unproven.' docs/team-beta-go-no-go-packet.md \
+      && grep -q 'Do not claim invite GO while hosted/current URL, 181-record beta snapshot proof, hosted persistence/fail-closed instructions, and owner approval remain blank, stale, or unproven.' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Final Signoff Block' docs/team-beta-go-no-go-packet.md \
       && grep -q 'Current final call: \*\*NO-GO for teammate invite batch' docs/team-beta-go-no-go-packet.md \
       && grep -q 'docs/team-beta-go-no-go-packet.md' docs/beta-readiness-command-center.md docs/team-beta-internal-test-packet.md; then
-      pass "Team Beta GO/NO-GO packet blocks invites until hosted/current gates close"
+      pass "Team Beta GO/NO-GO packet blocks invites until hosted snapshot and owner gates close"
     else
       fail "Team Beta GO/NO-GO packet missing or overclaims invite readiness"
     fi

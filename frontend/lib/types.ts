@@ -715,7 +715,7 @@ export type SearchResult = {
 };
 
 export type MediaSourceStatus = {
-  adapter: "resourcespace-api" | "exported-metadata" | "demo-fallback" | "media-library";
+  adapter: "resourcespace-api" | "exported-metadata" | "bundled-beta-catalog" | "demo-fallback" | "media-library";
   label: string;
   detail: string;
   readOnly: boolean;
