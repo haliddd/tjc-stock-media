@@ -42,7 +42,19 @@ export function PrimaryAction({
     </>
   );
   if (href && !disabled) return <a className={classes} href={href}>{content}</a>;
-  return <button className={classes} type={type} onClick={onClick} disabled={disabled}>{content}</button>;
+  return (
+    <button
+      className={classes}
+      type={type}
+      onClick={(event) => {
+        if (type !== "submit") event.preventDefault();
+        onClick?.();
+      }}
+      disabled={disabled}
+    >
+      {content}
+    </button>
+  );
 }
 
 export function EmptyState({

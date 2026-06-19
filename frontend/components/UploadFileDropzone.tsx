@@ -96,7 +96,7 @@ export function UploadFileDropzone({
           </span>
           <span className="text-lg font-black text-tjc-ink">{dragging ? "Release to add files" : "Drop files here or browse"}</span>
           <span id="upload-file-help" className="max-w-[28rem] text-sm font-semibold leading-relaxed text-tjc-muted">
-            Photos and lightweight graphics enter Status: Received / Needs Review with Gate: Do Not Publish. Large media uses the admin intake path.
+            Photos and lightweight graphics submit as: Submitted / Waiting for review / Do not use yet. Large media needs media team intake before review.
           </span>
         </span>
         <input

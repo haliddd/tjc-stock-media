@@ -70,8 +70,30 @@ export type UploadIntakeValidationError = {
 };
 
 export type SubmitUploadIntakeResult = {
-  body: ReturnType<typeof buildUploadIntakeResponse>;
+  body: UploadIntakePublicResponse;
   status: 200 | 503;
+  auditEvent: UploadIntakeAuditEvent;
+};
+
+export type UploadIntakePublicResponse = {
+  ok: boolean;
+  batchId?: string;
+  status: "needs-review" | "large-media-intake" | "intake-unavailable";
+  message: string;
+  eventName?: string;
+  fileCount?: number;
+  sourceLinkCaptured?: boolean;
+  intakeState: {
+    received: boolean;
+    review: "Waiting for review" | "Not submitted";
+    usage: "Do not use yet";
+    publishable: false;
+  };
+  submissionStatus?: "Submitted";
+  reviewStatus?: "Waiting for review";
+  publishStatus?: "Do not use yet";
+  defaultReviewState?: "Needs Review";
+  defaultUsageScope?: "Do Not Publish";
 };
 
 type UploadIntakeAuditPacket = Pick<UploadIntakePacket, "eventName" | "files" | "sourceLink"> &
@@ -285,7 +307,7 @@ export function uploadIntakeValidationError(intake: UploadIntakePacket): UploadI
     return {
       body: {
         error: "Upload intake supports one focused batch at a time.",
-        guidance: `Submit ${MAX_UPLOAD_INTAKE_FILES} or fewer files, or route larger batches through the admin intake path.`
+        guidance: `Submit ${MAX_UPLOAD_INTAKE_FILES} or fewer files, or ask the media team to intake larger batches before review.`
       },
       status: 400
     };
@@ -313,6 +335,12 @@ export function uploadIntakeAuditSummary(intake: UploadIntakePacket) {
     : "Intake batch created for DAM review; no media-library approval write performed.";
 }
 
+function uploadIntakeBlockedSummary(intake: UploadIntakePacket) {
+  return intake.largeFiles.length
+    ? "Large-media intake routed away from browser upload."
+    : "Upload intake unavailable; no review packet was recorded.";
+}
+
 export function uploadIntakeDeniedAuditEvent(role: DemoRole, actor: string): UploadIntakeAuditEvent {
   return {
     type: "upload_denied",
@@ -324,33 +352,39 @@ export function uploadIntakeDeniedAuditEvent(role: DemoRole, actor: string): Upl
   };
 }
 
-export function uploadIntakeSubmittedAuditEvent(intake: UploadIntakePacket, role: DemoRole, actor: string): UploadIntakeAuditEvent {
+export function uploadIntakeSubmittedAuditEvent(intake: UploadIntakePacket, role: DemoRole, actor: string, result?: { ok: boolean }): UploadIntakeAuditEvent {
+  const blocked = intake.largeFiles.length > 0 || result?.ok === false;
   return {
-    type: "upload_submitted",
+    type: blocked ? "upload_blocked" : "upload_submitted",
     role,
     actor,
-    status: uploadIntakeAuditStatus(intake),
-    summary: uploadIntakeAuditSummary(intake),
+    status: blocked ? "blocked" : uploadIntakeAuditStatus(intake),
+    summary: blocked ? uploadIntakeBlockedSummary(intake) : uploadIntakeAuditSummary(intake),
     details: uploadIntakeAuditDetails(intake)
   };
 }
 
 export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?: PersistIntakeBatchResult) {
   const storageMode = persisted?.storageMode || "source-link-only";
+  const status = intake.largeFiles.length ? "large-media-intake" as const : "needs-review" as const;
+  const largeMediaWithoutIntake = intake.largeFiles.length > 0 && !persisted;
+  const blockedNoDurableStore = storageMode === "blocked-no-durable-store";
   return {
-    ok: storageMode !== "blocked-no-durable-store",
+    ok: !largeMediaWithoutIntake && !blockedNoDurableStore,
     batchId: persisted?.batchId,
-    status: intake.largeFiles.length ? "large-media-intake" : "needs-review",
+    status,
     intakeState: {
-      received: true,
+      received: !largeMediaWithoutIntake && !blockedNoDurableStore,
       review: uploadBetaBoundaries.defaultState.review,
       usage: uploadBetaBoundaries.defaultState.usage,
       publishable: false
     },
     defaultReviewState: "Needs Review",
     defaultUsageScope: "Do Not Publish",
-    message: storageMode === "blocked-no-durable-store"
+    message: blockedNoDurableStore
       ? persisted?.blockedReason || "Durable storage is required before browser file intake can continue."
+      : largeMediaWithoutIntake
+        ? "Large video or audio needs media team intake before review. Nothing is public."
       : intake.largeFiles.length
         ? uploadDefaultState.largeMediaMessage
         : "Batch submitted. Your review packet has been created. Nothing is public yet.",
@@ -368,6 +402,60 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     storageMode,
     custodyMode: storageMode === "local-runtime" ? "local-private-beta-staging" : storageMode,
     resourceSpaceWritten: false
+  };
+}
+
+export function buildUploadIntakePublicResponse(response: ReturnType<typeof buildUploadIntakeResponse>): UploadIntakePublicResponse {
+  if (!response.ok && response.status === "large-media-intake") {
+    return {
+      ok: false,
+      status: "large-media-intake",
+      message: "Large video or audio needs media team intake before review. Nothing is public.",
+      eventName: response.eventName,
+      fileCount: response.fileCount,
+      sourceLinkCaptured: response.sourceLinkCaptured,
+      intakeState: {
+        received: false,
+        review: "Not submitted",
+        usage: "Do not use yet",
+        publishable: false
+      }
+    };
+  }
+
+  if (!response.ok || !response.batchId) {
+    return {
+      ok: false,
+      status: "intake-unavailable",
+      message: "Upload intake is unavailable. Ask the media team for help.",
+      intakeState: {
+        received: false,
+        review: "Not submitted",
+        usage: "Do not use yet",
+        publishable: false
+      }
+    };
+  }
+
+  return {
+    ok: true,
+    batchId: response.batchId,
+    status: response.status,
+    message: "Submitted for review. Waiting for review. Nothing is public.",
+    eventName: response.eventName,
+    fileCount: response.fileCount,
+    sourceLinkCaptured: response.sourceLinkCaptured,
+    intakeState: {
+      received: true,
+      review: "Waiting for review",
+      usage: "Do not use yet",
+      publishable: false
+    },
+    submissionStatus: "Submitted",
+    reviewStatus: "Waiting for review",
+    publishStatus: "Do not use yet",
+    defaultReviewState: "Needs Review",
+    defaultUsageScope: "Do Not Publish"
   };
 }
 
@@ -414,9 +502,11 @@ async function persistUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRo
 
 export async function submitUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRole, actor: string): Promise<SubmitUploadIntakeResult> {
   const persisted = await persistUploadIntakeBatch(intake, role, actor);
-  const body = buildUploadIntakeResponse(intake, persisted);
+  const internalBody = buildUploadIntakeResponse(intake, persisted);
+  const body = buildUploadIntakePublicResponse(internalBody);
   return {
     body,
-    status: body.storageMode === "blocked-no-durable-store" ? 503 : 200
+    status: body.ok ? 200 : 503,
+    auditEvent: uploadIntakeSubmittedAuditEvent(intake, role, actor, body)
   };
 }

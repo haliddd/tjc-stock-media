@@ -745,11 +745,12 @@ function BetaCommandCenter({ readiness, compact = false }: { readiness?: DamRead
   );
 }
 
-function resourceSpaceImportStatus(readiness?: DamReadinessResult | null) {
+export function resourceSpaceImportStatus(readiness?: DamReadinessResult | null) {
   const source = readiness?.source;
   if (!source) return "Not loaded";
-  if (mediaSourceIsLive(source)) return source.readOnly ? "API read-only" : "API read path";
-  if (source.adapter === "exported-metadata") return "Import snapshot";
+  if (source.adapter === "resourcespace-api") return "Read-only API source";
+  if (mediaSourceIsLive(source)) return "Read-only source check";
+  if (source.adapter === "exported-metadata") return "Read-only import snapshot";
   if (source.adapter === "bundled-beta-catalog") return "Read-only catalog snapshot";
   if (source.adapter === "demo-fallback") return "Catalog source unavailable";
   return source.label;
@@ -861,26 +862,39 @@ function ResourceSpaceBoundaryPanel({ readiness }: { readiness?: DamReadinessRes
   const source = readiness?.source;
   const live = mediaSourceIsLive(source);
   const reviewWrites = (readiness?.integrationReadiness || []).find((row) => row.id === "review-writes");
+  const writeGateState = reviewWrites?.state === "Read-only" ? "Gated read-only" : "Disabled";
   const rows = [
     {
-      label: "Source of truth",
+      label: "Source status",
       value: source?.label || "Not loaded",
       detail: source?.detail || "Readiness source not loaded; do not infer health from missing data."
     },
     {
-      label: "Connection",
-      value: live ? "Configured API read path" : "No API connection claim",
-      detail: live ? "Treat as read-only unless write capability is explicitly proven." : "Current data is an import/snapshot or local fixture."
+      label: "Read boundary",
+      value: live || source?.adapter === "resourcespace-api" ? "Read-only API check" : "No API write claim",
+      detail: live || source?.adapter === "resourcespace-api"
+        ? "ResourceSpace data is read for status/search only. This UI does not make source writes."
+        : "Current data is an import/snapshot or local fixture."
     },
     {
       label: "Portal boundary",
       value: "Workflow layer",
-      detail: "Portal displays approved copies, queues review requests, and records local audit evidence."
+      detail: "Portal displays governed copies, queues review requests, and records local audit evidence without changing source media."
+    },
+    {
+      label: "Upload intake",
+      value: "No ResourceSpace write",
+      detail: "Browser/admin intake creates review packets only. It does not approve, publish, enable downloads, or write ResourceSpace."
     },
     {
       label: "Review handoff",
-      value: reviewWrites ? integrationState(reviewWrites) : "Disabled",
+      value: writeGateState,
       detail: reviewWrites?.detail || "Reviewer action is prepared locally, not applied to ResourceSpace."
+    },
+    {
+      label: "Confirmation rule",
+      value: "Re-read required",
+      detail: "No ResourceSpace mutation is final truth unless the server writes mapped fields and a post-write re-read matches reviewer, date, notes, and status."
     },
     {
       label: "Missing bridge fields",
@@ -1454,7 +1468,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
   );
   if (activeNav === "teams") return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Teams & Owners</h3><p>Ownership is shown as pilot operating model, not a live directory.</p></div><StatusBadge status="Read-only" /></header>
+      <header className="ed-card-head"><div><h3>Teams & Owners</h3><p>Ownership is shown as pilot operating model, not an active staff directory.</p></div><StatusBadge status="Read-only" /></header>
       <div className="ed-admin-owner-grid">{teamRows.map(([team, owner, detail]) => <article key={team}><Users size={20} /><strong>{team}</strong><span>{owner}</span><p>{detail}</p></article>)}</div>
     </section>
   );
@@ -1511,7 +1525,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
   if (activeNav === "audit-logs") return <AuditTable readiness={readiness} compact={compact} />;
   return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Integration Status</h3><p>Configuration status for ResourceSpace read path, writeback gate, preview proxy, and audit evidence.</p></div><StatusBadge status={readiness?.source.readOnly ? "Read-only" : "Operational"} /></header>
+      <header className="ed-card-head"><div><h3>Integration Status</h3><p>Configuration status for ResourceSpace read path, writeback gate, preview proxy, and audit evidence.</p></div><StatusBadge status="Read-only" /></header>
       <IntegrationTable rows={integrations} />
       <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
     </section>

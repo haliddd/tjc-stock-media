@@ -27,7 +27,7 @@ export const uploadDefaultState = {
   status: "Submitted",
   message: "New media starts in review. A reviewer approves it before anyone can reuse it.",
   largeMediaMessage:
-    "Video/audio and files over 100 MB use the large-media/admin intake path. They still need review before reuse."
+    "Video/audio and files over 100 MB need media team intake before review. They are not public."
 };
 
 export const uploadBetaBoundaries = {
@@ -37,7 +37,7 @@ export const uploadBetaBoundaries = {
     "Reviewer evidence: source, owner/license, people/youth, requested use, proof link, and restrictions"
   ],
   forbidden: [
-    "Video/audio or files over 100 MB in browser upload; use the large-media/admin intake path",
+    "Video/audio or files over 100 MB in browser upload; use media team intake before review",
     "Source-media renames, deletes, moves, or Git commits",
     "Public approval, download enablement, or final approval writeback from upload"
   ],
@@ -65,7 +65,7 @@ export const reviewQueues = [
   { id: "missing-evidence", label: "Missing evidence", description: "Approval-critical metadata, reviewer notes, rights, people, source, or usage evidence gaps." },
   { id: "stale-review", label: "Stale review", description: "Approved or lifecycle-sensitive records due for re-review." },
   { id: "derivative-gap", label: "Derivative gap", description: "Approved-copy, preview, dimensions, or rendition readiness gaps." },
-  { id: "pending-write", label: "Pending write", description: "Portal decision queued; ResourceSpace remains unchanged until sync/follow-up succeeds." },
+  { id: "pending-write", label: "Pending write", description: "Portal decision queued; ResourceSpace remains unchanged until source follow-up and confirmation re-read succeed." },
   { id: "pending", label: "Missing copyright evidence", description: "Evidence packet incomplete or needs reviewer decision." },
   { id: "children-youth", label: "People/minors status unresolved", description: "Contains, may contain, or has not ruled out people/youth." },
   { id: "missing-source", label: "Source access restricted", description: "Source, album, photographer, or custody path missing." },

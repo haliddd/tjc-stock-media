@@ -58,6 +58,15 @@ type LocalRequestReceipt = {
   status?: unknown;
 };
 
+export function requestHelpHref(type: string) {
+  return `/requests?type=${encodeURIComponent(type)}`;
+}
+
+export function isLocalRequestReceiptOpen(status: unknown) {
+  const label = String(status || "Local receipt").toLowerCase();
+  return !/approved|cancelled|closed|complete|done|downloaded|published|resolved|synced/.test(label);
+}
+
 const localRequestReceiptKeys = [
   "tjc-media-request-receipts-v1",
   "tjc-help-request-receipts-v1"
@@ -77,7 +86,7 @@ function helpTasks(opsView: boolean): HelpTask[] {
       title: "Find media",
       summary: "Search for photos and collections by ministry, event, topic, or use.",
       action: "Search library",
-      href: "/",
+      href: "/library",
       icon: Search
     },
     {
@@ -101,7 +110,7 @@ function helpTasks(opsView: boolean): HelpTask[] {
       title: "Request permission",
       summary: "Ask before public, sensitive, unclear, or new use.",
       action: "Start request",
-      href: "/requests",
+      href: requestHelpHref("Request permission"),
       icon: FileQuestion
     },
     {
@@ -109,7 +118,7 @@ function helpTasks(opsView: boolean): HelpTask[] {
       title: "Report a privacy or rights issue",
       summary: "Flag consent, copyright, credit, removal, or sensitive-media concerns.",
       action: "Report issue",
-      href: "/requests",
+      href: requestHelpHref("Report privacy or rights issue"),
       icon: AlertTriangle
     },
     {
@@ -119,7 +128,7 @@ function helpTasks(opsView: boolean): HelpTask[] {
         ? "Use a tracked request when original or high-resolution access is needed."
         : "Ask the media team when a normal preview is not enough.",
       action: "Ask for help",
-      href: "/requests",
+      href: requestHelpHref("Request original or high-resolution help"),
       icon: Camera
     },
     {
@@ -127,7 +136,7 @@ function helpTasks(opsView: boolean): HelpTask[] {
       title: "Contact media team",
       summary: "Send a question with the event, deadline, audience, and intended use.",
       action: "Contact team",
-      href: "/requests",
+      href: requestHelpHref("General media help"),
       icon: MessageCircle
     }
   ];
@@ -201,7 +210,7 @@ function policyItems(opsView: boolean): HelpPolicy[] {
     { id: "rights-consent", title: "Rights & consent", detail: "Review owner, license, consent, credit, expiry, and allowed audience.", opsOnly: true },
     { id: "source-access", title: "Source access", detail: "Use tracked approval for original or high-resolution handling.", opsOnly: true },
     { id: "metadata", title: "Metadata standards", detail: "Keep event, ministry, date, people notes, usage scope, and reviewer fields consistent.", opsOnly: true },
-    { id: "support-zone", title: "Support Zone process", detail: "Route blocked launch issues through the admin support queue.", opsOnly: true }
+    { id: "admin-escalation", title: "Admin escalation", detail: "Route blocked media issues through the reviewer/admin request queue.", opsOnly: true }
   ];
 }
 
@@ -232,7 +241,7 @@ const reviewReasons = [
 ];
 
 const quickLinks = [
-  { title: "Library", detail: "Search media and collections", href: "/", icon: FolderOpen },
+  { title: "Library", detail: "Search media and collections", href: "/library", icon: FolderOpen },
   { title: "Upload photos", detail: "Send a focused photo batch", href: "/upload", icon: UploadCloud },
   { title: "Recent uploads", detail: "Check browser-saved submissions", href: "/recent-uploads", icon: Inbox },
   { title: "Use rules", detail: "Read media-use policies", href: "#policies", icon: BookOpen }
@@ -245,15 +254,14 @@ function textMatches(query: string, fields: string[]) {
   return terms.every((term) => haystack.includes(term));
 }
 
-function readOpenRequestReceiptCount() {
+function readLocalRequestReceiptCount() {
   try {
     for (const key of localRequestReceiptKeys) {
       const parsed = JSON.parse(window.localStorage.getItem(key) || "[]") as unknown;
       if (!Array.isArray(parsed)) continue;
       const open = parsed.filter((item): item is LocalRequestReceipt => {
         if (!item || typeof item !== "object") return false;
-        const status = String((item as LocalRequestReceipt).status || "open").toLowerCase();
-        return !/closed|complete|done|resolved|cancelled/.test(status);
+        return isLocalRequestReceiptOpen((item as LocalRequestReceipt).status);
       });
       if (open.length) return open.length;
     }
@@ -268,10 +276,10 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
   const opsView = canReview(role);
   const [query, setQuery] = useState("");
   const [openFaq, setOpenFaq] = useState(0);
-  const [openRequestCount, setOpenRequestCount] = useState(0);
+  const [localReceiptCount, setLocalReceiptCount] = useState(0);
 
   useEffect(() => {
-    setOpenRequestCount(readOpenRequestReceiptCount());
+    setLocalReceiptCount(readLocalRequestReceiptCount());
   }, []);
 
   const tasks = useMemo(() => helpTasks(opsView), [opsView]);
@@ -304,8 +312,36 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
         <section className="help-center-hero" aria-labelledby="help-center-title">
           <div>
             <h1 id="help-center-title">Help Center</h1>
-            <p>Find guidance, request help, or check media-use rules.</p>
+            <p>Start with the task you need to do. Search when you need article or policy wording.</p>
           </div>
+        </section>
+
+        <section className="help-primary-tasks" aria-labelledby="primary-help-title">
+          <header>
+            <h2 id="primary-help-title">What do you need to do?</h2>
+          </header>
+          <div className="help-task-card-grid">
+            {tasks.map((task) => {
+              const TaskIcon = task.icon;
+              return (
+                <Link className="help-task-card" href={roleHref(task.href)} key={task.id}>
+                  <span className="help-task-icon"><TaskIcon size={22} strokeWidth={1.85} aria-hidden="true" /></span>
+                  <span>
+                    <strong>{task.title}</strong>
+                    <small>{task.summary}</small>
+                    <em>{task.action} <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></em>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="help-search-panel" aria-labelledby="help-search-title">
+          <header>
+            <h2 id="help-search-title">Find guidance</h2>
+            <p>Search tasks, articles, and media-use rules.</p>
+          </header>
           <form className="help-center-search" role="search" onSubmit={(event) => event.preventDefault()}>
             <Search size={20} strokeWidth={1.9} aria-hidden="true" />
             <label htmlFor="help-center-search-input" className="sr-only">Search help articles, tasks, or policies</label>
@@ -378,27 +414,6 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
             )}
           </section>
         ) : null}
-
-        <section className="help-primary-tasks" aria-labelledby="primary-help-title">
-          <header>
-            <h2 id="primary-help-title">What do you need help with?</h2>
-          </header>
-          <div className="help-task-card-grid">
-            {tasks.map((task) => {
-              const TaskIcon = task.icon;
-              return (
-                <Link className="help-task-card" href={roleHref(task.href)} key={task.id}>
-                  <span className="help-task-icon"><TaskIcon size={22} strokeWidth={1.85} aria-hidden="true" /></span>
-                  <span>
-                    <strong>{task.title}</strong>
-                    <small>{task.summary}</small>
-                    <em>{task.action} <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></em>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
 
         <section className="help-center-start" aria-labelledby="getting-started-title">
           <h2 id="getting-started-title">Getting started</h2>
@@ -497,16 +512,16 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
             </div>
           </header>
           <Link className="help-review-primary" href={roleHref("/requests")}>Start a request <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
-          <Link className="help-review-secondary" href={roleHref("/requests")}>Check open requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
+          <Link className="help-review-secondary" href={roleHref("/requests")}>View local receipts <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
         </section>
 
-        {openRequestCount > 0 ? (
+        {localReceiptCount > 0 ? (
           <section className="help-side-card" aria-label="Local open request receipts">
-            <h2>My open requests</h2>
+            <h2>Local request receipts</h2>
             <div className="help-open-requests">
-              <span><strong>{openRequestCount}</strong><small>Open on this browser</small></span>
+              <span><strong>{localReceiptCount}</strong><small>On this browser</small></span>
             </div>
-            <Link className="help-review-secondary" href={roleHref("/requests")}>Open my requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
+            <Link className="help-review-secondary" href={roleHref("/requests")}>Open request receipts <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
           </section>
         ) : null}
 

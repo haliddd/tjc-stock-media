@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState } from "react";
+import React, { FormEvent, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Clock3, FileCheck2, FileText, Link as LinkIcon, RotateCcw, Save, Search, ShieldCheck, UploadCloud, Users } from "lucide-react";
 import { DamFormEmptyState as EmptyState, DamFormEvidenceChecklist as EvidenceChecklist, DamFormPrimaryAction as PrimaryAction, DamFormUseCaseCard as UseCaseCard, DamPacketRequirementPanel as PacketRequirementPanel, DamPacketStepper as PacketStepper, DamPacketSubmitBar as PacketSubmitBar, DamPacketSummary as PacketSummary, DamUploadFileDropzone as UploadDropzone } from "@/components/dam/DamFormFlow";
 import { DamTrustSignalStrip as TrustSignalStrip } from "@/components/dam/DamWorkspace";
@@ -13,6 +13,8 @@ import { cn } from "@/lib/ui";
 import { LARGE_MEDIA_BYTES, uploadBetaBoundaries, uploadDefaultState } from "@/lib/workflow-policy";
 
 type UploadReceipt = {
+  ok?: boolean;
+  batchId?: string;
   status?: string;
   defaultReviewState?: string;
   defaultUsageScope?: string;
@@ -21,11 +23,36 @@ type UploadReceipt = {
   fileCount?: number;
   sourceLinkCaptured?: boolean;
   reviewWarnings?: string[];
+  submissionStatus?: "Submitted";
+  reviewStatus?: "Waiting for review";
+  publishStatus?: "Do not use yet";
+};
+
+type StoredContributorUpload = {
+  id: string;
+  batchName: string;
+  eventName: string;
+  eventDate: string;
+  locationName: string;
+  ministry: string;
+  source: string;
+  fileCount: number;
+  mediaType: "Photos" | "Videos" | "Photos and videos" | "Not sure";
+  peopleMinors: string;
+  notes: string;
+  submittedAt: string;
+  date: string;
+  status: "Submitted";
+  reviewStatus: "Waiting for review";
+  publishStatus: "Do not use yet";
+  reviewerNote: "Waiting for review.";
+  roleFit: ["Contributor", "Reviewer", "DAM Admin"];
 };
 
 const inputClass = "min-h-11 w-full min-w-0 rounded-[12px] border border-[#d8e1da] bg-white px-3 text-sm font-semibold text-tjc-ink placeholder:text-[#68756d]";
 const labelClass = "grid gap-2 text-sm font-black text-tjc-ink";
 const requiredHint = <span className="text-xs font-black text-[#7a5a19]">Required</span>;
+const contributorUploadsKey = "tjc-upload-intake-my-uploads-v1";
 
 const intakeTypes = [
   { id: "event-photo", label: "Event photos", detail: "Event, people visibility, source, and use case.", icon: UploadCloud },
@@ -43,14 +70,44 @@ const steps = [
   "Files, link, and reviewer notes",
   "Reviewer packet"
 ] as const;
+const contributorFlow = ["Add photos", "Describe them", "Review and send"] as const;
 
 const packetRequirementItems = [
   { label: "Origin", detail: "Where it came from and who can answer follow-up." },
   { label: "People/youth", detail: "Who appears and whether children or youth may be visible." },
   { label: "Rights", detail: "Owner/license, attribution, proof link, restrictions, or internal-only limits." },
   { label: "Use case", detail: "How ministry teams expect to reuse it after review." },
-  { label: "Review truth", detail: "Upload submits for review only. Final DAM approval still controls reuse." }
+  { label: "Review truth", detail: "Upload submits for review only. Reviewer clearance controls reuse." }
 ];
+
+function formText(form: FormData, name: string) {
+  return String(form.get(name) || "").trim();
+}
+
+function formatUploadReceiptDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+}
+
+function mediaTypeForReceipt(files: File[], hasSourceLink: boolean): StoredContributorUpload["mediaType"] {
+  if (!files.length) return hasSourceLink ? "Not sure" : "Photos";
+  const hasVideo = files.some((file) => /^video\//i.test(file.type) || /\.(mov|mp4|m4v|webm)$/i.test(file.name));
+  const hasPhoto = files.some((file) => /^image\//i.test(file.type) || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name));
+  if (hasPhoto && hasVideo) return "Photos and videos";
+  if (hasVideo) return "Videos";
+  if (hasPhoto) return "Photos";
+  return "Not sure";
+}
+
+function appendStoredContributorUpload(upload: StoredContributorUpload) {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(contributorUploadsKey) || "[]") as unknown[];
+    const rows = Array.isArray(parsed) ? parsed : [];
+    window.localStorage.setItem(contributorUploadsKey, JSON.stringify([upload, ...rows.filter((row) => (row as { id?: unknown }).id !== upload.id)].slice(0, 20)));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function UploadPage() {
   const { role, ready } = useDemoRole();
@@ -64,10 +121,12 @@ export function UploadPage() {
   const [largeWarning, setLargeWarning] = useState("");
   const [receipt, setReceipt] = useState<UploadReceipt | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sourceLinkRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const submittingRef = useRef(false);
   const allowed = ready && canUpload(role);
   const opsView = role === "Reviewer" || role === "DAM Admin";
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -85,6 +144,7 @@ export function UploadPage() {
   const hasFileOrSource = selectedFiles.length > 0 || hasValidSourceLink;
   const tagCount = parseUploadTags(suggestedTags).length;
   const submitReady = hasFileOrSource && intakeNotes.trim().length > 0;
+  const submitDisabled = !submitReady || isSubmitting;
   const packetItems = [
     { id: "type", label: `Media type selected: ${selectedType.label}`, complete: Boolean(intakeType) },
     { id: "file", label: hasFileOrSource ? "File or source link included" : "File or source link needed", complete: hasFileOrSource },
@@ -208,12 +268,15 @@ export function UploadPage() {
     setSuggestedTags("");
     setIntakeNotes("");
     setReceipt(null);
+    submittingRef.current = false;
+    setIsSubmitting(false);
     setMessage("Files, link, tags, and notes cleared.");
     toastDraftSaved("Files, link, tags, and notes cleared.");
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     setMessage("");
     setReceipt(null);
     for (let index = 0; index < steps.length - 1; index += 1) {
@@ -229,18 +292,56 @@ export function UploadPage() {
     form.set("role", role);
     form.set("mediaType", intakeType);
     toastUploadStarted(selectedFiles.length ? `${selectedFiles.length} file(s) staged for review.` : "Source-link intake will be reviewed without a browser file.");
-    const response = await fetch("/api/upload", { method: "POST", body: form });
-    const body = await response.json();
-    const safeError = !opsView && body.error?.includes("ResourceSpace")
-      ? "Suggested tags must use current media-team vocabulary."
-      : body.error;
-    setMessage(body.message || safeError || "Upload intake checked.");
-    if (response.ok) {
-      setReceipt(body);
-      toastUploadComplete();
-      goToStep(4);
-    } else {
-      toastUploadFailed(safeError || "No files moved forward.");
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    let accepted = false;
+    try {
+      const response = await fetch("/api/upload", { method: "POST", body: form });
+      const body = await response.json();
+      const safeError = !opsView && body.error?.includes("ResourceSpace")
+        ? "Suggested tags must use current media-team vocabulary."
+        : body.error;
+      accepted = response.ok && body?.ok !== false && body?.batchId;
+      setMessage(accepted
+        ? body.message || "Submitted for review. Waiting for review. Nothing is public."
+        : safeError || (!response.ok ? body.message : "") || "Upload intake was not recorded. Ask the media team for help.");
+      if (accepted) {
+        setReceipt(body);
+        const submittedAt = new Date().toISOString();
+        const saved = appendStoredContributorUpload({
+          id: String(body.batchId),
+          batchName: formText(form, "title") || formText(form, "eventName") || "Untitled upload",
+          eventName: formText(form, "eventName") || formText(form, "title") || "Untitled upload",
+          eventDate: formText(form, "eventDate"),
+          locationName: formText(form, "location"),
+          ministry: formText(form, "ministry"),
+          source: formText(form, "source") || "Contributor upload",
+          fileCount: Number(body.fileCount ?? selectedFiles.length) || 0,
+          mediaType: mediaTypeForReceipt(selectedFiles, hasValidSourceLink),
+          peopleMinors: formText(form, "minorsVisible") || formText(form, "peopleVisible") || "Not sure",
+          notes: formText(form, "intakeNotes"),
+          submittedAt,
+          date: formatUploadReceiptDate(submittedAt),
+          status: "Submitted",
+          reviewStatus: "Waiting for review",
+          publishStatus: "Do not use yet",
+          reviewerNote: "Waiting for review.",
+          roleFit: ["Contributor", "Reviewer", "DAM Admin"]
+        });
+        if (!saved) setMessage("Submitted for review. Waiting for review. Nothing is public. My Uploads could not save this browser receipt.");
+        toastUploadComplete();
+        goToStep(4);
+      } else {
+        toastUploadFailed(safeError || "No files moved forward.");
+      }
+    } catch {
+      setMessage("Upload intake was not recorded. Ask the media team for help.");
+      toastUploadFailed("No files moved forward.");
+    } finally {
+      if (!accepted) {
+        submittingRef.current = false;
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -272,6 +373,11 @@ export function UploadPage() {
           <p className="mt-2 max-w-[64ch] text-sm font-black text-[#725216]">
             Source class, owner/license, attribution, proof link, and requested usage scope are captured for reviewer evidence.
           </p>
+          <ol className="mt-4 flex flex-wrap gap-2" aria-label="Contributor flow">
+            {contributorFlow.map((item) => (
+              <li className="rounded-[10px] border border-[#d8e1da] bg-white px-3 py-2 text-xs font-black text-tjc-evergreen" key={item}>{item}</li>
+            ))}
+          </ol>
         </div>
         <dl className="send-command-ledger" aria-label="Send media safety summary">
           {[
@@ -295,7 +401,7 @@ export function UploadPage() {
           { label: "Reviewer packet", value: "Source, people, rights", tone: "info" },
           { label: "Current intake", value: "Photos only", tone: "info" },
           { label: "Default state", value: uploadDefaultState.status, tone: "review" },
-          { label: "Safe outcome", value: "Approval creates usable copy", tone: "approved" }
+          { label: "Safe outcome", value: "Reviewer decision controls reuse", tone: "approved" }
         ]}
       />
 
@@ -326,7 +432,7 @@ export function UploadPage() {
           <section className="grid gap-3 rounded-[14px] border border-[#c8d7e6] bg-[#f2f7fb] p-4 text-sm font-semibold text-[#27435b]" aria-label="Upload boundaries">
             <div>
               <h2 className="text-base font-black text-tjc-ink">Intake boundaries</h2>
-              <p className="mt-1 leading-relaxed">Send creates reviewer work only. Browser upload is for photos/light graphics and links. Large media uses the admin intake path.</p>
+              <p className="mt-1 leading-relaxed">Send creates reviewer work only. Browser upload is for photos/light graphics and links. Large media needs media team intake before review.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -435,7 +541,7 @@ export function UploadPage() {
             </select>
           </label>
           <label className={labelClass}>
-            Suggested approval direction
+            Suggested reviewer direction
             <select className={inputClass} name="approvalSuggestion" defaultValue="Reviewer decides">
               <option>Reviewer decides</option>
               <option>Likely church-wide use</option>
@@ -489,7 +595,7 @@ export function UploadPage() {
           <label className={labelClass}>
             Proof link / license receipt / consent attachment
             <input className={inputClass} name="proofLink" placeholder="https://... or note where proof is attached" />
-            <span className="text-xs font-semibold text-tjc-muted">Required before public/external approval. Missing proof means public download remains blocked.</span>
+            <span className="text-xs font-semibold text-tjc-muted">Required before external use. Missing proof means use remains blocked.</span>
           </label>
           <TagInput
             name="tags"
@@ -519,7 +625,7 @@ export function UploadPage() {
             <span><strong className="text-tjc-ink">Source link:</strong> {hasValidSourceLink ? "included" : "not included"}</span>
             <span><strong className="text-tjc-ink">Tags:</strong> {tagCount}</span>
             <span><strong className="text-tjc-ink">Public use:</strong> blocked until evidence and DAM review clear</span>
-            <span><strong className="text-tjc-ink">Batch state:</strong> Received / Needs Review / Do Not Publish</span>
+            <span><strong className="text-tjc-ink">Batch state:</strong> Submitted / Waiting for review / Do not use yet</span>
           </div>
         </section>
 
@@ -527,13 +633,13 @@ export function UploadPage() {
 
         <PacketSubmitBar>
           <div className="flex flex-wrap gap-2">
-            <PrimaryAction tone="secondary" onClick={saveDraftNotice} icon={Save}>Save draft</PrimaryAction>
-            <PrimaryAction tone="secondary" onClick={resetSendDetails} icon={RotateCcw}>Clear files</PrimaryAction>
-            {step > 0 ? <PrimaryAction tone="secondary" onClick={() => goToStep(Math.max(0, step - 1))}>Back</PrimaryAction> : null}
+            <PrimaryAction type="button" tone="secondary" onClick={saveDraftNotice} icon={Save}>Save draft</PrimaryAction>
+            <PrimaryAction type="button" tone="secondary" onClick={resetSendDetails} icon={RotateCcw}>Clear files</PrimaryAction>
+            {step > 0 ? <PrimaryAction type="button" tone="secondary" onClick={() => goToStep(Math.max(0, step - 1))}>Back</PrimaryAction> : null}
             {step < steps.length - 1 ? (
-              <PrimaryAction onClick={nextStep}>Next</PrimaryAction>
+              <PrimaryAction type="button" onClick={nextStep}>Next</PrimaryAction>
             ) : (
-              <PrimaryAction type="submit" icon={UploadCloud} disabled={!submitReady}>Submit for DAM review</PrimaryAction>
+              <PrimaryAction type="submit" icon={UploadCloud} disabled={submitDisabled}>{isSubmitting ? "Submitting" : "Submit for review"}</PrimaryAction>
             )}
           </div>
           <p className="text-xs font-semibold leading-relaxed text-tjc-muted">
@@ -546,17 +652,26 @@ export function UploadPage() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={23} strokeWidth={1.9} aria-hidden="true" />
               <div>
-                <h2 className="text-2xl font-black">Intake received</h2>
-                <p className="mt-1 text-sm font-semibold">This media is blocked until a reviewer approves reuse.</p>
+                <h2 className="text-2xl font-black">Photos sent</h2>
+                <p className="mt-1 text-sm font-semibold">Submitted for review. Waiting for review. Nothing is public.</p>
               </div>
             </div>
+            <ol className="grid gap-2 sm:grid-cols-3" aria-label="Submission status">
+              <li className="rounded-[10px] border border-[#b9d8c6] bg-white px-3 py-2 text-sm font-black">Submitted</li>
+              <li className="rounded-[10px] border border-[#b9d8c6] bg-white px-3 py-2 text-sm font-black">Waiting for review</li>
+              <li className="rounded-[10px] border border-[#b9d8c6] bg-white px-3 py-2 text-sm font-black">Do not use yet</li>
+            </ol>
             <dl className="grid gap-3 sm:grid-cols-4">
               <div><dt className="text-xs font-black">Received</dt><dd>Yes</dd></div>
-              <div><dt className="text-xs font-black">Review</dt><dd>{receipt.defaultReviewState || uploadBetaBoundaries.defaultState.review}</dd></div>
-              <div><dt className="text-xs font-black">Gate</dt><dd>{receipt.defaultUsageScope || uploadBetaBoundaries.defaultState.usage}</dd></div>
+              <div><dt className="text-xs font-black">Review</dt><dd>{receipt.reviewStatus || "Waiting for review"}</dd></div>
+              <div><dt className="text-xs font-black">Use</dt><dd>{receipt.publishStatus || "Do not use yet"}</dd></div>
               <div><dt className="text-xs font-black">Event</dt><dd>{receipt.eventName || "Not provided"}</dd></div>
               <div><dt className="text-xs font-black">Source link</dt><dd>{receipt.sourceLinkCaptured ? "Captured" : "Not provided"}</dd></div>
             </dl>
+            <div className="flex flex-wrap gap-2">
+              <PrimaryAction href="/recent-uploads" icon={Clock3}>View My Uploads</PrimaryAction>
+              <PrimaryAction type="button" tone="secondary" onClick={resetSendDetails} icon={UploadCloud}>Share more photos</PrimaryAction>
+            </div>
             {receipt.reviewWarnings?.length ? (
               <div className="flex flex-wrap gap-2">
                 {receipt.reviewWarnings.map((warning) => (
@@ -576,7 +691,7 @@ export function UploadPage() {
       >
         <EvidenceChecklist items={packetItems} />
         <div className="rounded-xl border border-[#ead6a8] bg-[#fff8e8] p-3 text-sm font-black leading-relaxed text-[#71500f]">
-          New media remains Status: Submitted, Gate: Not published. Missing proof blocks public/external download.
+          New media remains Status: Submitted, Gate: Do not use yet. Missing proof keeps public/external use blocked.
         </div>
       </PacketSummary>
       </div>

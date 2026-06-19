@@ -16,6 +16,7 @@ import { decideAccess } from "@/lib/access-decisions";
 import { assetGovernancePassport } from "@/lib/asset-governance";
 import { assetPresentation, detailImageUrl, provenanceSummary } from "@/lib/presentation";
 import { requestReviewMailto, viewerVerdictForAsset } from "@/lib/viewer-verdict";
+import { routeWithRole } from "@/lib/role-routes";
 import type { DemoRole, MediaSourceStatus, StockMediaAsset } from "@/lib/types";
 import { cn } from "@/lib/ui";
 
@@ -186,7 +187,7 @@ function DerivativeCustodyCard({
     {
       label: opsView ? "Pending ResourceSpace Write" : "Pending Review Update",
       value: asset.pendingReviewWrite ? `${asset.pendingReviewWrite.requestedStatus} / ${asset.pendingReviewWrite.syncState}` : "None queued",
-      detail: opsView ? "Pending writes are not final truth until synced and reviewed in ResourceSpace." : "Review updates are not final until the Media Team confirms them.",
+      detail: opsView ? "Pending writes are not final truth until ResourceSpace is checked again and reviewed." : "Review updates are not final until the Media Team confirms them.",
       tone: asset.pendingReviewWrite ? "warn" : "info",
       icon: History
     }
@@ -258,6 +259,135 @@ function RoleContextCard({ role }: { role: DemoRole }) {
         Identity-ready for future universal TJC login: user id, church role, DAM role, region/local church, and permissions claims.
       </p>
     </section>
+  );
+}
+
+function roleSafeRequestHref(asset: StockMediaAsset, role: DemoRole, type: "Request permission" | "Report privacy or rights issue") {
+  const params = new URLSearchParams({
+    type,
+    media: asset.id,
+    title: asset.title || asset.eventName || asset.collection || "Media asset"
+  });
+  return routeWithRole(`/requests?${params.toString()}`, role);
+}
+
+function roleSafeUsageStatus(verdict: ReturnType<typeof viewerVerdictForAsset>) {
+  if (verdict.canDownload) {
+    return {
+      label: "Available with permission",
+      detail: "Use only within listed guidance after the media team request is checked.",
+      primaryAction: "Request use copy",
+      panelTone: "ready" as const
+    };
+  }
+  if (verdict.tone === "unavailable" || verdict.tone === "restricted") {
+    return {
+      label: "Restricted",
+      detail: verdict.reason || "Ask the media team before reuse.",
+      primaryAction: "Request permission",
+      panelTone: "restricted" as const
+    };
+  }
+  return {
+    label: "Permission needed",
+    detail: verdict.reason || "Ask the media team before reuse.",
+    primaryAction: "Request permission",
+    panelTone: "review" as const
+  };
+}
+
+function RoleSafeAssetDetailPage({
+  asset,
+  role,
+  title,
+  subtitle,
+  preview,
+  verdict
+}: {
+  asset: StockMediaAsset;
+  role: DemoRole;
+  title: string;
+  subtitle?: string;
+  preview?: string;
+  verdict: ReturnType<typeof viewerVerdictForAsset>;
+}) {
+  const usage = roleSafeUsageStatus(verdict);
+  const requestPermissionHref = roleSafeRequestHref(asset, role, "Request permission");
+  const reportIssueHref = roleSafeRequestHref(asset, role, "Report privacy or rights issue");
+  const detailFacts = [
+    { label: "Album", value: asset.collection || "Not provided" },
+    { label: "Date", value: asset.eventDate || asset.capturedDate || asset.importDate || "Not provided" },
+    { label: "Type", value: asset.mediaType },
+    { label: "Usage", value: usage.label }
+  ];
+  const metadataItems = [
+    { label: "Album", value: asset.collection },
+    { label: "Event", value: asset.eventName || asset.eventSeries },
+    { label: "Date", value: asset.eventDate || asset.capturedDate || asset.importDate },
+    { label: "Type", value: asset.mediaType },
+    { label: "People/youth", value: asset.peopleRisk || "Ask media team" },
+    { label: "Credit", value: asset.rightsNotes?.toLowerCase().includes("credit") ? "Credit may be required; ask media team." : "Ask media team if credit is needed." }
+  ];
+
+  return (
+    <div className="dam-shell dam-asset-record-v2 grid gap-5">
+      <section className="dam-record-command-v2" aria-label="Media record header">
+        <div className="dam-record-breadcrumb" aria-label="Breadcrumb">
+          <Link href={routeWithRole("/library", role)}>Media Library</Link>
+          <span>/</span>
+          <strong>{title}</strong>
+        </div>
+        <div className="dam-record-command-row">
+          <div className="min-w-0">
+            <span className="dam-record-route-chip">Asset detail</span>
+            <h1>{title}</h1>
+            <p>{[asset.collection, asset.eventDate || asset.capturedDate || asset.importDate, asset.mediaType].filter(Boolean).join(" · ")}</p>
+          </div>
+          <div className="dam-record-command-actions">
+            <DamActionButton href={routeWithRole("/library", role)} tone="secondary" icon={ArrowLeft}>Back to Library</DamActionButton>
+          </div>
+        </div>
+      </section>
+
+      <DamDetailPanel
+        preview={
+          <DamPreviewWorkbench
+            title={title}
+            subtitle={subtitle || "Open guidance before reuse."}
+            status={usage.label}
+            facts={detailFacts}
+          >
+            {preview ? (
+              <MediaPreview src={preview} alt={asset.thumbnailAlt} label="Preview available" detail={subtitle || asset.collection} loading="eager" />
+            ) : (
+              <ProtectedPreview
+                label="Preview protected"
+                detail={usage.detail}
+                signals={["Request permission", "Report issue", "Media team review"]}
+                className="asset-detail-protected-preview h-full rounded-none"
+              />
+            )}
+          </DamPreviewWorkbench>
+        }
+        decision={
+          <>
+            <section className={cn("dam-verdict-command-panel", usage.panelTone === "ready" && "is-ready", usage.panelTone === "restricted" && "is-restricted", usage.panelTone === "review" && "is-blocked")} data-testid="asset-primary-verdict">
+              <div className="dam-verdict-command-top">
+                <span>Use guidance</span>
+                <span className="dam-related-record-verdict">{usage.label}</span>
+              </div>
+              <h2>{usage.label}</h2>
+              <p>{usage.detail}</p>
+              <div className="dam-verdict-command-actions">
+                <DamActionButton href={requestPermissionHref} tone="primary" icon={Mail}>{usage.primaryAction}</DamActionButton>
+                <DamActionButton href={reportIssueHref} tone="secondary" icon={AlertTriangle}>Report issue</DamActionButton>
+              </div>
+            </section>
+            <DamMetadataGrid title="Media details" items={metadataItems} />
+          </>
+        }
+      />
+    </div>
   );
 }
 
@@ -375,6 +505,19 @@ export function AssetDetailPage({ id }: { id: string }) {
   }
 
   const { asset, display, verdict, provenance, preview } = content;
+  if (!opsView) {
+    return (
+      <RoleSafeAssetDetailPage
+        asset={asset}
+        role={role}
+        title={display.title}
+        subtitle={display.cardSubtitle}
+        preview={preview}
+        verdict={verdict}
+      />
+    );
+  }
+
   const passport = assetGovernancePassport(asset);
   const requestHref = requestReviewMailto(asset, role);
   const adminOps = role === "DAM Admin";

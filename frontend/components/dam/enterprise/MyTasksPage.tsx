@@ -79,7 +79,7 @@ const roleIntro: Record<DemoRole, { title: string; subtitle: string; emptyTitle:
     title: "My Work",
     subtitle: "Recent submissions from this browser, saved drafts, reviewer questions, and request follow-ups.",
     emptyTitle: "No work waiting",
-    emptyBody: "Uploads saved or submitted from this browser will appear here. This is not durable account workflow."
+    emptyBody: "Uploads saved or submitted from this browser will appear here."
   },
   Reviewer: {
     title: "My Work",
@@ -342,10 +342,22 @@ function normalizeBrowserReceipt(value: unknown): BrowserUploadReceipt | null {
   };
 }
 
+function parseJsonOrFallback(value: string | null, fallback: unknown): unknown {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return fallback;
+  }
+}
+
 export function readContributorContextFromStorage(storage: StorageReader): LocalContributorContext {
-  const rawReceipts = JSON.parse(storage.getItem(contributorUploadsKey) || "[]") as unknown;
+  const receiptValue = storage.getItem(contributorUploadsKey);
+  const draftValue = storage.getItem(uploadDraftKey);
+  const rawReceipts = parseJsonOrFallback(receiptValue, []);
   const receipts = Array.isArray(rawReceipts) ? rawReceipts.map(normalizeBrowserReceipt).filter((item): item is BrowserUploadReceipt => Boolean(item)) : [];
-  const rawDraft = JSON.parse(storage.getItem(uploadDraftKey) || "{}") as Record<string, unknown>;
+  const parsedDraft = parseJsonOrFallback(draftValue, {});
+  const rawDraft = parsedDraft && typeof parsedDraft === "object" && !Array.isArray(parsedDraft) ? parsedDraft as Record<string, unknown> : {};
   const draftLabel = safeText(rawDraft.batchName) || safeText(rawDraft.eventName) || "Upload draft";
   const hasDraft = Object.values(rawDraft).some((value) => typeof value === "string" && value.trim().length > 0);
   return {
@@ -364,8 +376,17 @@ function readContributorContext(): LocalContributorContext {
   }
 }
 
+function safeContributorQuestionDetail(note: string | undefined) {
+  if (!note) return "Reviewer needs more event or rights context before review can continue.";
+  if (/(ResourceSpace|Support Zone|Source Status|source|writeback|backend|sync|publish|published|download|downloadable|approved|approval|Production-ready|Public now|durable account history)/i.test(note)) {
+    return "Reviewer needs more event or rights context before review can continue.";
+  }
+  return note;
+}
+
 function browserTaskFromReceipt(receipt: BrowserUploadReceipt): MyWorkTask {
   const status = receipt.status || "Submitted";
+  const taskState = `${status} ${receipt.reviewStatus || ""}`;
   const batchName = receipt.batchName;
   const base = {
     id: `browser-${receipt.id}`,
@@ -376,10 +397,10 @@ function browserTaskFromReceipt(receipt: BrowserUploadReceipt): MyWorkTask {
     owner: "Contributor",
     href: "/recent-uploads",
     detailLabel: "Submission details",
-    detail: "Recent submission from this browser. This is not durable account workflow."
+    detail: "Recent submission from this browser."
   };
 
-  if (/draft/i.test(status)) {
+  if (/draft/i.test(taskState)) {
     return {
       ...base,
       category: "drafts",
@@ -393,20 +414,20 @@ function browserTaskFromReceipt(receipt: BrowserUploadReceipt): MyWorkTask {
     };
   }
 
-  if (/needs more info|more info|question/i.test(status) || receipt.reviewerNote) {
+  if (/needs more info|more info|question/i.test(taskState)) {
     return {
       ...base,
       category: "requests",
       statusGroup: "open",
       title: "Reviewer needs more info",
-      reason: receipt.reviewerNote || "Reviewer needs more event or rights context before review can continue.",
+      reason: safeContributorQuestionDetail(receipt.reviewerNote),
       status: "Needs response",
       priority: "High",
       actionLabel: "View My Uploads"
     };
   }
 
-  if (/submitted|waiting|needs review/i.test(status)) {
+  if (/submitted|waiting|needs review/i.test(taskState)) {
     return {
       ...base,
       category: "uploads",
@@ -528,6 +549,19 @@ function roleActionLinks(role: DemoRole) {
   ];
 }
 
+export function safeLabelsForRole(role: DemoRole) {
+  if (role === "Viewer") {
+    return ["Request receipt saved", "Waiting on media team", "Needs details", "Follow-up closed"];
+  }
+  if (role === "Contributor") {
+    return ["Draft not sent", "Waiting for review", "Needs response", "Upload reviewed"];
+  }
+  if (role === "Reviewer") {
+    return ["Review completed", "Rights check needed", "Waiting on contributor", "Request response needed"];
+  }
+  return ["Review completed", "Request resolved", "Admin check needed", "Support check needed"];
+}
+
 export function filtersForRole(role: DemoRole) {
   const allowed = new Set(filterIdsByRole[role]);
   return filters.filter((filter) => allowed.has(filter.id));
@@ -628,12 +662,12 @@ export function MyTasksPage() {
               <section className="mw-state-card" role="status" aria-live="polite" aria-busy="true">
                 <Clock3 size={22} aria-hidden="true" />
                 <h3>Loading recent submissions from this browser</h3>
-                <p>Browser receipts are local only and do not create durable workflow history.</p>
+                <p>Browser receipts are local only.</p>
               </section>
             ) : browserStorageBlocked ? (
               <section className="mw-state-card is-warning" role="status">
                 <AlertCircle size={22} aria-hidden="true" />
-                <h3>Local receipts unavailable because browser storage is blocked</h3>
+                <h3>Local receipts unavailable in this browser</h3>
                 <p>Use My Uploads or Upload Photos. This page cannot read browser-only submissions right now.</p>
               </section>
             ) : sourceStatusUnavailable ? (
@@ -662,7 +696,7 @@ export function MyTasksPage() {
                           <div><dt>Age</dt><dd>{task.age}</dd></div>
                           <div><dt>Owner</dt><dd>{task.owner}</dd></div>
                         </dl>
-                        {task.source === "browser" ? <small>Recent submission from this browser. Not durable account workflow.</small> : null}
+                        {task.source === "browser" ? <small>Recent submission from this browser.</small> : null}
                         {expanded ? (
                           <section className="mw-task-detail" aria-label={task.detailLabel}>
                             <strong>{task.detailLabel}</strong>
@@ -698,10 +732,9 @@ export function MyTasksPage() {
             <section>
               <h3>Safe labels</h3>
               <ul>
-                <li><CheckCircle2 size={14} aria-hidden="true" />Review completed</li>
-                <li><CheckCircle2 size={14} aria-hidden="true" />Upload reviewed</li>
-                <li><CheckCircle2 size={14} aria-hidden="true" />Request resolved</li>
-                <li><CheckCircle2 size={14} aria-hidden="true" />Follow-up closed</li>
+                {safeLabelsForRole(role).map((label) => (
+                  <li key={label}><CheckCircle2 size={14} aria-hidden="true" />{label}</li>
+                ))}
               </ul>
             </section>
             <section>

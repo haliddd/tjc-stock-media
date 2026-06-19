@@ -81,7 +81,7 @@ const bulkActionToolbarLabels: Partial<Record<BulkActionId, string>> = {
   "assign-tags": "Tags"
 };
 
-const BROWSE_PHOTOS_SUBTITLE = "Find church media by event, date, ministry, album, or keyword.";
+const BROWSE_PHOTOS_SUBTITLE = "Find church media by event, date, ministry, album, or keyword. Open an item for use guidance before sharing.";
 
 type LibraryTopFilterOption = { label: string; filter: string };
 type LibraryTopFilterGroup = { id: string; label: string; options: LibraryTopFilterOption[] };
@@ -154,7 +154,7 @@ function libraryTopFilterGroupsForRole(role: DemoRole): LibraryTopFilterGroup[] 
     id: "access",
     label: "Access",
     options: [
-      { label: "Public use", filter: "approved public" },
+      { label: canReview(role) ? "Approved public" : "Ready with permission", filter: "approved public" },
       ...(canContribute(role) ? [{ label: "Internal use", filter: "approved internal" }] : []),
       { label: "Needs permission", filter: "needs review" },
       ...(canReview(role) ? [{ label: "Archive / reference", filter: "archive only" }] : [])
@@ -166,6 +166,12 @@ function libraryTopFilterGroupsForRole(role: DemoRole): LibraryTopFilterGroup[] 
 
 function selectLabelWithCount(label: string, count?: number) {
   return typeof count === "number" ? `${label} (${count.toLocaleString()})` : label;
+}
+
+function sortDisplayLabel(sortOption: CatalogSort) {
+  if (sortOption === "Approved first") return "Cleared first";
+  if (sortOption === "Recently approved") return "Recently cleared";
+  return sortOption;
 }
 
 function mediaTypeLabel(asset: StockMediaAsset) {
@@ -202,20 +208,20 @@ function allowedUseForAsset(asset: StockMediaAsset, role: DemoRole): { label: Br
     return {
       label: "Available with permission",
       detail: "Recorded use scope is available. Ask if scope is unclear.",
-      nextStep: "Open details"
+      nextStep: "Request use copy"
     };
   }
   if (packet.access.downloadApprovedCopy.allowed && packet.reuse.state === "internal-ready") {
     return {
       label: "Internal only",
       detail: "Internal ministry use only.",
-      nextStep: "Internal only"
+      nextStep: "Request permission"
     };
   }
   return {
     label: "Restricted",
     detail: "Ask the media team before reuse.",
-    nextStep: "Ask before use"
+    nextStep: "Request permission"
   };
 }
 
@@ -246,7 +252,7 @@ function BrowseErrorCard({ message }: { message: string }) {
   return (
     <section className="ed-card ed-empty-state">
       <AlertTriangle size={24} aria-hidden="true" />
-      <h2>Browse Photos unavailable</h2>
+      <h2>Browse Media unavailable</h2>
       <p>{message}</p>
     </section>
   );
@@ -486,7 +492,7 @@ function SelectionSummaryPanel({ summary }: { summary: LibrarySelectionSummary }
       <div className="ed-selection-summary-hero">
         <CheckSquare size={22} aria-hidden="true" />
         <h2>{summary.count.toLocaleString()} media selected</h2>
-        <p>Selected actions use approved-use copies only.</p>
+        <p>Selected actions use cleared-use copies only.</p>
       </div>
       <CountBreakdown title="Status" rows={summary.statusBreakdown} />
       <CountBreakdown title="Type" rows={summary.typeBreakdown} />
@@ -600,7 +606,7 @@ function AppliedFilterBar({
   const selectedFilterForGroup = (group: LibraryTopFilterGroup) => group.options.find((option) => filters.includes(option.filter))?.filter || "";
 
   return (
-    <section className="ed-applied-filter-bar" aria-label="Browse Photos filters">
+    <section className="ed-applied-filter-bar" aria-label="Browse Media filters">
       <button className="ed-mobile-filter-trigger" type="button" onClick={onOpenFilters}>
         <SlidersHorizontal size={15} aria-hidden="true" />
         Filters
@@ -610,7 +616,7 @@ function AppliedFilterBar({
         <strong>{typeof resultCount === "number" ? `${resultCount.toLocaleString()} results` : "Results"}</strong>
         <span>{chips.length ? `${chips.length} active filter${chips.length === 1 ? "" : "s"}` : "No filters applied"}</span>
       </div>
-      {showInlineControls ? <div className="ed-filterbar-controls">
+      {showInlineControls ? <div className="ed-discovery-filter-controls">
         <LibraryFilterSelect label="Saved search" value={activeView} placeholder="All saved searches" onChange={onViewSelect}>
           {savedViews.map((item) => <option value={item.id} key={item.id}>{selectLabelWithCount(item.label, item.count)}</option>)}
         </LibraryFilterSelect>
@@ -693,10 +699,10 @@ function BrowseFilterPanel({
   };
 
   return (
-    <aside className="ed-panel ed-facet-panel ed-smart-filter-rail" aria-label="Browse Photos filters">
+    <aside className="ed-panel ed-facet-panel ed-smart-filter-rail" aria-label="Browse Media filters">
       <header className="ed-filter-rail-head">
         <div>
-          <span>Browse Photos</span>
+          <span>Browse Media</span>
           <strong>Filters</strong>
         </div>
         {activeFilters.length ? <button type="button" onClick={onClearFilters}>Clear all</button> : null}
@@ -734,7 +740,7 @@ function BrowseFilterPanel({
           </div>
         </details>
       ))}
-      <p className="ed-action-helper">Filters help find church media; they do not grant new permission or private archive access.</p>
+      <p className="ed-action-helper">Filters narrow media; item details keep usage guidance.</p>
     </aside>
   );
 }
@@ -762,10 +768,10 @@ function LibrarySavedViewStrip({
 }) {
   const visibleViews = savedViews.slice(0, 6);
   return (
-    <section className="ed-library-saved-view-strip" aria-label="Saved Browse Photos searches">
+    <section className="ed-library-saved-view-strip" aria-label="Saved Browse Media searches">
       <div>
         <span><Folder size={14} aria-hidden="true" />Saved searches</span>
-        <strong>{typeof total === "number" ? `${total.toLocaleString()} visible media` : "Browse Photos"}</strong>
+        <strong>{typeof total === "number" ? `${total.toLocaleString()} visible media` : "Browse Media"}</strong>
         <small>Open common searches without changing permission checks.</small>
       </div>
       <nav aria-label="Saved search shortcuts">
@@ -829,7 +835,7 @@ function LibraryBrowserTopBar({
   canUsePowerTools: boolean;
 }) {
   return (
-    <header className="ed-library-v3-topbar" aria-label="Browse Photos controls">
+    <header className="ed-library-v3-topbar" aria-label="Browse Media controls">
       <div className="ed-library-v3-title">
         <span>Browse Media</span>
         <h1>Media Library</h1>
@@ -838,7 +844,7 @@ function LibraryBrowserTopBar({
       </div>
       <label className="ed-library-v3-search">
         <Search size={17} aria-hidden="true" />
-        <span className="sr-only">Search Browse Photos</span>
+        <span className="sr-only">Search Browse Media</span>
         <input
           type="search"
           value={query}
@@ -864,10 +870,9 @@ function LibraryBrowserTopBar({
         {canUsePowerTools ? <label className="ed-library-v3-sort">
           <span className="sr-only">Sort media</span>
           <select aria-label="Sort media" value={sort} onChange={(event) => onSortChange(event.target.value as CatalogSort)}>
-            <option>Approved first</option>
-            <option>Recently approved</option>
-            <option>Newest</option>
-            <option>A-Z</option>
+            {(["Approved first", "Recently approved", "Newest", "A-Z"] as CatalogSort[]).map((option) => (
+              <option value={option} key={option}>{sortDisplayLabel(option)}</option>
+            ))}
           </select>
         </label> : null}
         <button className="ed-library-v3-inspector-button" type="button" onClick={onInspectorToggle} aria-pressed={inspectorOpen}>
@@ -916,7 +921,7 @@ function LibraryPaginationControls({
     : "No matching media";
 
   return (
-    <div className={cn("ed-library-pagination", isSecondary ? "is-secondary" : "is-primary")} aria-label={isSecondary ? "Secondary Browse Photos pagination" : "Browse Photos pagination"}>
+    <div className={cn("ed-library-pagination", isSecondary ? "is-secondary" : "is-primary")} aria-label={isSecondary ? "Secondary Browse Media pagination" : "Browse Media pagination"}>
       <div className="ed-library-pagination-summary">
         <strong>
           {loading ? "Loading results" : (
@@ -1093,7 +1098,7 @@ function LibraryResultList({
   const canBulkSelect = canReview(role);
   return (
     <>
-      <div className="ed-mobile-card-list" aria-label="Browse Photos results">
+      <div className="ed-mobile-card-list" aria-label="Browse Media results">
         {assets.map((asset) => {
           const allowed = allowedUseForAsset(asset, role);
           const selected = selectedIds.includes(asset.id);
@@ -1141,7 +1146,7 @@ function LibraryResultList({
           );
         })}
       </div>
-      <table className="ed-table ed-desktop-table" aria-label="Browse Photos results">
+      <table className="ed-table ed-desktop-table" aria-label="Browse Media results">
         <thead>
           <tr>
             <th>Media</th>
@@ -1222,7 +1227,7 @@ export function EnterpriseLibraryPage() {
   const [collection, setCollection] = useState(() => searchParams?.get("collection") || "");
   const [filters, setFilters] = useState<string[]>(() => searchParams?.getAll("filter") || []);
   const [sort, setSort] = useState<CatalogSort>(() => normalizeCatalogSort(searchParams?.get("sort")));
-  const [viewMode, setViewMode] = useState<LibraryViewMode>(() => canReview(role) ? "table" : "grid");
+  const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
   const [density, setDensity] = useState<LibraryDensity>("comfortable");
   const [limit, setLimit] = useState(30);
   const [offset, setOffset] = useState(0);
@@ -1249,7 +1254,7 @@ export function EnterpriseLibraryPage() {
   }, [discovery?.suggestedFilters]);
   const topFilterGroups = useMemo(() => libraryTopFilterGroupsForRole(role), [role]);
   useEffect(() => {
-    setViewMode(canReview(role) ? "table" : "grid");
+    setViewMode("grid");
   }, [role]);
   useEffect(() => {
     if (!selectedId) return;
@@ -1418,7 +1423,7 @@ export function EnterpriseLibraryPage() {
       announceLibraryAction(payload.error || "Saved search failed.");
       return;
     }
-    announceLibraryAction(`Saved "${payload.search?.title || "search"}". Team-wide saved searches depend on configured storage.`);
+    announceLibraryAction(`Saved "${payload.search?.title || "search"}". Team-wide saved searches may not be available for every role.`);
   };
   const toggleFilter = (filter: string) => {
     setFilters((current) => current.includes(filter) ? current.filter((item) => item !== filter) : [...current, filter]);
@@ -1462,7 +1467,7 @@ export function EnterpriseLibraryPage() {
       filterCounts={filterCounts}
       onViewSelect={(id) => { setView(id); setCollection(""); setQuery(""); setIntent(""); setFilters([]); setFiltersOpen(false); }}
       onCollectionSelect={(id) => { setCollection(collection === id ? "" : id); setView(""); setQuery(""); setIntent(""); setFiltersOpen(false); }}
-      onSavedViewsExpand={() => announceLibraryAction("Saved searches are listed from Browse Photos. Use Save search to keep the current query when available.")}
+      onSavedViewsExpand={() => announceLibraryAction("Saved searches are listed from Browse Media. Use Save search to keep the current query when available.")}
       onFilterToggle={toggleFilter}
       onClearFilters={() => setFilters([])}
     />
@@ -1491,7 +1496,7 @@ export function EnterpriseLibraryPage() {
       />
       {libraryMessage ? <p className="ed-inline-success">{libraryMessage}</p> : null}
       {search.loading ? <LoadingCard label="Loading church media..." /> : search.error ? <BrowseErrorCard message={search.error} /> : (
-        <div className={cn("ed-library-grid", inspectorOpen ? "is-inspector-open" : "is-inspector-collapsed")} aria-label="Browse Photos browser">
+        <div className={cn("ed-library-grid", inspectorOpen ? "is-inspector-open" : "is-inspector-collapsed")} aria-label="Browse Media browser">
           <main className="ed-asset-workspace" aria-label="Media results pane">
             <AppliedFilterBar
               query={query}
@@ -1515,12 +1520,8 @@ export function EnterpriseLibraryPage() {
               onSetFilterGroup={setTopFilterGroup}
               onClearAll={clearAll}
               onOpenFilters={() => setFiltersOpen(true)}
-              showInlineControls={canUsePowerTools}
+              showInlineControls
             />
-            {!canUsePowerTools ? <section className="ed-library-usage-note" aria-label="Usage note">
-              <strong>Usage Rights</strong>
-              <span>Some items need permission before reuse. Open an item to see guidance.</span>
-            </section> : null}
             {canUsePowerTools ? <LibrarySavedViewStrip
               savedViews={search.data?.savedViews}
               activeView={view}
@@ -1582,7 +1583,7 @@ export function EnterpriseLibraryPage() {
             </div> : (
               <section className="ed-empty-state ed-empty-search is-quiet">
                 <span className="ed-empty-icon"><Search size={24} /></span>
-                <p className="ed-empty-eyebrow">Browse Photos results</p>
+                <p className="ed-empty-eyebrow">Browse Media results</p>
                 <h2>{noResultHelp?.title || "No media match current filters"}</h2>
                 <p>{noResultHelp?.guidance || "Clear filters, use a saved search, or search a broader ministry, event, album, tag, or keyword."}</p>
                 {noResultHelp?.querySuggestions.length ? (

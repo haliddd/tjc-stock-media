@@ -16,6 +16,7 @@ export type AuditEventType =
   | "approved_download"
   | "denied_download"
   | "upload_denied"
+  | "upload_blocked"
   | "upload_submitted"
   | "review_denied"
   | "review_evidence_incomplete"
@@ -104,6 +105,7 @@ const auditEventTypes: AuditEventType[] = [
   "approved_download",
   "denied_download",
   "upload_denied",
+  "upload_blocked",
   "upload_submitted",
   "review_denied",
   "review_evidence_incomplete",
@@ -150,6 +152,7 @@ const auditAccountabilityAreas: Record<AuditEventType, AuditAccountabilityArea> 
   approved_download: "download",
   denied_download: "download",
   upload_denied: "intake",
+  upload_blocked: "intake",
   upload_submitted: "intake",
   review_denied: "review",
   review_evidence_incomplete: "review",

@@ -181,7 +181,7 @@ export function ClearanceStatusPanel({
         visible={presentation ? betaVisibilityLabel(asset) : "Visibility unknown"}
         reuse={presentation ? reuseAnswerLabel(presentation.packet.reuse.state) : "Needs review before reuse"}
         sourceLabel={roleCanActOnReview(role) ? "Source truth" : "Record basis"}
-        source={sourceTruthLabel(source)}
+        source={roleCanActOnReview(role) ? sourceTruthLabel(source) : "Media library"}
       />
       <div className="ed-verdict-body">
         <span aria-hidden="true">{approved ? <Check size={24} /> : <Lock size={22} />}</span>
@@ -192,7 +192,7 @@ export function ClearanceStatusPanel({
         </div>
       </div>
       {!approved ? (
-        <p className="ed-action-helper"><strong>Primary blocker:</strong> {primaryBlocker}. Evidence required before download or distribution.</p>
+        <p className="ed-action-helper"><strong>Primary blocker:</strong> {primaryBlocker}. Evidence required before use can move forward.</p>
       ) : null}
       <BlockedReasonList blockers={blockers} />
       {approved ? (
@@ -631,7 +631,7 @@ export function SourcePill({ source, live }: { source?: MediaSourceStatus | null
   if (!roleCanActOnReview(role)) {
     return <span className="ed-source-pill">Media library</span>;
   }
-  return <span className={cn("ed-source-pill", live && "is-live", source?.adapter === "demo-fallback" && "is-fallback")}>{sourceTruthLabel(source)}</span>;
+  return <span className={cn("ed-source-pill", live && "is-read-path", source?.adapter === "demo-fallback" && "is-fallback")}>{sourceTruthLabel(source)}</span>;
 }
 
 export function LoadingCard({ label = "Loading media library..." }: { label?: string }) {

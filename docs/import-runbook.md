@@ -11,7 +11,7 @@ export audit evidence. See `docs/data-engineering-playbook.md`.
 - ResourceSpace collection: `MVP 2024 - First Batch`
 - Imported active resources: 181
 - Stored binaries: 181
-- Review state: 181 approved and published for MVP 2024 prototype batch after reviewer signoff
+- Review state: 181 imported for controlled prototype review after reviewer signoff; not public launch, broad reuse approval, or publication proof
 - Import audit: `.runtime/audits/resourcespace-import-audit-20260603-171816.csv`
 - Approval audit: `.runtime/audits/approval-audit-20260604-165722.csv`
 - UI polish audit: `.runtime/audits/ui-polish-audit-20260604-171229.csv`
@@ -178,7 +178,7 @@ Record:
 - Do not rename, move, or delete source files.
 - Keep newly imported files in Pending Review until a human reviewer approves use.
 - Treat `01_Photos` staging as master originals. Treat `04_Approved_Public` and `05_Approved_Internal` as curated delivery outputs only.
-- After reviewer signoff for a batch, run `make approve-mvp-batch` to update approval metadata, publish resources, and write an approval audit CSV.
+- After reviewer signoff for a batch, run `make approve-mvp-batch` to update review metadata and write an approval audit CSV. Do not describe this as public launch or broad publication.
 - Do not treat preview success as rights approval.
 - Keep failed preview formats in the audit trail.
-- MVP 2024 first batch was approved by Hali for public/internal prototype use on 2026-06-04. Future batches still require reviewer signoff before approval.
+- MVP 2024 first batch received controlled prototype-review signoff on 2026-06-04. Future batches still require reviewer signoff before any reuse clearance.

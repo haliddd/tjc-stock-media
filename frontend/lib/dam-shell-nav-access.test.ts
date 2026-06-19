@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { portalHomeCardsForRole, portalHomePrimaryHrefForRole } from "@/components/dam/EnterpriseDamPages";
+import { dashboardActionsForRole, dashboardCopyForRole } from "@/components/dam/enterprise/DashboardPage";
 import { canSeeDamShellGroup, damShellItemsForRole, getVisibleMobileNavItems } from "@/components/dam/shell/damShellNav";
 import { canAccessRoute } from "@/lib/permissions";
 import type { DemoRole } from "@/lib/types";
@@ -20,11 +22,13 @@ describe("DAM shell role-aware navigation", () => {
   it("keeps Albums & Events in main nav and Delivery Sets deferred", () => {
     for (const role of ["Viewer", "Contributor", "Reviewer", "DAM Admin"] as const) {
       expect(labelsFor(role)).toContain("Albums & Events");
-      expect(mobileLabelsFor(role)).toContain("Albums");
       expect(labelsFor(role)).not.toContain("Collections");
       expect(mobileLabelsFor(role)).not.toContain("Collections");
       expect(labelsFor(role)).not.toContain("Delivery Sets");
       expect(mobileLabelsFor(role)).not.toContain("Delivery Sets");
+    }
+    for (const role of ["Viewer", "Reviewer", "DAM Admin"] as const) {
+      expect(mobileLabelsFor(role)).toContain("Albums");
     }
   });
 
@@ -42,12 +46,12 @@ describe("DAM shell role-aware navigation", () => {
       "Albums & Events",
       "Upload Photos",
       "My Uploads",
+      "My Work",
       "Requests",
       "Help Center"
     ]);
-    expect(mobileLabelsFor("Contributor")).toEqual(["Library", "Albums", "Upload", "Uploads", "Requests"]);
+    expect(mobileLabelsFor("Contributor")).toEqual(["Library", "Upload", "Work", "Uploads", "Requests"]);
     expect(labelsFor("Contributor")).not.toContain("Review Uploads");
-    expect(labelsFor("Contributor")).not.toContain("My Work");
     expect(canSeeDamShellGroup("Admin", "Contributor")).toBe(false);
   });
 
@@ -74,7 +78,7 @@ describe("DAM shell role-aware navigation", () => {
       "Review Uploads",
       "My Work",
       "Requests",
-      "Admin Zone",
+      "Support Zone",
       "Help Center"
     ]);
     expect(mobileLabelsFor("DAM Admin")).toEqual(["Library", "Albums", "Upload", "Review", "Work"]);
@@ -83,11 +87,55 @@ describe("DAM shell role-aware navigation", () => {
   });
 
   it("does not promote legacy task or package language in nav", () => {
-    const legacyLanguage = /Review Queue|My Tasks|Distribution Sets|package|ResourceSpace|Governance/i;
+    const legacyLanguage = /Review Queue|My Tasks|Distribution Sets|package|ResourceSpace|Governance|Admin Zone/i;
     for (const role of ["Viewer", "Contributor", "Reviewer", "DAM Admin"] as const) {
       const labels = [...labelsFor(role), ...mobileLabelsFor(role)].join(" ");
       expect(labels).not.toMatch(legacyLanguage);
     }
+  });
+
+  it("promotes Contributor My Work where browser-based contributor work exists", () => {
+    expect(labelsFor("Contributor")).toContain("My Work");
+    expect(mobileHrefsFor("Contributor")).toContain("/my-tasks");
+    expect(portalHomeCardsForRole("Contributor").map((card) => card.href)).toContain("/my-tasks");
+    expect(portalHomePrimaryHrefForRole("Contributor")).toBe("/upload");
+    expect(dashboardActionsForRole("Contributor").map((action) => action.href)).toEqual([
+      "/upload",
+      "/my-tasks",
+      "/recent-uploads",
+      "/requests"
+    ]);
+  });
+
+  it("keeps contributor and public home/dashboard copy free of backend jargon", () => {
+    const visibleText = (value: unknown): string[] => {
+      if (typeof value === "string") return [value];
+      if (Array.isArray(value)) return value.flatMap(visibleText);
+      if (value && typeof value === "object") return Object.values(value).flatMap(visibleText);
+      return [];
+    };
+    const publicCopy = JSON.stringify({
+      viewerDashboard: dashboardCopyForRole("Viewer"),
+      contributorDashboard: dashboardCopyForRole("Contributor"),
+      viewerActions: dashboardActionsForRole("Viewer").map(({ href, title, detail }) => ({ href, title, detail })),
+      contributorActions: dashboardActionsForRole("Contributor").map(({ href, title, detail }) => ({ href, title, detail })),
+      viewerHome: portalHomeCardsForRole("Viewer").map(({ href, title, description }) => ({ href, title, description })),
+      contributorHome: portalHomeCardsForRole("Contributor").map(({ href, title, description }) => ({ href, title, description })),
+      viewerNav: damShellItemsForRole("Viewer").map(({ label, mobileLabel, description }) => ({ label, mobileLabel, description })),
+      contributorNav: damShellItemsForRole("Contributor").map(({ label, mobileLabel, description }) => ({ label, mobileLabel, description }))
+    });
+    const publicVisibleText = visibleText(JSON.parse(publicCopy)).join(" ");
+
+    expect(publicCopy).not.toMatch(/ResourceSpace|writeback|sync|backend|source truth|source files|source\/original|reviewer packet|hosted DAM|API|DAM command center/i);
+    expect(publicVisibleText).not.toMatch(/\bapproved\b|\bapproval\b|\bdownload\b|\bpublic\b/i);
+  });
+
+  it("keeps reviewer and admin power tools in reviewer/admin dashboard actions", () => {
+    expect(dashboardActionsForRole("Reviewer").map((action) => action.href)).toEqual(["/review", "/my-tasks", "/upload", "/requests"]);
+    expect(dashboardActionsForRole("DAM Admin").map((action) => action.href)).toEqual(["/admin", "/review", "/my-tasks", "/requests"]);
+    expect(dashboardActionsForRole("DAM Admin")[0]).toMatchObject({ title: "Support Zone" });
+    expect(dashboardCopyForRole("Reviewer").eyebrow).toBe("DAM command center");
+    expect(dashboardCopyForRole("DAM Admin").eyebrow).toBe("DAM command center");
   });
 
   it("keeps direct route permissions strict", () => {
@@ -120,7 +168,7 @@ describe("DAM shell role-aware navigation", () => {
 
   it("filters mobile nav away from routes each role should not use", () => {
     expect(mobileHrefsFor("Viewer")).toEqual(["/library", "/collections", "/requests", "/help"]);
-    expect(mobileHrefsFor("Contributor")).toEqual(["/library", "/collections", "/upload", "/recent-uploads", "/requests"]);
+    expect(mobileHrefsFor("Contributor")).toEqual(["/library", "/upload", "/my-tasks", "/recent-uploads", "/requests"]);
     expect(mobileHrefsFor("Reviewer")).toEqual(["/library", "/collections", "/upload", "/review", "/my-tasks"]);
     expect(mobileHrefsFor("DAM Admin")).toEqual(["/library", "/collections", "/upload", "/review", "/my-tasks"]);
   });

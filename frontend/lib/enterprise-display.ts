@@ -35,7 +35,7 @@ export function metadataQualityLabel(asset: StockMediaAsset) {
 
 export function sourceLabel(source?: MediaSourceStatus | null) {
   if (!source) return "Source system disconnected";
-  if (source.adapter === "resourcespace-api") return source.readOnly ? "Read-only source system" : "Source system API";
+  if (source.adapter === "resourcespace-api") return "Read-only ResourceSpace API";
   if (source.adapter === "exported-metadata") return "Read-only source export";
   if (source.adapter === "bundled-beta-catalog") return "Read-only catalog snapshot";
   if (source.adapter === "demo-fallback") return "Local sample data";
@@ -44,7 +44,7 @@ export function sourceLabel(source?: MediaSourceStatus | null) {
 
 export function sourceTruthLabel(source?: MediaSourceStatus | null) {
   if (!source) return sourceLabel(source);
-  if (source.adapter === "resourcespace-api") return source.readOnly ? "Read-only hosted source system" : "Hosted source API";
+  if (source.adapter === "resourcespace-api") return "Read-only hosted source API";
   if (source.adapter === "exported-metadata") return "Read-only source export snapshot";
   if (source.adapter === "bundled-beta-catalog") return "Read-only catalog snapshot";
   if (source.adapter === "demo-fallback") return "Local sample data";

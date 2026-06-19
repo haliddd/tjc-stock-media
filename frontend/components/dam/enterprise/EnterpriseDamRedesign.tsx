@@ -850,13 +850,13 @@ type UploadReceipt = {
   ok?: boolean;
   batchId?: string;
   status?: string;
-  defaultReviewState?: string;
-  defaultUsageScope?: string;
   message?: string;
-  storageMode?: string;
-  custodyMode?: string;
-  resourceSpaceWritten?: boolean;
-  reviewWarnings?: string[];
+  eventName?: string;
+  fileCount?: number;
+  sourceLinkCaptured?: boolean;
+  submissionStatus?: "Submitted";
+  reviewStatus?: "Waiting for review";
+  publishStatus?: "Do not use yet";
 };
 
 type UploadFilePreview = {
@@ -1228,10 +1228,10 @@ export function EnterpriseUploadPage() {
     try {
       const response = await fetch("/api/upload", { method: "POST", body: form });
       const body = await response.json().catch(() => ({}));
-      if (response.ok && body?.ok !== false) {
+      if (response.ok && body?.ok !== false && body?.batchId) {
         setReceipt(body);
         const submittedAt = new Date().toISOString();
-        const uploadId = String(body.batchId || `local-upload-${Date.now()}`);
+        const uploadId = String(body.batchId);
         const saved = appendStoredContributorUpload({
           id: uploadId,
           batchName: batchName.trim(),
@@ -1262,7 +1262,7 @@ export function EnterpriseUploadPage() {
         setReceipt(null);
         setFormError(body?.error === "This role can browse media but cannot upload."
           ? "Submission failed. This account cannot send photos."
-          : "Submission failed. Try again or ask the media team for help.");
+          : body?.message || "Submission failed. Try again or ask the media team for help.");
         setMessage("");
       }
     } catch {
@@ -1433,7 +1433,7 @@ export function EnterpriseReviewPage() {
             </div>
             <StatusBadge status="In Review" compact />
           </header>
-          <label className="damx-search is-compact"><Search size={15} aria-hidden="true" /><input placeholder="Search queue..." /></label>
+          <label className="damx-search is-compact"><Search size={15} aria-hidden="true" /><input aria-label="Search review queue" placeholder="Search queue..." /></label>
           <div className="damx-filter-pills">
             {["All", "Assigned to me", "Unassigned", "Needs evidence", "People/minors", "Expiring", "Blocked", "High priority"].map((item) => (
               <button className={filter === item ? "is-active" : undefined} type="button" key={item} onClick={() => setFilter(item)}>{item}</button>
@@ -1568,7 +1568,7 @@ export function EnterpriseCollectionsPage() {
         primaryAction={<EnterpriseButton tone="primary" icon={<Plus size={16} aria-hidden="true" />} onClick={() => setNotice("Create collection opened. This does not approve assets.")}>Create collection</EnterpriseButton>}
       />
       {notice ? <p className="damx-notice">{notice}</p> : null}
-      <label className="damx-search"><Search size={16} aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search collections by name, ministry, event, use case..." /></label>
+      <label className="damx-search"><Search size={16} aria-hidden="true" /><input aria-label="Search collections" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search collections by name, ministry, event, use case..." /></label>
       <DamxPreviewStrip
         assets={selectedAssets.length ? selectedAssets : portalReadyAssets()}
         title="Collection preview samples"
@@ -1898,7 +1898,7 @@ export function EnterpriseHelpPage({ policyCenter = false }: { policyCenter?: bo
         primaryAction={<EnterpriseButton tone="primary" icon={<ClipboardCheck size={16} aria-hidden="true" />}>Request DAM Review</EnterpriseButton>}
         secondaryActions={<><EnterpriseButton icon={<Lock size={16} aria-hidden="true" />}>Request source access</EnterpriseButton><EnterpriseButton icon={<ShieldAlert size={16} aria-hidden="true" />}>Report rights issue</EnterpriseButton></>}
       />
-      <label className="damx-search"><Search size={16} aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search help articles, policies, requests..." /></label>
+      <label className="damx-search"><Search size={16} aria-hidden="true" /><input aria-label="Search help articles and policies" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search help articles, policies, requests..." /></label>
       <div className="damx-help-grid">
         <section className="damx-help-main">
           <h2>Quick tasks</h2>

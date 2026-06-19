@@ -20,7 +20,7 @@ North Star: a TJC user can find a rights-safe asset for a real communication nee
 3. State the safety rule.
 
    Every new imported asset starts as `Needs Review` and `Do Not Publish`.
-   For the current MVP 2024 prototype batch, Hali approved the reviewed photos for public/internal prototype use, so they are now marked `Approved Public` and published in ResourceSpace.
+   For the current MVP 2024 prototype batch, reviewer signoff allowed controlled prototype review only. Do not describe this as public launch, broad reuse approval, or publication.
 
 4. Search real terms.
 
@@ -28,37 +28,37 @@ North Star: a TJC user can find a rights-safe asset for a real communication nee
    - `Plant`
    - `Fountain`
    - `MVP 2024`
-   - `Approved Public`
+   - `Needs Review`
 
    Current seeded search checks:
 
-   - `Bible`: searchable approved resources
-   - `Plant`: searchable approved resources
-   - `Fountain`: searchable approved resources
-   - `Approved Public`: MVP 2024 approved batch results
+   - `Bible`: searchable records
+   - `Plant`: searchable records
+   - `Fountain`: searchable records
+   - `Needs Review`: records waiting for controlled review
 
-5. Open one approved asset.
+5. Open one reviewed asset.
 
-   Show source path, tags, review status, reviewed by, review date, and `Public and Internal` usage scope.
+   Show tags, review status, reviewed by, review date, and usage guidance. Do not expose source paths to normal viewers.
 
 6. Show HEIC handling.
 
-   Open a HEIC asset. Show that the card/preview displays a JPG derivative so normal users are not confused. Then show the original HEIC remains preserved and downloadable as the master file, with the JPG derivative also listed under alternative files.
+   Open a HEIC asset. Show that the card/preview displays a JPG derivative so normal users are not confused. Then show the original HEIC remains preserved as the master file; only qualified admin/designer retrieval should handle originals, while normal users use the approved derivative when cleared.
    Local check: Hali confirmed this HEIC behavior looks good for the prototype on 2026-06-04.
 
 7. Show approval metadata.
 
-   - `Approved Public`
-   - `Public and Internal`
-   - `ResourceSpace admin`
+   - Review status
+   - Usage guidance
+   - Reviewer/date evidence
 
-   Current approval state: 181 MVP 2024 assets are approved for public/internal prototype use.
+   Current review state: MVP 2024 records are for controlled prototype review only.
 
 8. Export metadata CSV.
 
    Show that the system can leave with its metadata. Current export: `.runtime/exports/resourcespace-metadata-20260604-171242.csv`.
 
-9. Copy approved sample back to Shared Drive.
+9. Show delivery-output boundary.
 
    Show approved output, not source mutation.
 

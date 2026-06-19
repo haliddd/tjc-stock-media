@@ -406,7 +406,7 @@ function sanitizedTechnicalRows(asset?: StockMediaAsset) {
     ["Source album", asset.sourceAlbum || "Not exported"],
     ["Source path", asset.sourceAlbumPath || asset.sourcePath ? "Hidden in portal" : "Not exported"],
     ["Checksum", asset.checksumSha256 ? "Present, hidden in portal" : "Not exported"],
-    ["Preview/download copy", assetHasDownloadCopy(asset) ? "Preview/download copy listed" : "No approved copy listed"],
+    ["Role-safe copy", assetHasDownloadCopy(asset) ? "Derivative copy listed" : "No approved copy listed"],
     ["Workflow state", asset.workflowState || "Not exported"],
     ["Pending review update", asset.pendingReviewWrite ? `${asset.pendingReviewWrite.requestedStatus} / ${asset.pendingReviewWrite.syncState}` : "None"]
   ];
@@ -482,8 +482,10 @@ function reviewStatusCards({
       label: "Upload intake",
       value: receipts.length ? "Receipts on this browser" : "Available",
       detail: receipts.length
-        ? `${receipts.length.toLocaleString()} local submission receipt${receipts.length === 1 ? "" : "s"} found. Not durable review records.`
-        : "Contributors can submit uploads through intake; review still requires source access.",
+        ? `${receipts.length.toLocaleString()} recent submission${receipts.length === 1 ? "" : "s"} from this browser. Not reviewer work records.`
+        : accessAllowed
+          ? "Contributors can submit uploads through intake; review still requires source access."
+          : "Contributors can submit uploads through intake; reviewer work requires reviewer/admin role.",
       tone: "ok"
     },
     {
@@ -500,9 +502,9 @@ function reviewStatusCards({
     },
     {
       label: "Source system",
-      value: sourceValue,
-      detail: sourceCardDetail(source, role, error),
-      tone: error || sourceValue === "Disconnected" ? "blocked" : sourceValue === "Checking" ? "neutral" : "ok"
+      value: accessAllowed ? sourceValue : "Restricted",
+      detail: accessAllowed ? sourceCardDetail(source, role, error) : "Reviewer or DAM Admin role required.",
+      tone: !accessAllowed || error || sourceValue === "Disconnected" ? "blocked" : sourceValue === "Checking" ? "neutral" : "ok"
     }
   ];
 }
@@ -572,7 +574,7 @@ function BrowserReceiptsPanel({ receipts, role }: { receipts: BrowserUploadRecei
         </div>
         <Link href={routeWithRole("/recent-uploads", role)}>View My Uploads</Link>
       </header>
-      <p>Browser receipts help contributors find recent submissions. They are not durable review records and do not enable approval actions.</p>
+      <p>Browser receipts help contributors find recent submissions. They are not reviewer work records and do not enable approval actions.</p>
       <div>
         {receipts.map((receipt) => (
           <article key={receipt.id}>
@@ -888,8 +890,8 @@ function ReviewDecisionPanel({
       </div>
       {decisionMessage ? <p className="review-decision-message">{decisionMessage}</p> : null}
       <nav className="review-decision-actions" aria-label="Batch-level review actions">
-        <DecisionButton tone="primary" disabledReason={actionReasons.public} onClick={() => onDecision("Approve Public", "Approved", "Prepare public review")}>Prepare public review</DecisionButton>
-        <DecisionButton disabledReason={actionReasons.internal} onClick={() => onDecision("Approve Internal", "Approved", "Prepare internal review")}>Prepare internal review</DecisionButton>
+        <DecisionButton tone="primary" disabledReason={actionReasons.public} onClick={() => onDecision("Approve Public", "Approved", "Prepare public-use decision")}>Prepare public-use decision</DecisionButton>
+        <DecisionButton disabledReason={actionReasons.internal} onClick={() => onDecision("Approve Internal", "Approved", "Prepare internal-use decision")}>Prepare internal-use decision</DecisionButton>
         <DecisionButton tone="danger" disabledReason={actionReasons.restrict} onClick={() => onDecision("Do Not Use", "Restricted", "Keep restricted")}>Keep restricted</DecisionButton>
         <DecisionButton tone="danger" disabledReason={actionReasons.reject} onClick={onReject}>Restrict use</DecisionButton>
         <DecisionButton disabledReason={actionReasons.info} onClick={() => onDecision("Request More Info", "Needs Review", "Request info")}>Request info</DecisionButton>
@@ -1149,6 +1151,7 @@ export function EnterpriseReviewPage() {
     return (
       <div className="enterprise-page review-uploads-page">
         <ReviewUploadsHeader cards={statusCards} subtitle="Checking role and review queue access." />
+        <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
         <LoadingCard label="Loading role..." />
       </div>
     );
@@ -1185,7 +1188,7 @@ export function EnterpriseReviewPage() {
         <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
         <ReviewRecoveryPanel
           icon={<AlertTriangle size={24} />}
-          title={browserReceipts.length ? "Uploads can be submitted, but review is paused" : "Review queue needs attention"}
+          title="Review queue needs attention"
           body="Review Uploads could not read source records. No approval, publishing, download, or sync outcome is implied."
           actions={nextActions({ retry: true })}
         />
@@ -1201,7 +1204,7 @@ export function EnterpriseReviewPage() {
         <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
         <ReviewRecoveryPanel
           icon={<Database size={24} />}
-          title={browserReceipts.length ? "Uploads can be submitted, but review is paused" : "Review queue needs attention"}
+          title="Uploads can be submitted, but review is paused"
           body="Source records are not connected, so reviewer queues cannot be treated as durable review work."
           actions={nextActions({ retry: true })}
         />

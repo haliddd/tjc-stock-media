@@ -23,8 +23,8 @@ import type { ReviewWriteRecord } from "@/lib/types";
 export const resourceSpaceApiStatus: MediaSourceStatus = {
   adapter: "resourcespace-api",
   label: "ResourceSpace API",
-  detail: "ResourceSpace API config is present. Server routes may call ResourceSpace without exposing credentials to the browser.",
-  readOnly: false
+  detail: "ResourceSpace API config is present for server-side reads. Review writeback remains gated and is not source truth without confirmation re-read.",
+  readOnly: true
 };
 
 export let resourceSpaceApiReadDiagnostics = {

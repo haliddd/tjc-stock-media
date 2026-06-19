@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   Clock3,
   FileCheck2,
@@ -13,7 +14,6 @@ import {
   Search,
   ShieldAlert,
   ShieldCheck,
-  UploadCloud,
   type LucideIcon
 } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
@@ -29,14 +29,14 @@ type RequestType =
   | "Request original or high-resolution help"
   | "General media help";
 
-type RequestStatus = "New" | "In progress" | "Waiting for info" | "Resolved" | "Closed";
+type RequestStatus = "New" | "In progress" | "Waiting for info" | "Needs reviewer follow-up";
 type RequestPriority = "Urgent" | "High" | "Normal";
 
 type LocalRequestReceipt = {
   id: string;
   type: RequestType;
   subject: string;
-  status: "Saved" | "Draft";
+  status: "Local receipt" | "Draft";
   createdAt: string;
   updatedAt: string;
 };
@@ -62,6 +62,8 @@ type RequestStep = {
   title: string;
   detail: string;
   action: string;
+  helper: string;
+  prompts: string[];
   icon: LucideIcon;
 };
 
@@ -69,11 +71,51 @@ const localRequestsKey = "tjc-media-request-receipts-v1";
 const requestDraftKey = "tjc-media-request-draft-v1";
 
 const requestSteps: RequestStep[] = [
-  { id: "Find photos", title: "Find photos", detail: "Tell us the event, date, ministry, or album.", action: "Choose", icon: Search },
-  { id: "Request permission", title: "Request permission", detail: "Ask before using restricted or unclear media.", action: "Choose", icon: ShieldCheck },
-  { id: "Report privacy or rights issue", title: "Report an issue", detail: "Flag privacy, consent, rights, or takedown concerns.", action: "Choose", icon: ShieldAlert },
-  { id: "Request original or high-resolution help", title: "Original/high-resolution help", detail: "Ask the media team to review whether a larger file is appropriate.", action: "Choose", icon: FileLock2 },
-  { id: "General media help", title: "Contact media team", detail: "Ask a question or route a media follow-up.", action: "Choose", icon: MessageSquareText }
+  {
+    id: "Find photos",
+    title: "Find photos",
+    detail: "Tell us the event, date, ministry, or album.",
+    action: "Start search help",
+    helper: "Use this when you cannot find a photo or collection with normal search.",
+    prompts: ["Event or date", "Ministry or album", "How you plan to use it"],
+    icon: Search
+  },
+  {
+    id: "Request permission",
+    title: "Request permission",
+    detail: "Ask before using restricted or unclear media.",
+    action: "Start permission request",
+    helper: "Use this before public, sensitive, edited, or unclear media use.",
+    prompts: ["Audience and channel", "Deadline", "Why this use is needed"],
+    icon: ShieldCheck
+  },
+  {
+    id: "Report privacy or rights issue",
+    title: "Report an issue",
+    detail: "Flag privacy, consent, rights, or takedown concerns.",
+    action: "Start issue report",
+    helper: "Use this when use should pause until a rights reviewer checks the concern.",
+    prompts: ["Media reference", "Concern type", "Who should follow up"],
+    icon: ShieldAlert
+  },
+  {
+    id: "Request original or high-resolution help",
+    title: "Original/high-resolution help",
+    detail: "Ask the media team to review whether a larger file is appropriate.",
+    action: "Start file help",
+    helper: "Use this when a normal preview is not enough and handling needs review.",
+    prompts: ["Needed format or size", "Handling plan", "Audience and deadline"],
+    icon: FileLock2
+  },
+  {
+    id: "General media help",
+    title: "Contact media team",
+    detail: "Ask a question or route a media follow-up.",
+    action: "Start help request",
+    helper: "Use this for media questions that do not fit the other paths.",
+    prompts: ["Question", "Related event", "Best contact"],
+    icon: MessageSquareText
+  }
 ];
 
 const workbenchRequests: WorkbenchRequest[] = [
@@ -142,14 +184,14 @@ const workbenchRequests: WorkbenchRequest[] = [
     type: "General media help",
     subject: "Spring Outreach upload set",
     requestedBy: "Contributor desk",
-    status: "Resolved",
-    reason: "Event context added and follow-up closed.",
+    status: "Needs reviewer follow-up",
+    reason: "Event context needs review before the follow-up can close.",
     assignedTo: "Intake reviewer",
     updated: "Mon",
     priority: "Normal",
-    nextAction: "No action needed.",
+    nextAction: "Confirm no privacy or rights concern remains before closing the follow-up.",
     evidence: ["Uploader note", "Event context", "People visibility"],
-    timeline: ["Help requested", "Context added", "Follow-up closed"],
+    timeline: ["Help requested", "Context added", "Reviewer follow-up needed"],
     roleFit: ["Reviewer", "DAM Admin"]
   }
 ];
@@ -175,7 +217,7 @@ function normalizeReceipt(value: unknown): LocalRequestReceipt | null {
     id,
     type: safeRequestType(raw.type),
     subject,
-    status: raw.status === "Draft" ? "Draft" : "Saved",
+    status: raw.status === "Draft" ? "Draft" : "Local receipt",
     createdAt: safeText(raw.createdAt, "Recent"),
     updatedAt: safeText(raw.updatedAt, "Recent")
   };
@@ -214,8 +256,7 @@ function readRequestDraft() {
 }
 
 function statusClass(status: RequestStatus | LocalRequestReceipt["status"]) {
-  if (status === "Resolved" || status === "Closed") return "is-ready";
-  if (status === "New" || status === "Waiting for info" || status === "Draft" || status === "Saved") return "is-waiting";
+  if (status === "New" || status === "Waiting for info" || status === "Draft" || status === "Local receipt" || status === "Needs reviewer follow-up") return "is-waiting";
   return "is-assigned";
 }
 
@@ -259,6 +300,8 @@ function RequestsPageContent() {
   const [activeStatus, setActiveStatus] = useState<RequestStatus | "All">("All");
   const [selectedId, setSelectedId] = useState("");
   const canSeeWorkbench = role === "Reviewer" || role === "DAM Admin";
+  const selectedStep = requestSteps.find((step) => step.id === requestType) || requestSteps[0];
+  const SelectedStepIcon = selectedStep.icon;
 
   useEffect(() => {
     setLocalReceipts(readLocalRequests());
@@ -302,7 +345,7 @@ function RequestsPageContent() {
   ];
   const hasRequestContext = Boolean(contextValue);
 
-  const persistRequest = (status: "Saved" | "Draft") => {
+  const persistRequest = (status: "Local receipt" | "Draft") => {
     const subject = eventContext.trim() || relatedMedia.trim() || requestType;
     const receipt: LocalRequestReceipt = {
       id: `request-${Date.now()}`,
@@ -316,7 +359,7 @@ function RequestsPageContent() {
       saveLocalRequest(receipt);
       setLocalReceipts(readLocalRequests());
       window.localStorage.setItem(requestDraftKey, JSON.stringify({ requestType, eventContext, message, relatedMedia, urgency, contactInfo }));
-      setNotice(status === "Saved" ? "Request receipt saved in this browser. Media team handoff is not connected yet." : "Saved on this device.");
+      setNotice(status === "Local receipt" ? "Request receipt saved in this browser. Media team handoff is not connected yet." : "Draft saved on this device.");
       setError("");
     } catch {
       setError("We could not save this request in this browser.");
@@ -332,8 +375,14 @@ function RequestsPageContent() {
       setNotice("");
       return;
     }
-    persistRequest("Saved");
+    persistRequest("Local receipt");
   };
+
+  const progressSteps = [
+    { label: "Choose path", detail: requestType, done: true, active: false },
+    { label: "Add context", detail: hasRequestContext ? "Ready" : "Needed", done: hasRequestContext, active: !hasRequestContext },
+    { label: "Review receipt", detail: !requiredMissing ? "Ready" : "Waiting", done: !requiredMissing, active: hasRequestContext && requiredMissing }
+  ];
 
   return (
     <div className="enterprise-page enterprise-requests request-launch route-identity-page" data-route-identity="requests">
@@ -345,24 +394,46 @@ function RequestsPageContent() {
       <main className="request-launch-grid" data-primary-section="request-workflow">
         <section className="request-workflow" aria-labelledby="request-workflow-title">
           <header>
-            <span>Step 1</span>
+            <span>Guided request workflow</span>
             <h2 id="request-workflow-title">What do you need?</h2>
-            <p>Choose one path. The media team will review the request before any permission or file handoff.</p>
+            <p>Choose one path. This page saves a local receipt; the media team still reviews any permission or file question before use.</p>
           </header>
+
+          <ol className="request-wizard-progress" aria-label="Request progress">
+            {progressSteps.map((step, index) => (
+              <li className={cn(step.done && "is-complete", step.active && "is-active")} key={step.label}>
+                <span>{index + 1}</span>
+                <strong>{step.label}</strong>
+                <small>{step.detail}</small>
+              </li>
+            ))}
+          </ol>
 
           <div className="request-type-grid">
             {requestSteps.map((step) => {
               const Icon = step.icon;
               const active = requestType === step.id;
               return (
-                <button type="button" className={cn(active && "is-active")} key={step.id} onClick={() => { setRequestType(step.id); setError(""); }}>
+                <button type="button" aria-pressed={active} className={cn(active && "is-active")} key={step.id} onClick={() => { setRequestType(step.id); setError(""); }}>
                   <Icon size={19} aria-hidden="true" />
                   <strong>{step.title}</strong>
                   <span>{step.detail}</span>
+                  <em>{active ? "Selected" : step.action}<ArrowRight size={13} aria-hidden="true" /></em>
                 </button>
               );
             })}
           </div>
+
+          <section className="request-type-guidance" aria-label={`${selectedStep.title} details`}>
+            <SelectedStepIcon size={21} aria-hidden="true" />
+            <div>
+              <strong>{selectedStep.title}</strong>
+              <p>{selectedStep.helper}</p>
+            </div>
+            <ul>
+              {selectedStep.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}
+            </ul>
+          </section>
 
           <section className="request-form-panel" aria-label="Describe your request">
             <header>
@@ -400,12 +471,12 @@ function RequestsPageContent() {
           <section className="request-review-panel" aria-label="Review request before sending">
             <header>
               <span>Step 3</span>
-              <h2>Review and save</h2>
+              <h2>Review local receipt</h2>
             </header>
             <dl>
               {requestSummary.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
             </dl>
-            <p><ShieldCheck size={14} aria-hidden="true" />Requests do not approve media for use. A reviewer may ask for more information.</p>
+            <p><ShieldCheck size={14} aria-hidden="true" />Saving creates a local receipt only. It does not approve media, publish files, or hand off originals.</p>
             <div className="request-actions">
               <button type="button" className="is-primary" onClick={saveRequestReceipt}>Save request receipt</button>
               <button type="button" onClick={() => persistRequest("Draft")}>Save for later</button>
@@ -424,7 +495,7 @@ function RequestsPageContent() {
           </section>
 
           <section>
-            <h2>Saved in this browser</h2>
+            <h2>Local receipts on this browser</h2>
             {hasLocalReceipts ? (
               <div className="request-local-list">
                 {localReceipts.slice(0, 4).map((receipt) => (
@@ -436,7 +507,7 @@ function RequestsPageContent() {
                 ))}
               </div>
             ) : (
-              <p>No requests saved in this browser.</p>
+              <p>No local request receipts yet.</p>
             )}
           </section>
 
@@ -456,11 +527,11 @@ function RequestsPageContent() {
           <header>
             <div>
               <span>Reviewer/admin workbench</span>
-              <h2 id="request-workbench-title">Request follow-ups</h2>
-              <p>Example workbench rows route reviewers to real workflows. They do not create approval, delivery, publishing, or sync outcomes.</p>
+              <h2 id="request-workbench-title">Request queue</h2>
+              <p>Reviewer/admin-only example rows route follow-up work. They do not create approvals, public publishing, file handoffs, or sync changes.</p>
             </div>
             <nav aria-label="Request status filter">
-              {(["All", "New", "In progress", "Waiting for info", "Resolved", "Closed"] as const).map((status) => (
+              {(["All", "New", "In progress", "Waiting for info", "Needs reviewer follow-up"] as const).map((status) => (
                 <button type="button" className={activeStatus === status ? "is-active" : undefined} key={status} onClick={() => setActiveStatus(status)}>
                   {status}
                 </button>

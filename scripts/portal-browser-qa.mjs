@@ -448,24 +448,69 @@ async function saveFullPageScreenshot(page, screenshotPath) {
   }
 }
 
+async function fillFirst(page, selector, value, label) {
+  const field = page.locator(selector).first();
+  const attached = await field.waitFor({ state: "attached", timeout: 30000 }).then(() => true).catch(() => false);
+  if (!attached) {
+    failures.push(`${label}: field missing`);
+    return;
+  }
+  await field.fill(value).catch(async (error) => {
+    failures.push(`${label}: ${error.message || error}`);
+  });
+}
+
+async function openUploadDetailsStep(page) {
+  const eventField = page.locator('label:has-text("Event name") input:visible, input[placeholder="Youth Service"]:visible').first();
+  if (await eventField.isVisible().catch(() => false)) return;
+  const describe = page.getByRole("button", { name: /Describe them/i }).first();
+  if (await describe.isVisible().catch(() => false)) {
+    await describe.click();
+    await page.waitForTimeout(250);
+    return;
+  }
+  const next = page.getByRole("button", { name: /^Next$/i }).first();
+  if (await next.isVisible().catch(() => false)) {
+    await next.click();
+    await page.waitForTimeout(250);
+  }
+}
+
+async function openUploadReviewStep(page) {
+  const send = page.getByRole("button", { name: "Send to media team" }).last();
+  if (await send.isVisible().catch(() => false)) return;
+  const review = page.getByRole("button", { name: /Review and send/i }).first();
+  if (await review.isVisible().catch(() => false)) {
+    await review.click();
+    await page.waitForTimeout(250);
+    return;
+  }
+  const next = page.getByRole("button", { name: /^Next$/i }).first();
+  if (await next.isVisible().catch(() => false)) {
+    await next.click();
+    await page.waitForTimeout(250);
+  }
+}
+
 async function fillUploadContextStep(page, prefix = "Browser QA") {
-  await page.getByLabel(/Event name/i).fill(`${prefix} photo submission`);
-  await page.getByLabel(/^Date/i).fill("2026-06-06");
-  await page.getByLabel(/Ministry \/ team/i).fill("Internet Ministry");
-  await page.getByLabel(/Photographer \/ source/i).fill("QA reviewer");
-  await page.getByLabel(/^Location/i).fill("TJC local church");
+  await openUploadDetailsStep(page);
+  await fillFirst(page, 'label:has-text("Event name") input, input[placeholder="Youth Service"]', `${prefix} photo submission`, "upload event name");
+  await fillFirst(page, 'label:has-text("Date") input, input[type="date"]', "2026-06-06", "upload event date");
+  await fillFirst(page, 'label:has-text("Ministry / team") input, input[placeholder="Youth / RE"]', "Internet Ministry", "upload ministry");
+  await fillFirst(page, 'label:has-text("Photographer / source") input, input[placeholder="Media team or photographer"]', "QA reviewer", "upload photographer source");
+  await fillFirst(page, 'label:has-text("Location") input, input[placeholder="Church, city, or room"]', "TJC local church", "upload location");
 }
 
 async function fillUploadRightsStep(page) {
-  const usageNote = page.getByLabel(/Intended use|permission note/i);
+  const usageNote = page.locator('label:has-text("Intended use") textarea, textarea[placeholder*="How might these photos be used"]').first();
   if ((await usageNote.count()) > 0) await usageNote.fill("Browser QA permission context for reviewer packet.");
-  await page.getByLabel(/Notes for reviewers/i).fill("Browser QA note for reviewer packet.");
+  await fillFirst(page, 'label:has-text("Notes for reviewers") textarea, textarea[placeholder*="Anything the media team should know"]', "Browser QA note for reviewer packet.", "upload reviewer notes");
   const moreDetails = page.locator(".damx-more-details:visible").first();
   if ((await moreDetails.count()) > 0 && !(await moreDetails.evaluate((node) => node.hasAttribute("open")).catch(() => false))) {
     await moreDetails.locator("summary").click();
   }
-  const tags = page.getByLabel("Suggested tags", { exact: true });
-  if ((await tags.count()) > 0) await tags.fill("Bible, worship");
+  const tags = page.locator('input[aria-label="Suggested tags"]:visible, input[placeholder*="Bible"]:visible').first();
+  if (await tags.isVisible().catch(() => false)) await tags.fill("Bible, worship").catch((error) => failures.push(`upload suggested tags: ${error.message || error}`));
 }
 
 async function clickUploadNext(page) {
@@ -487,7 +532,17 @@ async function advanceUploadToFiles(page, prefix = "Browser QA") {
 }
 
 function uploadPhotoInput(page) {
-  return page.getByLabel("Upload photos from computer", { exact: true });
+  return page.locator('#damx-upload-file-input, input[aria-labelledby="damx-upload-file-label"], input[type="file"][accept*="image"]').first();
+}
+
+async function setUploadPhotoFile(page, file, label) {
+  const input = uploadPhotoInput(page);
+  const attached = await input.waitFor({ state: "attached", timeout: 30000 }).then(() => true).catch(() => false);
+  if (!attached) {
+    failures.push(`${label}: upload photo input missing`);
+    return;
+  }
+  await input.setInputFiles([file]).catch((error) => failures.push(`${label}: ${error.message || error}`));
 }
 
 function googleDriveInput(page) {
@@ -953,12 +1008,13 @@ if (hasViewerDetailAsset()) {
   } else {
     await selectedFilePreview(page).getByRole("button", { name: "Remove all" }).first().click();
   }
-  await uploadPhotoInput(page).setInputFiles([{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await setUploadPhotoFile(page, { name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }, "upload file preview");
   await selectedFilePreview(page).getByText("qa-photo.png").waitFor({ state: "visible", timeout: 10000 }).catch(() => {
     failures.push("upload file preview: selected file missing");
   });
   await fillUploadContextStep(page, "Browser QA");
   await fillUploadRightsStep(page);
+  await openUploadReviewStep(page);
   await page.getByRole("button", { name: "Send to media team" }).last().click();
   await page.waitForSelector("text=Photos sent");
   if ((await page.getByText("Submitted for review. Waiting for review. Nothing is public.").count()) < 1) failures.push("upload contributor receipt: review reassurance missing");
@@ -969,7 +1025,7 @@ if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Contributor", 320, 900);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Mobile file preview QA");
-  await uploadPhotoInput(page).setInputFiles([{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }]);
+  await setUploadPhotoFile(page, { name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }, "upload mobile file preview");
   await selectedFilePreview(page).getByText("qa-mobile-photo-with-a-long-name.png").waitFor({ state: "visible", timeout: 10000 })
     .catch(() => failures.push("upload mobile file preview: selected file missing"));
   const mobileUploadOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
@@ -1062,8 +1118,8 @@ await assertRouteIdentity({ path: "/help", role: "Viewer", h1: "Help Center", ac
   await page.getByRole("button", { name: /Request permission/i }).first().click();
   await page.getByLabel(/Context/i).fill("Browser QA permission request");
   await page.getByLabel(/Message/i).fill("Please review whether this media can be used for a ministry announcement.");
-  await page.getByRole("button", { name: /Save request receipt/i }).click();
-  if ((await page.getByText("Request receipt saved in this browser. Media team handoff is not connected yet.").count()) < 1) {
+  await page.getByRole("button", { name: /Save (request|local) receipt/i }).click();
+  if ((await page.getByText(/Request receipt saved in this browser\. Media team handoff is not connected yet\.|Local receipt saved in this browser\. Media team review still happens outside this page\./).count()) < 1) {
     failures.push("requests workflow: local receipt save confirmation missing");
   }
   const savedReceiptVisible = await page.getByText("Browser QA permission request").first().isVisible().catch(() => false);
@@ -1175,7 +1231,7 @@ await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/h
 });
 
 await captureProof("upload-dropzone-tags.png", "Contributor", 1440, 1000, "/upload", async (page) => {
-  await uploadPhotoInput(page).setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await setUploadPhotoFile(page, { name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }, "upload primitive proof file preview");
   await googleDriveInput(page).fill("https://media.tjc.example/primitive-proof");
   await selectedFilePreview(page).getByText("primitive-proof-photo.png").waitFor({ state: "visible", timeout: 30000 });
   await fillUploadContextStep(page, "Primitive proof");

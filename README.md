@@ -108,7 +108,7 @@ Current import status:
 
 - ResourceSpace collection: `MVP 2024 - First Batch`
 - Imported active resources: 181
-- Raw ResourceSpace review state: 181 approved and published for the MVP 2024 prototype batch
+- Raw ResourceSpace review state: 181 imported for controlled prototype review; not public launch, broad reuse approval, or publication proof
 - Portal reuse state: 0 portal-ready until rights, people/minors, reviewer/date, and derivative evidence pass policy
 - Batch approved with blockers: 181
 - Files with stored binaries: 181
@@ -207,7 +207,7 @@ make up              # bootstrap official ResourceSpace Docker repo and start lo
 make smoke           # local health checks
 make import-audit    # generate source manifest with checksums
 make import-mvp-batch # import first batch into ResourceSpace
-make approve-mvp-batch # approve/publish MVP 2024 after reviewer signoff
+make approve-mvp-batch # guarded batch approval only after explicit portal-ready confirmation
 make heic-derivatives # attach JPG derivatives to HEICs that failed preview
 make polish-mvp-ui    # feature MVP collection and promote HEIC JPG thumbnails to front previews
 make lm-photos-zip-inventory # inventory remaining LM Photos album ZIPs

@@ -272,7 +272,7 @@ export const damAssets: DamAsset[] = [
     modelRelease: "Not Required",
     propertyRelease: "Not Required",
     versions: [{ label: "v2.4", date: "May 19, 2024", size: "4.7 MB", current: true }],
-    activity: ["Published by Brand Team"],
+    activity: ["Reviewed by Brand Team"],
     usageChannels: ["Internal", "Print"],
     collectionMembership: ["Brand Hub"]
   }

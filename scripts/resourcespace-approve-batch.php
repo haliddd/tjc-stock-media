@@ -128,5 +128,5 @@ echo "Reviewer: {$reviewer}\n";
 echo "Review date: {$review_date}\n";
 echo "Rights status: {$rights_status}\n";
 echo "Minimum resource ref: {$min_ref}\n";
-echo "Approved and published: {$approved}\n";
+echo "Review metadata updated: {$approved}\n";
 echo "Audit: {$audit_path}\n";

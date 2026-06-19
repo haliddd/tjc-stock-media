@@ -16,17 +16,16 @@ import {
 import { useDemoRole } from "@/components/RoleProvider";
 import { canAccessRoute } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
+import type { DemoRole } from "@/lib/types";
 
-export {
-  EnterpriseHelpPage,
-  EnterpriseInsightsPage,
-  EnterpriseUploadPage
-} from "./enterprise/EnterpriseDamRedesign";
+export { GuidePage as EnterpriseHelpPage } from "../GuidePage";
+export { UploadPage as EnterpriseUploadPage } from "../UploadPage";
 export { EnterpriseAssetDetailPage } from "./enterprise/AssetDetailPage";
 export { EnterpriseAdminPage } from "./enterprise/AdminPage";
 export { EnterpriseBrandHubPage } from "./enterprise/BrandHubPage";
 export { EnterpriseDashboardPage } from "./enterprise/DashboardPage";
 export { EnterpriseCollectionsPage } from "./enterprise/CollectionsPage";
+export { EnterpriseInsightsPage } from "./enterprise/InsightsPage";
 export { EnterpriseLibraryPage } from "./enterprise/LibraryPage";
 export { EnterprisePackageBuilderPage } from "./enterprise/PackageBuilderPage";
 export { EnterpriseReviewPage } from "./enterprise/ReviewPage";
@@ -39,13 +38,13 @@ type PortalHomeCard = {
   description: string;
   href: string;
   icon: LucideIcon;
-  roles?: string[];
+  roles?: DemoRole[];
 };
 
 const portalHomeCards: PortalHomeCard[] = [
   {
     title: "Media Library",
-    description: "Browse approved media and use guidance.",
+    description: "Browse cleared media and use guidance.",
     href: "/library",
     icon: Library
   },
@@ -69,16 +68,16 @@ const portalHomeCards: PortalHomeCard[] = [
   },
   {
     title: "Review Uploads",
-    description: "Review submitted photos before approval.",
+    description: "Review submitted photos before use clearance.",
     href: "/review",
     icon: ShieldAlert
   },
   {
     title: "My Work",
-    description: "Follow up on assigned reviews and requests.",
+    description: "Follow up on uploads, review questions, and requests.",
     href: "/my-tasks",
     icon: Clock3,
-    roles: ["Reviewer", "DAM Admin"]
+    roles: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
     title: "Requests",
@@ -93,49 +92,91 @@ const portalHomeCards: PortalHomeCard[] = [
     icon: HelpCircle
   },
   {
-    title: "Admin Zone",
-    description: "Manage portal settings and review safety.",
+    title: "Support Zone",
+    description: "Check readiness, identity, and blocked operations.",
     href: "/admin",
     icon: LayoutDashboard
   }
 ];
 
+const primaryHrefByRole: Record<DemoRole, string> = {
+  Viewer: "/library",
+  Contributor: "/upload",
+  Reviewer: "/review",
+  "DAM Admin": "/admin"
+};
+
+const secondaryHrefByRole: Record<DemoRole, string> = {
+  Viewer: "/requests",
+  Contributor: "/my-tasks",
+  Reviewer: "/my-tasks",
+  "DAM Admin": "/review"
+};
+
+const primaryLabelByRole: Record<DemoRole, string> = {
+  Viewer: "Browse Media",
+  Contributor: "Upload Photos",
+  Reviewer: "Review Uploads",
+  "DAM Admin": "Open Support Zone"
+};
+
+const secondaryLabelByRole: Record<DemoRole, string> = {
+  Viewer: "Requests",
+  Contributor: "My Work",
+  Reviewer: "My Work",
+  "DAM Admin": "Review Uploads"
+};
+
+const portalRoleCopy: Record<DemoRole, string> = {
+  Viewer: "Find church media cleared for use, ask for help, and check guidance before sharing.",
+  Contributor: "Upload event photos, see My Work follow-ups, and track your upload history.",
+  Reviewer: "Review uploads, clear rights questions, and keep media requests moving.",
+  "DAM Admin": "Watch review flow, keep Support Zone checks contained, and protect launch safety."
+};
+
+function describePortalHomeCard(card: PortalHomeCard, role: DemoRole) {
+  if (card.href === "/my-tasks" && role === "Contributor") {
+    return "Track drafts, reviewer questions, and request follow-up.";
+  }
+  if (card.href === "/my-tasks" && role === "DAM Admin") {
+    return "Follow reviewer bottlenecks, support checks, and request follow-up.";
+  }
+  return card.description;
+}
+
+export function portalHomeCardsForRole(role: DemoRole) {
+  return portalHomeCards
+    .filter((card) => (!card.roles || card.roles.includes(role)) && canAccessRoute(role, card.href))
+    .map((card) => ({ ...card, description: describePortalHomeCard(card, role) }));
+}
+
+export function portalHomePrimaryHrefForRole(role: DemoRole) {
+  return primaryHrefByRole[role];
+}
+
 export function EnterprisePortalHomePage() {
   const { role } = useDemoRole();
-  const visibleCards = portalHomeCards.filter((card) => (!card.roles || card.roles.includes(role)) && canAccessRoute(role, card.href));
-
-  const primaryHref = role === "DAM Admin"
-    ? "/admin"
-    : role === "Reviewer"
-      ? "/review"
-      : role === "Contributor"
-        ? "/upload"
-        : "/library";
-  const secondaryHref = role === "DAM Admin"
-    ? "/review"
-    : role === "Reviewer"
-      ? "/my-tasks"
-      : role === "Contributor"
-        ? "/library"
-        : "/requests";
+  const visibleCards = portalHomeCardsForRole(role);
+  const primaryHref = primaryHrefByRole[role];
+  const secondaryHref = secondaryHrefByRole[role];
   const primaryCard = visibleCards.find((card) => card.href === primaryHref) || visibleCards[0];
   const PrimaryIcon = primaryCard?.icon;
   const secondaryCards = visibleCards.filter((card) => card.href !== primaryHref).slice(0, 5);
-  const primaryLabel = role === "DAM Admin" ? "Open Admin Zone" : role === "Reviewer" ? "Open Review Uploads" : role === "Contributor" ? "Upload Photos" : "Browse Media";
-  const secondaryLabel = role === "DAM Admin" ? "Review Uploads" : role === "Reviewer" ? "My Work" : role === "Contributor" ? "Media Library" : "Requests";
-  const roleCopy = role === "Contributor"
-    ? "Submit event photos, track your uploads, and browse approved media."
-    : role === "Reviewer"
-      ? "Review submitted photos, follow assigned work, and browse approved media."
-      : role === "DAM Admin"
-        ? "Review submissions, support the media team, and manage portal safety."
-        : "Browse approved media, request help, and follow media-use guidance.";
+  const primaryLabel = primaryLabelByRole[role];
+  const secondaryLabel = secondaryLabelByRole[role];
+  const roleCopy = portalRoleCopy[role];
+  const sectionLabel = role === "Viewer" ? "Start here" : role === "Contributor" ? "Contributor paths" : role === "DAM Admin" ? "Support paths" : "Command center";
+  const portalModeLabel = role === "Reviewer" || role === "DAM Admin" ? "Internal beta DAM command center" : "Internal beta media portal";
+  const roleLabel = `${role} access`;
 
   return (
     <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-4 py-8 md:px-8 md:py-10" data-primary-section="media-portal-home">
       <section className="grid gap-6 border-b border-[#d8e1da] bg-white pb-7 md:grid-cols-[1fr_auto] md:items-end">
         <div className="max-w-3xl">
-          <span className="text-xs font-black uppercase tracking-[0.14em] text-tjc-evergreen">Media portal</span>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-tjc-muted">
+            <span className="text-tjc-evergreen">{portalModeLabel}</span>
+            <span className="rounded-full border border-[#d8e1da] px-2 py-1 tracking-[0.08em]">{roleLabel}</span>
+          </div>
           <h1 className="text-3xl font-black leading-tight tracking-[0] text-tjc-ink md:text-5xl">True Jesus Church Media Portal</h1>
           <p className="mt-3 text-base font-semibold leading-7 text-tjc-muted md:text-lg">{roleCopy}</p>
         </div>
@@ -170,7 +211,7 @@ export function EnterprisePortalHomePage() {
           </Link>
         ) : null}
         <div className="grid gap-3">
-          <h2 className="text-sm font-black uppercase tracking-[0.14em] text-tjc-muted">Common paths</h2>
+          <h2 className="text-sm font-black uppercase tracking-[0.14em] text-tjc-muted">{sectionLabel}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {secondaryCards.map((card) => {
               const Icon = card.icon;
@@ -193,7 +234,7 @@ export function EnterprisePortalHomePage() {
       </section>
 
       <section className="grid gap-3 border-t border-[#d8e1da] pt-5 text-sm font-semibold leading-6 text-tjc-muted md:grid-cols-3" aria-label="Media portal guardrails">
-        <p><strong className="font-black text-tjc-ink">Use approved copies.</strong> Sensitive, unclear, or restricted media stays in review until cleared.</p>
+        <p><strong className="font-black text-tjc-ink">Use cleared copies.</strong> Sensitive, unclear, or restricted media stays in review until cleared.</p>
         <p><strong className="font-black text-tjc-ink">Submit context.</strong> Event name, date, ministry, and consent notes help reviewers make decisions.</p>
         <p><strong className="font-black text-tjc-ink">Ask when unsure.</strong> Requests route media questions and correction needs to the team.</p>
       </section>

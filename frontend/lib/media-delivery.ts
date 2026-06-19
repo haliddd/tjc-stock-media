@@ -142,7 +142,7 @@ function previewSeed(value: string) {
   return hash;
 }
 
-function localBetaPreviewPalette(seed: number) {
+function generatedPlaceholderPalette(seed: number) {
   const palettes = [
     ["#d8efe7", "#f6f1d6", "#1f5f52"],
     ["#e6eef8", "#f3dfd3", "#284d7a"],
@@ -165,17 +165,17 @@ function wrapSvgLines(value: string, maxChars = 24, maxLines = 3) {
       lines[lines.length - 1] = `${current} ${word}`;
     }
   }
-  if (!lines.length) return ["Local beta preview"];
+  if (!lines.length) return ["Media preview"];
   if (words.join(" ").length > lines.join(" ").length) lines[lines.length - 1] = `${lines[lines.length - 1].replace(/\.+$/, "")}...`;
   return lines;
 }
 
-function generatedLocalBetaPreviewSvg(asset: Pick<StockMediaAsset, "id" | "title" | "mediaType" | "imageDimensions" | "resourceSpaceId">, label: string) {
+function generatedPlaceholderPreviewSvg(asset: Pick<StockMediaAsset, "id" | "title" | "mediaType" | "imageDimensions" | "resourceSpaceId">, label: string) {
   const title = svgText(asset.title || label || `Resource ${asset.id}`);
   const ref = svgText(String(asset.resourceSpaceId || asset.id));
   const type = svgText((asset.mediaType || "media").toUpperCase());
-  const dimensions = svgText(asset.imageDimensions || "local beta preview");
-  const [primary, secondary, ink] = localBetaPreviewPalette(previewSeed(`${asset.id}:${asset.title}`));
+  const dimensions = svgText(asset.imageDimensions || "preview placeholder");
+  const [primary, secondary, ink] = generatedPlaceholderPalette(previewSeed(`${asset.id}:${asset.title}`));
   const titleLines = wrapSvgLines(title);
   const lineStart = 236 - ((titleLines.length - 1) * 22);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" role="img" aria-label="${title}">
@@ -199,7 +199,7 @@ function generatedLocalBetaPreviewSvg(asset: Pick<StockMediaAsset, "id" | "title
   <text x="320" y="330" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="800" fill="${ink}" letter-spacing="1.5">${type} PREVIEW</text>
   ${titleLines.map((line, index) => `<text x="320" y="${lineStart + index * 42}" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="800" fill="#10251f">${svgText(line)}</text>`).join("\n  ")}
   <text x="320" y="360" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700" fill="#43564f">Reference code ${ref} · ${dimensions}</text>
-  <text x="320" y="386" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" fill="#6b766f">Generated local beta preview. Original/source remains restricted.</text>
+  <text x="320" y="386" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" fill="#6b766f">Preview placeholder. Original files remain restricted.</text>
 </svg>`;
 }
 
@@ -227,20 +227,20 @@ export function thumbnailPlaceholderResponse(label: string): ThumbnailImageRespo
 
 export function readThumbnailDerivativeDelivery(id: string, variant: ImageVariant, asset?: Pick<StockMediaAsset, "id" | "title" | "mediaType" | "imageDimensions" | "resourceSpaceId">): ThumbnailDerivativeDelivery {
   const filePath = findFilestoreDerivative(id, variant);
-  if (!filePath) return { status: "missing-derivative", placeholderLabel: "Local beta preview", asset };
+  if (!filePath) return { status: "missing-derivative", placeholderLabel: "Media preview", asset };
   const image = readDeliveredImage(filePath);
-  if (!image) return { status: "unavailable-derivative", placeholderLabel: "Local beta preview", asset };
+  if (!image) return { status: "unavailable-derivative", placeholderLabel: "Media preview", asset };
   return { status: "ready", image };
 }
 
 export function thumbnailImageResponse(delivery: ThumbnailDerivativeDelivery): ThumbnailImageResponse {
   if (delivery.status !== "ready" && delivery.asset) {
     return {
-      body: generatedLocalBetaPreviewSvg(delivery.asset, delivery.placeholderLabel),
+      body: generatedPlaceholderPreviewSvg(delivery.asset, delivery.placeholderLabel),
       headers: {
         "Content-Type": "image/svg+xml; charset=utf-8",
         "Cache-Control": "private, max-age=300",
-        "X-TJC-Preview-Mode": "generated-local-beta"
+        "X-TJC-Preview-Mode": "generated-placeholder"
       }
     };
   }

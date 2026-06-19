@@ -54,7 +54,7 @@ export function buildIntegrationReadiness({
       label: "ResourceSpace metadata export",
       ready: sourceIsResourceSpace,
       owner: "ResourceSpace",
-      state: status.adapter === "exported-metadata" || status.adapter === "bundled-beta-catalog" ? "Read-only" : sourceIsResourceSpace ? "Operational" : "Blocked",
+      state: sourceIsResourceSpace ? "Read-only" : "Blocked",
       detail: `${status.detail} This row proves catalog read/input state only; it does not prove ResourceSpace writeback.`
     },
     {
@@ -102,7 +102,7 @@ export function buildIntegrationReadiness({
         : apiConfigured && resourceSpaceWritebackEnabled()
           ? `Writeback flags are enabled, but explicit review field refs are missing or invalid: ${writebackFieldMap.missing.join(", ") || writebackFieldMap.error || "unknown field map issue"}.`
         : apiConfigured
-          ? "Credentials are present, but writeback is disabled until RESOURCESPACE_ENABLE_WRITEBACK=1 and RESOURCESPACE_WRITEBACK_MODE=live."
+          ? "Credentials are present, but writeback remains disabled until explicit writeback env, field-map proof, reviewer confirmation, owner approval, and post-write re-read are all present."
         : "Review decisions save as portal pending-handoff events. They are not final ResourceSpace truth."
     },
     {

@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(validationError.body, { status: validationError.status });
   }
 
-  appendAuditEvent(uploadIntakeSubmittedAuditEvent(intake, role, identity.id));
   const submitted = await submitUploadIntakeBatch(intake, role, identity.id);
+  const fallbackAuditEvent = uploadIntakeSubmittedAuditEvent(intake, role, identity.id);
+  appendAuditEvent(submitted.auditEvent || fallbackAuditEvent);
   return NextResponse.json(submitted.body, { status: submitted.status });
 }

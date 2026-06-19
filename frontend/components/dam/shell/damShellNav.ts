@@ -80,7 +80,7 @@ function navItemFromManifest(item: typeof enterpriseNavItems[number] | typeof en
       ...base,
       label: "Media Library",
       mobileLabel: "Library",
-      description: "Browse approved church media with use guidance."
+      description: "Browse church media with use guidance."
     };
   }
 
@@ -112,17 +112,17 @@ function navItemFromManifest(item: typeof enterpriseNavItems[number] | typeof en
       mobileLabel: "Work",
       href: "/my-tasks",
       activeHrefs: ["/tasks"],
-      roles: ["Reviewer", "DAM Admin"],
-      description: "Follow up on assigned uploads, reviews, and requests."
+      roles: ["Contributor", "Reviewer", "DAM Admin"],
+      description: "Follow up on uploads, review questions, requests, and assigned work."
     };
   }
 
   if (item.id === "controlCenter") {
     return {
       ...base,
-      label: "Admin Zone",
-      mobileLabel: "Admin",
-      description: "Manage portal settings, review safety, and support follow-up."
+      label: "Support Zone",
+      mobileLabel: "Support",
+      description: "Admin-only readiness checks, identity state, and blocked operations."
     };
   }
 
@@ -158,7 +158,7 @@ export function getVisibleMobileNavItems(role: DemoRole, limit = 5) {
   const visibleItems = damShellItemsForRole(role).filter((item) => item.group !== "Admin" || role === "DAM Admin");
   const visibleByHref = new Map(visibleItems.map((item) => [item.href, item]));
   const priority = role === "Contributor"
-    ? ["/library", "/collections", "/upload", "/recent-uploads", "/requests"]
+    ? ["/library", "/upload", "/my-tasks", "/recent-uploads", "/requests"]
     : enterpriseMobileNavPriorityByRole[role];
 
   return priority
@@ -174,13 +174,14 @@ function polishWorkspaceCopy(copy: { title: string; subtitle: string }) {
     .replace("Browse Photos", "Media Library")
     .replace("Albums / Events", "Albums & Events")
     .replace("Album / Event", "Album & Event")
-    .replace(/^Admin$/, "Admin Zone")
+    .replace(/^Admin$/, "Support Zone")
     .replace(/^Help$/, "Help Center")
     .replace("Distribution Sets", "Delivery Sets");
 
   const subtitle = copy.subtitle
-    .replace("approved church photos", "approved church media")
+    .replace("approved church photos", "church media")
     .replace("Browse photos", "Browse media")
+    .replace("Manage portal settings and review safety.", "Admin-only readiness checks, identity state, and blocked operations.")
     .replace("Deferred MVP draft area; collections remain the primary organization surface.", "Collections remain the primary organization surface.")
     .replace("Find help articles and media-use guidance.", "Find media-use guidance and review help.");
 

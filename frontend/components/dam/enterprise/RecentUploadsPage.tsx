@@ -7,7 +7,7 @@ import { PageHeader } from "./EnterpriseShared";
 import { cn } from "@/lib/utils";
 import type { DemoRole } from "@/lib/types";
 
-type UploadStatus = "Draft" | "Submitted" | "Needs more info" | "Approved" | "Restricted" | "Rejected";
+type UploadStatus = "Draft" | "Submitted" | "Needs more info" | "Reviewed" | "Restricted" | "Rejected";
 
 type UploadRow = {
   id: string;
@@ -31,8 +31,9 @@ type UploadRow = {
 };
 
 const contributorUploadsKey = "tjc-upload-intake-my-uploads-v1";
-const uploadStatuses: UploadStatus[] = ["Draft", "Submitted", "Needs more info", "Approved", "Restricted", "Rejected"];
+const uploadStatuses: UploadStatus[] = ["Draft", "Submitted", "Needs more info", "Reviewed", "Restricted", "Rejected"];
 const mediaTypeValues = ["Photos", "Videos", "Photos and videos", "Not sure"] as const;
+const unsafeContributorCopy = /\b(ResourceSpace|Support Zone|Source Status|source-system|source system|writeback|backend|live sync|published|downloadable|public now|approved|approval|durable account history)\b/i;
 
 const exampleUploads: UploadRow[] = [
   {
@@ -80,18 +81,18 @@ const exampleUploads: UploadRow[] = [
     roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
-    id: "approved-vespers",
+    id: "reviewed-vespers",
     batchName: "Spring vespers",
     mediaType: "Photos",
     fileCount: 12,
-    status: "Approved",
+    status: "Reviewed",
     date: "Jun 12, 2026",
     eventDate: "2026-06-12",
     ministry: "Music / Choir",
     source: "Music ministry",
     peopleMinors: "No",
     notes: "Stage photos only.",
-    reviewerNote: "Approved by reviewer for internal church use.",
+    reviewerNote: "Reviewer note allows limited internal church use.",
     roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
@@ -106,7 +107,7 @@ const exampleUploads: UploadRow[] = [
     source: "Pastoral team",
     peopleMinors: "Not sure",
     notes: "Sensitive preparation moments.",
-    reviewerNote: "Restricted to reviewer-approved internal context only.",
+    reviewerNote: "Restricted to reviewer-cleared internal context only.",
     roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
@@ -128,7 +129,7 @@ const exampleUploads: UploadRow[] = [
 
 const roleUploadGuidance: Record<DemoRole, string> = {
   Viewer: "Uploads appear here after review starts.",
-  Contributor: "Track uploads saved on this device.",
+  Contributor: "This browser shows your recent submissions.",
   Reviewer: "Review batches that need evidence or a decision.",
   "DAM Admin": "Monitor contributor intake and reviewer follow-up."
 };
@@ -140,7 +141,8 @@ function uploadIcon(type: UploadRow["mediaType"]) {
 
 function normalizeStoredUpload(value: unknown): UploadRow | null {
   const raw = (value || {}) as Partial<UploadRow>;
-  if (!raw.id || !raw.batchName || !raw.status || !uploadStatuses.includes(raw.status)) return null;
+  const status = String(raw.status || "") === "Approved" ? "Reviewed" : raw.status;
+  if (!raw.id || !raw.batchName || !status || !uploadStatuses.includes(status)) return null;
   const mediaType = raw.mediaType && mediaTypeValues.includes(raw.mediaType) ? raw.mediaType : "Not sure";
   return {
     id: String(raw.id),
@@ -148,7 +150,7 @@ function normalizeStoredUpload(value: unknown): UploadRow | null {
     eventName: raw.eventName ? String(raw.eventName) : String(raw.batchName),
     mediaType,
     fileCount: Math.max(0, Math.trunc(Number(raw.fileCount) || 0)),
-    status: raw.status,
+    status,
     date: String(raw.date || "Today"),
     eventDate: String(raw.eventDate || ""),
     locationName: raw.locationName ? String(raw.locationName) : undefined,
@@ -162,6 +164,11 @@ function normalizeStoredUpload(value: unknown): UploadRow | null {
     reviewerNote: raw.reviewerNote ? String(raw.reviewerNote) : undefined,
     roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   };
+}
+
+function contributorSafeText(value: string | undefined, fallback: string) {
+  if (!value) return fallback;
+  return unsafeContributorCopy.test(value) ? fallback : value;
 }
 
 function readStoredUploads() {
@@ -181,35 +188,36 @@ function statusAction(status: UploadStatus) {
 }
 
 function reviewStatusForUpload(upload: UploadRow) {
-  if (upload.reviewStatus) return upload.reviewStatus;
+  if (upload.reviewStatus) return contributorSafeText(upload.reviewStatus, "Waiting for review");
   if (upload.status === "Submitted") return "Waiting for review";
   if (upload.status === "Draft") return "Draft";
   return upload.status;
 }
 
-function useStatusForUpload(upload: UploadRow) {
+export function useStatusForUpload(upload: Pick<UploadRow, "publishStatus" | "status">) {
   if (upload.publishStatus) {
-    if (/approved/i.test(upload.publishStatus)) return "Reviewer-approved scope only";
+    if (/do not use yet/i.test(upload.publishStatus)) return "Do not use yet";
+    if (/approved/i.test(upload.publishStatus)) return "Reviewer-limited scope only";
     if (/restricted|rejected|do not use/i.test(upload.publishStatus)) return "Do not use";
     if (/do not publish|not published|not public|pending|submitted|draft|needs/i.test(upload.publishStatus)) return "Do not use yet";
     return "Review required before use";
   }
   if (upload.status === "Submitted" || upload.status === "Draft" || upload.status === "Needs more info") return "Do not use yet";
-  if (upload.status === "Approved") return "Reviewer-approved scope only";
+  if (upload.status === "Reviewed") return "Reviewer-limited scope only";
   return "Do not use";
 }
 
 function nextStep(upload: UploadRow) {
   if (upload.status === "Draft") return "Finish event details, add files, then submit for review.";
-  if (upload.status === "Submitted") return "Waiting for review. Nothing is public.";
+  if (upload.status === "Submitted") return "Waiting for review. Use remains blocked.";
   if (upload.status === "Needs more info") return "Add reviewer-requested details before this can move forward.";
-  if (upload.status === "Approved") return "Reviewer approved limited use. Follow the reviewer note.";
+  if (upload.status === "Reviewed") return "Reviewer cleared limited use. Follow the reviewer note.";
   if (upload.status === "Restricted") return "Use is limited by reviewer note.";
   return "Reviewer rejected this batch. Do not use these files.";
 }
 
 function uploadMediaSummary(upload: UploadRow) {
-  if (!upload.fileCount) return upload.mediaType === "Not sure" ? "Source link" : "No files counted";
+  if (!upload.fileCount) return upload.mediaType === "Not sure" ? "Link provided" : "No files counted";
   return `${upload.fileCount} file${upload.fileCount === 1 ? "" : "s"} - ${upload.mediaType}`;
 }
 
@@ -245,7 +253,7 @@ export function RecentUploadsPage() {
         <ShieldAlert size={24} aria-hidden="true" />
         <div>
           <strong>Review required before use</strong>
-          <span>New uploads stay out of Browse Photos until a reviewer clears them.</span>
+          <span>New uploads stay out of the Media Library until a reviewer clears them.</span>
         </div>
       </section>
 
@@ -271,7 +279,7 @@ export function RecentUploadsPage() {
                   <div className="ed-upload-status-stack" aria-label={`${upload.batchName} status`}>
                     <em>{reviewStatusForUpload(upload)}</em>
                     <em>{useStatusForUpload(upload)}</em>
-                    {upload.reviewerNote ? <em>{upload.reviewerNote}</em> : null}
+                    {upload.reviewerNote ? <em>{contributorSafeText(upload.reviewerNote, "Reviewer note available in review follow-up.")}</em> : null}
                   </div>
                   <button type="button" className="ed-row-open" onClick={() => setSelectedId(upload.id)}>{statusAction(upload.status)}</button>
                 </article>
@@ -281,7 +289,7 @@ export function RecentUploadsPage() {
             <section className="ed-empty-state is-quiet">
               <UploadCloud size={24} aria-hidden="true" />
               <h2>No uploads yet</h2>
-              <p>Uploads saved from this browser will appear here.</p>
+              <p>This browser shows your recent submissions.</p>
             </section>
           )}
         </main>
@@ -303,13 +311,13 @@ export function RecentUploadsPage() {
                 <div><dt>Event date</dt><dd>{selected.eventDate || "Not provided"}</dd></div>
                 <div><dt>Church/location</dt><dd>{selected.locationName || "Not provided"}</dd></div>
                 <div><dt>Ministry/group</dt><dd>{selected.ministry || "Not provided"}</dd></div>
-                <div><dt>Source/uploader</dt><dd>{selected.source || "Not provided"}</dd></div>
+                <div><dt>Uploader</dt><dd>{contributorSafeText(selected.source, "Contributor upload")}</dd></div>
                 <div><dt>People/minors</dt><dd>{selected.peopleMinors}</dd></div>
                 <div><dt>Files</dt><dd>{uploadMediaSummary(selected)}</dd></div>
                 <div><dt>Review</dt><dd>{reviewStatusForUpload(selected)}</dd></div>
                 <div><dt>Use status</dt><dd>{useStatusForUpload(selected)}</dd></div>
-                <div><dt>Notes</dt><dd>{selected.notes || "No notes"}</dd></div>
-                {selected.reviewerNote ? <div><dt>Reviewer note</dt><dd>{selected.reviewerNote}</dd></div> : null}
+                <div><dt>Notes</dt><dd>{contributorSafeText(selected.notes, "No notes")}</dd></div>
+                {selected.reviewerNote ? <div><dt>Reviewer note</dt><dd>{contributorSafeText(selected.reviewerNote, "Reviewer note available in review follow-up.")}</dd></div> : null}
               </dl>
               <section>
                 <h3>Next step</h3>
@@ -317,7 +325,7 @@ export function RecentUploadsPage() {
               </section>
               <section>
                 <h3>Timeline</h3>
-                <p><Clock3 size={14} aria-hidden="true" />Submitted or saved {selected.date}. Use waits for reviewer approval.</p>
+                <p><Clock3 size={14} aria-hidden="true" />Submitted or saved {selected.date}. Use waits for reviewer clearance.</p>
               </section>
             </>
           ) : (

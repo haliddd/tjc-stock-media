@@ -126,7 +126,7 @@
       "path": "/my-tasks",
       "routeFile": "frontend/app/my-tasks/page.tsx",
       "pageExport": "MyTasksPage",
-      "access": "review"
+      "access": "public"
     },
     {
       "id": "tasks",

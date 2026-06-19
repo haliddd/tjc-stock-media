@@ -9,9 +9,9 @@ import { canAdmin } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { DemoRole, MediaSourceStatus } from "@/lib/types";
 
-type SourceState =
+export type SourceState =
   | { status: "loading"; label: "Checking source"; detail: string; source?: undefined }
-  | { status: "ready"; label: "ResourceSpace read path" | "Source snapshot" | "Configured read path" | "Local sample data" | "Media library"; detail: string; source: MediaSourceStatus }
+  | { status: "ready"; label: "Read-only ResourceSpace API" | "Read-only source snapshot" | "Configured read check" | "Local sample data" | "Media library"; detail: string; source: MediaSourceStatus }
   | { status: "unavailable"; label: "Source unavailable"; detail: string; source?: MediaSourceStatus };
 
 type SearchProbePayload = {
@@ -34,21 +34,50 @@ function isMediaLibraryOnlySource(source: MediaSourceStatus, payload: SearchProb
   return source.adapter === "media-library" || source.sourceKind === "media-library" || payload.sourceKind === "media-library";
 }
 
-function sourceStateFromPayload(payload: SearchProbePayload): SourceState {
+function sourceDetailForProbe(source: MediaSourceStatus, hasProbeRecords: boolean) {
+  const detail = source.detail || "Source status returned.";
+  return hasProbeRecords ? detail : `${detail} No records returned by this read check.`;
+}
+
+export function sourceStateFromPayload(payload: SearchProbePayload): SourceState {
   const source = payload.source || payload.sourceStatus;
-  if (!source || !Array.isArray(payload.assets) || payload.assets.length === 0) {
-    return { status: "unavailable", label: "Source unavailable", detail: source?.detail || "No source records returned." };
+  if (!source) {
+    return { status: "unavailable", label: "Source unavailable", detail: "No source status returned." };
   }
+  const hasProbeRecords = Array.isArray(payload.assets) && payload.assets.length > 0;
+  const detail = sourceDetailForProbe(source, hasProbeRecords);
   const live = Boolean(source.live ?? payload.live);
   if (isLocalSampleSource(source, payload)) {
-    return { status: "ready", label: "Local sample data", detail: source.detail, source };
+    return { status: "ready", label: "Local sample data", detail, source };
   }
   if (isMediaLibraryOnlySource(source, payload)) {
-    return { status: "ready", label: "Media library", detail: source.detail, source };
+    return { status: "ready", label: "Media library", detail, source };
   }
-  if (source.readOnly) return { status: "ready", label: "Source snapshot", detail: source.detail, source };
-  if (live && source.adapter === "resourcespace-api") return { status: "ready", label: "ResourceSpace read path", detail: source.detail, source };
-  return { status: "ready", label: "Configured read path", detail: source.detail, source };
+  if (source.adapter === "resourcespace-api") return { status: "ready", label: "Read-only ResourceSpace API", detail, source };
+  if (source.readOnly || live) return { status: "ready", label: "Read-only source snapshot", detail, source };
+  return { status: "ready", label: "Configured read check", detail, source };
+}
+
+export function sourceModeLabel(state: SourceState) {
+  if (state.label === "Local sample data") return "Disconnected local sample";
+  if (state.label === "Media library") return "Media library only";
+  if (state.source?.adapter === "resourcespace-api") return "Read-only API check";
+  if (state.label === "Read-only source snapshot") return "Read-only snapshot";
+  if (state.source?.readOnly) return "Read-only snapshot";
+  return "Configured read check";
+}
+
+function publicSourceStatusLabel(state: SourceState) {
+  if (state.status === "loading") return "Checking media";
+  if (state.status === "unavailable") return "Media check unavailable";
+  if (state.label === "Local sample data") return "Sample media";
+  return "Media library check";
+}
+
+function publicSourceStatusDetail(state: SourceState) {
+  if (state.status === "loading") return "Checking whether media records can be read.";
+  if (state.status === "unavailable") return "Media status could not be checked. Browse and request actions stay guarded.";
+  return "Read check completed. Browse and request actions still follow media-use rules.";
 }
 
 export function DamSourceStatus({ role, compact = false, className }: { role: DemoRole; compact?: boolean; className?: string }) {
@@ -87,17 +116,11 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
     if (state.label === "Local sample data" || state.label === "Media library") return Database;
     return CheckCircle2;
   }, [state.label, state.status]);
-  const visibleLabel = state.label;
+  const adminView = canAdmin(role);
+  const visibleLabel = adminView ? state.label : publicSourceStatusLabel(state);
+  const visibleDetail = adminView ? state.detail : publicSourceStatusDetail(state);
   const disconnectedLabel = state.label === "Local sample data" || state.label === "Media library";
-  const modeLabel = state.label === "Local sample data"
-    ? "Disconnected local sample"
-    : state.label === "Media library"
-      ? "Media library only"
-      : state.source?.readOnly
-        ? "Read-only snapshot"
-        : state.source?.live
-          ? "API read path"
-          : "Configured read path";
+  const modeLabel = adminView ? sourceModeLabel(state) : "Read check";
 
   return (
     <details
@@ -112,20 +135,20 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
     >
       <summary
         className="dam-source-status-pill inline-flex min-h-9 max-w-full cursor-pointer list-none items-center gap-2 whitespace-nowrap rounded-lg border px-2.5 text-xs font-black"
-        title={state.detail}
-        aria-label={`${state.label}: ${state.detail}`}
+        title={visibleDetail}
+        aria-label={`${visibleLabel}: ${visibleDetail}`}
       >
         <Icon className={cn("size-4", state.status === "loading" && "animate-spin")} aria-hidden="true" />
         <span>{visibleLabel}</span>
-        {!compact ? <span className="hidden max-w-[11rem] truncate font-semibold text-current/72 2xl:inline">{state.source?.label || "Media source"}</span> : null}
+        {!compact && adminView ? <span className="hidden max-w-[11rem] truncate font-semibold text-current/72 2xl:inline">{state.source?.label || "Media source"}</span> : null}
         <ChevronDown className="size-3.5 opacity-70" aria-hidden="true" />
       </summary>
-      <div className="dam-source-status-popover" role="region" aria-label="Source status details">
+      <div className="dam-source-status-popover" role="region" aria-label={adminView ? "Source status details" : "Media status details"}>
         <div className="dam-source-status-card">
-          <span>Source status</span>
-          <strong>{state.label}</strong>
-          <p>{state.detail}</p>
-          <p>Status is a read check only. Original/source files remain restricted; no writeback or sync is implied.</p>
+          <span>{adminView ? "Source status" : "Media status"}</span>
+          <strong>{visibleLabel}</strong>
+          <p>{visibleDetail}</p>
+          <p>{adminView ? "Status is a read check only. Original/source files remain restricted; no writeback, publication, download enablement, or sync is implied." : "Original files remain restricted. No publication, file handoff, or status change is implied."}</p>
         </div>
         <div className="dam-source-status-meta">
           <span>Mode</span>
@@ -135,7 +158,7 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
           <span>Last check</span>
           <strong>Current session</strong>
         </div>
-        {canAdmin(role) ? <Link href={routeWithRole("/admin#launch-readiness-section", role)}>Open source details</Link> : <span className="dam-source-status-note">Admin-only source details hidden for this persona.</span>}
+        {adminView ? <Link href={routeWithRole("/admin#system-health-section", role)}>Open source details</Link> : <span className="dam-source-status-note">Admin-only details hidden for this persona.</span>}
       </div>
     </details>
   );
