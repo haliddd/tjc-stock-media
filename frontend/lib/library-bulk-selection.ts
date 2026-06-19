@@ -111,6 +111,13 @@ function actionStatus(eligibleCount: number, totalCount: number) {
   return "None eligible";
 }
 
+function selectionStatusLabel(asset: StockMediaAsset) {
+  if (assetIsBlocked(asset) || assetNeedsReview(asset) || rightsUnclear(asset)) return "Needs media-team review";
+  if (assetIsArchiveOnly(asset)) return "Restricted";
+  if (buildPortalReuseDecision(asset, "Viewer").reuse.state === "internal-ready") return "Internal/gated";
+  return "Ready for request";
+}
+
 function downloadEligible(asset: StockMediaAsset, role: DemoRole) {
   return buildPortalReuseDecision(asset, role).access.downloadApprovedCopy.allowed;
 }
@@ -234,7 +241,7 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
     },
     {
       id: "export-metadata",
-      label: "Download list",
+      label: "Export review list",
       visible: true,
       enabled: totalCount > 0,
       eligibleCount: totalCount,
@@ -288,14 +295,14 @@ export function buildLibrarySelectionSummary(assets: StockMediaAsset[], role: De
   });
   const warnings = [
     "Private archive files are excluded from selected-media actions.",
-    assets.some(rightsUnclear) ? "Rights or consent unclear: request review before reuse or download." : "",
-    assets.some((asset) => !downloadEligible(asset, role)) ? "Some media are not eligible for gated download." : "",
+    assets.some(rightsUnclear) ? "Rights or consent unclear: request review before reuse." : "",
+    assets.some((asset) => !downloadEligible(asset, role)) ? "Some media need permission before copy requests." : "",
     assets.some(assetIsBlocked) ? "Do Not Use media can only be reviewed by authorized roles." : ""
   ].filter(Boolean);
 
   return {
     count: assets.length,
-    statusBreakdown: countBy(assets, (asset) => asset.status),
+    statusBreakdown: countBy(assets, selectionStatusLabel),
     typeBreakdown: countBy(assets, assetTypeLabel),
     rightsBreakdown,
     sharedTags: intersection(assets.map((asset) => asset.tags || [])).slice(0, 8),

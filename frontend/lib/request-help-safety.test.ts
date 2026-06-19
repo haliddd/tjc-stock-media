@@ -76,15 +76,18 @@ describe("request and help safety helpers", () => {
     }
 
     expect(requestsPageSource).toContain("local-only receipt");
-    expect(requestsPageSource).toContain("No backend submission");
-    expect(requestsPageSource).toContain("does not notify the media team");
+    expect(requestsPageSource).toContain("It has not reached the media team yet.");
+    expect(requestsPageSource).toContain("does not notify the media team yet or clear media for use");
+    expect(requestsPageSource).toContain("contact the media team separately for urgent needs");
     expect(requestsPageSource).toContain("Assignment changes here are local triage notes only");
     expect(requestsPageSource).toContain("Blockers");
     expect(requestsPageSource).toContain("Waiting for info");
     expect(requestsPageSource).not.toMatch(/ResourceSpace|writeback/i);
+    expect(requestsPageSource).not.toMatch(/No backend submission|connected backend|sync data|unlock downloads/i);
 
     for (const claimedOutcome of ["Approved", "Resolved", "Synced", "Downloaded", "Published", "Complete"]) {
       expect(requestsPageSource).not.toContain(`status: "${claimedOutcome}"`);
     }
   });
+
 });

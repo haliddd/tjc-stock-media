@@ -582,7 +582,7 @@ export function EnterpriseCollectionsPage() {
                   <section className="ed-collection-section is-review-worklists">
                     <header>
                       <div>
-                        <h2>Reviewer/admin worklist</h2>
+                        <h2>Review worklist</h2>
                         <p>Secondary queues for rights, consent, metadata, and restricted groups.</p>
                       </div>
                       <span>{secondaryWorklistCount.toLocaleString()} worklist{secondaryWorklistCount === 1 ? "" : "s"}</span>

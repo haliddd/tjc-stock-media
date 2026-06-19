@@ -90,6 +90,17 @@ export type ReviewWorkbenchState =
   | "search-empty"
   | "ready";
 
+export const unsafeContributorCopyPattern = /(ResourceSpace|Support Zone|Source Status|source|writeback|backend|sync|synced|publish|published|download|downloadable|approved|approval|Production-ready|Public now|public link|public access|public use|\blive\b|durable account history)/i;
+
+export function safeReviewWorkbenchText(value: unknown, fallback = "") {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+export function contributorVisibleText(value: unknown, fallback: string) {
+  const text = safeReviewWorkbenchText(value, fallback);
+  return unsafeContributorCopyPattern.test(text) ? fallback : text;
+}
+
 export function reviewSourceReadState({
   source,
   live,

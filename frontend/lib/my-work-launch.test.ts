@@ -108,6 +108,32 @@ describe("My Work launch role copy", () => {
     expect(visibleCopy).not.toMatch(/ResourceSpace|Source Status|source|writeback|approved/i);
   });
 
+  it("sanitizes unsafe Contributor upload receipt and draft labels", () => {
+    const storage = {
+      getItem(key: string) {
+        if (key === contributorUploadsKey) {
+          return JSON.stringify([
+            { id: "unsafe-upload", batchName: "ResourceSpace source writeback approved", status: "Approved Public", reviewStatus: "download ready", date: "synced today" }
+          ]);
+        }
+        if (key === uploadDraftKey) return JSON.stringify({ batchName: "Source Status approved draft", eventName: "Fallback picnic" });
+        return null;
+      }
+    };
+    const tasks = getMyWorkTasks("Contributor", readContributorContextFromStorage(storage));
+    const visibleCopy = textOf(tasks.map(({ title, reason, related, status, age, detail }) => ({
+      title,
+      reason,
+      related,
+      status,
+      age,
+      detail
+    })));
+
+    expect(tasks.map((task) => task.related)).toEqual(["Fallback picnic", "Submitted media"]);
+    expect(visibleCopy).not.toMatch(/ResourceSpace|Source Status|source|writeback|approved|download ready|synced/i);
+  });
+
   it("treats waiting reviewer notes as upload status, not contributor questions", () => {
     const tasks = getMyWorkTasks("Contributor", {
       status: "ready",
@@ -188,20 +214,20 @@ describe("My Work launch role copy", () => {
     expect(tasks.map((task) => task.title)).toEqual(["Upload waiting for review"]);
   });
 
-  it("shows Reviewer and Admin workbench tasks with safe completed labels", () => {
+  it("shows Reviewer and Admin workbench routes without fake task records", () => {
     const reviewerTasks = getMyWorkTasks("Reviewer");
     const adminTasks = getMyWorkTasks("DAM Admin");
     const reviewerTitles = reviewerTasks.map((task) => task.title);
     const adminCopy = textOf(adminTasks);
 
     expect(reviewerTitles).toEqual(expect.arrayContaining([
-      "Review waiting uploads",
-      "Check usage rights",
-      "Check metadata",
-      "Reviewer needs more info",
-      "Answer media request",
-      "Review completed"
+      "Open Review Uploads",
+      "Open rights review queue",
+      "Open metadata queue",
+      "Open media requests"
     ]));
+    expect(reviewerTasks.every((task) => task.status === "Route available")).toBe(true);
+    expect(textOf(reviewerTasks)).toMatch(/Navigation only/);
     expect(adminCopy).toMatch(/Source Status/);
     expect(adminCopy).toMatch(/Support Zone/);
     expect(adminCopy).toMatch(/ResourceSpace mapping/);
@@ -209,6 +235,7 @@ describe("My Work launch role copy", () => {
     expect(adminTasks.some((task) => task.category === "source")).toBe(true);
     expect(adminTasks.some((task) => task.category === "support")).toBe(true);
     expect(textOf([...reviewerTasks, ...adminTasks])).not.toMatch(/Upload approved|\bPublished\b|\bDownloadable\b|\bSynced\b|\bLive\b|Writeback|Production-ready|Public now/i);
+    expect(textOf([...reviewerTasks, ...adminTasks])).not.toMatch(/Fellowship Lunch|Youth fellowship|Choir Practice|Spring Outreach|REQ-\d+/i);
   });
 
   it("keeps summary counts tied to visible filtered tasks", () => {

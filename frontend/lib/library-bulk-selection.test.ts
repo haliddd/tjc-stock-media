@@ -112,7 +112,7 @@ describe("library bulk selection helpers", () => {
     expect(exportAction?.disabledReason).toBeUndefined();
   });
 
-  it("marks mixed bulk download as partial and approved-copy gated", () => {
+  it("marks mixed copy requests as partial and permission gated", () => {
     const actions = buildLibraryBulkActions([
       asset({ id: "ready" }),
       asset({
@@ -157,12 +157,15 @@ describe("library bulk selection helpers", () => {
     ], "Reviewer");
 
     expect(summary.count).toBe(2);
-    expect(summary.statusBreakdown).toEqual(expect.arrayContaining([["Needs Review", 1], ["Approved Public", 1]]));
+    expect(summary.statusBreakdown).toEqual(expect.arrayContaining([["Needs media-team review", 1], ["Ready for request", 1]]));
+    expect(summary.statusBreakdown.flat().join(" ")).not.toContain("Approved Public");
     expect(summary.typeBreakdown).toEqual([["Photo", 2]]);
     expect(summary.rightsBreakdown[0]?.[0]).toBe("Rights/consent unclear");
     expect(summary.sharedTags).toEqual(["shared"]);
     expect(summary.resourceSpaceIds).toEqual(["1001", "1002"]);
     expect(summary.warnings.join(" ")).toContain("Private archive files are excluded");
+    expect(summary.warnings.join(" ")).not.toMatch(/download/i);
+    expect(summary.actions.find((action) => action.id === "export-metadata")?.label).toBe("Export review list");
     expect(summary.actions.some((action) => action.id === "approve")).toBe(true);
 
     const viewerSummary = buildLibrarySelectionSummary([

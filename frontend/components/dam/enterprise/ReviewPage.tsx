@@ -22,7 +22,9 @@ import { initialReviewChecklistForAsset, reviewActionDisabledReason } from "@/li
 import {
   buildReviewWorkbenchState,
   buildSelectedReviewGuidance,
+  contributorVisibleText,
   reviewSourceReadState,
+  safeReviewWorkbenchText,
   reviewWaitingDays,
   type PendingReviewDecisionSummary
 } from "@/lib/review-workbench";
@@ -284,14 +286,10 @@ function assetHasDownloadCopy(asset?: StockMediaAsset) {
 
 function assetHasRightsConsentProof(asset?: StockMediaAsset) {
   if (!asset) return false;
-  const rightsText = `${asset.rightsStatus || ""} ${asset.rightsNotes || ""} ${asset.rightsBasis || ""}`;
-  const consentText = `${asset.consentStatus || ""} ${asset.rightsNotes || ""}`;
-  const rightsClear = Boolean(
-    asset.rightsBasis && asset.rightsBasis !== "unknown"
-  ) || /rights approved|rights clear|permission confirmed|tjc-owned|tjc owned|licensed|license|contributor/i.test(rightsText);
-  const consentClear = Boolean(asset.consentReleaseRecordId)
-    || asset.peopleRisk === "No people"
-    || /consent confirmed|not applicable|documented exception|release/i.test(consentText);
+  const structuredRightsBasisForReview = Boolean(asset.rightsBasis && asset.rightsBasis !== "unknown" && asset.rightsBasis !== "fair-use-internal-only");
+  const structuredConsentEvidenceForReview = asset.peopleRisk === "No people" || Boolean(asset.consentReleaseRecordId?.trim());
+  const rightsClear = structuredRightsBasisForReview;
+  const consentClear = structuredConsentEvidenceForReview;
   return rightsClear && consentClear;
 }
 
@@ -420,17 +418,19 @@ function sanitizedTechnicalRows(asset?: StockMediaAsset) {
 
 function normalizeBrowserReceipt(value: unknown): BrowserUploadReceipt | null {
   const raw = (value || {}) as Partial<BrowserUploadReceipt>;
-  if (!raw.id || !raw.batchName) return null;
+  const id = safeReviewWorkbenchText(raw.id);
+  const batchName = contributorVisibleText(raw.batchName, "Submitted church media");
+  if (!id || !batchName) return null;
   return {
-    id: String(raw.id),
-    batchName: String(raw.batchName),
-    mediaType: String(raw.mediaType || "Not sure"),
+    id,
+    batchName,
+    mediaType: contributorVisibleText(raw.mediaType, "Not sure"),
     fileCount: Math.max(0, Math.trunc(Number(raw.fileCount) || 0)),
-    status: String(raw.status || "Submitted"),
-    date: String(raw.date || "Recent"),
-    eventDate: raw.eventDate ? String(raw.eventDate) : undefined,
-    ministry: raw.ministry ? String(raw.ministry) : undefined,
-    reviewStatus: raw.reviewStatus ? String(raw.reviewStatus) : undefined
+    status: contributorVisibleText(raw.status, "Submitted"),
+    date: contributorVisibleText(raw.date, "Recent"),
+    eventDate: raw.eventDate ? contributorVisibleText(raw.eventDate, "Date pending") : undefined,
+    ministry: raw.ministry ? contributorVisibleText(raw.ministry, "Ministry pending") : undefined,
+    reviewStatus: raw.reviewStatus ? contributorVisibleText(raw.reviewStatus, "") || undefined : undefined
   };
 }
 

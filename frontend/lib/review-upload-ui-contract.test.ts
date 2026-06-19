@@ -38,7 +38,18 @@ describe("Review Uploads UI contract", () => {
     expect(reviewPage).toContain("No approval, publishing, download, or sync outcome is implied.");
     expect(reviewPage).toMatch(/recent submission[s]? from this browser/i);
     expect(reviewPage).toContain("Browser receipts help contributors find recent submissions. They are not reviewer work records and do not enable approval actions.");
+    expect(reviewPage).toContain("contributorVisibleText(raw.batchName");
+    expect(reviewPage).toContain("contributorVisibleText(raw.reviewStatus");
     expect(reviewPage).not.toMatch(/local submission receipt/i);
+    expect(reviewPage).not.toMatch(/reviewStatus: String\(raw\.reviewStatus|reviewStatus: raw\.reviewStatus\s*(?:,|\n)|status: String\(raw\.status/);
+  });
+
+  it("does not treat contributor wording as rights proof", () => {
+    expect(reviewPage).toContain("structuredRightsBasisForReview");
+    expect(reviewPage).toContain("structuredConsentEvidenceForReview");
+    expect(reviewPage).toContain('asset.rightsBasis !== "unknown"');
+    expect(reviewPage).toContain("asset.consentReleaseRecordId?.trim()");
+    expect(reviewPage).not.toMatch(/rights approved\|rights clear\|permission confirmed\|tjc-owned\|tjc owned\|licensed\|license\|contributor/);
   });
 
   it("keeps source specifics gated to reviewer/admin surfaces", () => {

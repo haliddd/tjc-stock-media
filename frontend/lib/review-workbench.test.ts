@@ -21,10 +21,12 @@ import {
   buildReviewQueueMetrics,
   buildReviewWorkbenchState,
   buildReviewSignals,
+  contributorVisibleText,
   missingReviewActionEvidence,
   reviewSourceReadState,
   reviewDecisionActions,
-  reviewNextCheckLabel
+  reviewNextCheckLabel,
+  safeReviewWorkbenchText
 } from "@/lib/review-workbench";
 import { assetMatchesReviewQueue, isReviewActionBackend, reviewActions, reviewGovernanceGroupsForAsset } from "@/lib/workflow-policy";
 import { assetForRolePayload, sourceForRole } from "@/lib/source-redaction";
@@ -120,6 +122,15 @@ describe("review workbench model", () => {
     expect(reviewDecisionActions.map((action) => action.action).every((action) => workflowBackends.includes(action))).toBe(true);
     expect(helperText).toContain("Source status stays unchanged until confirmed");
     expect(helperText).not.toMatch(/writeback|sync completed|download ready/i);
+  });
+
+  it("sanitizes contributor-visible local receipt text without hiding safe statuses", () => {
+    expect(safeReviewWorkbenchText("  Needs more info  ", "Submitted")).toBe("Needs more info");
+    expect(safeReviewWorkbenchText(42, "Submitted")).toBe("Submitted");
+    expect(contributorVisibleText("Needs more info", "Submitted")).toBe("Needs more info");
+    expect(contributorVisibleText("ResourceSpace writeback approved and download ready", "Submitted")).toBe("Submitted");
+    expect(contributorVisibleText("Live public link ready", "Submitted")).toBe("Submitted");
+    expect(contributorVisibleText("Public access ready", "Submitted")).toBe("Submitted");
   });
 
   it("classifies reviewer workbench empty and disconnected states without fake unavailable copy", () => {

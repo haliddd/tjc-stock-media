@@ -28,10 +28,13 @@ describe("auxiliary DAM beta page copy", () => {
     expect(insightsPage).toContain("Usage panels only show recorded events when connected.");
     expect(insightsPage).toContain("Local catalog snapshot");
     expect(insightsPage).toContain("Last read");
+    expect(insightsPage).toContain("Review-Cleared Media");
+    expect(insightsPage).toContain("visible media is not blanket public clearance");
     expect(pageBarrel).toContain("export { EnterpriseInsightsPage } from \"./enterprise/InsightsPage\";");
     expect(pageBarrel).not.toMatch(/EnterpriseInsightsPage[\s\S]*from "\.\/enterprise\/EnterpriseDamRedesign"/);
     expect(insightsPage).not.toContain("link.download");
     expect(insightsPage).not.toContain("URL.createObjectURL");
+    expect(insightsPage).not.toMatch(/Approved Media|approved for use|All media in this library is reviewed for rights and reuse scope/i);
   });
 
   it("does not present old prototype delivery labels", () => {

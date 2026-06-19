@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { contributorReceiptStatusLabels, useStatusForUpload } from "@/components/dam/enterprise/RecentUploadsPage";
+import { contributorReceiptStatusLabels, normalizeStoredUpload, useStatusForUpload } from "@/components/dam/enterprise/RecentUploadsPage";
 import { persistIntakeBatch } from "@/lib/intake-batch-store";
 import { buildUploadIntakePublicResponse, buildUploadIntakeResponse, normalizeUploadIntake, uploadIntakeSubmittedAuditEvent, uploadIntakeValidationError } from "@/lib/upload-intake";
+import { uploadReceiptCopy } from "@/lib/upload-receipt-copy";
 import type { IntakeBatchRecord, IntakeBatchStorageMode, PersistIntakeBatchResult } from "@/lib/intake-batch-store";
 
 const recentUploadsPage = readFileSync(new URL("../components/dam/enterprise/RecentUploadsPage.tsx", import.meta.url), "utf8");
@@ -383,14 +384,51 @@ describe("upload intake batch validation", () => {
     expect(recentUploadsPage).toContain("This browser shows your recent submissions.");
     expect(recentUploadsPage).toContain("No uploads from this browser yet.");
     expect(recentUploadsPage).toContain("const unsafeContributorCopy");
-    expect(recentUploadsPage).toContain("contributorSafeText(upload.reviewerNote");
-    expect(recentUploadsPage).toContain("contributorSafeText(selected.source");
+    expect(recentUploadsPage).toContain("normalizeStoredUpload");
+    expect(recentUploadsPage).toContain("contributorSafeText(raw.batchName");
     expect(recentUploadsPage).toContain("Reviewer/admin examples");
     expect(recentUploadsPage).toContain("Not contributor personal records.");
     expect(recentUploadsPage).toContain('if (role === "Contributor") return [];');
     expect(recentUploadsPage).not.toContain("Source/uploader");
     expect(recentUploadsPage).not.toContain("Source link");
     expect(recentUploadsPage).not.toMatch(/durable account history/i);
+  });
+
+  it("scrubs unsafe stored My Uploads fields before rendering", () => {
+    const upload = normalizeStoredUpload({
+      id: "unsafe-local-receipt",
+      batchName: "ResourceSpace writeback approved",
+      eventName: "backend API public link",
+      mediaType: "Photos",
+      fileCount: 1,
+      status: "Submitted",
+      date: "synced today",
+      eventDate: "public access ready",
+      locationName: "Source Status",
+      ministry: "downloadable archive",
+      source: "source-system owner",
+      peopleMinors: "approved minors",
+      notes: "writeback complete",
+      reviewStatus: "live public link",
+      publishStatus: "Approved Public",
+      reviewerNote: "download ready",
+      roleFit: ["Contributor"]
+    });
+
+    expect(upload).toMatchObject({
+      batchName: "Submitted media",
+      eventName: "Submitted media",
+      date: "Today",
+      eventDate: "",
+      locationName: undefined,
+      ministry: "",
+      source: undefined,
+      peopleMinors: "Not sure",
+      notes: "",
+      reviewStatus: undefined,
+      publishStatus: undefined,
+      reviewerNote: undefined
+    });
   });
 
   it("requires a batch id before classic upload renders a receipt", () => {
@@ -405,15 +443,30 @@ describe("upload intake batch validation", () => {
     expect(uploadPage).toContain("Add photos");
     expect(uploadPage).toContain("Describe them");
     expect(uploadPage).toContain("Review and send");
-    expect(uploadPage).toContain("Photos sent");
     expect(uploadPage).toContain("Submitted for review. Waiting for review. Nothing is public.");
     expect(uploadPage).toContain("Submitted</li>");
     expect(uploadPage).toContain("Waiting for review</li>");
     expect(uploadPage).toContain("Do not use yet</li>");
     expect(uploadPage).toContain("View My Uploads");
-    expect(uploadPage).toContain("Share more photos");
-    expect(uploadPage).not.toContain("Link sent for review");
-    expect(uploadPage).not.toContain("Share another link or photos");
+    expect(uploadPage).toContain("uploadReceiptCopy(receipt)");
     expect(uploadPage).not.toMatch(/public download|download remains/i);
+  });
+
+  it("uses link-only receipt copy only for source-link intake without files", () => {
+    expect(uploadReceiptCopy({ sourceLinkCaptured: true, fileCount: 0 })).toEqual({
+      isLinkOnly: true,
+      title: "Link sent for review",
+      resetLabel: "Share another link or photos"
+    });
+    expect(uploadReceiptCopy({ sourceLinkCaptured: true, fileCount: 2 })).toMatchObject({
+      isLinkOnly: false,
+      title: "Photos sent",
+      resetLabel: "Share more photos"
+    });
+    expect(uploadReceiptCopy({ sourceLinkCaptured: false, fileCount: 1 })).toMatchObject({
+      isLinkOnly: false,
+      title: "Photos sent",
+      resetLabel: "Share more photos"
+    });
   });
 });

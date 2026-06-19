@@ -219,6 +219,38 @@ async function enterpriseUploadFlow(page) {
   await clickFirstButton(page, [/^Review and send$/i, /^Next$/i], "upload review step");
 }
 
+async function selectSourceLinkOnlyIntake(page) {
+  const sourceLinkOnly = page.getByRole("button", { name: /Source link only/i }).first();
+  if (await sourceLinkOnly.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await sourceLinkOnly.click();
+    await page.waitForTimeout(250);
+  }
+}
+
+async function oldUploadSourceLinkOnlyFlow(page) {
+  await fillFirst(page, 'input[name="title"]', "Focused core QA source link", "link upload title");
+  await fillFirst(page, 'input[name="eventName"]', "Focused core QA source link", "link upload event");
+  await fillFirst(page, 'input[name="eventDate"]', "2026-06-06", "link upload date");
+  await fillFirst(page, 'input[name="ministry"]', "Internet Ministry", "link upload ministry");
+  await fillFirst(page, 'input[name="source"]', "QA reviewer", "link upload source");
+  await clickFirstButton(page, [/^Next$/i], "link upload step 1");
+
+  await selectUploadOption(page, "peopleVisible", "link people visible", "No");
+  await selectUploadOption(page, "minorsVisible", "link children/youth visible", "No");
+  await selectUploadOption(page, "usageRights", "link usage rights", "TJC-owned / permission confirmed");
+  await fillFirst(page, 'textarea[name="notes"]', "No known restrictions from focused link fixture.", "link upload restrictions");
+  await clickFirstButton(page, [/^Next$/i], "link upload step 2");
+
+  await fillFirst(page, 'input[name="sourceLink"]', "https://drive.google.com/drive/folders/focused-core-link-only", "link upload source link");
+  await fillFirst(page, 'textarea[name="intakeNotes"]', "Focused browser QA source-link-only note.", "link upload reviewer note");
+  await clickFirstButton(page, [/^Next$/i], "link upload step 3");
+}
+
+async function enterpriseSourceLinkOnlyFlow(page) {
+  await fillFirstAvailable(page, ['input[aria-label="Paste source link"]', 'input[name="sourceLink"]', 'input[placeholder="Paste source link"]'], "https://drive.google.com/drive/folders/focused-core-link-only", "link upload source link");
+  await enterpriseUploadFlow(page);
+}
+
 async function uploadReceiptFlow(browser) {
   const { page, context } = await newPage(browser, "Contributor", 390, 900);
   try {
@@ -242,6 +274,8 @@ async function uploadReceiptFlow(browser) {
       if (submitError) failures.push(`upload receipt flow: submit failed ${submitError.message || submitError}`);
       failures.push("upload receipt flow: receipt confirmation missing");
     }
+    const text = await visibleText(page);
+    if (/Link sent for review/i.test(text)) failures.push("upload receipt flow: photo-file submission showed link-only title");
     await shot(page, "upload-receipt-mobile");
   } finally {
     await context.close().catch(() => {});
@@ -259,6 +293,38 @@ async function uploadReceiptFlow(browser) {
   }
 }
 
+async function uploadSourceLinkOnlyReceiptFlow(browser) {
+  const { page, context } = await newPage(browser, "Contributor", 390, 900);
+  try {
+    await gotoReady(page, "/upload", "upload source-link-only receipt flow");
+    await selectSourceLinkOnlyIntake(page);
+    await clickFirstButton(page, [/^Describe them$/i, /^Next$/i], "link upload start step");
+
+    if (await isVisible(page, 'input[name="title"]')) {
+      await oldUploadSourceLinkOnlyFlow(page);
+    } else {
+      await enterpriseSourceLinkOnlyFlow(page);
+    }
+
+    const submitError = await page.getByRole("button", { name: /Submit for review|Send to media team/i }).click({ timeout: 10000 })
+      .then(() => null)
+      .catch((error) => error);
+    const submitted = await page.getByRole("heading", { name: /Link sent for review/i }).first().waitFor({ state: "visible", timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+    const text = await visibleText(page);
+    if (!submitted) {
+      if (submitError) failures.push(`upload source-link-only receipt flow: submit failed ${submitError.message || submitError}`);
+      failures.push("upload source-link-only receipt flow: Link sent for review confirmation missing");
+    }
+    if (/Photos sent/i.test(text)) failures.push("upload source-link-only receipt flow: wrong Photos sent title visible");
+    if (!/Share another link or photos/i.test(text)) failures.push("upload source-link-only receipt flow: link-only reset action missing");
+    await shot(page, "upload-source-link-receipt-mobile");
+  } finally {
+    await context.close().catch(() => {});
+  }
+}
+
 async function requestsFlow(browser) {
   const { page, context } = await newPage(browser, "Viewer", 390, 900);
   try {
@@ -266,8 +332,8 @@ async function requestsFlow(browser) {
     await page.locator("button").filter({ hasText: "Request permission" }).first().click({ timeout: 5000 });
     await fillFirst(page, 'label:has-text("Context") input', "Focused core QA permission request", "request context");
     await fillFirst(page, 'label:has-text("Message") textarea', "Please review whether this media can be used.", "request message");
-    await page.getByRole("button", { name: /Save (request|local) receipt/i }).click({ timeout: 5000 });
-    await page.getByText(/Local receipt saved|Request receipt saved/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => failures.push("requests flow: receipt confirmation missing"));
+    await page.getByRole("button", { name: /Save (request|local) receipt|Send request/i }).click({ timeout: 5000 });
+    await page.getByText(/Local receipt saved|Request receipt saved|Request recorded as a local-only receipt/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => failures.push("requests flow: receipt confirmation missing"));
     await checkKeyboard(page, "requests flow");
     await shot(page, "requests-receipt-mobile");
   } finally {
@@ -286,13 +352,14 @@ const routes = [
   { id: "my-work-reviewer", label: "My Work Reviewer", path: "/my-tasks", role: "Reviewer", must: [/My Work/i] },
   { id: "my-work-admin", label: "My Work Admin", path: "/my-tasks", role: "DAM Admin", must: [/My Work/i] },
   { id: "requests", label: "Requests", path: "/requests", role: "Viewer", must: [/Requests/i] },
-  { id: "help", label: "Help", path: "/help", role: "Viewer", must: [/Help Center/i] },
+  { id: "help", label: "Help", path: "/help", role: "Viewer", must: [/Help Center|What do you need help with|Common help tasks/i] },
   { id: "admin", label: "Admin", path: "/admin", role: "DAM Admin", must: [/Admin|Read-only observer mode/i] },
   { id: "support", label: "Admin Support Zone", path: "/governance/integrations", role: "DAM Admin", must: [/Support Zone|Integration/i] }
 ];
 
 for (const route of routes) await smokeRoute(browser, route);
 await withQaTimeout("upload receipt flow", 60000, () => uploadReceiptFlow(browser)).catch((error) => failures.push(error.message || String(error)));
+await withQaTimeout("upload source-link-only receipt flow", 60000, () => uploadSourceLinkOnlyReceiptFlow(browser)).catch((error) => failures.push(error.message || String(error)));
 await withQaTimeout("requests flow", 45000, () => requestsFlow(browser)).catch((error) => failures.push(error.message || String(error)));
 
 await Promise.race([

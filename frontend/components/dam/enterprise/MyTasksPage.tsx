@@ -18,6 +18,7 @@ import {
 import { useDemoRole } from "@/components/RoleProvider";
 import { PageHeader } from "./EnterpriseShared";
 import { routeWithRole } from "@/lib/role-routes";
+import { contributorVisibleText, safeReviewWorkbenchText } from "@/lib/review-workbench";
 import { cn } from "@/lib/utils";
 import type { DemoRole } from "@/lib/types";
 
@@ -88,8 +89,6 @@ const requestReceiptTypes = [
 ] as const;
 type RequestReceiptType = typeof requestReceiptTypes[number];
 
-const unsafeContributorCopyPattern = /(ResourceSpace|Support Zone|Source Status|source|writeback|backend|sync|synced|publish|published|download|downloadable|approved|approval|Production-ready|Public now|durable account history)/i;
-
 const roleIntro: Record<DemoRole, { title: string; subtitle: string; emptyTitle: string; emptyBody: string }> = {
   Viewer: {
     title: "My Work",
@@ -138,201 +137,111 @@ const filterIdsByRole: Record<DemoRole, MyWorkFilter[]> = {
 
 const workbenchTasks: MyWorkTask[] = [
   {
-    id: "review-waiting-uploads",
+    id: "review-upload-route",
     roleFit: ["Reviewer", "DAM Admin"],
     category: "review",
     statusGroup: "open",
-    title: "Review waiting uploads",
-    reason: "Fellowship Lunch has 42 photos waiting for reviewer notes and a safe-use decision.",
-    related: "Fellowship Lunch upload",
-    status: "Waiting for review",
-    age: "2 days old",
-    priority: "High",
+    title: "Open Review Uploads",
+    reason: "Use Review Uploads for queue records, counts, evidence, and decisions.",
+    related: "Review Uploads",
+    status: "Route available",
+    age: "Current session",
+    priority: "Normal",
     owner: "Reviewer",
     actionLabel: "Open Review Uploads",
     href: "/review?queue=pending",
-    detailLabel: "Review details",
-    detail: "Workbench example only. Review page owns decisions; this dashboard only routes work.",
+    detailLabel: "Route details",
+    detail: "Navigation only. My Work does not mirror review records or create approval outcomes.",
     source: "workbench"
   },
   {
-    id: "rights-check-youth",
+    id: "rights-review-route",
     roleFit: ["Reviewer", "DAM Admin"],
     category: "rights",
     statusGroup: "open",
-    title: "Check usage rights",
-    reason: "Youth fellowship photos need consent evidence before broader reuse can be considered.",
-    related: "Youth fellowship photos",
-    status: "Rights check needed",
-    age: "Due today",
-    priority: "High",
+    title: "Open rights review queue",
+    reason: "Rights, consent, attribution, and proof questions stay in the source-backed review queue.",
+    related: "Rights review",
+    status: "Route available",
+    age: "Current session",
+    priority: "Normal",
     owner: "Reviewer",
     actionLabel: "Check rights",
     href: "/review?queue=rights-review",
-    detailLabel: "Rights details",
-    detail: "Public use stays blocked unless a reviewer records enough rights evidence.",
+    detailLabel: "Rights route",
+    detail: "Navigation only. Open Review Uploads to see actual rights records and blockers.",
     source: "workbench"
   },
   {
-    id: "metadata-check-choir",
+    id: "metadata-review-route",
     roleFit: ["Reviewer", "DAM Admin"],
     category: "metadata",
     statusGroup: "open",
-    title: "Check metadata",
-    reason: "Choir Practice batch needs event date, ministry, and people/minors fields checked.",
-    related: "Choir Practice upload",
-    status: "Metadata check needed",
-    age: "1 day old",
+    title: "Open metadata queue",
+    reason: "Event, ministry, people/minors, and origin fields are checked inside Review Uploads.",
+    related: "Metadata review",
+    status: "Route available",
+    age: "Current session",
     priority: "Normal",
     owner: "Reviewer",
     actionLabel: "Open metadata queue",
     href: "/review?queue=metadata",
-    detailLabel: "Metadata details",
-    detail: "Metadata checks prepare review notes; they do not publish or create delivery files.",
+    detailLabel: "Metadata route",
+    detail: "Navigation only. Metadata checks do not publish or create delivery files.",
     source: "workbench"
   },
   {
-    id: "contributor-follow-up",
-    roleFit: ["Reviewer", "DAM Admin"],
-    category: "requests",
-    statusGroup: "waiting",
-    title: "Reviewer needs more info",
-    reason: "Contributor was asked to confirm event date and whether children are visible.",
-    related: "Spring Outreach upload",
-    status: "Waiting on contributor",
-    age: "Sent yesterday",
-    priority: "Normal",
-    owner: "Contributor",
-    actionLabel: "Open Requests",
-    href: "/requests",
-    detailLabel: "Follow-up details",
-    detail: "Follow-up stays inside Requests until the contributor answers.",
-    source: "workbench"
-  },
-  {
-    id: "request-response",
+    id: "request-follow-up-route",
     roleFit: ["Reviewer", "DAM Admin"],
     category: "requests",
     statusGroup: "open",
-    title: "Answer media request",
-    reason: "Internet Ministry asked for Spring Outreach photos and needs review-safe guidance.",
-    related: "Request REQ-1024",
-    status: "Response needed",
-    age: "Due today",
-    priority: "High",
-    owner: "Media team",
-    actionLabel: "Open request",
-    href: "/requests",
-    detailLabel: "Request details",
-    detail: "Replying to a request does not grant download, public use, or source-file access.",
-    source: "workbench"
-  },
-  {
-    id: "review-completed",
-    roleFit: ["Reviewer", "DAM Admin"],
-    category: "review",
-    statusGroup: "completed",
-    title: "Review completed",
-    reason: "Choir Practice upload has reviewer notes saved for internal follow-up.",
-    related: "Choir Practice upload",
-    status: "Internal review completed",
-    age: "Today",
+    title: "Open media requests",
+    reason: "Contributor questions and media-team replies stay in Requests, not in local My Work fixtures.",
+    related: "Requests",
+    status: "Route available",
+    age: "Current session",
     priority: "Normal",
-    owner: "Reviewer",
-    actionLabel: "Open Review Uploads",
-    href: "/review?queue=pending",
-    detailLabel: "Completion details",
-    detail: "Completed label means review work closed here, not public publishing.",
+    owner: "Media team",
+    actionLabel: "Open Requests",
+    href: "/requests",
+    detailLabel: "Request route",
+    detail: "Navigation only. Replies do not grant file access, public use, or delivery.",
     source: "workbench"
   },
   {
-    id: "admin-source-status",
+    id: "admin-source-status-route",
     roleFit: ["DAM Admin"],
     category: "source",
     statusGroup: "open",
-    title: "Check intake status",
-    reason: "Source Status shows one upload intake issue that needs admin review.",
+    title: "Open Source Status",
+    reason: "Admin diagnostics show source readiness and ResourceSpace mapping without creating review records.",
     related: "Source Status",
-    status: "Needs admin check",
-    age: "Due today",
-    priority: "High",
+    status: "Diagnostic route",
+    age: "Current session",
+    priority: "Normal",
     owner: "DAM Admin",
     actionLabel: "Open Admin",
     href: "/admin#launch-readiness-section",
-    detailLabel: "Source details",
-    detail: "Admin diagnostics can mention Source Status and ResourceSpace mapping; no public publishing happens here.",
+    detailLabel: "Source route",
+    detail: "Admin-only diagnostics can mention Source Status and ResourceSpace mapping; no source media is mutated here.",
     source: "workbench"
   },
   {
-    id: "admin-support-zone",
+    id: "admin-support-zone-route",
     roleFit: ["DAM Admin"],
     category: "support",
     statusGroup: "open",
-    title: "Run Support Zone check",
-    reason: "Support Zone readiness needs a quick check before launch rehearsal.",
+    title: "Open Support Zone",
+    reason: "Support Zone readiness and launch checks stay admin-only.",
     related: "Support Zone",
-    status: "Check needed",
-    age: "Today",
+    status: "Diagnostic route",
+    age: "Current session",
     priority: "Normal",
     owner: "DAM Admin",
     actionLabel: "Open Admin",
     href: "/admin#system-health-section",
-    detailLabel: "Support details",
+    detailLabel: "Support route",
     detail: "Support Zone is admin-only operational context, hidden from contributor and public views.",
-    source: "workbench"
-  },
-  {
-    id: "admin-integration-readiness",
-    roleFit: ["DAM Admin"],
-    category: "source",
-    statusGroup: "waiting",
-    title: "Check integration readiness",
-    reason: "Integration readiness is waiting on final operator review.",
-    related: "Admin integrations",
-    status: "Waiting on admin",
-    age: "2 days old",
-    priority: "Normal",
-    owner: "DAM Admin",
-    actionLabel: "Open Admin",
-    href: "/admin#integrations",
-    detailLabel: "Integration details",
-    detail: "Readiness checks are diagnostic only; they do not sync or mutate source media.",
-    source: "workbench"
-  },
-  {
-    id: "admin-reviewer-bottleneck",
-    roleFit: ["DAM Admin"],
-    category: "review",
-    statusGroup: "open",
-    title: "Check reviewer bottlenecks",
-    reason: "Three uploads have waited more than 48 hours for reviewer attention.",
-    related: "Review Uploads",
-    status: "Bottleneck",
-    age: "48+ hours",
-    priority: "Urgent",
-    owner: "DAM Admin",
-    actionLabel: "Open Review Uploads",
-    href: "/review?queue=pending",
-    detailLabel: "Bottleneck details",
-    detail: "Use Review Uploads for review work; this card only highlights queue pressure.",
-    source: "workbench"
-  },
-  {
-    id: "admin-request-resolved",
-    roleFit: ["DAM Admin"],
-    category: "requests",
-    statusGroup: "completed",
-    title: "Request resolved",
-    reason: "Spring Outreach request was answered with review-safe guidance.",
-    related: "Request REQ-1018",
-    status: "Request resolved",
-    age: "Yesterday",
-    priority: "Normal",
-    owner: "Media team",
-    actionLabel: "Open Requests",
-    href: "/requests",
-    detailLabel: "Resolution details",
-    detail: "Resolved means request thread closed, not approval or delivery.",
     source: "workbench"
   }
 ];
@@ -345,7 +254,7 @@ const loadingContributorContext: LocalContributorContext = {
 };
 
 function safeText(value: unknown, fallback = "") {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  return safeReviewWorkbenchText(value, fallback);
 }
 
 function normalizeBrowserReceipt(value: unknown): BrowserUploadReceipt | null {
@@ -355,19 +264,18 @@ function normalizeBrowserReceipt(value: unknown): BrowserUploadReceipt | null {
   if (!id || !batchName) return null;
   return {
     id,
-    batchName,
-    mediaType: safeText(raw.mediaType, "Media"),
+    batchName: contributorVisibleText(batchName, "Submitted media"),
+    mediaType: contributorVisibleText(raw.mediaType, "Media"),
     fileCount: Math.max(0, Math.trunc(Number(raw.fileCount) || 0)),
-    status: safeText(raw.status, "Submitted"),
-    date: safeText(raw.date, "Recently"),
-    reviewStatus: safeText(raw.reviewStatus),
+    status: contributorVisibleText(raw.status, "Submitted"),
+    date: contributorVisibleText(raw.date, "Recently"),
+    reviewStatus: contributorVisibleText(raw.reviewStatus, ""),
     reviewerNote: safeText(raw.reviewerNote)
   };
 }
 
 function safeContributorVisibleText(value: unknown, fallback: string) {
-  const text = safeText(value, fallback);
-  return unsafeContributorCopyPattern.test(text) ? fallback : text;
+  return contributorVisibleText(value, fallback);
 }
 
 function safeRequestReceiptType(value: unknown): RequestReceiptType {
@@ -407,7 +315,7 @@ export function readContributorContextFromStorage(storage: StorageReader): Local
   const requestReceipts = Array.isArray(rawRequestReceipts) ? rawRequestReceipts.map(normalizeLocalRequestReceipt).filter((item): item is LocalRequestReceipt => Boolean(item)) : [];
   const parsedDraft = parseJsonOrFallback(draftValue, {});
   const rawDraft = parsedDraft && typeof parsedDraft === "object" && !Array.isArray(parsedDraft) ? parsedDraft as Record<string, unknown> : {};
-  const draftLabel = safeText(rawDraft.batchName) || safeText(rawDraft.eventName) || "Upload draft";
+  const draftLabel = contributorVisibleText(rawDraft.batchName, "") || contributorVisibleText(rawDraft.eventName, "") || "Upload draft";
   const hasDraft = Object.values(rawDraft).some((value) => typeof value === "string" && value.trim().length > 0);
   return {
     status: "ready",
@@ -427,11 +335,7 @@ function readContributorContext(): LocalContributorContext {
 }
 
 function safeContributorQuestionDetail(note: string | undefined) {
-  if (!note) return "Reviewer needs more event or rights context before review can continue.";
-  if (unsafeContributorCopyPattern.test(note)) {
-    return "Reviewer needs more event or rights context before review can continue.";
-  }
-  return note;
+  return contributorVisibleText(note, "Reviewer needs more event or rights context before review can continue.");
 }
 
 function browserTaskFromReceipt(receipt: BrowserUploadReceipt): MyWorkTask {
@@ -632,9 +536,9 @@ export function safeLabelsForRole(role: DemoRole) {
     return ["Draft not sent", "Waiting for review", "Needs response", "Upload reviewed"];
   }
   if (role === "Reviewer") {
-    return ["Review completed", "Rights check needed", "Waiting on contributor", "Request response needed"];
+    return ["Review route open", "Rights check needed", "Contributor follow-up route", "Request response route"];
   }
-  return ["Review completed", "Request resolved", "Admin check needed", "Support check needed"];
+  return ["Review route open", "Request route open", "Admin check needed", "Support check needed"];
 }
 
 export function filtersForRole(role: DemoRole) {
@@ -647,7 +551,7 @@ function categoryCount(tasks: MyWorkTask[], filter: MyWorkFilter) {
 }
 
 function sourceUnavailable(searchValue: string | null, role: DemoRole) {
-  return role === "DAM Admin" && searchValue === "source-unavailable";
+  return (role === "Reviewer" || role === "DAM Admin") && searchValue === "source-unavailable";
 }
 
 export function MyTasksPage() {

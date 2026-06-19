@@ -974,9 +974,19 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                 </label>
               ) : null}
               <div className="ed-action-menu-wrap">
-                <ActionButton ariaLabel="Open asset record tools" onClick={() => setActionsOpen((open) => !open)}><ChevronDown size={14} />Tools</ActionButton>
+                <button
+                  className="ed-action"
+                  type="button"
+                  aria-label="Open asset record tools"
+                  aria-haspopup="menu"
+                  aria-expanded={actionsOpen}
+                  aria-controls={actionsOpen ? "asset-record-tools-menu" : undefined}
+                  onClick={() => setActionsOpen((open) => !open)}
+                >
+                  <ChevronDown size={14} aria-hidden="true" />Tools
+                </button>
                 {actionsOpen ? (
-                  <div className="ed-more-actions-menu ed-detail-actions-menu" role="menu">
+                  <div className="ed-more-actions-menu ed-detail-actions-menu" id="asset-record-tools-menu" role="menu">
                     {canRequestApprovedCopy ? (
                       <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}>
                         <FileText size={15} />Request approved copy
@@ -1152,7 +1162,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
               <header className="ed-card-head">
                 <div>
                   <h3>Source record</h3>
-                  <p>Reviewer/admin evidence only. Read-only boundary; no source media mutation from this page.</p>
+                  <p>Review evidence only. Read-only boundary; no source media mutation from this page.</p>
                 </div>
                 <StatusBadge status="Read-only" />
               </header>
@@ -1172,10 +1182,10 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             ["Gaps", metadataHealth.missing.length ? metadataHealth.missing.join(", ") : "None in current role-safe view"]
           ]} />
           <AdminDiagnosticCard role={role} rows={[
-            ["Source mode", detail.source?.label || "Not loaded"],
-            ["API source", detail.live ? "Configured" : "Not active"],
-            ["Record source", detail.source?.adapter || "unknown"],
-            ["Source admin link", canOpenResourceSpace && detail.data?.resourceSpaceUrl ? "Available" : "Unavailable"],
+            ["Read mode", detail.source?.label || "Not loaded"],
+            ["Live read path", detail.live ? "Configured" : "Not active"],
+            ["Record feed", detail.source?.adapter || "unknown"],
+            ["Admin record link", canOpenResourceSpace && detail.data?.resourceSpaceUrl ? "Available" : "Unavailable"],
             ["Review update", formatReviewUpdateState(asset.pendingReviewWrite?.syncState)]
           ]} />
         </aside>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, Archive, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Download, Eye, FileText, Filter, Folder, FolderPlus, Grid3X3, Inbox, List, Search, ShieldCheck, SlidersHorizontal, Tags, X } from "lucide-react";
+import { AlertTriangle, Archive, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Eye, FileText, Filter, Folder, FolderPlus, Grid3X3, Inbox, List, Search, ShieldCheck, SlidersHorizontal, Tags, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/components/hooks/use-pagination";
 import { useDemoRole } from "@/components/RoleProvider";
@@ -55,7 +55,7 @@ const bulkActionIcons: Record<BulkActionId, typeof FolderPlus> = {
   "send-review": ShieldCheck,
   "assign-tags": Tags,
   "mark-internal": CheckSquare,
-  "download-approved": Download,
+  "download-approved": Inbox,
   "export-metadata": FileText,
   approve: CheckCircle2,
   reject: X,
@@ -63,13 +63,13 @@ const bulkActionIcons: Record<BulkActionId, typeof FolderPlus> = {
 };
 
 const bulkActionPriority: Record<BulkActionId, number> = {
-  "export-metadata": 0,
-  "download-approved": 1,
+  "request-reuse": 0,
+  "add-to-collection": 1,
   "send-review": 2,
-  "assign-tags": 3,
-  "add-to-collection": 4,
-  "create-collection": 5,
-  "request-reuse": 6,
+  "export-metadata": 3,
+  "create-collection": 4,
+  "download-approved": 5,
+  "assign-tags": 6,
   "mark-internal": 7,
   approve: 8,
   reject: 9,
@@ -77,10 +77,39 @@ const bulkActionPriority: Record<BulkActionId, number> = {
 };
 
 const bulkActionToolbarLabels: Partial<Record<BulkActionId, string>> = {
+  "request-reuse": "Request permission",
+  "add-to-collection": "Add to album",
+  "send-review": "Create review set",
+  "export-metadata": "Export review list",
   "download-approved": "Request copies",
-  "send-review": "Review",
   "assign-tags": "Tags"
 };
+
+const bulkActionStatusLabels: Partial<Record<BulkActionId, string>> = {
+  "export-metadata": "CSV only",
+  "request-reuse": "Gated request",
+  "add-to-collection": "Album workflow",
+  "send-review": "Review workflow",
+  "download-approved": "Permission gated"
+};
+
+const selectionActionNames: Partial<Record<BulkActionId, string>> = {
+  "request-reuse": "Request permission",
+  "add-to-collection": "Add to album",
+  "create-collection": "Create album",
+  "send-review": "Create review set",
+  "export-metadata": "Export review list",
+  "download-approved": "Request copies"
+};
+
+const selectionStatusRank: Record<string, number> = {
+  "Needs media-team review": 0,
+  Restricted: 1,
+  "Internal/gated": 2,
+  "Ready for request": 3
+};
+
+const safeSelectionActions = new Set<BulkActionId>(["request-reuse", "add-to-collection", "create-collection", "send-review", "export-metadata", "download-approved"]);
 
 const BROWSE_PHOTOS_SUBTITLE = "Find church media by event, date, ministry, album, or keyword. Open an item for use guidance before sharing.";
 
@@ -155,7 +184,7 @@ function libraryTopFilterGroupsForRole(role: DemoRole): LibraryTopFilterGroup[] 
     id: "access",
     label: "Access",
     options: [
-      { label: canReview(role) ? "Approved public" : "Ready with permission", filter: "approved public" },
+      { label: canReview(role) ? "Ready for request" : "Ready with permission", filter: "approved public" },
       ...(canContribute(role) ? [{ label: "Internal use", filter: "approved internal" }] : []),
       { label: "Needs permission", filter: "needs review" },
       ...(canReview(role) ? [{ label: "Archive / reference", filter: "archive only" }] : [])
@@ -325,12 +354,12 @@ function BrowseDetailAnswers({
       </section>
       {canSeeSupportDetails ? (
         <details className="ed-card ed-support-zone-details">
-          <summary>Support Zone details</summary>
+          <summary>Review details</summary>
           <dl className="ed-metadata">
-            <div><dt>Source system</dt><dd>Read-only source</dd></div>
-            <div><dt>Reference</dt><dd>{asset.resourceSpaceId || asset.id}</dd></div>
+            <div><dt>Record basis</dt><dd>Read-only media record</dd></div>
+            <div><dt>Reference</dt><dd>{asset.id}</dd></div>
             <div><dt>Review status</dt><dd>{asset.status}</dd></div>
-            <div><dt>Writeback</dt><dd>Gated</dd></div>
+            <div><dt>Review update</dt><dd>Gated</dd></div>
           </dl>
         </details>
       ) : null}
@@ -439,6 +468,7 @@ function BrowseQuickLookDrawer({
 function BulkActionButton({ action, onRun }: { action: LibraryBulkAction; onRun: (action: LibraryBulkAction) => void }) {
   const Icon = bulkActionIcons[action.id];
   const toolbarLabel = bulkActionToolbarLabels[action.id] || action.label;
+  const statusLabel = bulkActionStatusLabels[action.id] || action.statusLabel;
   return (
     <button
       type="button"
@@ -451,7 +481,7 @@ function BulkActionButton({ action, onRun }: { action: LibraryBulkAction; onRun:
       <Icon size={15} aria-hidden="true" />
       <span>
         <strong>{toolbarLabel}</strong>
-        <em>{action.statusLabel}</em>
+        <em>{statusLabel}</em>
       </span>
     </button>
   );
@@ -506,18 +536,33 @@ function CountBreakdown({ title, rows }: { title: string; rows: Array<[string, n
 }
 
 function SelectionSummaryPanel({ summary }: { summary: LibrarySelectionSummary }) {
+  const mostRestrictive = summary.statusBreakdown
+    .slice()
+    .sort((left, right) => (selectionStatusRank[left[0]] ?? 9) - (selectionStatusRank[right[0]] ?? 9))[0]?.[0] || "Ready for request";
+  const permissionNeeded = summary.statusBreakdown
+    .filter(([label]) => label !== "Ready for request")
+    .reduce((total, [, count]) => total + count, 0);
+  const blockedItems = summary.statusBreakdown
+    .filter(([label]) => label === "Restricted" || label === "Needs media-team review")
+    .reduce((total, [, count]) => total + count, 0);
+  const eligibleNextSteps = summary.actions.filter((action) => safeSelectionActions.has(action.id));
   return (
     <aside className="ed-inspector ed-panel ed-selection-summary-panel" aria-label="Selection summary">
       <header className="ed-inspector-record-header">
-        <span>Multi-select summary</span>
+        <span>Selection summary</span>
         <strong>{summary.count.toLocaleString()} selected</strong>
       </header>
       <div className="ed-selection-summary-hero">
         <CheckSquare size={22} aria-hidden="true" />
         <h2>{summary.count.toLocaleString()} media selected</h2>
-        <p>Selected actions use cleared-use copies only.</p>
+        <p>Actions create requests, review sets, or local lists. Media files stay gated.</p>
       </div>
-      <CountBreakdown title="Status" rows={summary.statusBreakdown} />
+      <section className="ed-selection-decision-grid" aria-label="Selection decision summary">
+        <div><span>Most restrictive status</span><strong>{mostRestrictive}</strong></div>
+        <div><span>Permission needed</span><strong>{permissionNeeded.toLocaleString()}</strong></div>
+        <div><span>Blocked items</span><strong>{blockedItems.toLocaleString()}</strong></div>
+      </section>
+      <CountBreakdown title="Selection status" rows={summary.statusBreakdown} />
       <CountBreakdown title="Type" rows={summary.typeBreakdown} />
       <CountBreakdown title="Rights / consent" rows={summary.rightsBreakdown} />
       <section className="ed-selection-breakdown">
@@ -527,14 +572,14 @@ function SelectionSummaryPanel({ summary }: { summary: LibrarySelectionSummary }
         ) : <p><span>No shared tags across all selected media</span></p>}
       </section>
       <section className="ed-selection-breakdown">
-        <h3>Selected media</h3>
-        <p><span>{summary.references.join(", ") || "No public references"}</span></p>
+        <h3>Selected IDs</h3>
+        <p><span>{summary.references.join(", ") || "No shareable references"}</span></p>
       </section>
       <section className="ed-selection-breakdown">
-        <h3>Available next steps</h3>
-        {summary.actions.map((action) => (
+        <h3>Eligible next steps</h3>
+        {eligibleNextSteps.map((action) => (
           <p key={action.id} className={!action.enabled ? "is-disabled" : undefined}>
-            <span>{action.label}</span>
+            <span>{selectionActionNames[action.id] || action.label}</span>
             <strong>{action.statusLabel}</strong>
           </p>
         ))}
@@ -1343,12 +1388,12 @@ export function EnterpriseLibraryPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `tjc-browse-photos-selected-list-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `tjc-browse-media-review-list-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    announceLibraryAction(`List exported: ${selectedAssets.length.toLocaleString()} visible media item${selectedAssets.length === 1 ? "" : "s"}. Private archive fields were excluded.`);
+    announceLibraryAction(`Review list exported as CSV: ${selectedAssets.length.toLocaleString()} visible media item${selectedAssets.length === 1 ? "" : "s"}. No media files were downloaded; private archive fields were excluded.`);
   };
   const runBulkAction = (action: LibraryBulkAction) => {
     if (!action.enabled) {
@@ -1540,7 +1585,7 @@ export function EnterpriseLibraryPage() {
               onSetFilterGroup={setTopFilterGroup}
               onClearAll={clearAll}
               onOpenFilters={() => setFiltersOpen(true)}
-              showInlineControls
+              showInlineControls={false}
             />
             {canUsePowerTools ? <LibrarySavedViewStrip
               role={role}
@@ -1561,7 +1606,7 @@ export function EnterpriseLibraryPage() {
               onSelectVisible={selectAllVisible}
               onRunAction={runBulkAction}
             />
-            {pagination ? (
+            {pagination && viewMode === "table" ? (
               <LibraryPaginationControls
                 rangeStart={pagination.rangeStart}
                 rangeEnd={pagination.rangeEnd}

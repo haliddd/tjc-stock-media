@@ -144,36 +144,44 @@ function uploadIcon(type: UploadRow["mediaType"]) {
   return FileImage;
 }
 
-function normalizeStoredUpload(value: unknown): UploadRow | null {
+function contributorSafeText(value: unknown, fallback: string) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return fallback;
+  return unsafeContributorCopy.test(text) ? fallback : text;
+}
+
+function contributorSafeOptional(value: unknown) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || unsafeContributorCopy.test(text)) return undefined;
+  return text;
+}
+
+export function normalizeStoredUpload(value: unknown): UploadRow | null {
   const raw = (value || {}) as Partial<UploadRow>;
   const status = String(raw.status || "") === "Approved" ? "Reviewed" : raw.status;
   if (!raw.id || !raw.batchName || !status || !uploadStatuses.includes(status)) return null;
   const mediaType = raw.mediaType && mediaTypeValues.includes(raw.mediaType) ? raw.mediaType : "Not sure";
+  const batchName = contributorSafeText(raw.batchName, "Submitted media");
   return {
     id: String(raw.id),
-    batchName: String(raw.batchName),
-    eventName: raw.eventName ? String(raw.eventName) : String(raw.batchName),
+    batchName,
+    eventName: contributorSafeText(raw.eventName, batchName),
     mediaType,
     fileCount: Math.max(0, Math.trunc(Number(raw.fileCount) || 0)),
     status,
-    date: String(raw.date || "Today"),
-    eventDate: String(raw.eventDate || ""),
-    locationName: raw.locationName ? String(raw.locationName) : undefined,
-    ministry: String(raw.ministry || ""),
-    source: raw.source ? String(raw.source) : undefined,
-    peopleMinors: String(raw.peopleMinors || "Not sure"),
-    notes: String(raw.notes || ""),
-    submittedAt: raw.submittedAt ? String(raw.submittedAt) : undefined,
-    reviewStatus: raw.reviewStatus ? String(raw.reviewStatus) : undefined,
-    publishStatus: raw.publishStatus ? String(raw.publishStatus) : undefined,
-    reviewerNote: raw.reviewerNote ? String(raw.reviewerNote) : undefined,
+    date: contributorSafeText(raw.date, "Today"),
+    eventDate: contributorSafeText(raw.eventDate, ""),
+    locationName: contributorSafeOptional(raw.locationName),
+    ministry: contributorSafeText(raw.ministry, ""),
+    source: contributorSafeOptional(raw.source),
+    peopleMinors: contributorSafeText(raw.peopleMinors, "Not sure"),
+    notes: contributorSafeText(raw.notes, ""),
+    submittedAt: contributorSafeOptional(raw.submittedAt),
+    reviewStatus: contributorSafeOptional(raw.reviewStatus),
+    publishStatus: contributorSafeOptional(raw.publishStatus),
+    reviewerNote: contributorSafeOptional(raw.reviewerNote),
     roleFit: ["Contributor", "Reviewer", "DAM Admin"]
   };
-}
-
-function contributorSafeText(value: string | undefined, fallback: string) {
-  if (!value) return fallback;
-  return unsafeContributorCopy.test(value) ? fallback : value;
 }
 
 function readStoredUploads() {

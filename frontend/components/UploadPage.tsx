@@ -8,6 +8,7 @@ import { TagInput } from "@/components/InputWithTags";
 import { useDemoRole } from "@/components/RoleProvider";
 import { canUpload } from "@/lib/permissions";
 import { toastDraftSaved, toastUploadComplete, toastUploadFailed, toastUploadStarted } from "@/lib/tjc-toasts";
+import { uploadReceiptCopy } from "@/lib/upload-receipt-copy";
 import { parseUploadTags, uploadTagSuggestions } from "@/lib/upload-tags";
 import { cn } from "@/lib/ui";
 import { LARGE_MEDIA_BYTES, uploadBetaBoundaries, uploadDefaultState } from "@/lib/workflow-policy";
@@ -145,8 +146,7 @@ export function UploadPage() {
   const tagCount = parseUploadTags(suggestedTags).length;
   const submitReady = hasFileOrSource && intakeNotes.trim().length > 0;
   const submitDisabled = !submitReady || isSubmitting || Boolean(receipt);
-  const receiptTitle = "Photos sent";
-  const receiptResetLabel = "Share more photos";
+  const { title: receiptTitle, resetLabel: receiptResetLabel } = uploadReceiptCopy(receipt);
   const packetItems = [
     { id: "type", label: `Media type selected: ${selectedType.label}`, complete: Boolean(intakeType) },
     { id: "file", label: hasFileOrSource ? "File or source link included" : "File or source link needed", complete: hasFileOrSource },
@@ -367,10 +367,10 @@ export function UploadPage() {
         <div className="send-command-main">
           <p className="dam-kicker">Contributor intake</p>
           <h1 className="dam-page-title">Send media for review</h1>
-          <p className="mt-3 max-w-[58ch] text-lg font-semibold leading-relaxed text-tjc-muted">
+          <p className="upload-hero-copy mt-3 max-w-[58ch] text-lg font-semibold leading-relaxed text-white/90">
             Build a reviewer packet with source, rights, people, scope, and proof context. Send never publishes media.
           </p>
-          <p className="mt-2 max-w-[64ch] text-sm font-black text-[#725216]">
+          <p className="upload-hero-proof mt-2 max-w-[64ch] text-sm font-black text-[#d7f7ea]">
             Source class, owner/license, attribution, proof link, and requested usage scope are captured for reviewer evidence.
           </p>
           <ol className="mt-4 flex flex-wrap gap-2" aria-label="Contributor flow">
@@ -425,29 +425,33 @@ export function UploadPage() {
             ))}
           </div>
           <div className="dam-packet-selected rounded-[16px] border border-[#d8e1da] bg-white p-3 text-sm font-semibold text-tjc-muted">
-            <span>Selected category</span>
-            <strong className="text-tjc-evergreen">{selectedType.label}</strong>
+            <div>
+              <span>Selected category</span>
+              <strong className="text-tjc-evergreen">{selectedType.label}</strong>
+            </div>
+            <em>Next: add source and event context</em>
           </div>
           <PacketRequirementPanel typeLabel={selectedType.label} items={packetRequirementItems} />
-          <section className="grid gap-3 rounded-[14px] border border-[#c8d7e6] bg-[#f2f7fb] p-4 text-sm font-semibold text-[#27435b]" aria-label="Upload boundaries">
-            <div>
+          <section className="upload-boundaries" aria-label="Upload boundaries">
+            <header>
               <h2 className="text-base font-black text-tjc-ink">Intake boundaries</h2>
-              <p className="mt-1 leading-relaxed">Send creates reviewer work only. Browser upload is for photos/light graphics and links. Large media needs media team intake before review.</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <strong className="text-xs uppercase tracking-[.08em] text-tjc-evergreen">Allowed</strong>
+              <p>Send creates reviewer work only. Browser upload is for photos/light graphics and links.</p>
+            </header>
+            <div className="upload-boundary-grid">
+              <article>
+                <strong>Allowed here</strong>
                 <ul className="mt-2 grid gap-1.5">
                   {uploadBetaBoundaries.allowed.map((item) => <li key={item}>{item}</li>)}
                 </ul>
-              </div>
-              <div>
-                <strong className="text-xs uppercase tracking-[.08em] text-[#725216]">Not from this page</strong>
+              </article>
+              <article className="is-blocked">
+                <strong>Not from this page</strong>
                 <ul className="mt-2 grid gap-1.5">
                   {uploadBetaBoundaries.forbidden.map((item) => <li key={item}>{item}</li>)}
                 </ul>
-              </div>
+              </article>
             </div>
+            <p className="upload-boundary-note">Large media needs media team intake before review. Nothing publishes from this page.</p>
           </section>
         </section>
 

@@ -147,24 +147,23 @@ export function PacketStepper({
   const stageLabels = ["Type", "Source", "People", "Files", "Review"];
   return (
     <section className="dam-packet-stepper rounded-2xl border border-[#d6dfd8] bg-white p-4" aria-label="Send progress">
-      <div className="dam-packet-stepper-head flex items-start justify-between gap-3">
+      <div className="dam-packet-stepper-head flex items-center justify-between gap-3">
         <div>
           <span className="text-xs font-black text-tjc-evergreen">Step {current + 1} of {steps.length}</span>
           <h2 className="mt-1 text-2xl font-black leading-tight text-tjc-ink">{steps[current]}</h2>
         </div>
-        <span className="rounded-xl bg-[#eef7f1] px-3 py-1 text-xs font-black tabular-nums text-tjc-evergreen">{current + 1}/{steps.length}</span>
+        <span className="dam-packet-step-now rounded-xl bg-[#eef7f1] px-3 py-1 text-xs font-black tabular-nums text-tjc-evergreen">{stageLabels[current] || current + 1}</span>
       </div>
       <div className="dam-packet-progress-track mt-4 grid gap-1" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-hidden="true">
         {steps.map((item, index) => (
           <span className={cn("h-2 rounded-full", index <= current ? "bg-tjc-evergreen" : "bg-[#dbe4dd]")} key={item} />
         ))}
       </div>
-      <ol className="dam-packet-step-list mt-4 grid gap-2">
+      <ol className="dam-packet-step-list mt-3 grid gap-2">
         {steps.map((item, index) => (
-          <li className={cn("dam-packet-step-item grid grid-cols-[auto_1fr_auto] items-center gap-2", index === current && "is-current", index < current && "is-complete")} key={item}>
+          <li className={cn("dam-packet-step-item grid grid-cols-[auto_1fr] items-center gap-2", index === current && "is-current", index < current && "is-complete")} key={item}>
             <span className="dam-packet-step-index tabular-nums">{index + 1}</span>
             <span className="truncate" title={item}>{stageLabels[index] || item}</span>
-            <span className="dam-packet-step-state">{index < current ? "Done" : index === current ? "Now" : "Open"}</span>
           </li>
         ))}
       </ol>
@@ -223,7 +222,7 @@ function PacketSummary({
   children?: ReactNode;
 }) {
   return (
-    <aside className="dam-packet-summary grid h-fit gap-4 rounded-2xl border border-[#cbd8cf] bg-[#fbfcfa] p-4 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)]" aria-label="Reviewer packet summary">
+    <aside className={cn("dam-packet-summary grid h-fit gap-4 rounded-2xl border border-[#cbd8cf] bg-[#fbfcfa] p-4 lg:sticky lg:top-[calc(var(--app-header-height)+1rem)]", ready && "is-ready")} aria-label="Reviewer packet summary">
       <div>
         <span className="text-xs font-black uppercase tracking-[.08em] text-tjc-evergreen">Reviewer packet</span>
         <h2 className="mt-1 text-2xl font-black leading-tight text-tjc-ink">{ready ? "Ready to send for review" : "Context still needed"}</h2>
@@ -233,12 +232,12 @@ function PacketSummary({
       </div>
       <dl className="grid grid-cols-2 gap-2">
         {[
-          ["Type", typeLabel],
-          ["Files", String(fileCount)],
-          ["Source link", hasSourceLink ? "Included" : "Needed if no file"],
-          ["Tags", String(tagCount)]
-        ].map(([label, value]) => (
-          <div className="rounded-xl border border-[#d8e1da] bg-white p-3" key={label}>
+          { label: "Type", value: typeLabel, complete: true },
+          { label: "Files", value: String(fileCount), complete: fileCount > 0 },
+          { label: "Source link", value: hasSourceLink ? "Included" : "Needed if no file", complete: hasSourceLink || fileCount > 0 },
+          { label: "Tags", value: String(tagCount), complete: true }
+        ].map(({ label, value, complete }) => (
+          <div className={cn("dam-packet-summary-stat rounded-xl border border-[#d8e1da] bg-white p-3", complete ? "is-complete" : "is-needed")} key={label}>
             <dt className="text-[11px] font-black uppercase tracking-[.06em] text-tjc-muted">{label}</dt>
             <dd className="mt-1 text-sm font-black text-tjc-ink">{value}</dd>
           </div>

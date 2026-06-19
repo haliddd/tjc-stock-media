@@ -652,7 +652,7 @@ function ViewerInsights({
   const needs = counts?.needsReview || 0;
   const stats: InsightStat[] = [
     { label: "Visible Media", value: visible.toLocaleString(), detail: "items you can view", meta: "visible library period", tone: "blue", icon: ImageIcon },
-    { label: "Approved Media", value: ready.toLocaleString(), detail: "approved for use", meta: "visible library period", tone: "green", icon: CheckCircle2 },
+    { label: "Review-Cleared Media", value: ready.toLocaleString(), detail: "review-cleared records", meta: "visible library period", tone: "green", icon: CheckCircle2 },
     { label: "Needs Review", value: needs.toLocaleString(), detail: "may need attention", meta: "visible library period", tone: "orange", icon: Clock3 },
     { label: "Saved Views", value: savedViews.length.toLocaleString(), detail: "saved views", meta: "your library", tone: "purple", icon: Eye },
     { label: "Collections", value: collections.length.toLocaleString(), detail: "your collections", meta: "your library", tone: "blue", icon: FolderOpen },
@@ -666,7 +666,7 @@ function ViewerInsights({
     ["Find videos for events or ministries", "Events, testimonies, and ministry highlights", Search, "/?q=video%20events"]
   ] as const;
   const reuseGuide = [
-    ["Use approved assets", "All media in this library is reviewed for rights and reuse scope."],
+    ["Use review-cleared assets", "Reuse scope comes from asset details and media-team review; visible media is not blanket public clearance."],
     ["Follow TJC Identity", "Use identity.tjc.org for logo, color, and template guidance."],
     ["Credit when required", "Some assets require attribution. Check asset details."],
     ["When in doubt, ask", "Contact your brand or communications team for help."]

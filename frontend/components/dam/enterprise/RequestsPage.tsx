@@ -378,7 +378,7 @@ function RequestsPageContent() {
       saveLocalRequest(receipt);
       setLocalReceipts(readLocalRequests());
       window.localStorage.setItem(requestDraftKey, JSON.stringify({ requestType, eventContext, message, relatedMedia, urgency, contactInfo }));
-      setNotice(status === "Local receipt" ? "Request recorded as a local-only receipt in this browser. No backend submission or media-team notification is connected yet." : "Draft saved on this device.");
+      setNotice(status === "Local receipt" ? "Request recorded as a local-only receipt in this browser. It has not reached the media team yet." : "Draft saved on this device.");
       setError("");
     } catch {
       setError("We could not save this request in this browser.");
@@ -495,7 +495,7 @@ function RequestsPageContent() {
             <dl>
               {requestSummary.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
             </dl>
-            <p><ShieldCheck size={14} aria-hidden="true" />Send request creates a local-only receipt in this browser. It does not notify the media team yet, approve use, publish files, sync data, or unlock downloads.</p>
+            <p><ShieldCheck size={14} aria-hidden="true" />Send request creates a local-only receipt in this browser. It does not notify the media team yet or clear media for use.</p>
             <div className="request-actions">
               <button type="button" className="is-primary" onClick={saveRequestReceipt}><Send size={14} aria-hidden="true" />Send request</button>
               <button type="button" onClick={() => persistRequest("Draft")}>Save draft</button>
@@ -507,7 +507,7 @@ function RequestsPageContent() {
           <section>
             <h2>What happens next</h2>
             <ul>
-              <li><CheckCircle2 size={14} aria-hidden="true" />Receipt stays on this browser until a connected backend exists.</li>
+              <li><CheckCircle2 size={14} aria-hidden="true" />Receipt stays on this browser; contact the media team separately for urgent needs.</li>
               <li><Clock3 size={14} aria-hidden="true" />Permission and full-resolution handling stay gated.</li>
               <li><MessageSquareText size={14} aria-hidden="true" />A reviewer may still need more details before use.</li>
             </ul>
