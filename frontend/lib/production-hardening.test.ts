@@ -14,9 +14,9 @@ import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identi
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
 import { isRuntimeWriteBlockedError, runtimeStoreDiagnostics, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
-import { assetForRolePayload } from "@/lib/source-redaction";
+import { assetForRolePayload, catalogCollectionForRolePayload, catalogDiscoveryForRolePayload, safeNormalRoleBrowseText, savedViewsForRolePayload } from "@/lib/source-redaction";
 import { taxonomyGovernanceForRole } from "@/lib/taxonomy";
-import type { StockMediaAsset } from "@/lib/types";
+import type { CatalogCollection, SavedViewSummary, SearchResult, StockMediaAsset } from "@/lib/types";
 
 const originalEnv = { ...process.env };
 
@@ -386,6 +386,100 @@ describe("metadata schema contract", () => {
     expect(text).not.toContain("sourcePath");
     expect(text).not.toContain("masterDrivePath");
     expect(text).not.toContain("checksumSha256");
+  });
+
+  it.each(["Viewer", "Contributor"] as const)("keeps Browse Media display payloads free of ops and launch claims for %s", (role) => {
+    const forbidden = /\b(ResourceSpace|writeback|source-system|source system|public|download|published|sync)\b/i;
+    const unsafeView: SavedViewSummary = {
+      id: "approved-church-wide",
+      label: "Public safe downloads",
+      description: "ResourceSpace public download published sync",
+      reason: "source-system writeback must not show here",
+      count: 1
+    };
+    const unsafeCollection: CatalogCollection = {
+      id: "approved-public-delivery",
+      name: "Public Use",
+      description: "Public download set from ResourceSpace",
+      count: 1,
+      countLabel: "1 public asset",
+      dateRange: "2026",
+      ministry: "public sync ministry",
+      approvalSummary: "1 public download",
+      peopleWarning: "published people check",
+      searchQuery: "approved public download",
+      viewId: "approved-public-delivery",
+      images: []
+    };
+    const unsafeDiscovery: SearchResult["discovery"] = {
+      mode: "browse",
+      summary: "Public download sync summary",
+      expandedTerms: [],
+      matchedIntent: {
+        id: "public-safe",
+        label: "Public safe",
+        query: "public safe",
+        description: "public download suggestion",
+        safetyNote: "published sync claim"
+      },
+      intentPresets: [{
+        id: "public-safe",
+        label: "Public safe",
+        query: "public safe",
+        description: "download public media",
+        suggestedFilters: ["public safe"]
+      }],
+      suggestedFilters: [{ label: "Public safe", filter: "public safe", count: 1, kind: "policy" }],
+      noResultHelp: {
+        title: "No public downloads",
+        guidance: "ResourceSpace sync and writeback copy",
+        querySuggestions: ["public download"],
+        filters: [{ label: "Public safe", filter: "public safe", count: 1, kind: "policy" }],
+        savedViews: [{ id: "public-safe", label: "Public safe" }]
+      },
+      scoreHint: "public download ranking",
+      rankingExplanation: [{ label: "Public", detail: "download sync" }],
+      safetyNote: "public download published sync"
+    };
+
+    const safeCollection = catalogCollectionForRolePayload(role, unsafeCollection);
+    const safeDiscovery = catalogDiscoveryForRolePayload(role, unsafeDiscovery);
+    const visiblePayload = {
+      savedViews: savedViewsForRolePayload(role, [unsafeView]).map(({ label, description, reason }) => ({ label, description, reason })),
+      collection: {
+        name: safeCollection.name,
+        description: safeCollection.description,
+        countLabel: safeCollection.countLabel,
+        dateRange: safeCollection.dateRange,
+        ministry: safeCollection.ministry,
+        approvalSummary: safeCollection.approvalSummary,
+        peopleWarning: safeCollection.peopleWarning,
+        searchQuery: safeCollection.searchQuery
+      },
+      discovery: {
+        summary: safeDiscovery.summary,
+        matchedIntent: safeDiscovery.matchedIntent ? {
+          label: safeDiscovery.matchedIntent.label,
+          description: safeDiscovery.matchedIntent.description,
+          safetyNote: safeDiscovery.matchedIntent.safetyNote
+        } : undefined,
+        intentPresets: safeDiscovery.intentPresets.map(({ label, description }) => ({ label, description })),
+        suggestedFilters: safeDiscovery.suggestedFilters.map(({ label }) => ({ label })),
+        noResultHelp: safeDiscovery.noResultHelp ? {
+          title: safeDiscovery.noResultHelp.title,
+          guidance: safeDiscovery.noResultHelp.guidance,
+          querySuggestions: safeDiscovery.noResultHelp.querySuggestions,
+          filters: safeDiscovery.noResultHelp.filters.map(({ label }) => ({ label })),
+          savedViews: safeDiscovery.noResultHelp.savedViews.map(({ label }) => ({ label }))
+        } : undefined,
+        scoreHint: safeDiscovery.scoreHint,
+        rankingExplanation: safeDiscovery.rankingExplanation,
+        safetyNote: safeDiscovery.safetyNote
+      }
+    };
+
+    expect(safeNormalRoleBrowseText("ResourceSpace public download published sync source-system writeback")).not.toMatch(forbidden);
+    expect(JSON.stringify(visiblePayload)).not.toMatch(forbidden);
   });
 });
 

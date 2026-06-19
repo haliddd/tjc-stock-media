@@ -19,8 +19,10 @@ import {
   buildReviewDecisionLanes,
   buildReviewDecisionRequirements,
   buildReviewQueueMetrics,
+  buildReviewWorkbenchState,
   buildReviewSignals,
   missingReviewActionEvidence,
+  reviewSourceReadState,
   reviewDecisionActions,
   reviewNextCheckLabel
 } from "@/lib/review-workbench";
@@ -106,6 +108,7 @@ describe("review workbench model", () => {
 
   it("keeps workbench decision backends aligned with workflow policy", () => {
     const workflowBackends = reviewActions.map((action) => action.backend);
+    const helperText = reviewDecisionActions.map((action) => action.helper).join(" ");
 
     expect(reviewDecisionActions.every((action) => isReviewActionBackend(action.action))).toBe(true);
     expect(reviewDecisionActions.map((action) => action.action)).toEqual(expect.arrayContaining([
@@ -115,6 +118,68 @@ describe("review workbench model", () => {
       "Do Not Use"
     ]));
     expect(reviewDecisionActions.map((action) => action.action).every((action) => workflowBackends.includes(action))).toBe(true);
+    expect(helperText).toContain("Source status stays unchanged until confirmed");
+    expect(helperText).not.toMatch(/writeback|sync completed|download ready/i);
+  });
+
+  it("classifies reviewer workbench empty and disconnected states without fake unavailable copy", () => {
+    const source = {
+      adapter: "bundled-beta-catalog" as const,
+      label: "Bundled catalog",
+      detail: "Read-only snapshot.",
+      readOnly: true
+    };
+
+    expect(buildReviewWorkbenchState({
+      roleReady: false,
+      accessAllowed: false,
+      loading: false,
+      batchCount: 0
+    })).toBe("loading");
+    expect(buildReviewWorkbenchState({
+      roleReady: true,
+      accessAllowed: false,
+      loading: false,
+      batchCount: 0
+    })).toBe("reviewer-access-needed");
+    expect(buildReviewWorkbenchState({
+      roleReady: true,
+      accessAllowed: true,
+      loading: false,
+      error: "Source check failed",
+      batchCount: 0
+    })).toBe("review-queue-needs-attention");
+    expect(buildReviewWorkbenchState({
+      roleReady: true,
+      accessAllowed: true,
+      loading: false,
+      source: { ...source, adapter: "media-library", sourceKind: "media-library" },
+      batchCount: 0
+    })).toBe("review-paused");
+    expect(buildReviewWorkbenchState({
+      roleReady: true,
+      accessAllowed: true,
+      loading: false,
+      source,
+      batchCount: 0
+    })).toBe("no-uploads-waiting");
+    expect(buildReviewWorkbenchState({
+      roleReady: true,
+      accessAllowed: true,
+      loading: false,
+      source,
+      batchCount: 2,
+      filteredBatchCount: 0
+    })).toBe("search-empty");
+    expect(buildReviewWorkbenchState({
+      roleReady: true,
+      accessAllowed: true,
+      loading: false,
+      source,
+      batchCount: 2,
+      filteredBatchCount: 1
+    })).toBe("ready");
+    expect(reviewSourceReadState({ source: { ...source, adapter: "media-library" } })).toBe("disconnected");
   });
 
   it("groups review records by enterprise governance work lanes", () => {

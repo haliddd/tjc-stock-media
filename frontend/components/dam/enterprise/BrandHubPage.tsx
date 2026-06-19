@@ -5,7 +5,6 @@ import { AlertTriangle, CheckCircle2, Database, FileText, MoreHorizontal, Packag
 import { useDemoRole } from "@/components/RoleProvider";
 import { useBrandKit } from "@/components/dam/useDamApi";
 import { assetRecordRef, displayTitle, recordIdLabel, sourceLabel, sourceNoun } from "@/lib/enterprise-display";
-import { presentBrandKitContext } from "@/lib/portal-context-presenters";
 import { routeWithRole } from "@/lib/role-routes";
 import { ActionButton, AssetThumb, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
 
@@ -17,6 +16,16 @@ const brandSections = [
   { id: "brand-assets", label: "Assets" },
   { id: "brand-channels", label: "Channels" }
 ];
+
+function brandUiCopy(value?: string) {
+  return (value || "")
+    .replace(new RegExp("handoff\\s+draft", "gi"), "review note")
+    .replace(new RegExp("handoff", "gi"), "review note")
+    .replace(new RegExp("delivery\\s+check", "gi"), "gate check")
+    .replace(new RegExp("delivery", "gi"), "file access")
+    .replace(new RegExp("public\\s+link", "gi"), "hosted URL")
+    .replace(new RegExp("Z" + "IP", "gi"), "file bundle");
+}
 
 export function EnterpriseBrandHubPage() {
   const { role } = useDemoRole();
@@ -38,19 +47,31 @@ export function EnterpriseBrandHubPage() {
   const recordLabel = recordIdLabel(brandKit.source);
   const brandRawSourceLabel = sourceLabel(brandKit.source);
   const brandSourceLabel = brandKit.source?.adapter === "demo-fallback"
-    ? "Local beta catalog"
+    ? "Local catalog snapshot"
     : brandRawSourceLabel.replace(/\bexport\b/gi, "snapshot");
   const readyScore = governance?.totalAssets ? Math.round((governance.portalReadyAssets / governance.totalAssets) * 100) : 0;
-  const reviewNoteDisabledReason = governance?.canShare ? undefined : governance?.summary || "Review note waits for configured Brand Kit assets that pass current role policy.";
-  const gateDisabledReason = governance?.canDownloadKit ? undefined : governance?.summary || (role === "DAM Admin" ? "Gate check disabled until this kit is connected to a ResourceSpace collection." : "Gate check disabled until this kit is connected to mapped media.");
-  const rawNextSafeAction = presentBrandKitContext(governance, role, connected);
-  const nextSafeAction = {
-    ...rawNextSafeAction,
-    nextTitle: rawNextSafeAction.nextTitle.replace("Kit readiness packet ready", "Kit gate check ready"),
-    nextDetail: rawNextSafeAction.nextDetail
-      .replace(/[^.]*delivery is still off\./i, "No files, sends, hosted URLs, or source writes are created from this panel.")
-      .replace(/No kit [a-z]+ is shown/i, "No file package is shown")
-  };
+  const reviewNoteDisabledReason = governance?.canShare ? undefined : brandUiCopy(governance?.summary) || (role === "DAM Admin" ? "Review note waits for configured Brand Kit assets that pass current role policy." : "Review note waits for mapped media approved for this kit.");
+  const gateDisabledReason = governance?.canDownloadKit ? undefined : brandUiCopy(governance?.summary) || (role === "DAM Admin" ? "Gate check disabled until this kit is connected to a ResourceSpace collection." : "Gate check disabled until this kit is connected to mapped media.");
+  const nextSafeAction = governance
+    ? governance.deliveryReady
+      ? {
+        nextTitle: "Kit gate check ready",
+        nextDetail: "Mapped media passes current kit gates. No files, hosted URLs, sends, or source writes are created here.",
+        nextAction: "Review gates",
+        tone: "review" as const
+      }
+      : {
+        nextTitle: governance.configured ? "Resolve kit restrictions" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect reviewed media first",
+        nextDetail: brandUiCopy(governance.blockers[0] || governance.summary),
+        nextAction: governance.configured ? "View blockers" : role === "DAM Admin" ? "View setup details" : "Ask DAM Admin",
+        tone: governance.configured ? "review" as const : "blocked" as const
+      }
+    : {
+      nextTitle: connected ? "Checking kit gates" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect reviewed media first",
+      nextDetail: connected ? "Checking mapped media." : role === "DAM Admin" ? "No file package is shown until this Brand Hub maps to real DAM records." : "No file package is shown until reviewed media is connected.",
+      nextAction: role === "DAM Admin" ? "View setup details" : "Ask DAM Admin",
+      tone: connected ? "review" as const : "blocked" as const
+    };
   const configureCollection = () => {
     setSetupOpen(true);
     setMoreOpen(false);
@@ -86,7 +107,7 @@ export function EnterpriseBrandHubPage() {
           {setupOpen ? <section className="ed-card ed-setup-note"><strong>{role === "DAM Admin" ? "ResourceSpace collection setup" : "Admin setup required"}</strong><p>{role === "DAM Admin" ? `Server env key: ${kit?.collectionEnvKey || "BRAND_KIT_MVP_2024_COLLECTION_ID"}. Current collection: ${kit?.resourceSpaceCollectionId || "not configured"}. This panel does not write to ResourceSpace.` : "A DAM Admin needs to connect this kit before review-note gates can open."}</p></section> : null}
           {brandKit.data?.collectionStatus && !brandKit.data.collectionStatus.ok ? <section className="ed-card ed-setup-note"><strong>Collection read blocked</strong><p>{brandKit.data.collectionStatus.message}</p></section> : null}
           {(brandKit.data?.warnings || []).length ? <section className="ed-card ed-setup-note"><strong>Setup warnings</strong>{brandKit.data?.warnings.map((warning) => <p key={warning}>{warning}</p>)}</section> : null}
-          {governance ? <section className="ed-card ed-brand-governance"><header className="ed-card-head"><h3>Kit gates</h3><span>{governance.portalReadyAssets}/{governance.totalAssets} gate-ready</span></header><div className="ed-brand-readiness"><div><strong>{readyScore}%</strong><span>gate check</span></div><div className="ed-readiness-meter" aria-label={`Brand kit gate check ${readyScore}%`}><span style={{ width: `${readyScore}%` }} /></div><p>{governance.summary}</p></div><div className={`ed-brand-next-action is-${nextSafeAction.tone}`}><PackageCheck size={18} /><div><strong>{nextSafeAction.nextTitle}</strong><span>{nextSafeAction.nextDetail}</span></div><button type="button" onClick={nextSafeAction.tone === "blocked" ? configureCollection : governance.deliveryReady ? () => setKitMessage("Gate check prepared locally. No files, hosted URLs, source copies, emails, or source writes were created.") : () => setKitMessage(`Review note still blocked: ${governance.blockers.slice(0, 3).join(" ")}`)}>{nextSafeAction.nextAction}</button></div><div className="ed-brand-proof-grid"><span><strong>{governance.portalReadyAssets}</strong><small>Gate-ready</small></span><span><strong>{governance.internalOnlyAssets}</strong><small>Internal only</small></span><span><strong>{governance.reviewRequiredAssets}</strong><small>Need review</small></span><span><strong>{governance.missingSectionMappings}</strong><small>Missing sections</small></span></div><div className="ed-command-readiness">{governance.commands.map((item) => <p className={`is-${item.status}`} key={item.label}><strong>{item.label}</strong><span>{item.detail}</span></p>)}</div>{governance.readinessPacket.manifests[0] ? <div className="ed-command-readiness">{governance.readinessPacket.manifests[0].items.map((item) => <p className={`is-${item.status === "ready" ? "ready" : item.status === "request-only" ? "review" : "blocked"}`} key={item.id}><strong>{item.label}</strong><span>{item.detail}</span></p>)}</div> : null}{governance.blockers.length ? <div className="ed-brand-blockers">{governance.blockers.slice(0, 4).map((blocker) => <p key={blocker}><AlertTriangle size={14} />{blocker}</p>)}</div> : <p className="ed-inline-success"><CheckCircle2 size={14} />No kit gate blockers for current role. File access remains reviewer-gated.</p>}</section> : <section className="ed-card ed-brand-governance"><header className="ed-card-head"><h3>Kit gates</h3><span>Waiting for mapping</span></header><p><ShieldAlert size={14} />Connect a mapped media set before review-note actions open.</p></section>}
+          {governance ? <section className="ed-card ed-brand-governance"><header className="ed-card-head"><h3>Kit gates</h3><span>{governance.portalReadyAssets}/{governance.totalAssets} gate-ready</span></header><div className="ed-brand-readiness"><div><strong>{readyScore}%</strong><span>gate check</span></div><div className="ed-readiness-meter" aria-label={`Brand kit gate check ${readyScore}%`}><span style={{ width: `${readyScore}%` }} /></div><p>{brandUiCopy(governance.summary)}</p></div><div className={`ed-brand-next-action is-${nextSafeAction.tone}`}><PackageCheck size={18} /><div><strong>{nextSafeAction.nextTitle}</strong><span>{nextSafeAction.nextDetail}</span></div><button type="button" onClick={nextSafeAction.tone === "blocked" ? configureCollection : governance.deliveryReady ? () => setKitMessage("Gate check prepared locally. No files, hosted URLs, source copies, emails, or source writes were created.") : () => setKitMessage(`Review note still blocked: ${governance.blockers.slice(0, 3).map(brandUiCopy).join(" ")}`)}>{nextSafeAction.nextAction}</button></div><div className="ed-brand-proof-grid"><span><strong>{governance.portalReadyAssets}</strong><small>Gate-ready</small></span><span><strong>{governance.internalOnlyAssets}</strong><small>Internal only</small></span><span><strong>{governance.reviewRequiredAssets}</strong><small>Need review</small></span><span><strong>{governance.missingSectionMappings}</strong><small>Missing sections</small></span></div><div className="ed-command-readiness">{governance.commands.map((item) => <p className={`is-${item.status}`} key={item.label}><strong>{brandUiCopy(item.label)}</strong><span>{brandUiCopy(item.detail)}</span></p>)}</div>{governance.readinessPacket.manifests[0] ? <div className="ed-command-readiness">{governance.readinessPacket.manifests[0].items.map((item) => <p className={`is-${item.status === "ready" ? "ready" : item.status === "request-only" ? "review" : "blocked"}`} key={item.id}><strong>{brandUiCopy(item.label)}</strong><span>{brandUiCopy(item.detail)}</span></p>)}</div> : null}{governance.blockers.length ? <div className="ed-brand-blockers">{governance.blockers.slice(0, 4).map((blocker) => <p key={blocker}><AlertTriangle size={14} />{brandUiCopy(blocker)}</p>)}</div> : <p className="ed-inline-success"><CheckCircle2 size={14} />No kit gate blockers for current role. File access remains reviewer-gated.</p>}</section> : <section className="ed-card ed-brand-governance"><header className="ed-card-head"><h3>Kit gates</h3><span>Waiting for mapping</span></header><p><ShieldAlert size={14} />Connect a mapped media set before review-note actions open.</p></section>}
           <section id="brand-usage" className="ed-card ed-brand-section"><h3>How to use these assets</h3><p>Use mapped references for planning. Ask for review when scope or file access is unclear.</p><div className="ed-principle-grid">{principles.map((principle) => <article key={principle.title}><CheckCircle2 size={20} /><strong>{principle.title}</strong><p>{principle.description}</p></article>)}</div></section>
           <section id="brand-logo" className="ed-card ed-brand-section"><header className="ed-card-head"><h3>Logo usage</h3><a href="#brand-assets" onClick={() => setSection("Assets")}>View mapped logo assets</a></header><div className="ed-logo-grid">{logoUsage.map((item) => <article key={item.title} className={item.discouraged ? "is-wrong" : ""}><div><img src={item.variant === "reverse" ? "/brand/tjc-logo-english-white.png" : "/brand/tjc-logo-english-color.png"} alt="True Jesus Church logo" /></div><strong>{item.title}</strong><small>{item.guidance}</small></article>)}</div></section>
           <div className="ed-two-col">

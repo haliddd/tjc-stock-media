@@ -54,8 +54,8 @@ function variantIcon(variant: DamStateVariant) {
 function actionNode(action: DamStateAction | undefined, kind: "primary" | "secondary") {
   if (!action) return null;
   const className = cn(
-    "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-black transition active:translate-y-px",
-    kind === "primary" ? "bg-tjc-evergreen text-white hover:bg-[#062d24]" : "border border-current bg-white hover:bg-[#f8fbf8]"
+    "dam-state-action inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-black transition active:translate-y-px",
+    kind === "primary" ? "is-primary bg-tjc-evergreen text-white hover:bg-[#062d24]" : "is-secondary border border-current bg-white hover:bg-[#f8fbf8]"
   );
   if (action.href) {
     return <a className={className} href={action.href}>{action.label}</a>;
@@ -77,17 +77,17 @@ export function StateCard({
 }: DamStateProps) {
   const role = variant === "error" ? "alert" : "status";
   return (
-    <section className={cn("rounded-md border p-4", toneClass(tone), compact && "p-3", className)} role={role}>
+    <section className={cn("dam-state-card rounded-md border p-4", toneClass(tone), compact && "is-compact p-3", className)} role={role} data-variant={variant} data-tone={tone}>
       <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-md border border-current/15 bg-white">
+        <span className="dam-state-icon grid h-10 w-10 place-items-center rounded-md border border-current/15 bg-white">
           {icon || variantIcon(variant)}
         </span>
         <div className="min-w-0">
-          <h2 className={cn("font-black leading-tight", compact ? "text-sm" : "text-lg")}>{title}</h2>
-          {description ? <p className="mt-1 text-sm font-semibold leading-relaxed opacity-85">{description}</p> : null}
-          {reasonCode ? <code className="mt-2 inline-block rounded-md bg-white px-2 py-1 text-[11px] font-black">{reasonCode}</code> : null}
+          <h2 className={cn("dam-state-title font-black leading-tight", compact ? "text-sm" : "text-lg")}>{title}</h2>
+          {description ? <p className="dam-state-description mt-1 text-sm font-semibold leading-relaxed opacity-85">{description}</p> : null}
+          {reasonCode ? <code className="dam-state-code mt-2 inline-block rounded-md bg-white px-2 py-1 text-[11px] font-black">{reasonCode}</code> : null}
           {primaryAction || secondaryAction ? (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="dam-state-actions mt-3 flex flex-wrap gap-2">
               {actionNode(primaryAction, "primary")}
               {actionNode(secondaryAction, "secondary")}
             </div>
@@ -187,20 +187,20 @@ export function RestrictedPreviewPanel({ title = "Preview restricted", detail, c
   return (
     <div
       className={cn(
-        "relative grid h-full min-h-44 w-full place-items-center overflow-hidden bg-[#edf3ef] p-5 text-center",
+        "dam-restricted-preview relative grid h-full min-h-44 w-full place-items-center overflow-hidden bg-[#edf3ef] p-5 text-center",
         className
       )}
     >
       <div className="absolute inset-4 rounded-md border border-[#d6dfd8]" aria-hidden="true" />
-      <div className="relative z-[1] grid max-w-[24rem] justify-items-center gap-3 rounded-md border border-[#d6dfd8] bg-white px-5 py-5">
-        <span className={cn("grid h-12 w-12 place-items-center rounded-md border border-[#d6dfd8]", copy.tone)}>
+      <div className="dam-restricted-preview-card relative z-[1] grid max-w-[24rem] justify-items-center gap-3 rounded-md border border-[#d6dfd8] bg-white px-5 py-5">
+        <span className={cn("dam-state-icon grid h-12 w-12 place-items-center rounded-md border border-[#d6dfd8]", copy.tone)}>
           {copy.icon}
         </span>
         <div>
           <strong className="text-base font-black leading-tight text-tjc-ink">{copy.title}</strong>
           <span className="mt-2 block text-sm font-semibold leading-relaxed text-tjc-muted">{copy.reason}</span>
         </div>
-        <span className="rounded-md border border-[#d6dfd8] bg-[#fbfcfa] px-3 py-1 text-xs font-black text-tjc-evergreen">{copy.action}</span>
+        <span className="dam-state-pill rounded-md border border-[#d6dfd8] bg-[#fbfcfa] px-3 py-1 text-xs font-black text-tjc-evergreen">{copy.action}</span>
       </div>
     </div>
   );
@@ -208,9 +208,9 @@ export function RestrictedPreviewPanel({ title = "Preview restricted", detail, c
 
 export function AssetPreviewPlaceholder({ title = "Preview pending", detail, className }: Partial<StateProps>) {
   return (
-    <div className={cn("dam-preview-grid relative grid h-full min-h-36 w-full place-items-center overflow-hidden p-4 text-center", className)}>
-      <div className="relative z-[1] grid max-w-[20rem] justify-items-center gap-2 rounded-md border border-[#d6dfd8] bg-white px-4 py-3">
-        <span className="grid h-10 w-10 place-items-center rounded-md border border-[#d6dfd8] bg-white text-tjc-blue">
+    <div className={cn("dam-preview-placeholder dam-preview-grid relative grid h-full min-h-36 w-full place-items-center overflow-hidden p-4 text-center", className)}>
+      <div className="dam-preview-placeholder-card relative z-[1] grid max-w-[20rem] justify-items-center gap-2 rounded-md border border-[#d6dfd8] bg-white px-4 py-3">
+        <span className="dam-state-icon grid h-10 w-10 place-items-center rounded-md border border-[#d6dfd8] bg-white text-tjc-blue">
           <ImageIcon size={18} strokeWidth={1.8} aria-hidden="true" />
         </span>
         <strong className="text-xs font-black leading-tight text-tjc-ink">{title}</strong>
@@ -222,7 +222,7 @@ export function AssetPreviewPlaceholder({ title = "Preview pending", detail, cla
 
 export function CollectionPreviewPlaceholder({ title = "Collection preview pending", detail, className }: Partial<StateProps>) {
   return (
-    <div className={cn("relative grid h-full min-h-28 w-full place-items-center overflow-hidden rounded-md bg-[#e6f0eb] p-3 text-center", className)}>
+    <div className={cn("dam-collection-preview relative grid h-full min-h-28 w-full place-items-center overflow-hidden rounded-md bg-[#e6f0eb] p-3 text-center", className)}>
       <div className="absolute inset-2 rounded-md border border-[#c9d8cf]" aria-hidden="true" />
       <span className="relative z-[1] grid justify-items-center gap-1.5 text-tjc-evergreen">
         <FolderOpen size={20} strokeWidth={1.8} aria-hidden="true" />
@@ -288,14 +288,14 @@ export function SkeletonInspector({ rows = 4, className }: { rows?: number; clas
 
 export function EmptyState({ title, detail, children, className }: StateProps) {
   return (
-    <section className={cn("grid place-items-center rounded-md border border-tjc-line bg-white p-8 text-center", className)} aria-live="polite">
+    <section className={cn("dam-state-card grid place-items-center rounded-md border border-tjc-line bg-white p-8 text-center", className)} aria-live="polite" data-variant="empty" data-tone="neutral">
       <div className="grid max-w-md justify-items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-md bg-[#e6f0eb] text-tjc-evergreen">
+        <span className="dam-state-icon grid h-12 w-12 place-items-center rounded-md bg-[#e6f0eb] text-tjc-evergreen">
           <SearchX size={22} strokeWidth={1.8} aria-hidden="true" />
         </span>
         <div>
-          <h2 className="text-lg font-black text-tjc-ink">{title}</h2>
-          {detail ? <p className="mt-1 text-sm font-semibold leading-relaxed text-tjc-muted">{detail}</p> : null}
+          <h2 className="dam-state-title text-lg font-black text-tjc-ink">{title}</h2>
+          {detail ? <p className="dam-state-description mt-1 text-sm font-semibold leading-relaxed text-tjc-muted">{detail}</p> : null}
         </div>
         {children}
       </div>
@@ -305,12 +305,12 @@ export function EmptyState({ title, detail, children, className }: StateProps) {
 
 export function ErrorState({ title, detail, children, className }: StateProps) {
   return (
-    <section className={cn("rounded-md border border-[#e5b7b5] bg-[#fff0ef] p-5 text-[#7d2d2a]", className)} role="alert">
+    <section className={cn("dam-state-card rounded-md border border-[#e5b7b5] bg-[#fff0ef] p-5 text-[#7d2d2a]", className)} role="alert" data-variant="error" data-tone="danger">
       <div className="flex items-start gap-3">
-        <AlertTriangle size={21} strokeWidth={1.8} aria-hidden="true" />
+        <AlertTriangle className="dam-state-icon" size={21} strokeWidth={1.8} aria-hidden="true" />
         <div>
-          <h2 className="font-black">{title}</h2>
-          {detail ? <p className="mt-1 text-sm font-semibold leading-relaxed">{detail}</p> : null}
+          <h2 className="dam-state-title font-black">{title}</h2>
+          {detail ? <p className="dam-state-description mt-1 text-sm font-semibold leading-relaxed">{detail}</p> : null}
           {children}
         </div>
       </div>
@@ -320,12 +320,12 @@ export function ErrorState({ title, detail, children, className }: StateProps) {
 
 export function BlockedState({ title, detail, children, className }: StateProps) {
   return (
-    <section className={cn("rounded-md border border-[#ead6a8] bg-[#fff8e8] p-5 text-[#725216]", className)} role="status">
+    <section className={cn("dam-state-card rounded-md border border-[#ead6a8] bg-[#fff8e8] p-5 text-[#725216]", className)} role="status" data-variant="blocked" data-tone="warning">
       <div className="flex items-start gap-3">
-        <FileLock2 size={21} strokeWidth={1.8} aria-hidden="true" />
+        <FileLock2 className="dam-state-icon" size={21} strokeWidth={1.8} aria-hidden="true" />
         <div>
-          <h2 className="font-black">{title}</h2>
-          {detail ? <p className="mt-1 text-sm font-semibold leading-relaxed">{detail}</p> : null}
+          <h2 className="dam-state-title font-black">{title}</h2>
+          {detail ? <p className="dam-state-description mt-1 text-sm font-semibold leading-relaxed">{detail}</p> : null}
           {children}
         </div>
       </div>

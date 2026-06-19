@@ -30,10 +30,15 @@ type UploadRow = {
   roleFit: DemoRole[];
 };
 
+type LedgerUpload = UploadRow & {
+  ledgerKey: string;
+  ledgerKind: "browser" | "example";
+};
+
 const contributorUploadsKey = "tjc-upload-intake-my-uploads-v1";
 const uploadStatuses: UploadStatus[] = ["Draft", "Submitted", "Needs more info", "Reviewed", "Restricted", "Rejected"];
 const mediaTypeValues = ["Photos", "Videos", "Photos and videos", "Not sure"] as const;
-const unsafeContributorCopy = /\b(ResourceSpace|Support Zone|Source Status|source-system|source system|writeback|backend|live sync|published|downloadable|public now|approved|approval|durable account history)\b/i;
+const unsafeContributorCopy = /\b(ResourceSpace|Support Zone|Source Status|source-system|source system|writeback|backend|live sync|sync|synced|published|download|downloadable|public|public now|approved|approval|account history)\b|durable.{0,32}account.{0,32}history/i;
 
 const exampleUploads: UploadRow[] = [
   {
@@ -130,8 +135,8 @@ const exampleUploads: UploadRow[] = [
 const roleUploadGuidance: Record<DemoRole, string> = {
   Viewer: "Uploads appear here after review starts.",
   Contributor: "This browser shows your recent submissions.",
-  Reviewer: "Review batches that need evidence or a decision.",
-  "DAM Admin": "Monitor contributor intake and reviewer follow-up."
+  Reviewer: "Review examples are separate from browser receipts.",
+  "DAM Admin": "Admin examples are separate from browser receipts."
 };
 
 function uploadIcon(type: UploadRow["mediaType"]) {
@@ -207,6 +212,27 @@ export function useStatusForUpload(upload: Pick<UploadRow, "publishStatus" | "st
   return "Do not use";
 }
 
+export function contributorReceiptStatusLabels() {
+  return ["Submitted", "Waiting for review", "Do not use yet"] as const;
+}
+
+function statusChipsForUpload(upload: LedgerUpload) {
+  if (upload.ledgerKind === "browser") return contributorReceiptStatusLabels();
+  return [reviewStatusForUpload(upload), useStatusForUpload(upload)] as const;
+}
+
+function factStatusForUpload(upload: LedgerUpload) {
+  return upload.ledgerKind === "browser" ? "Submitted" : upload.status;
+}
+
+function factReviewForUpload(upload: LedgerUpload) {
+  return upload.ledgerKind === "browser" ? "Waiting for review" : reviewStatusForUpload(upload);
+}
+
+function factUseForUpload(upload: LedgerUpload) {
+  return upload.ledgerKind === "browser" ? "Do not use yet" : useStatusForUpload(upload);
+}
+
 function nextStep(upload: UploadRow) {
   if (upload.status === "Draft") return "Finish event details, add files, then submit for review.";
   if (upload.status === "Submitted") return "Waiting for review. Use remains blocked.";
@@ -224,23 +250,36 @@ function uploadMediaSummary(upload: UploadRow) {
 export function RecentUploadsPage() {
   const { role } = useDemoRole();
   const [storedUploads, setStoredUploads] = useState<UploadRow[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const visibleUploads = useMemo(() => {
-    const rows = role === "Contributor"
-      ? storedUploads
-      : [...storedUploads, ...exampleUploads.filter((example) => !storedUploads.some((stored) => stored.id === example.id))];
-    return rows.filter((item) => item.roleFit.includes(role));
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const browserUploads = useMemo<LedgerUpload[]>(() => {
+    return storedUploads
+      .filter((item) => item.roleFit.includes(role))
+      .map((item) => ({ ...item, ledgerKey: `browser-${item.id}`, ledgerKind: "browser" }));
   }, [role, storedUploads]);
-  const selected = useMemo(() => visibleUploads.find((item) => item.id === selectedId) || visibleUploads[0], [selectedId, visibleUploads]);
-  const openCount = visibleUploads.filter((upload) => ["Draft", "Submitted", "Needs more info"].includes(upload.status)).length;
+  const exampleVisibleUploads = useMemo<LedgerUpload[]>(() => {
+    if (role === "Contributor") return [];
+    return exampleUploads
+      .filter((item) => item.roleFit.includes(role))
+      .map((item) => ({ ...item, ledgerKey: `example-${item.id}`, ledgerKind: "example" }));
+  }, [role]);
+  const visibleUploads = useMemo(() => [...browserUploads, ...exampleVisibleUploads], [browserUploads, exampleVisibleUploads]);
+  const selected = useMemo(() => visibleUploads.find((item) => item.ledgerKey === selectedKey) || visibleUploads[0], [selectedKey, visibleUploads]);
+  const receiptCount = browserUploads.length;
+  const shownCount = visibleUploads.length;
 
   useEffect(() => {
     setStoredUploads(readStoredUploads());
   }, []);
 
   useEffect(() => {
-    if (!selectedId && visibleUploads[0]) setSelectedId(visibleUploads[0].id);
-  }, [selectedId, visibleUploads]);
+    if (!visibleUploads[0]) {
+      if (selectedKey) setSelectedKey(null);
+      return;
+    }
+    if (!selectedKey || !visibleUploads.some((upload) => upload.ledgerKey === selectedKey)) {
+      setSelectedKey(visibleUploads[0].ledgerKey);
+    }
+  }, [selectedKey, visibleUploads]);
 
   return (
     <div className="enterprise-page enterprise-recent-uploads route-identity-page" data-route-identity="recent-uploads">
@@ -261,37 +300,68 @@ export function RecentUploadsPage() {
         <section className="ed-route-main" data-primary-section="my-uploads-ledger">
           <header className="ed-section-heading">
             <div>
-              <h2>{role === "Contributor" ? "My upload batches" : "Upload batches"}</h2>
-              <p>Status and reviewer note.</p>
+              <h2>{role === "Contributor" ? "My upload receipts" : "Browser receipts"}</h2>
+              <p>{role === "Contributor" ? "This browser shows your recent submissions." : "Receipts saved in this browser only."}</p>
             </div>
-            <span>{openCount} open</span>
+            <span>{role === "Contributor" ? `${receiptCount} receipt${receiptCount === 1 ? "" : "s"}` : `${shownCount} shown`}</span>
           </header>
-          {visibleUploads.length ? <div className="ed-upload-ledger">
-            {visibleUploads.map((upload) => {
+          {browserUploads.length ? <div className="ed-upload-ledger">
+            {browserUploads.map((upload) => {
               const Icon = uploadIcon(upload.mediaType);
+              const chips = statusChipsForUpload(upload);
               return (
-                <article key={upload.id} className={cn(upload.id === selected?.id && "is-active")}>
+                <article key={upload.ledgerKey} className={cn(upload.ledgerKey === selected?.ledgerKey && "is-active")}>
                   <Icon size={20} aria-hidden="true" />
                   <div>
                     <strong>{upload.batchName}</strong>
                     <span>{upload.date} - {uploadMediaSummary(upload)}</span>
                   </div>
                   <div className="ed-upload-status-stack" aria-label={`${upload.batchName} status`}>
-                    <em>{reviewStatusForUpload(upload)}</em>
-                    <em>{useStatusForUpload(upload)}</em>
-                    {upload.reviewerNote ? <em>{contributorSafeText(upload.reviewerNote, "Reviewer note available in review follow-up.")}</em> : null}
+                    {chips.map((chip) => <em key={chip}>{chip}</em>)}
                   </div>
-                  <button type="button" className="ed-row-open" onClick={() => setSelectedId(upload.id)}>{statusAction(upload.status)}</button>
+                  <button type="button" className="ed-row-open" onClick={() => setSelectedKey(upload.ledgerKey)}>{statusAction(upload.status)}</button>
                 </article>
               );
             })}
           </div> : (
             <section className="ed-empty-state is-quiet">
               <UploadCloud size={24} aria-hidden="true" />
-              <h2>No uploads yet</h2>
-              <p>This browser shows your recent submissions.</p>
+              <h2>{role === "Contributor" ? "No uploads from this browser yet." : "No browser receipts on this device."}</h2>
+              <p>{role === "Contributor" ? "This browser shows your recent submissions." : "Reviewer/admin examples below are not contributor personal records."}</p>
             </section>
           )}
+
+          {exampleVisibleUploads.length ? (
+            <section className="ed-upload-example-group" aria-label="Reviewer and admin examples">
+              <header className="ed-section-heading">
+                <div>
+                  <h2>Reviewer/admin examples</h2>
+                  <p>Example batches for workflow review. Not contributor personal records.</p>
+                </div>
+                <span>examples</span>
+              </header>
+              <div className="ed-upload-ledger">
+                {exampleVisibleUploads.map((upload) => {
+                  const Icon = uploadIcon(upload.mediaType);
+                  const chips = statusChipsForUpload(upload);
+                  return (
+                    <article key={upload.ledgerKey} className={cn(upload.ledgerKey === selected?.ledgerKey && "is-active")}>
+                      <Icon size={20} aria-hidden="true" />
+                      <div>
+                        <strong>{upload.batchName}</strong>
+                        <span>Example - {upload.date} - {uploadMediaSummary(upload)}</span>
+                      </div>
+                      <div className="ed-upload-status-stack" aria-label={`${upload.batchName} example status`}>
+                        {chips.map((chip) => <em key={chip}>{chip}</em>)}
+                        {upload.reviewerNote ? <em>{contributorSafeText(upload.reviewerNote, "Reviewer note available in review follow-up.")}</em> : null}
+                      </div>
+                      <button type="button" className="ed-row-open" onClick={() => setSelectedKey(upload.ledgerKey)}>{statusAction(upload.status)}</button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
         </section>
 
         <aside className="ed-route-inspector" aria-label="Upload batch details">
@@ -300,12 +370,12 @@ export function RecentUploadsPage() {
               <header>
                 <UploadCloud size={18} aria-hidden="true" />
                 <div>
-                  <h2>Batch details</h2>
-                  <p>{selected.status} - {selected.date}</p>
+                  <h2>{selected.ledgerKind === "example" ? "Example batch details" : "Receipt details"}</h2>
+                  <p>{selected.ledgerKind === "example" ? "Reviewer/admin example - not a personal record." : `Submitted - ${selected.date}`}</p>
                 </div>
               </header>
               <dl className="ed-route-facts">
-                <div><dt>Status</dt><dd>{selected.status}</dd></div>
+                <div><dt>Status</dt><dd>{factStatusForUpload(selected)}</dd></div>
                 <div><dt>Date</dt><dd>{selected.date}</dd></div>
                 <div><dt>Event name</dt><dd>{selected.eventName || selected.batchName}</dd></div>
                 <div><dt>Event date</dt><dd>{selected.eventDate || "Not provided"}</dd></div>
@@ -314,18 +384,18 @@ export function RecentUploadsPage() {
                 <div><dt>Uploader</dt><dd>{contributorSafeText(selected.source, "Contributor upload")}</dd></div>
                 <div><dt>People/minors</dt><dd>{selected.peopleMinors}</dd></div>
                 <div><dt>Files</dt><dd>{uploadMediaSummary(selected)}</dd></div>
-                <div><dt>Review</dt><dd>{reviewStatusForUpload(selected)}</dd></div>
-                <div><dt>Use status</dt><dd>{useStatusForUpload(selected)}</dd></div>
+                <div><dt>Review</dt><dd>{factReviewForUpload(selected)}</dd></div>
+                <div><dt>Use status</dt><dd>{factUseForUpload(selected)}</dd></div>
                 <div><dt>Notes</dt><dd>{contributorSafeText(selected.notes, "No notes")}</dd></div>
                 {selected.reviewerNote ? <div><dt>Reviewer note</dt><dd>{contributorSafeText(selected.reviewerNote, "Reviewer note available in review follow-up.")}</dd></div> : null}
               </dl>
               <section>
                 <h3>Next step</h3>
-                <p>{nextStep(selected)}</p>
+                <p>{selected.ledgerKind === "browser" ? "Waiting for review. Use remains blocked." : nextStep(selected)}</p>
               </section>
               <section>
                 <h3>Timeline</h3>
-                <p><Clock3 size={14} aria-hidden="true" />Submitted or saved {selected.date}. Use waits for reviewer clearance.</p>
+                <p><Clock3 size={14} aria-hidden="true" />{selected.ledgerKind === "browser" ? `Submitted ${selected.date}. Waiting for review.` : `Example status recorded ${selected.date}. Not contributor personal history.`}</p>
               </section>
             </>
           ) : (

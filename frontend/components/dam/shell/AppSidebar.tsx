@@ -30,8 +30,8 @@ import { routeWithRole } from "@/lib/role-routes";
 
 const sidebarGroupCopy: Record<string, { label: string; detail: string }> = {
   Photos: { label: "Media", detail: "" },
-  Actions: { label: "Actions", detail: "" },
-  Admin: { label: "Admin Zone", detail: "" },
+  Actions: { label: "Workflows", detail: "" },
+  Admin: { label: "Support Zone", detail: "" },
   Help: { label: "Help Center", detail: "" }
 };
 

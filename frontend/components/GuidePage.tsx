@@ -21,7 +21,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
-import { canReview } from "@/lib/permissions";
+import { canReview, canUpload } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
 
 type HelpTask = {
@@ -32,6 +32,7 @@ type HelpTask = {
   href: string;
   icon: typeof Search;
   opsOnly?: boolean;
+  uploadOnly?: boolean;
 };
 
 type HelpArticle = {
@@ -95,7 +96,8 @@ function helpTasks(opsView: boolean): HelpTask[] {
       summary: "Send a focused batch with event, people, and permission notes.",
       action: "Start upload",
       href: "/upload",
-      icon: UploadCloud
+      icon: UploadCloud,
+      uploadOnly: true
     },
     {
       id: "check-uploads",
@@ -103,7 +105,8 @@ function helpTasks(opsView: boolean): HelpTask[] {
       summary: "Review recent submissions saved on this browser.",
       action: "Open uploads",
       href: "/recent-uploads",
-      icon: Inbox
+      icon: Inbox,
+      uploadOnly: true
     },
     {
       id: "request-permission",
@@ -123,11 +126,11 @@ function helpTasks(opsView: boolean): HelpTask[] {
     },
     {
       id: "original-files",
-      title: opsView ? "Ask for source/high-resolution access" : "Request help with original files",
+      title: "Ask for source/high-resolution access",
       summary: opsView
-        ? "Use a tracked request when original or high-resolution access is needed."
+        ? "Use a tracked request when original files or higher-resolution access are needed."
         : "Ask the media team when a normal preview is not enough.",
-      action: "Ask for help",
+      action: "Ask for access",
       href: requestHelpHref("Request original or high-resolution help"),
       icon: Camera
     },
@@ -242,8 +245,8 @@ const reviewReasons = [
 
 const quickLinks = [
   { title: "Library", detail: "Search media and collections", href: "/library", icon: FolderOpen },
-  { title: "Upload photos", detail: "Send a focused photo batch", href: "/upload", icon: UploadCloud },
-  { title: "Recent uploads", detail: "Check browser-saved submissions", href: "/recent-uploads", icon: Inbox },
+  { title: "Upload photos", detail: "Send a focused photo batch", href: "/upload", icon: UploadCloud, uploadOnly: true },
+  { title: "Recent uploads", detail: "Check browser-saved submissions", href: "/recent-uploads", icon: Inbox, uploadOnly: true },
   { title: "Use rules", detail: "Read media-use policies", href: "#policies", icon: BookOpen }
 ];
 
@@ -274,6 +277,7 @@ function readLocalRequestReceiptCount() {
 export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) {
   const { role } = useDemoRole();
   const opsView = canReview(role);
+  const uploadAllowed = canUpload(role);
   const [query, setQuery] = useState("");
   const [openFaq, setOpenFaq] = useState(0);
   const [localReceiptCount, setLocalReceiptCount] = useState(0);
@@ -282,7 +286,8 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
     setLocalReceiptCount(readLocalRequestReceiptCount());
   }, []);
 
-  const tasks = useMemo(() => helpTasks(opsView), [opsView]);
+  const tasks = useMemo(() => helpTasks(opsView).filter((task) => !task.uploadOnly || uploadAllowed), [opsView, uploadAllowed]);
+  const visibleQuickLinks = useMemo(() => quickLinks.filter((link) => !link.uploadOnly || uploadAllowed), [uploadAllowed]);
   const policies = useMemo(() => policyItems(opsView), [opsView]);
   const articles = useMemo(
     () => opsView ? [...usefulArticles, ...advancedArticles] : [...usefulArticles, ...advancedArticles.filter((article) => !article.advanced)],
@@ -311,14 +316,14 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
       <section className="help-center-main">
         <section className="help-center-hero" aria-labelledby="help-center-title">
           <div>
-            <h1 id="help-center-title">Help Center</h1>
-            <p>Start with the task you need to do. Search when you need article or policy wording.</p>
+            <h1 id="help-center-title">What do you need help with?</h1>
+            <p>Choose a task, search guidance, or contact the media team when permission, privacy, upload status, or access needs review.</p>
           </div>
         </section>
 
         <section className="help-primary-tasks" aria-labelledby="primary-help-title">
           <header>
-            <h2 id="primary-help-title">What do you need to do?</h2>
+            <h2 id="primary-help-title">Common help tasks</h2>
           </header>
           <div className="help-task-card-grid">
             {tasks.map((task) => {
@@ -537,7 +542,7 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
         <section className="help-side-card">
           <h2>Quick links</h2>
           <div className="help-link-list">
-            {quickLinks.map((item) => {
+            {visibleQuickLinks.map((item) => {
               const LinkIcon = item.icon;
               return (
                 <Link href={roleHref(item.href)} key={item.title}>
@@ -557,7 +562,7 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
               ["Media item", "Link, title, or clear description"],
               ["Intended use", "Audience, channel, and deadline"],
               ["People shown", "Children, privacy, or sensitivity notes"],
-              ["Decision needed", "Permission, issue report, upload help, or original-file help"]
+              ["Decision needed", "Permission, issue report, upload help, or higher-resolution help"]
             ].map(([title, detail]) => (
               <div className="help-info-row" key={title}>
                 <FileText size={20} strokeWidth={1.8} aria-hidden="true" />

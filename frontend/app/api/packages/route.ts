@@ -16,7 +16,7 @@ import {
   readPackageDraftInput,
   savePackageDraftSubmission
 } from "@/lib/package-store";
-import { canContribute, canReview } from "@/lib/permissions";
+import { canAdmin, canReview } from "@/lib/permissions";
 import { requestIdentity } from "@/lib/request-identity";
 import { isRuntimeWriteBlockedError, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const identity = requestIdentity(request, request.nextUrl.searchParams.get("role"));
-  if (!canContribute(identity.role)) {
+  if (!canAdmin(identity.role)) {
     appendAuditEvent(packageDraftSaveDeniedAuditEvent(identity.role, identity.id));
     const denied = packageDraftSaveDeniedError();
     return NextResponse.json(denied.body, { status: denied.status });

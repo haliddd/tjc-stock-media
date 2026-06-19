@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { publicAssetRef } from "@/lib/asset-refs";
+import { buildCollectionDraftPreviewPayload } from "@/lib/collection-drafts";
 import { createPackageDraft, resolvePackageSections } from "@/lib/package-drafts";
 import {
   buildPackageGovernance,
@@ -9,6 +11,8 @@ import {
 import { sanitizePackageDraft } from "@/lib/package-store";
 import { sanitizeSavedSearch } from "@/lib/saved-search-store";
 import type { DamPackage, StockMediaAsset } from "@/lib/types";
+
+const packagesRouteSource = readFileSync(new URL("../app/api/packages/route.ts", import.meta.url), "utf8");
 
 function asset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsset {
   return {
@@ -87,6 +91,30 @@ describe("delivery package and saved search payload safety", () => {
     expect(search.view).toBe("approved-church-wide");
     expect(search.collection).toBeUndefined();
     expect(search.filters).toEqual(["worship"]);
+  });
+
+  it("keeps package draft writes admin-only at the API boundary", () => {
+    expect(packagesRouteSource).toContain("canAdmin(identity.role)");
+    expect(packagesRouteSource).not.toContain("canContribute(identity.role)");
+  });
+
+  it("does not return collection share links from preview-only drafts", () => {
+    const payload = buildCollectionDraftPreviewPayload({
+      requestedIds: ["asset-1"],
+      title: "Sabbath Worship Picks",
+      audience: "Public-approved portal",
+      expiry: "2026-07-01",
+      owner: "Media Team"
+    }, [asset()], []);
+
+    expect(payload).toMatchObject({
+      ok: false,
+      mode: "review-preview",
+      sharePath: null,
+      sharingBlocked: true,
+      previewSlug: "sabbath-worship-picks"
+    });
+    expect(payload.message).toMatch(/Sharing stays paused/i);
   });
 
   it("uses public asset ids for non-ops copy references", () => {

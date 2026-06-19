@@ -13,6 +13,7 @@ import type { EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaSourceIsLive } from "@/lib/media-source/truth";
 import { canAccessRoute } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
+import { sourceStatusDisplayDetail, sourceStatusDisplayLabel } from "@/lib/source-status-copy";
 import { taxonomyGovernanceTerms, taxonomyHealthSummary } from "@/lib/taxonomy";
 import type { BetaFeedbackIncidentState, BetaFeedbackOwner, BetaFeedbackRecord, BetaFeedbackSeverity, BetaFeedbackStatus, BetaReadinessFact, DamReadinessResult, IntegrationReadinessItem } from "@/lib/types";
 import { ActionButton, CustodyMapPanel, ErrorCard, KpiCard, LoadingCard, PageHeader, SourcePill, StatusBadge } from "./EnterpriseShared";
@@ -753,7 +754,7 @@ export function resourceSpaceImportStatus(readiness?: DamReadinessResult | null)
   if (source.adapter === "exported-metadata") return "Read-only import snapshot";
   if (source.adapter === "bundled-beta-catalog") return "Read-only catalog snapshot";
   if (source.adapter === "demo-fallback") return "Catalog source unavailable";
-  return source.label;
+  return sourceStatusDisplayLabel(source);
 }
 
 function AdminFocusSummary({ readiness, onSelectModule }: { readiness?: DamReadinessResult | null; onSelectModule: SelectAdminModule }) {
@@ -866,8 +867,8 @@ function ResourceSpaceBoundaryPanel({ readiness }: { readiness?: DamReadinessRes
   const rows = [
     {
       label: "Source status",
-      value: source?.label || "Not loaded",
-      detail: source?.detail || "Readiness source not loaded; do not infer health from missing data."
+      value: sourceStatusDisplayLabel(source, "Not loaded"),
+      detail: sourceStatusDisplayDetail(source, "Readiness source not loaded; do not infer health from missing data.")
     },
     {
       label: "Read boundary",
@@ -937,7 +938,7 @@ function AdminSourceNotice({ loading, error }: { loading: boolean; error?: strin
 }
 
 function AdminRiskStrip({ readiness, disconnected }: { readiness?: DamReadinessResult | null; disconnected: boolean }) {
-  const sourceLabel = disconnected ? "Disconnected" : readiness?.source.label || "Checking";
+  const sourceLabel = disconnected ? "Disconnected" : sourceStatusDisplayLabel(readiness?.source, "Checking");
   const proofScore = readiness?.betaReadiness?.score ?? readiness?.score ?? 0;
 
   return (
@@ -962,7 +963,7 @@ function AdminRail({ readiness, onSelectModule }: { readiness?: DamReadinessResu
         <header className="ed-card-head">
           <div>
             <h3>Readiness Snapshot</h3>
-            <p>{hasReadiness ? readiness?.source.detail : "Readiness data is not loaded."}</p>
+            <p>{hasReadiness ? sourceStatusDisplayDetail(readiness?.source, "Readiness data is not loaded.") : "Readiness data is not loaded."}</p>
           </div>
           <AdminStatusBadge tone={hasReadiness ? "Warning" : "Disabled"} label={hasReadiness ? "Read-only" : "Offline"} />
         </header>
@@ -1455,7 +1456,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
   if (activeNav === "source-import") return (
     <section className="ed-card ed-admin-module">
       <header className="ed-card-head"><div><h3>Source / Import</h3><p>Source custody, import evidence, derivative readiness, and local storage truth.</p></div><StatusBadge status="Read-only" /></header>
-      <div className="ed-admin-stat-grid"><article><strong>{(metrics?.renditionGaps || 0).toLocaleString()}</strong><span>rendition gaps</span><small>approved copy readiness</small></article><article><strong>{(metrics?.missingSource || 0).toLocaleString()}</strong><span>missing source</span><small>custody evidence</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
+      <div className="ed-admin-stat-grid"><article><strong>{(metrics?.renditionGaps || 0).toLocaleString()}</strong><span>rendition gaps</span><small>approved copy readiness</small></article><article><strong>{(metrics?.missingSource || 0).toLocaleString()}</strong><span>missing source</span><small>custody evidence</small></article><article><strong>{sourceStatusDisplayLabel(readiness?.source)}</strong><span>source mode</span><small>{sourceStatusDisplayDetail(readiness?.source)}</small></article></div>
       <TruthMatrixTable rows={storageTruthRows} mode="storage" />
       <IntegrationTable rows={integrations.filter((row) => ["master-originals", "approved-copy-delivery", "metadata-source"].includes(row.id))} />
     </section>
@@ -1519,7 +1520,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
     <section className="ed-card ed-admin-module">
       <header className="ed-card-head"><div><h3>Settings</h3><p>Read-only operational settings and current source status.</p></div><StatusBadge status="Read-only" /></header>
       <IntegrationTable rows={integrations} />
-      <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
+      <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{sourceStatusDisplayLabel(readiness?.source)}</strong><span>source mode</span><small>{sourceStatusDisplayDetail(readiness?.source)}</small></article></div>
     </section>
   );
   if (activeNav === "audit-logs") return <AuditTable readiness={readiness} compact={compact} />;
@@ -1527,7 +1528,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
     <section className="ed-card ed-admin-module">
       <header className="ed-card-head"><div><h3>Integration Status</h3><p>Configuration status for ResourceSpace read path, writeback gate, preview proxy, and audit evidence.</p></div><StatusBadge status="Read-only" /></header>
       <IntegrationTable rows={integrations} />
-      <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
+      <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{sourceStatusDisplayLabel(readiness?.source)}</strong><span>source mode</span><small>{sourceStatusDisplayDetail(readiness?.source)}</small></article></div>
     </section>
   );
 }

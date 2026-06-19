@@ -19,7 +19,8 @@ describe("Review Uploads UI contract", () => {
     expect(reviewPage).toContain("if (!canAccessReview)");
     expect(reviewPage).toContain("if (review.loading)");
     expect(reviewPage).toContain("if (review.error)");
-    expect(reviewPage).toContain("if (sourceUnavailable)");
+    expect(reviewPage).toContain('if (workbenchState === "review-paused")');
+    expect(reviewPage).toContain("buildReviewWorkbenchState");
     expect(reviewPage).toContain("if (!batches.length)");
     expect(reviewPage).toContain('title="Reviewer access needed"');
     expect(reviewPage).toContain('title="Review queue needs attention"');

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { portalHomeCardsForRole, portalHomePrimaryHrefForRole } from "@/components/dam/EnterpriseDamPages";
+import { portalHomeCardsForRole, portalHomeCopyForRole, portalHomePrimaryHrefForRole } from "@/components/dam/EnterpriseDamPages";
 import { dashboardActionsForRole, dashboardCopyForRole } from "@/components/dam/enterprise/DashboardPage";
 import { canSeeDamShellGroup, damShellItemsForRole, getVisibleMobileNavItems } from "@/components/dam/shell/damShellNav";
 import { canAccessRoute } from "@/lib/permissions";
@@ -87,11 +87,13 @@ describe("DAM shell role-aware navigation", () => {
   });
 
   it("does not promote legacy task or package language in nav", () => {
-    const legacyLanguage = /Review Queue|My Tasks|Distribution Sets|package|ResourceSpace|Governance|Admin Zone/i;
+    const legacyLanguage = /Review Queue|My Tasks|Distribution Sets|package|ResourceSpace|Governance|Admin Zone|command center/i;
     for (const role of ["Viewer", "Contributor", "Reviewer", "DAM Admin"] as const) {
       const labels = [...labelsFor(role), ...mobileLabelsFor(role)].join(" ");
       expect(labels).not.toMatch(legacyLanguage);
     }
+    const commandPalette = readFileSync(new URL("../components/CommandPalette.tsx", import.meta.url), "utf8");
+    expect(commandPalette).not.toMatch(/Admin Zone|command center/i);
   });
 
   it("promotes Contributor My Work where browser-based contributor work exists", () => {
@@ -121,12 +123,14 @@ describe("DAM shell role-aware navigation", () => {
       contributorActions: dashboardActionsForRole("Contributor").map(({ href, title, detail }) => ({ href, title, detail })),
       viewerHome: portalHomeCardsForRole("Viewer").map(({ href, title, description }) => ({ href, title, description })),
       contributorHome: portalHomeCardsForRole("Contributor").map(({ href, title, description }) => ({ href, title, description })),
+      viewerHomeCopy: portalHomeCopyForRole("Viewer"),
+      contributorHomeCopy: portalHomeCopyForRole("Contributor"),
       viewerNav: damShellItemsForRole("Viewer").map(({ label, mobileLabel, description }) => ({ label, mobileLabel, description })),
       contributorNav: damShellItemsForRole("Contributor").map(({ label, mobileLabel, description }) => ({ label, mobileLabel, description }))
     });
     const publicVisibleText = visibleText(JSON.parse(publicCopy)).join(" ");
 
-    expect(publicCopy).not.toMatch(/ResourceSpace|writeback|sync|backend|source truth|source files|source\/original|reviewer packet|hosted DAM|API|DAM command center/i);
+    expect(publicCopy).not.toMatch(/ResourceSpace|writeback|sync|backend|source truth|source files|source\/original|reviewer packet|hosted DAM|API|command center/i);
     expect(publicVisibleText).not.toMatch(/\bapproved\b|\bapproval\b|\bdownload\b|\bpublic\b/i);
   });
 
@@ -134,8 +138,8 @@ describe("DAM shell role-aware navigation", () => {
     expect(dashboardActionsForRole("Reviewer").map((action) => action.href)).toEqual(["/review", "/my-tasks", "/upload", "/requests"]);
     expect(dashboardActionsForRole("DAM Admin").map((action) => action.href)).toEqual(["/admin", "/review", "/my-tasks", "/requests"]);
     expect(dashboardActionsForRole("DAM Admin")[0]).toMatchObject({ title: "Support Zone" });
-    expect(dashboardCopyForRole("Reviewer").eyebrow).toBe("DAM command center");
-    expect(dashboardCopyForRole("DAM Admin").eyebrow).toBe("DAM command center");
+    expect(dashboardCopyForRole("Reviewer").eyebrow).toBe("DAM workspace");
+    expect(dashboardCopyForRole("DAM Admin").eyebrow).toBe("DAM workspace");
   });
 
   it("keeps direct route permissions strict", () => {

@@ -1054,9 +1054,8 @@ export function EnterpriseUploadPage() {
     : sourceLink.trim()
       ? "1 source link"
       : "Ready for photos";
-  const receiptIsLinkOnly = Boolean(receipt?.sourceLinkCaptured && !receipt.fileCount);
-  const receiptTitle = receiptIsLinkOnly ? "Link sent for review" : "Photos sent";
-  const receiptResetLabel = receiptIsLinkOnly ? "Share another link or photos" : "Share more photos";
+  const receiptTitle = "Photos sent";
+  const receiptResetLabel = "Share more photos";
   const readyStateLabel = readyToSubmit
     ? "Ready to send"
     : hasFileOrSource
@@ -1283,7 +1282,7 @@ export function EnterpriseUploadPage() {
       {draftSaved ? <p className="damx-notice" role="status">Saved for later in this browser.</p> : null}
       <section className="damx-upload-shell" aria-labelledby="share-photos-title">
         {receipt ? (
-          <section className="damx-upload-success" aria-label={receiptIsLinkOnly ? "Source link submission sent" : "Photo submission sent"}>
+          <section className="damx-upload-success" aria-label="Photos sent">
             <CheckCircle2 size={24} aria-hidden="true" />
             <div>
               <h1>{receiptTitle}</h1>

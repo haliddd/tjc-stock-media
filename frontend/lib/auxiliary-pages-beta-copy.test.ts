@@ -13,16 +13,21 @@ describe("auxiliary DAM beta page copy", () => {
     expect(brandHubPage).toContain(">Check gates<");
     expect(brandHubPage).toContain("mapped media");
     expect(brandHubPage).toContain("file access stays gated");
+    expect(brandHubPage).toContain("Local catalog snapshot");
     expect(brandHubPage).not.toMatch(/approved media|approved copies|Approved downloads|Portal Ready|publishing/i);
-    expect(packageBuilderPage).toContain("Beta limits");
+    expect(packageBuilderPage).toContain("Operating limits");
+    expect(packageBuilderPage).toContain("Review-cleared");
     expect(packageBuilderPage).toContain("Review gate inspector");
     expect(packageBuilderPage).toContain("No generated files, source copies, hosted URLs, external sends, or ResourceSpace writeback");
+    expect(packageBuilderPage).toContain("Package Draft only");
   });
 
-  it("keeps Insights clipboard-only and internal-beta honest", () => {
+  it("keeps Insights clipboard-only and source-honest", () => {
     expect(insightsPage).toContain(">Copy summary<");
     expect(insightsPage).toContain("summary copied to clipboard");
-    expect(insightsPage).toContain("Internal beta usage panels only show recorded events when connected.");
+    expect(insightsPage).toContain("Usage panels only show recorded events when connected.");
+    expect(insightsPage).toContain("Local catalog snapshot");
+    expect(insightsPage).toContain("Last read");
     expect(pageBarrel).toContain("export { EnterpriseInsightsPage } from \"./enterprise/InsightsPage\";");
     expect(pageBarrel).not.toMatch(/EnterpriseInsightsPage[\s\S]*from "\.\/enterprise\/EnterpriseDamRedesign"/);
     expect(insightsPage).not.toContain("link.download");
@@ -32,6 +37,7 @@ describe("auxiliary DAM beta page copy", () => {
   it("does not present old prototype delivery labels", () => {
     expect(auxiliaryPages).not.toMatch(/Prepare handoff|Handoff draft|Check delivery|delivery readiness|delivery gates|Insights preview samples|Sample data until|Share with your team/i);
     expect(auxiliaryPages).not.toMatch(/ZIP|public link|download job|download rights|Downloads allowed|Downloaded/i);
-    expect(auxiliaryPages).not.toMatch(/synced|published|downloadable|production-ready/i);
+    expect(auxiliaryPages).not.toMatch(/Access placeholder only|draft placeholder|not wired|Beta limits|Internal beta|Local beta|Premium-ready|Beta-strong|Not enterprise-ready/i);
+    expect(auxiliaryPages).not.toMatch(/Last sync|synced|published|downloadable|production-ready/i);
   });
 });

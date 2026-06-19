@@ -56,9 +56,19 @@ type BrowserUploadReceipt = {
   reviewerNote?: string;
 };
 
+type LocalRequestReceipt = {
+  id: string;
+  type: RequestReceiptType;
+  subject: string;
+  status: "Local receipt" | "Draft";
+  createdAt?: string;
+  updatedAt: string;
+};
+
 type LocalContributorContext = {
   status: "loading" | "ready" | "blocked";
   receipts: BrowserUploadReceipt[];
+  requestReceipts?: LocalRequestReceipt[];
   hasDraft: boolean;
   draftLabel?: string;
 };
@@ -67,6 +77,18 @@ type StorageReader = Pick<Storage, "getItem">;
 
 export const contributorUploadsKey = "tjc-upload-intake-my-uploads-v1";
 export const uploadDraftKey = "tjc-upload-intake-batch-draft-v1";
+export const localRequestReceiptsKey = "tjc-media-request-receipts-v1";
+
+const requestReceiptTypes = [
+  "Find photos",
+  "Request permission",
+  "Report privacy or rights issue",
+  "Request original or high-resolution help",
+  "General media help"
+] as const;
+type RequestReceiptType = typeof requestReceiptTypes[number];
+
+const unsafeContributorCopyPattern = /(ResourceSpace|Support Zone|Source Status|source|writeback|backend|sync|synced|publish|published|download|downloadable|approved|approval|Production-ready|Public now|durable account history)/i;
 
 const roleIntro: Record<DemoRole, { title: string; subtitle: string; emptyTitle: string; emptyBody: string }> = {
   Viewer: {
@@ -77,9 +99,9 @@ const roleIntro: Record<DemoRole, { title: string; subtitle: string; emptyTitle:
   },
   Contributor: {
     title: "My Work",
-    subtitle: "Recent submissions from this browser, saved drafts, reviewer questions, and request follow-ups.",
+    subtitle: "Recent submissions from this browser, saved drafts, local request receipts, and reviewer questions.",
     emptyTitle: "No work waiting",
-    emptyBody: "Uploads saved or submitted from this browser will appear here."
+    emptyBody: "Uploads, saved request receipts, and reviewer questions from this browser will appear here."
   },
   Reviewer: {
     title: "My Work",
@@ -318,6 +340,7 @@ const workbenchTasks: MyWorkTask[] = [
 const loadingContributorContext: LocalContributorContext = {
   status: "loading",
   receipts: [],
+  requestReceipts: [],
   hasDraft: false
 };
 
@@ -342,6 +365,29 @@ function normalizeBrowserReceipt(value: unknown): BrowserUploadReceipt | null {
   };
 }
 
+function safeContributorVisibleText(value: unknown, fallback: string) {
+  const text = safeText(value, fallback);
+  return unsafeContributorCopyPattern.test(text) ? fallback : text;
+}
+
+function safeRequestReceiptType(value: unknown): RequestReceiptType {
+  return requestReceiptTypes.includes(value as RequestReceiptType) ? value as RequestReceiptType : "General media help";
+}
+
+function normalizeLocalRequestReceipt(value: unknown): LocalRequestReceipt | null {
+  const raw = (value || {}) as Partial<LocalRequestReceipt>;
+  const id = safeText(raw.id);
+  if (!id) return null;
+  const type = safeRequestReceiptType(raw.type);
+  return {
+    id,
+    type,
+    subject: safeContributorVisibleText(raw.subject, type),
+    status: raw.status === "Draft" ? "Draft" : "Local receipt",
+    updatedAt: safeContributorVisibleText(raw.updatedAt || raw.createdAt, "Recently")
+  };
+}
+
 function parseJsonOrFallback(value: string | null, fallback: unknown): unknown {
   if (!value) return fallback;
   try {
@@ -353,9 +399,12 @@ function parseJsonOrFallback(value: string | null, fallback: unknown): unknown {
 
 export function readContributorContextFromStorage(storage: StorageReader): LocalContributorContext {
   const receiptValue = storage.getItem(contributorUploadsKey);
+  const requestReceiptValue = storage.getItem(localRequestReceiptsKey);
   const draftValue = storage.getItem(uploadDraftKey);
   const rawReceipts = parseJsonOrFallback(receiptValue, []);
   const receipts = Array.isArray(rawReceipts) ? rawReceipts.map(normalizeBrowserReceipt).filter((item): item is BrowserUploadReceipt => Boolean(item)) : [];
+  const rawRequestReceipts = parseJsonOrFallback(requestReceiptValue, []);
+  const requestReceipts = Array.isArray(rawRequestReceipts) ? rawRequestReceipts.map(normalizeLocalRequestReceipt).filter((item): item is LocalRequestReceipt => Boolean(item)) : [];
   const parsedDraft = parseJsonOrFallback(draftValue, {});
   const rawDraft = parsedDraft && typeof parsedDraft === "object" && !Array.isArray(parsedDraft) ? parsedDraft as Record<string, unknown> : {};
   const draftLabel = safeText(rawDraft.batchName) || safeText(rawDraft.eventName) || "Upload draft";
@@ -363,6 +412,7 @@ export function readContributorContextFromStorage(storage: StorageReader): Local
   return {
     status: "ready",
     receipts,
+    requestReceipts,
     hasDraft,
     draftLabel: hasDraft ? draftLabel : undefined
   };
@@ -372,13 +422,13 @@ function readContributorContext(): LocalContributorContext {
   try {
     return readContributorContextFromStorage(window.localStorage);
   } catch {
-    return { status: "blocked", receipts: [], hasDraft: false };
+    return { status: "blocked", receipts: [], requestReceipts: [], hasDraft: false };
   }
 }
 
 function safeContributorQuestionDetail(note: string | undefined) {
   if (!note) return "Reviewer needs more event or rights context before review can continue.";
-  if (/(ResourceSpace|Support Zone|Source Status|source|writeback|backend|sync|publish|published|download|downloadable|approved|approval|Production-ready|Public now|durable account history)/i.test(note)) {
+  if (unsafeContributorCopyPattern.test(note)) {
     return "Reviewer needs more event or rights context before review can continue.";
   }
   return note;
@@ -453,9 +503,34 @@ function browserTaskFromReceipt(receipt: BrowserUploadReceipt): MyWorkTask {
   };
 }
 
+function browserTaskFromRequestReceipt(receipt: LocalRequestReceipt): MyWorkTask {
+  const isDraft = receipt.status === "Draft";
+  return {
+    id: `request-${receipt.id}`,
+    roleFit: ["Contributor"],
+    category: "requests",
+    statusGroup: isDraft ? "open" : "waiting",
+    title: isDraft ? "Request draft not sent" : "Request saved in this browser",
+    reason: isDraft
+      ? "Request draft is saved in this browser and has not been sent from Requests."
+      : "Request receipt is waiting for media-team follow-up in Requests.",
+    related: receipt.subject,
+    status: isDraft ? "Draft not sent" : "Waiting for follow-up",
+    age: receipt.updatedAt,
+    priority: isDraft ? "High" : "Normal",
+    owner: "Contributor",
+    actionLabel: isDraft ? "Continue request" : "Open Requests",
+    href: "/requests",
+    detailLabel: "Request details",
+    detail: `Request type: ${receipt.type}. Requests page owns the details; use or file-access questions still need reviewer follow-up.`,
+    source: "browser"
+  };
+}
+
 export function buildContributorBrowserTasks(context: LocalContributorContext): MyWorkTask[] {
   if (context.status !== "ready") return [];
   const receiptTasks = context.receipts.map(browserTaskFromReceipt);
+  const requestTasks = (context.requestReceipts || []).map(browserTaskFromRequestReceipt);
   const draftTask: MyWorkTask[] = context.hasDraft
     ? [{
         id: "browser-current-draft",
@@ -476,10 +551,10 @@ export function buildContributorBrowserTasks(context: LocalContributorContext): 
         source: "browser"
       }]
     : [];
-  return [...draftTask, ...receiptTasks];
+  return [...draftTask, ...receiptTasks, ...requestTasks];
 }
 
-export function getMyWorkTasks(role: DemoRole, context: LocalContributorContext = { status: "ready", receipts: [], hasDraft: false }) {
+export function getMyWorkTasks(role: DemoRole, context: LocalContributorContext = { status: "ready", receipts: [], requestReceipts: [], hasDraft: false }) {
   if (role === "Contributor") return buildContributorBrowserTasks(context);
   if (role === "Viewer") return [];
   return workbenchTasks.filter((task) => task.roleFit.includes(role));
@@ -572,7 +647,7 @@ function categoryCount(tasks: MyWorkTask[], filter: MyWorkFilter) {
 }
 
 function sourceUnavailable(searchValue: string | null, role: DemoRole) {
-  return (role === "Reviewer" || role === "DAM Admin") && searchValue === "source-unavailable";
+  return role === "DAM Admin" && searchValue === "source-unavailable";
 }
 
 export function MyTasksPage() {
@@ -669,12 +744,22 @@ export function MyTasksPage() {
                 <AlertCircle size={22} aria-hidden="true" />
                 <h3>Local receipts unavailable in this browser</h3>
                 <p>Use My Uploads or Upload Photos. This page cannot read browser-only submissions right now.</p>
+                <div className="mw-rail-links">
+                  {actionLinks.slice(0, 2).map((link) => (
+                    <Link key={`blocked-${link.href}`} href={routeWithRole(link.href, role)}>{link.label}</Link>
+                  ))}
+                </div>
               </section>
             ) : sourceStatusUnavailable ? (
               <section className="mw-state-card is-warning" role="status">
                 <AlertCircle size={22} aria-hidden="true" />
                 <h3>Source status unavailable</h3>
                 <p>Reviewer/admin source diagnostics are unavailable. Work decisions stay inside Review Uploads and Admin.</p>
+                <div className="mw-rail-links">
+                  {actionLinks.slice(0, 2).map((link) => (
+                    <Link key={`unavailable-${link.href}`} href={routeWithRole(link.href, role)}>{link.label}</Link>
+                  ))}
+                </div>
               </section>
             ) : hasTasks ? (
               <div className="mw-task-list" role="list">
@@ -719,7 +804,11 @@ export function MyTasksPage() {
                 <CheckCircle2 size={22} aria-hidden="true" />
                 <h3>{copy.emptyTitle}</h3>
                 <p>{copy.emptyBody}</p>
-                {role === "Viewer" ? <Link href={routeWithRole("/requests", role)}>Open Requests</Link> : null}
+                <div className="mw-rail-links">
+                  {actionLinks.slice(0, 2).map((link) => (
+                    <Link key={`empty-${link.href}`} href={routeWithRole(link.href, role)}>{link.label}</Link>
+                  ))}
+                </div>
               </section>
             )}
           </section>

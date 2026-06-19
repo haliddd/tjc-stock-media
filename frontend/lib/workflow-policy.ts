@@ -39,7 +39,7 @@ export const uploadBetaBoundaries = {
   forbidden: [
     "Video/audio or files over 100 MB in browser upload; use media team intake before review",
     "Source-media renames, deletes, moves, or Git commits",
-    "Public approval, download enablement, or final approval writeback from upload"
+    "Reuse clearance, file access, or final media-team decision from upload"
   ],
   defaultState: {
     received: "Received",

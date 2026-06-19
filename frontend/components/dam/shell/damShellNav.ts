@@ -101,7 +101,7 @@ function navItemFromManifest(item: typeof enterpriseNavItems[number] | typeof en
       href: "/recent-uploads",
       activeHrefs: ["/library?view=recent-uploads"],
       roles: ["Contributor"],
-      description: "Track photos you submitted for review."
+      description: "Track media you submitted for review."
     };
   }
 
@@ -122,7 +122,7 @@ function navItemFromManifest(item: typeof enterpriseNavItems[number] | typeof en
       ...base,
       label: "Support Zone",
       mobileLabel: "Support",
-      description: "Admin-only readiness checks, identity state, and blocked operations."
+      description: "Admin-only readiness, identity, and blocked-operation checks."
     };
   }
 
@@ -181,7 +181,7 @@ function polishWorkspaceCopy(copy: { title: string; subtitle: string }) {
   const subtitle = copy.subtitle
     .replace("approved church photos", "church media")
     .replace("Browse photos", "Browse media")
-    .replace("Manage portal settings and review safety.", "Admin-only readiness checks, identity state, and blocked operations.")
+    .replace("Manage portal settings and review safety.", "Admin-only readiness, identity, and blocked-operation checks.")
     .replace("Deferred MVP draft area; collections remain the primary organization surface.", "Collections remain the primary organization surface.")
     .replace("Find help articles and media-use guidance.", "Find media-use guidance and review help.");
 

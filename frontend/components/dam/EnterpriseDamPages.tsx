@@ -44,25 +44,25 @@ type PortalHomeCard = {
 const portalHomeCards: PortalHomeCard[] = [
   {
     title: "Media Library",
-    description: "Browse cleared media and use guidance.",
+    description: "Search cleared media with use guidance.",
     href: "/library",
     icon: Library
   },
   {
     title: "Albums & Events",
-    description: "Browse by gathering, album, or ministry.",
+    description: "Find media by gathering, album, or ministry.",
     href: "/collections",
     icon: Images
   },
   {
     title: "Upload Photos",
-    description: "Submit event photo sets for review.",
+    description: "Send event photo sets to reviewers.",
     href: "/upload",
     icon: UploadCloud
   },
   {
     title: "My Uploads",
-    description: "Track photos you submitted for review.",
+    description: "Track submitted batches and follow-up.",
     href: "/recent-uploads",
     icon: Clock3
   },
@@ -74,14 +74,14 @@ const portalHomeCards: PortalHomeCard[] = [
   },
   {
     title: "My Work",
-    description: "Follow up on uploads, review questions, and requests.",
+    description: "Follow uploads, review questions, and requests.",
     href: "/my-tasks",
     icon: Clock3,
     roles: ["Contributor", "Reviewer", "DAM Admin"]
   },
   {
     title: "Requests",
-    description: "Ask for media help or corrections.",
+    description: "Ask for media help, use guidance, or corrections.",
     href: "/requests",
     icon: MessageSquareText
   },
@@ -93,7 +93,7 @@ const portalHomeCards: PortalHomeCard[] = [
   },
   {
     title: "Support Zone",
-    description: "Check readiness, identity, and blocked operations.",
+    description: "Review readiness, identity, and blocked operations.",
     href: "/admin",
     icon: LayoutDashboard
   }
@@ -114,24 +114,38 @@ const secondaryHrefByRole: Record<DemoRole, string> = {
 };
 
 const primaryLabelByRole: Record<DemoRole, string> = {
-  Viewer: "Browse Media",
+  Viewer: "Open Media Library",
   Contributor: "Upload Photos",
-  Reviewer: "Review Uploads",
+  Reviewer: "Open Review",
   "DAM Admin": "Open Support Zone"
 };
 
 const secondaryLabelByRole: Record<DemoRole, string> = {
-  Viewer: "Requests",
-  Contributor: "My Work",
-  Reviewer: "My Work",
+  Viewer: "Ask for Help",
+  Contributor: "Open My Work",
+  Reviewer: "Open My Work",
   "DAM Admin": "Review Uploads"
 };
 
 const portalRoleCopy: Record<DemoRole, string> = {
-  Viewer: "Find church media cleared for use, ask for help, and check guidance before sharing.",
-  Contributor: "Upload event photos, see My Work follow-ups, and track your upload history.",
-  Reviewer: "Review uploads, clear rights questions, and keep media requests moving.",
-  "DAM Admin": "Watch review flow, keep Support Zone checks contained, and protect launch safety."
+  Viewer: "Browse cleared church media, check use guidance, and ask the media team when a use case needs review.",
+  Contributor: "Send event photos, follow reviewer questions, and track submitted batches without leaving the media workflow.",
+  Reviewer: "Triage uploads, resolve rights questions, and keep ministry media moving with evidence visible.",
+  "DAM Admin": "Monitor review flow, open Support Zone checks, and keep launch readiness contained."
+};
+
+const portalModeLabelByRole: Record<DemoRole, string> = {
+  Viewer: "Internal beta media workspace",
+  Contributor: "Internal beta contributor workspace",
+  Reviewer: "Internal beta DAM workspace",
+  "DAM Admin": "Internal beta Support Zone"
+};
+
+const sectionLabelByRole: Record<DemoRole, string> = {
+  Viewer: "Start here",
+  Contributor: "Contributor paths",
+  Reviewer: "Review paths",
+  "DAM Admin": "Admin paths"
 };
 
 function describePortalHomeCard(card: PortalHomeCard, role: DemoRole) {
@@ -154,6 +168,17 @@ export function portalHomePrimaryHrefForRole(role: DemoRole) {
   return primaryHrefByRole[role];
 }
 
+export function portalHomeCopyForRole(role: DemoRole) {
+  return {
+    modeLabel: portalModeLabelByRole[role],
+    roleLabel: `${role} access`,
+    description: portalRoleCopy[role],
+    primaryLabel: primaryLabelByRole[role],
+    secondaryLabel: secondaryLabelByRole[role],
+    sectionLabel: sectionLabelByRole[role]
+  };
+}
+
 export function EnterprisePortalHomePage() {
   const { role } = useDemoRole();
   const visibleCards = portalHomeCardsForRole(role);
@@ -162,31 +187,26 @@ export function EnterprisePortalHomePage() {
   const primaryCard = visibleCards.find((card) => card.href === primaryHref) || visibleCards[0];
   const PrimaryIcon = primaryCard?.icon;
   const secondaryCards = visibleCards.filter((card) => card.href !== primaryHref).slice(0, 5);
-  const primaryLabel = primaryLabelByRole[role];
-  const secondaryLabel = secondaryLabelByRole[role];
-  const roleCopy = portalRoleCopy[role];
-  const sectionLabel = role === "Viewer" ? "Start here" : role === "Contributor" ? "Contributor paths" : role === "DAM Admin" ? "Support paths" : "Command center";
-  const portalModeLabel = role === "Reviewer" || role === "DAM Admin" ? "Internal beta DAM command center" : "Internal beta media portal";
-  const roleLabel = `${role} access`;
+  const copy = portalHomeCopyForRole(role);
 
   return (
-    <section className="mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-4 py-8 md:px-8 md:py-10" data-primary-section="media-portal-home">
+    <section className="mx-auto flex w-full max-w-[1160px] flex-col gap-6 px-4 py-8 md:px-8 md:py-10" data-primary-section="media-portal-home">
       <section className="grid gap-6 border-b border-[#d8e1da] bg-white pb-7 md:grid-cols-[1fr_auto] md:items-end">
         <div className="max-w-3xl">
           <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-tjc-muted">
-            <span className="text-tjc-evergreen">{portalModeLabel}</span>
-            <span className="rounded-full border border-[#d8e1da] px-2 py-1 tracking-[0.08em]">{roleLabel}</span>
+            <span className="text-tjc-evergreen">{copy.modeLabel}</span>
+            <span className="rounded-full border border-[#d8e1da] px-2 py-1 tracking-[0.08em]">{copy.roleLabel}</span>
           </div>
           <h1 className="text-3xl font-black leading-tight tracking-[0] text-tjc-ink md:text-5xl">True Jesus Church Media Portal</h1>
-          <p className="mt-3 text-base font-semibold leading-7 text-tjc-muted md:text-lg">{roleCopy}</p>
+          <p className="mt-3 text-base font-semibold leading-7 text-tjc-muted md:text-lg">{copy.description}</p>
         </div>
         <div className="flex flex-wrap gap-3 md:justify-end">
           <Link href={routeWithRole(primaryHref, role)} className="inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-tjc-evergreen px-4 text-sm font-black text-white transition hover:bg-[#0f5f4a] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#0d7970]/20">
-            {primaryLabel}
+            {copy.primaryLabel}
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
           <Link href={routeWithRole(secondaryHref, role)} className="inline-flex min-h-11 items-center rounded-[8px] border border-[#d8e1da] px-4 text-sm font-black text-tjc-ink transition hover:border-[#9ebdac] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#0d7970]/20">
-            {secondaryLabel}
+            {copy.secondaryLabel}
           </Link>
         </div>
       </section>
@@ -205,13 +225,13 @@ export function EnterprisePortalHomePage() {
               <span className="mt-2 block max-w-xl text-sm font-semibold leading-6 text-tjc-muted">{primaryCard.description}</span>
             </span>
             <span className="inline-flex w-fit items-center gap-2 text-sm font-black text-tjc-evergreen">
-              Open
+              {copy.primaryLabel}
               <ArrowRight size={15} aria-hidden="true" />
             </span>
           </Link>
         ) : null}
         <div className="grid gap-3">
-          <h2 className="text-sm font-black uppercase tracking-[0.14em] text-tjc-muted">{sectionLabel}</h2>
+          <h2 className="text-sm font-black uppercase tracking-[0.14em] text-tjc-muted">{copy.sectionLabel}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {secondaryCards.map((card) => {
               const Icon = card.icon;

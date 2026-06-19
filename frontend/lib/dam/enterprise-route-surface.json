@@ -162,12 +162,12 @@
     {
       "path": "/my-tasks",
       "prefix": true,
-      "access": "review"
+      "access": "public"
     },
     {
       "path": "/tasks",
       "prefix": true,
-      "access": "review"
+      "access": "public"
     },
     {
       "path": "/packages",
@@ -199,24 +199,24 @@
   "navItems": [
     {
       "id": "library",
-      "label": "Browse Photos",
-      "mobileLabel": "Browse",
+      "label": "Media Library",
+      "mobileLabel": "Library",
       "href": "/library",
       "activeHrefs": [
         "/"
       ],
       "icon": "Library",
       "group": "Photos",
-      "description": "Find approved church photos for ministry use."
+      "description": "Find cleared church media with use guidance."
     },
     {
       "id": "collections",
-      "label": "Albums / Events",
+      "label": "Albums & Events",
       "mobileLabel": "Albums",
       "href": "/collections",
       "icon": "Grid3X3",
       "group": "Photos",
-      "description": "Browse photos by album, event, and ministry gathering."
+      "description": "Browse media by album, event, and ministry gathering."
     },
     {
       "id": "upload",
@@ -247,7 +247,7 @@
         "DAM Admin"
       ],
       "group": "Actions",
-      "description": "Review submitted photos before approval."
+      "description": "Review submitted media before use clearance."
     },
     {
       "id": "myUploads",
@@ -262,7 +262,7 @@
         "Contributor"
       ],
       "group": "Actions",
-      "description": "Track photos you submitted for review."
+      "description": "Track media you submitted for review."
     },
     {
       "id": "myTasks",
@@ -274,6 +274,7 @@
       ],
       "icon": "Clock3",
       "roles": [
+        "Contributor",
         "Reviewer",
         "DAM Admin"
       ],
@@ -286,11 +287,11 @@
       "href": "/requests",
       "icon": "MessageSquareText",
       "group": "Actions",
-      "description": "Ask for help with photo use, review, or corrections."
+      "description": "Ask for help with media use, review, or corrections."
     },
     {
       "id": "controlCenter",
-      "label": "Admin",
+      "label": "Support Zone",
       "href": "/admin",
       "activeHrefs": [
         "/admin/users",
@@ -309,18 +310,18 @@
         "DAM Admin"
       ],
       "group": "Admin",
-      "description": "Manage portal settings and review safety."
+      "description": "Review readiness, identity, and blocked operations."
     },
     {
       "id": "help",
-      "label": "Help",
+      "label": "Help Center",
       "href": "/help",
       "activeHrefs": [
         "/guide"
       ],
       "icon": "HelpCircle",
       "group": "Help",
-      "description": "Find help articles and media-use guidance."
+      "description": "Find media-use guidance and review help."
     }
   ],
   "quickActions": [
@@ -386,26 +387,26 @@
   "workspaceCopyByPath": {
     "/": {
       "title": "True Jesus Church Media Portal",
-      "subtitle": "Upload event media, review submissions, browse approved church photos."
+      "subtitle": "Browse cleared media, upload event photos, and route review work."
     },
     "/library": {
-      "title": "Browse Photos",
-      "subtitle": "Find approved church photos for ministry use."
+      "title": "Media Library",
+      "subtitle": "Find cleared church media with use guidance."
     },
     "/collections": {
-      "title": "Albums / Events",
-      "subtitle": "Browse photos by album, event, and ministry gathering."
+      "title": "Albums & Events",
+      "subtitle": "Browse media by album, event, and ministry gathering."
     },
     "/review": {
       "title": "Review Uploads",
-      "subtitle": "Review submitted photos before approval."
+      "subtitle": "Review submitted media before use clearance."
     },
     "/packages": {
-      "title": "Distribution Sets",
+      "title": "Delivery Sets",
       "subtitle": "Deferred MVP draft area; collections remain the primary organization surface."
     },
     "/distribution-sets": {
-      "title": "Distribution Sets",
+      "title": "Delivery Sets",
       "subtitle": "Deferred MVP draft area; collections remain the primary organization surface."
     },
     "/upload": {
@@ -414,11 +415,11 @@
     },
     "/recent-uploads": {
       "title": "My Uploads",
-      "subtitle": "Track photos you submitted for review."
+      "subtitle": "Track media you submitted for review."
     },
     "/requests": {
       "title": "Requests",
-      "subtitle": "Ask for help with photo use, review, or corrections."
+      "subtitle": "Ask for help with media use, review, or corrections."
     },
     "/my-tasks": {
       "title": "My Work",
@@ -433,8 +434,8 @@
       "subtitle": "Monitor usage, readiness, and review signals."
     },
     "/admin": {
-      "title": "Admin",
-      "subtitle": "Manage portal settings and review safety."
+      "title": "Support Zone",
+      "subtitle": "Review readiness, identity, and blocked operations."
     },
     "/admin/users": {
       "title": "Users & Roles",
@@ -477,11 +478,11 @@
       "subtitle": "Shared Drive, portal, storage, and identity provider health."
     },
     "/guide": {
-      "title": "Help",
+      "title": "Help Center",
       "subtitle": "Find media-use guidance and review help."
     },
     "/help": {
-      "title": "Help",
+      "title": "Help Center",
       "subtitle": "Find media-use guidance and review help."
     }
   },
@@ -504,47 +505,47 @@
       "pathname": "/help",
       "param": "section",
       "value": "policies",
-      "title": "Help",
+      "title": "Help Center",
       "subtitle": "Media-use guidance for reuse, rights, consent, and tags."
     },
     {
       "pathname": "/guide",
       "param": "section",
       "value": "policies",
-      "title": "Help",
+      "title": "Help Center",
       "subtitle": "Media-use guidance for reuse, rights, consent, and tags."
     }
   ],
   "workspacePrefixCopy": [
     {
       "prefix": "/assets/",
-      "title": "Photo Detail",
-      "subtitle": "View photo details and use guidance."
+      "title": "Media Detail",
+      "subtitle": "View media details and use guidance."
     },
     {
       "prefix": "/library/",
-      "title": "Photo Detail",
-      "subtitle": "View photo details and use guidance."
+      "title": "Media Detail",
+      "subtitle": "View media details and use guidance."
     },
     {
       "prefix": "/collections/",
-      "title": "Album / Event",
-      "subtitle": "Browse event photos and album details."
+      "title": "Album & Event",
+      "subtitle": "Browse event media and album details."
     },
     {
       "prefix": "/distribution-sets/",
-      "title": "Distribution Set",
+      "title": "Delivery Set",
       "subtitle": "Deferred MVP draft area; collections remain the primary organization surface."
     },
     {
       "prefix": "/review/",
       "title": "Review Uploads",
-      "subtitle": "Review submitted photos before approval."
+      "subtitle": "Review submitted media before use clearance."
     },
     {
       "prefix": "/requests/",
       "title": "Requests",
-      "subtitle": "Track photo help and review requests."
+      "subtitle": "Track media help and review requests."
     },
     {
       "prefix": "/upload/drafts/",

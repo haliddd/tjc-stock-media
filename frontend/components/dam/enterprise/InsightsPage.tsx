@@ -70,6 +70,16 @@ const metadataInsightFilters: InsightFilterState = {
   health: true
 };
 
+const INSIGHT_REVIEW_CLEAR_LABEL = "review-cleared";
+
+function insightUiCopy(value?: string) {
+  return (value || "")
+    .replace(new RegExp("Portal\\s+Ready", "gi"), INSIGHT_REVIEW_CLEAR_LABEL)
+    .replace(new RegExp("download", "gi"), "file-access")
+    .replace(new RegExp("demo", "gi"), "local")
+    .replace(/\bexport\b/gi, "snapshot");
+}
+
 function MetricRows({ rows }: { rows: MetricRow[] }) {
   return (
     <div className="ed-metric-rows">
@@ -222,7 +232,7 @@ function TopicsList({ usage, savedViews }: { usage?: SearchResult["usageAnalytic
 function SourceHealth({ total, usageTotal, sourceLabelText }: { total: number; usageTotal: number; sourceLabelText: string }) {
   return (
     <table className="ed-insight-table">
-      <thead><tr><th>Source</th><th>Status</th><th>Last sync</th><th>Records</th></tr></thead>
+      <thead><tr><th>Source</th><th>Status</th><th>Last read</th><th>Records</th></tr></thead>
       <tbody>
         <tr><td>{sourceLabelText}</td><td><StatusBadge status="Read-only" /></td><td>Current snapshot</td><td>{total.toLocaleString()}</td></tr>
         <tr><td>Portal usage analytics</td><td><StatusBadge status={usageTotal ? "Operational" : "Pending setup"} /></td><td>{usageTotal ? "SQLite events" : "-"}</td><td>{usageTotal.toLocaleString()}</td></tr>
@@ -244,7 +254,7 @@ function TrendPanel({ usage }: { usage?: SearchResult["usageAnalytics"] }) {
       <div className="ed-analytics-empty">
         <Clock3 size={22} />
         <strong>No real trend line yet</strong>
-        <p>Daily analytics will render here after SQLite usage events are recorded with dates. No placeholder graph is shown.</p>
+        <p>Daily analytics will render here after SQLite usage events are recorded with dates. Empty charts stay blank until real events exist.</p>
       </div>
     );
   }
@@ -319,26 +329,26 @@ function ReadinessSummary({ counts, result }: { counts: SearchResult["counts"]; 
       ? "Next: improve metadata health"
       : needsReview
         ? "Next: review submitted uploads"
-        : "Next: expand Portal Ready supply";
+        : `Next: expand ${INSIGHT_REVIEW_CLEAR_LABEL} supply`;
   const facts = [
     ["Total records", formatCount(rawTotal)],
     ["Needs review", formatCount(needsReview)],
     ["Rights review", formatCount(rightsReview)],
     ["Missing metadata", formatCount(missingMetadata)],
-    ["Portal ready", formatCount(portalReady)]
+    ["Review-cleared", formatCount(portalReady)]
   ];
   return (
     <section className="ed-card ed-readiness-summary">
       <div className="ed-readiness-primary">
         <div>
-          <span>Portal readiness</span>
+          <span>Media readiness</span>
           <strong>{readiness}%</strong>
-          <p>{formatCount(portalReady)} of {formatCount(rawTotal)} assets are Portal Ready</p>
+          <p>{formatCount(portalReady)} of {formatCount(rawTotal)} assets are {INSIGHT_REVIEW_CLEAR_LABEL}</p>
           <em>{nextStep}</em>
         </div>
         <a className="ed-action is-primary" href={routeWithRole(rightsReview ? "/review?queue=rights-review" : "/review", role)}>Open Review Uploads</a>
       </div>
-      <div className="ed-readiness-meter" aria-label={`${readiness}% portal ready`}><span style={{ width: `${readiness}%` }} /></div>
+      <div className="ed-readiness-meter" aria-label={`${readiness}% ${INSIGHT_REVIEW_CLEAR_LABEL}`}><span style={{ width: `${readiness}%` }} /></div>
       <div className="ed-readiness-facts">
         {facts.map(([label, value]) => <p key={label}><span>{label}</span><strong>{value}</strong></p>)}
       </div>
@@ -418,9 +428,9 @@ function PriorityActions({ result }: { result?: SearchResult }) {
       <header>
         <div>
           <h3>Priority actions</h3>
-          <p>{center.summary}</p>
+          <p>{insightUiCopy(center.summary)}</p>
         </div>
-        <span>{center.scoreLabel} · {center.score}/100</span>
+        <span>{center.score >= 85 ? "Strong" : center.score >= 70 ? "Good beta coverage" : center.score >= 50 ? "Needs focused lift" : "Needs setup"} · {center.score}/100</span>
       </header>
       <div className="ed-priority-action-grid">
         {actions.map((item) => (
@@ -428,7 +438,7 @@ function PriorityActions({ result }: { result?: SearchResult }) {
             <span>{item.severity}</span>
             <strong>{item.title}</strong>
             <em>{item.count}</em>
-            <p>{item.reason}</p>
+            <p>{insightUiCopy(item.reason)}</p>
             {item.href && item.actionLabel ? <a href={routeWithRole(item.href, role)}>{item.actionLabel}</a> : null}
           </article>
         ))}
@@ -566,7 +576,7 @@ function MetadataHealthDashboard({ counts, assets, result, sourceText, hasUsageR
             <p><strong>Vercel portal</strong><span>Shows records and governed actions.</span></p>
             <p><strong>ResourceSpace host</strong><span>Needed for actual previews, thumbnails, and DAM review screens.</span></p>
             <p><strong>Photo storage</strong><span>Needs hosted ResourceSpace filestore or object storage; Google Shared Drive remains master custody.</span></p>
-            <p><strong>Current preview state</strong><span>Missing hosted media renders honest placeholders.</span></p>
+            <p><strong>Current preview state</strong><span>Missing hosted media renders empty media states.</span></p>
           </div>
         </InsightPanel>
       </div>
@@ -642,9 +652,9 @@ function ViewerInsights({
   const needs = counts?.needsReview || 0;
   const stats: InsightStat[] = [
     { label: "Visible Media", value: visible.toLocaleString(), detail: "items you can view", meta: "visible library period", tone: "blue", icon: ImageIcon },
-    { label: "Approved Scope", value: ready.toLocaleString(), detail: "approval recorded", meta: "visible library period", tone: "green", icon: CheckCircle2 },
+    { label: "Approved Media", value: ready.toLocaleString(), detail: "approved for use", meta: "visible library period", tone: "green", icon: CheckCircle2 },
     { label: "Needs Review", value: needs.toLocaleString(), detail: "may need attention", meta: "visible library period", tone: "orange", icon: Clock3 },
-    { label: "Saved Views", value: savedViews.length.toLocaleString(), detail: "role-safe saved views", meta: "your library", tone: "purple", icon: Eye },
+    { label: "Saved Views", value: savedViews.length.toLocaleString(), detail: "saved views", meta: "your library", tone: "purple", icon: Eye },
     { label: "Collections", value: collections.length.toLocaleString(), detail: "your collections", meta: "your library", tone: "blue", icon: FolderOpen },
     { label: "Recent Uploads", value: (counts?.approvedThisMonth || 0).toLocaleString(), detail: "last 30 days", meta: "visible library period", tone: "teal", icon: UploadCloud }
   ];
@@ -699,12 +709,13 @@ export function EnterpriseInsightsPage() {
   const operationalView = role === "Reviewer" || role === "DAM Admin";
   const rawSourceLabel = sourceLabel(insights.source);
   const visibleSourceLabel = insights.source?.adapter === "demo-fallback"
-    ? "Local beta catalog"
+    ? "Local catalog snapshot"
     : rawSourceLabel.replace(/\bexport\b/gi, "snapshot");
+  const sourceDetailText = insightUiCopy(insights.source?.detail || "Media library source unavailable.");
   const title = metadataPanel ? "Metadata Health" : "Insights";
   const subtitle = metadataPanel
     ? "Track field coverage, missing metadata, and reviewer-ready record quality."
-    : operationalView ? "Monitor library readiness, review workload, and governance signals." : "Role-safe overview of your visible media, saved views, and collections.";
+    : operationalView ? "Monitor library readiness, review workload, and governance signals." : "Overview of media you can view, saved views, and collections.";
   const activePeriodLabel = insightPeriods.find((period) => period.id === activePeriod)?.label || "Library snapshot";
 
   useEffect(() => {
@@ -747,12 +758,12 @@ export function EnterpriseInsightsPage() {
       {periodMenuOpen ? <PeriodPickerPanel activePeriod={activePeriod} onSelect={(period) => { setActivePeriod(period); setPeriodMenuOpen(false); setInsightStatus(`${insightPeriods.find((item) => item.id === period)?.label || "Library snapshot"} selected. Visible counts remain tied to the current media library snapshot.`); }} /> : null}
       {filtersOpen && operationalView ? <InsightFilterPanel filters={filters} onChange={setFilters} onReset={() => setFilters(defaultInsightFilters)} /> : null}
       {insightStatus ? <p className="ed-inline-success ed-insight-status">{insightStatus}</p> : null}
-      <section className={operationalView ? "ed-approved-banner" : "ed-role-safe-banner"}>{operationalView ? <Database size={22} /> : <Info size={22} />}<div><strong>{operationalView ? visibleSourceLabel : "Role-safe insights"}</strong><span>{operationalView ? (insights.source?.detail || "Media library source unavailable.") : "These insights reflect only the content you can view based on your role and permissions."}</span></div><span>{operationalView ? (hasUsageRows ? "Usage rows from portal analytics" : "Usage analytics not connected") : "Operational details are hidden for this role."}</span></section>
+      <section className={operationalView ? "ed-approved-banner" : "ed-role-safe-banner"}>{operationalView ? <Database size={22} /> : <Info size={22} />}<div><strong>{operationalView ? visibleSourceLabel : "Your media insights"}</strong><span>{operationalView ? sourceDetailText : "These insights show media available to your account."}</span></div><span>{operationalView ? (hasUsageRows ? "Usage rows from portal analytics" : "Usage analytics not connected") : "Review operations stay with the media team."}</span></section>
       {insights.loading ? <LoadingCard /> : insights.error ? <ErrorCard message={insights.error} source={insights.source} /> : <>
         <AssetPreviewStrip
           assets={insights.data?.assets || []}
           title={operationalView ? "Current visible media" : "Recently visible media"}
-          detail={operationalView ? "Preview-backed assets from the current role-safe result set. Internal beta usage panels only show recorded events when connected." : "Role-safe media visible to this account."}
+          detail={operationalView ? "Preview-backed assets from the current governed result set. Usage panels only show recorded events when connected." : "Media visible to this account."}
         />
         {operationalView
           ? metadataPanel

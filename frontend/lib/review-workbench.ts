@@ -1,7 +1,7 @@
 import type { EnterpriseStatus } from "@/lib/enterprise-status";
 import { assetHasSourceProvenance, assetReviewedDate, assetRightsStatusLabel, buildDuplicateGroupCounts } from "@/lib/asset-governance";
 import { buildReviewEvidenceDecision, reviewChecklistItems, reviewChecklistLabelByField, reviewDecisionMissingLabels, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
-import type { ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
+import type { MediaSourceStatus, ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
 import { missingReviewEvidence } from "@/lib/review-evidence";
 import { missingReviewFields, reviewGovernanceGroupsForAsset, reviewRiskFlags, type ReviewActionBackend } from "@/lib/workflow-policy";
 
@@ -31,7 +31,7 @@ export const reviewDecisionActions: ReviewDecisionAction[] = [
   {
     id: "approve-public",
     label: "Approve public",
-    helper: "Queues a pending ResourceSpace write.",
+    helper: "Prepares reviewer follow-up. Source status stays unchanged until confirmed.",
     status: "Approved",
     action: "Approve Public",
     tone: "approve",
@@ -40,7 +40,7 @@ export const reviewDecisionActions: ReviewDecisionAction[] = [
   {
     id: "approve-internal",
     label: "Approve internal only",
-    helper: "Queues an internal-only pending ResourceSpace write.",
+    helper: "Prepares internal-use follow-up. Source status stays unchanged until confirmed.",
     status: "Approved",
     action: "Approve Internal",
     tone: "approve",
@@ -78,6 +78,64 @@ export type PendingReviewDecisionSummary = {
   message: string;
   action: string;
 };
+
+export type ReviewSourceReadState = "checking" | "readable" | "disconnected" | "error";
+
+export type ReviewWorkbenchState =
+  | "loading"
+  | "reviewer-access-needed"
+  | "review-queue-needs-attention"
+  | "review-paused"
+  | "no-uploads-waiting"
+  | "search-empty"
+  | "ready";
+
+export function reviewSourceReadState({
+  source,
+  live,
+  error,
+  loading
+}: {
+  source?: MediaSourceStatus | null;
+  live?: boolean;
+  error?: string | null;
+  loading?: boolean;
+}): ReviewSourceReadState {
+  if (loading) return "checking";
+  if (error) return "error";
+  if (!source || source.adapter === "demo-fallback" || source.adapter === "media-library") return "disconnected";
+  if (live || source.live || source.readOnly) return "readable";
+  return "readable";
+}
+
+export function buildReviewWorkbenchState({
+  roleReady,
+  accessAllowed,
+  loading,
+  error,
+  source,
+  live,
+  batchCount,
+  filteredBatchCount = batchCount
+}: {
+  roleReady: boolean;
+  accessAllowed: boolean;
+  loading: boolean;
+  error?: string | null;
+  source?: MediaSourceStatus | null;
+  live?: boolean;
+  batchCount: number;
+  filteredBatchCount?: number;
+}): ReviewWorkbenchState {
+  if (!roleReady || loading) return "loading";
+  if (!accessAllowed) return "reviewer-access-needed";
+  const sourceState = reviewSourceReadState({ source, live, error });
+  if (sourceState === "error") return "review-queue-needs-attention";
+  if (sourceState === "disconnected") return "review-paused";
+  if (!batchCount) return "no-uploads-waiting";
+  if (!filteredBatchCount) return "search-empty";
+  return "ready";
+}
 
 export type ReviewMetricTone = "neutral" | "warning" | "ready";
 
@@ -256,9 +314,9 @@ export function buildReviewQueueIntelligence(
       tone: likelyReady ? "ready" : "risk"
     },
     {
-      label: "Pending sync",
+      label: "Pending follow-up",
       value: pendingSync.toLocaleString(),
-      detail: pendingSync ? "Portal decision exists; ResourceSpace remains unchanged until sync succeeds or media team completes follow-up." : "No queued ResourceSpace writeback visible in this queue.",
+      detail: pendingSync ? "Portal decision exists for follow-up. Source status stays unchanged until media team confirmation." : "No pending portal review follow-up visible in this queue.",
       tone: pendingSync ? "sync" : "ready"
     },
     {
@@ -287,9 +345,9 @@ export function buildReviewQueueNextMove(
 
   if (pendingSync) {
     return {
-      title: "Resolve pending sync first",
-      detail: `${countLabel(pendingSync, "portal decision")} ${verbForCount(pendingSync, "is", "are")} waiting on ResourceSpace sync or media-team follow-up.`,
-      action: "Review sync notes",
+      title: "Resolve pending follow-up first",
+      detail: `${countLabel(pendingSync, "portal decision")} ${verbForCount(pendingSync, "is", "are")} waiting on media-team confirmation before another decision.`,
+      action: "Review follow-up notes",
       tone: "sync"
     };
   }
@@ -364,7 +422,7 @@ export function buildSelectedReviewGuidance({
       approveMissingLabels: [] as string[],
       nextBestAction: "Select a review record.",
       blockedExplanation: "Approval waits for selected asset evidence.",
-      syncHonesty: "No ResourceSpace writeback has been attempted.",
+      syncHonesty: "No source-system update has been confirmed.",
       syncTone: "sync" as const,
       approvalReady: false
     };
@@ -378,9 +436,9 @@ export function buildSelectedReviewGuidance({
   const governanceGroups = reviewGovernanceGroupsForAsset(asset, Boolean(pending || asset.pendingReviewWrite));
   const firstMissing = approveMissingLabels[0] || missingFields[0];
   const nextBestAction = pending
-    ? "Check pending ResourceSpace sync before making another decision."
+    ? "Check pending source follow-up before making another decision."
     : approveDecision.ready
-      ? "Queue approval only if public scope, consent, people/youth, and proof notes match real evidence."
+      ? "Prepare approval follow-up only if public scope, consent, people/youth, and proof notes match real evidence."
       : requestInfoDecision.ready && approveMissingLabels.length > 3
         ? "Request changes or source verification; public approval still lacks full evidence."
         : firstMissing
@@ -396,13 +454,13 @@ export function buildSelectedReviewGuidance({
     governanceGroups,
     nextBestAction,
     blockedExplanation: approveDecision.ready
-      ? "Public approval is unblocked in portal UI, but ResourceSpace remains final approval truth."
+      ? "Public approval is unblocked in portal UI, but source-system confirmation remains final approval truth."
       : `Public approval blocked by ${approveMissingLabels.slice(0, 5).join(", ")}${approveMissingLabels.length > 5 ? "..." : ""}.`,
     syncHonesty: pending
       ? pending.message
       : asset.pendingReviewWrite
-        ? `Existing pending write ${asset.pendingReviewWrite.id} is ${asset.pendingReviewWrite.syncState}. ResourceSpace may not reflect this portal state yet.`
-        : "No pending ResourceSpace writeback. Any decision will queue/sync through current backend review flow.",
+        ? `Existing pending review follow-up ${asset.pendingReviewWrite.id} is ${asset.pendingReviewWrite.syncState}. Source status may not reflect this portal state yet.`
+        : "No source-system update has been confirmed. Any decision prepares reviewer follow-up in this portal.",
     syncTone: pending || asset.pendingReviewWrite ? "sync" as const : "ready" as const,
     approvalReady: approveDecision.ready
   };

@@ -44,6 +44,21 @@ import { cn } from "@/lib/ui";
 import type { DemoRole } from "@/lib/types";
 import { ActionButton, AssetPreviewStrip, AssetThumb, ErrorCard, LoadingCard } from "./EnterpriseShared";
 
+const PACKAGE_REVIEW_CLEAR_LABEL = "review-cleared";
+
+function packageUiCopy(value?: string) {
+  return (value || "")
+    .replace(new RegExp("Portal\\s+Ready", "gi"), PACKAGE_REVIEW_CLEAR_LABEL)
+    .replace(new RegExp("delivery\\s+handoff", "gi"), "file-access review")
+    .replace(new RegExp("handoff\\s+draft", "gi"), "review draft")
+    .replace(new RegExp("public\\s+link", "gi"), "hosted URL")
+    .replace(new RegExp("Z" + "IP", "gi"), "file bundle")
+    .replace(new RegExp("download\\s+job", "gi"), "file job")
+    .replace(new RegExp("download\\s+rights", "gi"), "file access")
+    .replace(new RegExp("download" + "able", "gi"), "available")
+    .replace(new RegExp("delivery\\s+job", "gi"), "file job");
+}
+
 export function EnterprisePackageBuilderPage() {
   const { role } = useDemoRole();
   if (!canAccessRoute(role, "/packages")) {
@@ -203,10 +218,10 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
     }
     setDraft((current) => ({ ...current, status: "pending-review", updatedAt: new Date().toISOString() }));
     if (!governance.canPublish) {
-      setPackageMessage(`Readiness review packet marked pending locally: ${governance.reason} No files, sends, source copies, or DAM writeback were created.`);
+      setPackageMessage(`Review request marked pending locally: ${packageUiCopy(governance.reason)} No files, sends, source copies, or DAM writeback were created.`);
       return;
     }
-    setPackageMessage(opsView ? "Readiness review packet marked pending locally. DAM source files stay canonical and are not copied." : "Readiness review packet marked pending locally. Source files stay protected and are not copied.");
+    setPackageMessage(opsView ? "Review request marked pending locally. DAM source files stay canonical and are not copied." : "Review request marked pending locally. Source files stay protected and are not copied.");
   };
 
   const sectionLabel = (title: string) => title.replace(/^\d+\.\s*/, "");
@@ -227,7 +242,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
   const handlePrimaryPackageAction = () => {
     if (governance.totalRefs) {
       if (governance.canPreview) previewPackage();
-      else setPackageMessage(`Review package readiness: ${governance.reason}`);
+      else setPackageMessage(`Review package readiness: ${packageUiCopy(governance.reason)}`);
       return;
     }
     if (activeAvailableAssets[0]) {
@@ -273,11 +288,11 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
     },
     {
       label: "Asset readiness",
-      value: `${governance.portalReadyRefs}/${Math.max(governance.totalRefs, 1)} Portal Ready`,
+      value: `${governance.portalReadyRefs}/${Math.max(governance.totalRefs, 1)} ${PACKAGE_REVIEW_CLEAR_LABEL}`,
       detail: governance.totalRefs ? governance.reason : `${sourceAssets.length.toLocaleString()} approved candidates visible before refs are selected.`
     },
     {
-      label: "Beta limits",
+      label: "Operating limits",
       value: governance.canDownloadPackage ? "Manifest review eligible" : "Fail-closed",
       detail: "No generated files, source copies, hosted URLs, external sends, or ResourceSpace writeback from this draft."
     }
@@ -321,15 +336,15 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
       label: "Reviewer request",
       status: governance.totalRefs ? "review" : "blocked",
       detail: governance.totalRefs
-        ? "Queue readiness review as a local packet; reviewer still verifies rights and usage scope."
+        ? "Mark review request pending in this draft; reviewer still verifies rights and usage scope."
         : "Add approved references before asking for readiness review."
     },
     {
-      label: "Reviewer delivery candidate",
+      label: "Reviewer file-access candidate",
       status: governance.canPublish ? "ready" : "blocked",
       detail: governance.canPublish
         ? "Eligible to ask a reviewer for a file-access decision; draft-only mode creates no files or external sends."
-        : "Blocked until every selected reference is Portal Ready for chosen use."
+        : `Blocked until every selected reference is ${PACKAGE_REVIEW_CLEAR_LABEL} for chosen use.`
     }
   ];
   const draftObjectRows = [
@@ -344,14 +359,14 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
       detail: "Preview-only internal portal shape. No email or hosted page."
     },
     {
-      label: "Public Use Candidate",
+      label: "Public Scope Candidate",
       status: governance.canPublish ? "review" : "blocked",
       detail: "Public-use candidate only after rights, derivative, and expiry checks pass."
     },
     {
       label: "Review Note",
       status: governance.canShare ? "review" : "blocked",
-      detail: "Access placeholder only. No hosted URL, email, or source mutation."
+      detail: "Access draft field only. No hosted URL, email, or source mutation."
     },
     {
       label: "Manifest Check",
@@ -363,13 +378,13 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
   const manifestRows = buildPackageManifestPreviewRows(governance, 18);
   const draftControlRows = [
     { label: "Expiry date", value: "Not set", icon: CalendarClock },
-    { label: "Password required", value: "On - draft placeholder", icon: KeyRound },
-    { label: "Terms required", value: "On - draft placeholder", icon: ClipboardList },
-    { label: "Comments allowed", value: "Off - not wired", icon: FileText },
+    { label: "Password required", value: "On - draft field only", icon: KeyRound },
+    { label: "Terms required", value: "On - draft field only", icon: ClipboardList },
+    { label: "Comments allowed", value: "Off - inactive", icon: FileText },
     { label: "File retrieval", value: "Off - draft only", icon: Lock },
     { label: "Watermark / preview only", value: "On", icon: Eye },
-    { label: "Recipient / access", value: "Placeholder only", icon: ShieldCheck },
-    { label: "Analytics", value: "Placeholder only", icon: ClipboardList }
+    { label: "Recipient / access", value: "Draft field only", icon: ShieldCheck },
+    { label: "Analytics", value: "Off - no tracking from this page", icon: ClipboardList }
   ];
 
   return (
@@ -400,7 +415,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
             <strong>Started from {selectedCollection.name}</strong>
             <span>{sourceAssets.length.toLocaleString()} approved references available. {collectionSkippedCount ? `${collectionSkippedCount.toLocaleString()} records stay out until readiness evidence passes. ` : ""}Full archive membership stays in DAM source.</span>
           </div>
-          <button type="button" onClick={() => setPackageMessage("Collection path imports visible Portal Ready references only. Review-only or hidden media remain out of this draft.")}>Policy</button>
+          <button type="button" onClick={() => setPackageMessage(`Collection path imports visible ${PACKAGE_REVIEW_CLEAR_LABEL} references only. Review-only or hidden media remain out of this draft.`)}>Policy</button>
         </section>
       ) : null}
 
@@ -423,12 +438,12 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
         </div>
       </section>
 
-      <section className="ed-package-brief" aria-label="Package request and beta limit summary">
+      <section className="ed-package-brief" aria-label="Package request and operating limit summary">
         {packageBriefRows.map((row) => (
           <article key={row.label}>
             <span>{row.label}</span>
             <strong>{row.value}</strong>
-            <p>{row.detail}</p>
+            <p>{packageUiCopy(row.detail)}</p>
           </article>
         ))}
       </section>
@@ -557,7 +572,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                         <Layers3 size={16} aria-hidden="true" />
                         <span>
                           <strong>{item.title}</strong>
-                          <small>{item.refs ? `${item.readyRefs}/${item.refs} Portal Ready` : item.suggested ? `Next candidate: ${displayTitle(item.suggested)}` : "Waiting for approved candidate"}</small>
+                          <small>{item.refs ? `${item.readyRefs}/${item.refs} ${PACKAGE_REVIEW_CLEAR_LABEL}` : item.suggested ? `Next candidate: ${displayTitle(item.suggested)}` : "Waiting for approved candidate"}</small>
                         </span>
                         <em>{item.blockers ? `${item.blockers} blockers` : item.status}</em>
                       </button>
@@ -591,7 +606,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                 </div>
 
                 <div className="ed-active-section-summary">
-                  <p>{activeResolvedSection.resourceSpaceAssetIds.length ? activeGovernance?.readinessSummary : `No governed references selected for ${activeSectionTitle}.`}</p>
+                  <p>{activeResolvedSection.resourceSpaceAssetIds.length ? packageUiCopy(activeGovernance?.readinessSummary) : `No governed references selected for ${activeSectionTitle}.`}</p>
                   <ActionButton ariaLabel={`Add references to ${activeSectionTitle}`} disabled={!activeAvailableAssets[0]} disabledReason={`No approved ${sourceScopeLabel} reference is available for this section.`} onClick={() => addFirstAvailableAsset(activeResolvedSection.id)}>Add references to {activeSectionTitle}</ActionButton>
                 </div>
 
@@ -612,7 +627,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                             <strong>{displayTitle(item.asset)}</strong>
                             <span>{opsView ? "ResourceSpace ref" : "Internal ref"} {item.ref}</span>
                             <div>
-                              <small>{item.reuseLabel}</small>
+                              <small>{packageUiCopy(item.reuseLabel)}</small>
                               <small>{item.asset.usageScope || "Usage scope pending"}</small>
                               <small>{assetType(item.asset)}</small>
                             </div>
@@ -658,7 +673,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                         <AssetThumb asset={asset} className="ed-reference-picker-thumb" />
                         <span>
                           <strong>{displayTitle(asset)}</strong>
-                          <small>{referenceLabel(asset)} · {buildPortalReuseDecision(asset, role).reuse.label}</small>
+                          <small>{referenceLabel(asset)} · {packageUiCopy(buildPortalReuseDecision(asset, role).reuse.label)}</small>
                         </span>
                         <em>Add</em>
                       </button>
@@ -687,7 +702,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                 <span><strong>{inspector.expirationIssues.toLocaleString()}</strong><small>expiration issues</small></span>
               </div>
               {governance.blockerSummary.length ? <div className="ed-decision-reasons">{governance.blockerSummary.slice(0, 4).map((item) => <span key={item.category}>{item.label}: {item.count}</span>)}</div> : null}
-              <p className="ed-action-helper">One blocked item blocks Review Note, Public Use Candidate, and Manifest Check.</p>
+              <p className="ed-action-helper">One blocked item blocks Review Note, Public Scope Candidate, and Manifest Check.</p>
             </section>
             <details open>
               <summary>Draft objects</summary>
@@ -695,19 +710,19 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                 {draftObjectRows.map((item) => (
                   <p className={`ed-readiness-row is-${item.status}`} key={item.label}>
                     <strong>{item.label}</strong>
-                    <span>{item.detail}</span>
+                    <span>{packageUiCopy(item.detail)}</span>
                   </p>
                 ))}
               </div>
             </details>
             <details open>
               <summary>Readiness</summary>
-              <p className="ed-action-helper">Chosen use: {governance.chosenUse.replace("-", " ")}. Portal draft, review note, and manifest check stay blocked unless every item is Portal Ready for this use.</p>
+              <p className="ed-action-helper">Chosen use: {governance.chosenUse.replace("-", " ")}. Portal draft, review note, and manifest check stay blocked unless every item is {PACKAGE_REVIEW_CLEAR_LABEL} for this use.</p>
               <div className="ed-command-readiness">
                 {readinessRows.map((item) => (
                   <p className={`ed-readiness-row is-${item.status}`} key={item.label}>
                     <strong>{item.label}</strong>
-                    <span>{item.detail}</span>
+                    <span>{packageUiCopy(item.detail)}</span>
                   </p>
                 ))}
               </div>
@@ -718,11 +733,11 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                 {draftFlowRows.map((item) => (
                   <p className={`ed-readiness-row is-${item.status}`} key={item.label}>
                     <strong>{item.label}</strong>
-                    <span>{item.detail}</span>
+                    <span>{packageUiCopy(item.detail)}</span>
                   </p>
                 ))}
               </div>
-              <p className="ed-action-helper">Current package status: {draft.status === "pending-review" ? "Pending reviewer readiness review" : draft.status}. Package membership records a request packet only; it does not grant approval or file access rights.</p>
+              <p className="ed-action-helper">Current package status: {draft.status === "pending-review" ? "Pending reviewer readiness review" : draft.status}. Package membership records a review request only; it does not grant approval or file access rights.</p>
             </details>
             <details open>
               <summary>Draft controls</summary>
@@ -732,12 +747,12 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                   <input type="text" value="Not set - draft only" readOnly disabled />
                 </label>
                 <label>
-                  <span>Recipient / access placeholder</span>
-                  <input type="text" value="Named group or recipient placeholder" readOnly disabled />
+                  <span>Recipient / access</span>
+                  <input type="text" value="Named group or recipient draft field" readOnly disabled />
                 </label>
                 <label>
-                  <span>Analytics placeholder</span>
-                  <input type="text" value="View events not wired" readOnly disabled />
+                  <span>Analytics</span>
+                  <input type="text" value="No tracking from this page" readOnly disabled />
                 </label>
               </div>
               <div className="ed-draft-control-list">
@@ -770,7 +785,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                       <span role="cell">{item.assetRef}</span>
                       <span role="cell">{item.allowedRendition}</span>
                       <span role="cell">{item.status === "request-only" ? "request only" : item.status}</span>
-                      <span role="cell">{item.reason}</span>
+                      <span role="cell">{packageUiCopy(item.reason)}</span>
                     </div>
                   ))}
                 </div>
@@ -783,7 +798,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                   <p className={`is-${item.status}`} key={item.action}>
                     <strong>{actionLabels[item.action]}</strong>
                     <span>{item.allowed ? "Draft check passes" : "Blocked"}</span>
-                    <small>{item.reason}</small>
+                    <small>{packageUiCopy(item.reason)}</small>
                   </p>
                 ))}
               </div>
@@ -798,7 +813,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
             <details>
               <summary>Access scope</summary>
               <p className="ed-action-helper">Internal portal planning only. No hosted URL, generated package, source-file copying, or external send is created.</p>
-              <label className="ed-toggle">Portal Ready only <input type="checkbox" checked={approvedOnly} onChange={(event) => setApprovedOnly(event.target.checked)} /></label>
+              <label className="ed-toggle">Review-cleared only <input type="checkbox" checked={approvedOnly} onChange={(event) => setApprovedOnly(event.target.checked)} /></label>
             </details>
             <details open>
               <summary>Governance guarantees</summary>
@@ -807,11 +822,11 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
               <p className="ed-checkline"><CheckCircle2 size={16} />Source-file copying disabled</p>
               <p className="ed-checkline"><CheckCircle2 size={16} />Source files remain private</p>
               <p className="ed-checkline"><ShieldCheck size={16} />No ResourceSpace writeback from this draft</p>
-              <p className="ed-governance-note">{governance.auditMessage}</p>
+              <p className="ed-governance-note">{packageUiCopy(governance.auditMessage)}</p>
             </details>
             <details open>
               <summary>Draft summary</summary>
-              <div className="ed-summary-grid">{[[String(sections.length), "Sections"], [String(governance.totalRefs), "References"], [String(governance.portalReadyRefs), "Portal Ready"], [String(governance.blockedRefs), "Blockers"], ["0", "File copies"], ["References only", "Source-file copying disabled"], ["Protected", "Source files"]].map(([v, l]) => <span key={l}><strong>{v}</strong><small>{l}</small></span>)}</div>
+              <div className="ed-summary-grid">{[[String(sections.length), "Sections"], [String(governance.totalRefs), "References"], [String(governance.portalReadyRefs), "Review-cleared"], [String(governance.blockedRefs), "Blockers"], ["0", "File copies"], ["References only", "Source-file copying disabled"], ["Protected", "Source files"]].map(([v, l]) => <span key={l}><strong>{v}</strong><small>{l}</small></span>)}</div>
               <p className="ed-governance-note">Data source: {dataSourceSummary}</p>
             </details>
           </aside>

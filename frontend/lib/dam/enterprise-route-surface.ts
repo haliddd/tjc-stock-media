@@ -23,9 +23,9 @@ function normalizeNavItem(item: EnterpriseRouteNavItemManifest): MutableEnterpri
   if (item.id === "collections") {
     return {
       ...base,
-      label: "Albums / Events",
+      label: "Albums & Events",
       mobileLabel: "Albums",
-      description: "Browse photos by album, event, and ministry gathering."
+      description: "Browse media by album, event, and ministry gathering."
     };
   }
 
@@ -37,7 +37,7 @@ function normalizeNavItem(item: EnterpriseRouteNavItemManifest): MutableEnterpri
       href: "/recent-uploads",
       activeHrefs: ["/library?view=recent-uploads"],
       roles: ["Contributor"] as DemoRole[],
-      description: "Track photos you submitted for review."
+      description: "Track media you submitted for review."
     };
   }
 
@@ -48,7 +48,7 @@ function normalizeNavItem(item: EnterpriseRouteNavItemManifest): MutableEnterpri
       mobileLabel: "Work",
       href: "/my-tasks",
       activeHrefs: ["/tasks"],
-      roles: ["Reviewer", "DAM Admin"] as DemoRole[],
+      roles: ["Contributor", "Reviewer", "DAM Admin"] as DemoRole[],
       description: "Follow up on assigned uploads, reviews, and requests."
     };
   }
@@ -67,10 +67,10 @@ const normalizedMobileNavPriorityByRole: Record<DemoRole, string[]> = {
 
 const normalizedWorkspaceCopyByPath: Record<string, EnterpriseRouteWorkspaceCopy> = {
   ...(surface.workspaceCopyByPath as Record<string, EnterpriseRouteWorkspaceCopy>),
-  "/collections": { title: "Albums / Events", subtitle: "Browse photos by album, event, and ministry gathering." },
+  "/collections": { title: "Albums & Events", subtitle: "Browse media by album, event, and ministry gathering." },
   "/my-tasks": { title: "My Work", subtitle: "Follow up on assigned uploads, reviews, and requests." },
   "/tasks": { title: "My Work", subtitle: "Follow up on assigned uploads, reviews, and requests." },
-  "/recent-uploads": { title: "My Uploads", subtitle: "Track photos you submitted for review." }
+  "/recent-uploads": { title: "My Uploads", subtitle: "Track media you submitted for review." }
 };
 
 export const enterpriseRouteSurface = {
@@ -112,7 +112,7 @@ export function routeAccessForPathname(pathname: string): EnterpriseRouteAccess 
 
 export function workspaceCopyForEnterpriseRoute(pathname: string, search = ""): EnterpriseRouteWorkspaceCopy {
   if (pathname.startsWith("/collections/")) {
-    return { title: "Album / Event", subtitle: "Browse event photos and album details." };
+    return { title: "Album & Event", subtitle: "Browse event media and album details." };
   }
 
   const params = new URLSearchParams(search);

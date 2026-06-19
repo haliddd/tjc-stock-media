@@ -68,7 +68,7 @@ type DashboardCopy = {
 export function dashboardCopyForRole(role: DemoRole): DashboardCopy {
   if (canReview(role)) {
     return {
-      eyebrow: "DAM command center",
+      eyebrow: "DAM workspace",
       title: "Find safe-to-use church media with evidence visible.",
       body: "Search media records, inspect reuse status, and route review work while protected files stay gated.",
       searchPlaceholder: "Search photos, events, ministries, people, tags, references...",
@@ -105,7 +105,7 @@ export function dashboardCopyForRole(role: DemoRole): DashboardCopy {
   }
 
   return {
-    eyebrow: "Media command center",
+    eyebrow: "Media workspace",
     title: "Find church media and use it with care.",
     body: role === "Contributor"
       ? "Upload event photos, follow reviewer questions, and browse cleared media from one place."
@@ -154,7 +154,7 @@ type DashboardActionModel = {
 export function dashboardActionsForRole(role: DemoRole): DashboardActionModel[] {
   if (role === "Contributor") {
     return [
-      { href: "/upload", icon: UploadCloud, title: "Upload photos", detail: "Send event photos for review" },
+      { href: "/upload", icon: UploadCloud, title: "Upload Photos", detail: "Send event photos for review" },
       { href: "/my-tasks", icon: Clock3, title: "My Work", detail: "Drafts and reviewer questions" },
       { href: "/recent-uploads", icon: CheckCircle2, title: "My Uploads", detail: "Track submitted batches" },
       { href: "/requests", icon: MessageSquareText, title: "Requests", detail: "Ask media team for help" }
@@ -163,9 +163,9 @@ export function dashboardActionsForRole(role: DemoRole): DashboardActionModel[] 
 
   if (role === "Reviewer") {
     return [
-      { href: "/review", icon: ShieldAlert, title: "Review uploads", detail: "Evidence workbench" },
+      { href: "/review", icon: ShieldAlert, title: "Review Uploads", detail: "Evidence workbench" },
       { href: "/my-tasks", icon: Clock3, title: "My Work", detail: "Assigned review follow-up" },
-      { href: "/upload", icon: UploadCloud, title: "Upload photos", detail: "Send photos into review" },
+      { href: "/upload", icon: UploadCloud, title: "Upload Photos", detail: "Send photos into review" },
       { href: "/requests", icon: MessageSquareText, title: "Requests", detail: "Answer media questions" }
     ];
   }
@@ -173,7 +173,7 @@ export function dashboardActionsForRole(role: DemoRole): DashboardActionModel[] 
   if (role === "DAM Admin") {
     return [
       { href: "/admin", icon: LayoutDashboard, title: "Support Zone", detail: "Readiness and blocked operations" },
-      { href: "/review", icon: ShieldAlert, title: "Review uploads", detail: "Evidence workbench" },
+      { href: "/review", icon: ShieldAlert, title: "Review Uploads", detail: "Evidence workbench" },
       { href: "/my-tasks", icon: Clock3, title: "My Work", detail: "Bottlenecks and follow-up" },
       { href: "/requests", icon: MessageSquareText, title: "Requests", detail: "Media team support" }
     ];

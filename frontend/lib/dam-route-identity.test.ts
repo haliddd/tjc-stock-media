@@ -10,7 +10,7 @@ const navItems = [
   { label: "My Uploads", href: "/recent-uploads", activeHrefs: ["/library?view=recent-uploads"] },
   { label: "Review Uploads", href: "/review", activeHrefs: ["/review?queue=pending", "/review?queue=rights-review"] },
   {
-    label: "Admin Zone",
+    label: "Support Zone",
     href: "/admin",
     activeHrefs: [
       "/admin/users",
@@ -61,17 +61,17 @@ describe("DAM route identity", () => {
     expect(activeLabels("/review", "queue=rights-review")).toEqual(["Review Uploads"]);
   });
 
-  it("keeps all admin and governance routes under one Admin Zone sidebar item", () => {
-    expect(activeLabels("/governance")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/governance/rights-consent", "", "rights-consent")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/governance/metadata-health")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/governance/policy-center")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/governance/audit-log")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/governance/integrations")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/admin")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/admin/users")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/admin/roles")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/admin/taxonomy")).toEqual(["Admin Zone"]);
-    expect(activeLabels("/admin/settings", "", "integrations")).toEqual(["Admin Zone"]);
+  it("keeps all admin and governance routes under one Support Zone sidebar item", () => {
+    expect(activeLabels("/governance")).toEqual(["Support Zone"]);
+    expect(activeLabels("/governance/rights-consent", "", "rights-consent")).toEqual(["Support Zone"]);
+    expect(activeLabels("/governance/metadata-health")).toEqual(["Support Zone"]);
+    expect(activeLabels("/governance/policy-center")).toEqual(["Support Zone"]);
+    expect(activeLabels("/governance/audit-log")).toEqual(["Support Zone"]);
+    expect(activeLabels("/governance/integrations")).toEqual(["Support Zone"]);
+    expect(activeLabels("/admin")).toEqual(["Support Zone"]);
+    expect(activeLabels("/admin/users")).toEqual(["Support Zone"]);
+    expect(activeLabels("/admin/roles")).toEqual(["Support Zone"]);
+    expect(activeLabels("/admin/taxonomy")).toEqual(["Support Zone"]);
+    expect(activeLabels("/admin/settings", "", "integrations")).toEqual(["Support Zone"]);
   });
 });

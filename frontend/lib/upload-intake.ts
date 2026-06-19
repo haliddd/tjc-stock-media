@@ -365,13 +365,14 @@ export function uploadIntakeSubmittedAuditEvent(intake: UploadIntakePacket, role
 }
 
 export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?: PersistIntakeBatchResult) {
-  const storageMode = persisted?.storageMode || "source-link-only";
+  const persistedRecord = Boolean(persisted?.record && persisted.batchId);
+  const storageMode = persisted?.storageMode || "blocked-no-durable-store";
   const status = intake.largeFiles.length ? "large-media-intake" as const : "needs-review" as const;
-  const largeMediaWithoutIntake = intake.largeFiles.length > 0 && !persisted;
-  const blockedNoDurableStore = storageMode === "blocked-no-durable-store";
+  const largeMediaWithoutIntake = intake.largeFiles.length > 0 && !persistedRecord;
+  const blockedNoDurableStore = storageMode === "blocked-no-durable-store" || !persistedRecord;
   return {
     ok: !largeMediaWithoutIntake && !blockedNoDurableStore,
-    batchId: persisted?.batchId,
+    batchId: persistedRecord ? persisted?.batchId : undefined,
     status,
     intakeState: {
       received: !largeMediaWithoutIntake && !blockedNoDurableStore,
@@ -381,13 +382,13 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     },
     defaultReviewState: "Needs Review",
     defaultUsageScope: "Do Not Publish",
-    message: blockedNoDurableStore
-      ? persisted?.blockedReason || "Durable storage is required before browser file intake can continue."
-      : largeMediaWithoutIntake
-        ? "Large video or audio needs media team intake before review. Nothing is public."
-      : intake.largeFiles.length
-        ? uploadDefaultState.largeMediaMessage
-        : "Batch submitted. Your review packet has been created. Nothing is public yet.",
+    message: largeMediaWithoutIntake
+      ? "Large video or audio needs media team intake before review. Nothing is public."
+      : blockedNoDurableStore
+        ? persisted?.blockedReason || "Durable storage is required before browser file intake can continue."
+        : intake.largeFiles.length
+          ? uploadDefaultState.largeMediaMessage
+          : "Batch submitted. Your review packet has been created. Nothing is public yet.",
     eventName: intake.eventName,
     fileCount: intake.files.length,
     sourceLinkCaptured: Boolean(intake.sourceLink),

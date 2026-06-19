@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown, Download, FileText, Inbox, Star } from "lucide-react";
+import { AlertTriangle, ChevronDown, FileText, Inbox, Star } from "lucide-react";
 import { isRoleSafePreviewSrc } from "@/components/MediaPreview";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAssetDetail, useDownloadGate, useReviewRequest, type DownloadGateResponse } from "@/components/dam/useDamApi";
@@ -61,29 +61,45 @@ function roleSafePreviewAsset(asset: StockMediaAsset): StockMediaAsset {
   };
 }
 
-function detailActionCopy(role: string, approved: boolean, reason: string, blocker?: string) {
+function detailActionCopy(role: string, approved: boolean, copyAvailable: boolean, reason: string, blocker?: string) {
   const canSeeOperationalCopy = role === "Reviewer" || role === "DAM Admin";
-  if (approved) {
+  if (copyAvailable) {
     return {
-      heading: canSeeOperationalCopy ? "Approved copy available" : "Use request available",
+      heading: canSeeOperationalCopy ? "Approved copy available" : "Permission request available",
       detail: canSeeOperationalCopy
         ? "Gate mints one-time ticket, records audit, and keeps originals restricted."
         : "Usage terms are checked before any use copy is provided.",
-      primary: canSeeOperationalCopy ? "Request approved copy" : "Request use copy",
+      primary: canSeeOperationalCopy ? "Request approved copy" : "Request permission",
       secondary: role === "DAM Admin" ? "Review source policy" : canSeeOperationalCopy ? "Ask about full file" : "Ask media team"
+    };
+  }
+  if (approved) {
+    return {
+      heading: canSeeOperationalCopy ? "Approved copy not available here" : "Permission required",
+      detail: canSeeOperationalCopy
+        ? "Review state is cleared, but no approved derivative is exposed from this page."
+        : "Ask the media team before reuse. Original files stay protected.",
+      primary: canSeeOperationalCopy ? "Open review action" : "Request permission",
+      secondary: "Report issue"
     };
   }
   const reviewerLabel = role === "DAM Admin" ? "assign reviewer or policy owner" : role === "Reviewer" ? "record reviewer decision" : "ask reviewer to clear evidence";
   return {
-    heading: canSeeOperationalCopy ? "Download blocked" : "Use not cleared",
+    heading: canSeeOperationalCopy ? "Use blocked" : "Use not cleared",
     detail: `${reason} Next step: ${reviewerLabel}${blocker ? ` for ${blocker}` : ""}.`,
-    primary: role === "Reviewer" || role === "DAM Admin" ? "Open review action" : "Request DAM review",
-    secondary: "Why blocked"
+    primary: role === "Reviewer" || role === "DAM Admin" ? "Open review action" : "Request permission",
+    secondary: "Report issue"
   };
 }
 
-function formatSyncState(value?: string | null) {
-  return value ? value.replace(/_/g, " ") : "None";
+function formatReviewUpdateState(value?: string | null) {
+  if (!value) return "None";
+  const normalized = value.replace(/_/g, " ");
+  if (/failed|error/i.test(normalized)) return "Reviewer follow-up needs attention";
+  if (/cancelled|superseded/i.test(normalized)) return "Reviewer follow-up closed";
+  if (/synced|write|resource/i.test(normalized)) return "Reviewer update recorded";
+  if (/pending|queued|requested/i.test(normalized)) return "Reviewer follow-up queued";
+  return normalized;
 }
 
 type WorkflowActionId =
@@ -193,10 +209,7 @@ function buildRenditionWorkflowItems(
   const mediaType = asset.mediaType;
   const canInspectSource = assetCanInspectSourceRecord(role);
   const thumbnailReady = Boolean(asset.thumbnail || asset.imageUrls?.small || asset.imageUrls?.card);
-  const approvedCopyReady = Boolean(asset.imageUrls?.download) && (
-    asset.downloadPolicy === "approved-copy-allowed" ||
-    asset.downloadPolicy === "internal-approved-copy-allowed"
-  );
+  const approvedCopyReady = approved && !assetHasRenditionGap(asset);
   const sourceRelation = sourceRelationLabel(asset, role);
   const checksum = shortChecksum(asset, role);
   const blockedDownloadReason = approved
@@ -206,7 +219,7 @@ function buildRenditionWorkflowItems(
     id: "draft-rendition-review",
     label: canSeeOperationalAssetRecordFields(role) ? "Open review queue" : "Request review",
     state: "local",
-    reason: canInspectSource ? "Opens Review queue. No source-system writeback from this page." : "Review request only. No library records change."
+    reason: canInspectSource ? "Opens Review queue. No source record changes from this page." : "Review request only. No library records change."
   };
 
   const rows: RenditionWorkflowItem[] = [
@@ -223,9 +236,9 @@ function buildRenditionWorkflowItems(
       auditNote: canInspectSource ? "Original is never included in approved-copy delivery output." : "Original file is never included in use-copy delivery.",
       action: {
         id: "blocked",
-        label: canInspectSource ? "Download original disabled" : "Original access disabled",
+        label: canInspectSource ? "Original request disabled" : "Original access disabled",
         state: "blocked",
-        reason: canInspectSource ? "Source immutability: original/master delivery is not exposed here." : "Portal only offers use copies after review."
+        reason: canInspectSource ? "Source immutability: original/master delivery is not exposed here." : "Portal only offers permission requests after review."
       }
     },
     {
@@ -263,12 +276,12 @@ function buildRenditionWorkflowItems(
           : "Use copy must keep file-check evidence.",
       gate: approvedCopyReady ? blockedDownloadReason : canInspectSource ? "Approved derivative missing" : "Use copy missing",
       auditNote: canSeeOperationalAssetRecordFields(role)
-        ? "Download action mints approved-copy ticket only when review gates pass."
+        ? "Approved-copy request mints a ticket only when review gates pass."
         : "Request is checked against review gates before any use copy is provided.",
       action: approvedCopyReady && approved
         ? {
             id: "download-approved-copy",
-            label: canInspectSource ? "Request approved copy" : "Request use copy",
+            label: canInspectSource ? "Request approved copy" : "Request permission",
             state: "available",
             reason: "Creates audited ticket; no original included."
           }
@@ -316,7 +329,7 @@ function buildRenditionWorkflowItems(
       allowedRole: "Reviewer/DAM Admin decision",
       checksum,
       sourceRelation,
-      gate: canInspectSource ? "No transcode/writeback from portal" : "No transcode from portal",
+      gate: canInspectSource ? "No transcode or source record changes from portal" : "No transcode from portal",
       auditNote: "Preview, captions/waveform, and approved copy are modeled only.",
       action: draftReviewAction
     });
@@ -333,17 +346,17 @@ function buildVersionWorkflowItems(asset: StockMediaAsset, role: DemoRole, sourc
   const checksum = shortChecksum(asset, role);
   const versionLabel = safeValue(asset.versionOrEdition, "No edition recorded");
   const duplicateDetail = [asset.duplicateRole, asset.duplicateGroup, asset.duplicateSimilarityHint].filter(Boolean).join(" / ");
-  const approvedCopyDisplay = asset.damFilenames?.web || (asset.imageUrls?.download ? canSeeOperational ? "Available through approved-copy gate" : "Request required" : "");
-  const pendingSync = asset.pendingReviewWrite
+  const approvedCopyDisplay = asset.damFilenames?.web || (assetHasRenditionGap(asset) ? "" : canSeeOperational ? "Available through approved-copy gate" : "Request required");
+  const pendingReviewUpdate = asset.pendingReviewWrite
     ? canSeeOperational
-      ? `${asset.pendingReviewWrite.syncState.replace(/_/g, " ")}${asset.pendingReviewWrite.id ? ` (${asset.pendingReviewWrite.id})` : ""}`
+      ? `${formatReviewUpdateState(asset.pendingReviewWrite.syncState)}${asset.pendingReviewWrite.id ? ` (${asset.pendingReviewWrite.id})` : ""}`
       : "Reviewer follow-up queued"
     : "None";
   const localVersionAction: OperationalWorkflowAction = {
     id: "draft-version-note",
     label: canSeeOperational ? "Open review queue" : "Request review",
     state: "local",
-    reason: canSeeOperational ? "Opens Review queue. No source-system writeback from this page." : "Review request only. No library records change."
+    reason: canSeeOperational ? "Opens Review queue. No source record changes from this page." : "Review request only. No library records change."
   };
 
   return [
@@ -392,13 +405,13 @@ function buildVersionWorkflowItems(asset: StockMediaAsset, role: DemoRole, sourc
     },
     {
       id: "pending-replacement",
-      label: canSeeOperational ? "Pending replacement/sync" : "Pending review request",
-      current: pendingSync,
+      label: canSeeOperational ? "Pending reviewer update" : "Pending review request",
+      current: pendingReviewUpdate,
       comparison: asset.pendingReviewWrite
         ? canSeeOperational ? "Review queue item visible; source update remains disabled." : "Review queue item visible to reviewers."
         : "No replacement request is queued in this role-safe record.",
       visibleTo: canSeeOperational ? "Reviewer/DAM Admin" : "Summary only",
-      sourceRelation: canSeeOperational ? "Source-system writeback is not enabled from asset detail." : "Record update request only.",
+      sourceRelation: canSeeOperational ? "Source record changes are not enabled from asset detail." : "Record update request only.",
       auditNote: canSeeOperational ? "Replacement, version upload, and record-write actions fail closed here." : "Record changes require reviewer/admin action.",
       tone: asset.pendingReviewWrite ? "pending" : "info",
       action: localVersionAction
@@ -553,7 +566,7 @@ function ActivityTimeline({ rows }: { rows: AssetRecordRow[] }) {
 }
 
 function downloadGateRows(result: DownloadGateResponse | null, message: string, canSeeOperational: boolean): AssetRecordRow[] {
-  const gateLabel = canSeeOperational ? "Download gate" : "Use request";
+  const gateLabel = canSeeOperational ? "Approved-copy gate" : "Use request";
   if (!result) {
     return [{
       id: "download-gate-session",
@@ -646,8 +659,8 @@ function roleSafeUsageSummary(asset: StockMediaAsset, role: DemoRole) {
     return {
       label: "Available with permission",
       detail: "Use is available only within listed guidance. Ask before sharing outside that scope.",
-      nextStep: "Request use copy",
-      primaryAction: "Request use copy",
+      nextStep: "Request permission",
+      primaryAction: "Request permission",
       tone: "is-success"
     };
   }
@@ -672,11 +685,13 @@ function roleSafeUsageSummary(asset: StockMediaAsset, role: DemoRole) {
 function RoleSafeAssetDetailPage({
   asset,
   role,
-  safePreviewAsset
+  safePreviewAsset,
+  related
 }: {
   asset: StockMediaAsset;
   role: DemoRole;
   safePreviewAsset: StockMediaAsset;
+  related: StockMediaAsset[];
 }) {
   const usage = roleSafeUsageSummary(asset, role);
   const title = displayTitle(asset);
@@ -746,6 +761,16 @@ function RoleSafeAssetDetailPage({
               <Link className="ed-action" href={reportIssueHref}><AlertTriangle size={16} aria-hidden="true" />Report issue</Link>
             </div>
           </section>
+
+          <section className="ed-card ed-record-tab-panel" aria-label="Related media">
+            <header className="ed-record-panel-head">
+              <div>
+                <h2>Related media</h2>
+                <p>Similar records from this album or topic. Permission still required before reuse.</p>
+              </div>
+            </header>
+            <RelatedPanel assets={related} role={role} />
+          </section>
         </section>
 
         <aside className="ed-detail-rail ed-record-rail">
@@ -810,10 +835,11 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   const metadataHealth = assetMetadataHealth(asset);
   const approvedChannels = asset.approvedChannels?.length ? asset.approvedChannels.join(", ") : canSeeOperationalRecord ? "No approved channel recorded" : "No channel recorded";
   const primaryBlocker = reusePacket.reuse.blockers[0]?.label || "review evidence";
-  const actionCopy = detailActionCopy(role, approved, reusePacket.viewerVerdict.reason, primaryBlocker);
+  const canRequestApprovedCopy = Boolean(reusePacket.access.downloadApprovedCopy.allowed && !limitedDerivative);
+  const actionCopy = detailActionCopy(role, approved, canRequestApprovedCopy, reusePacket.viewerVerdict.reason, primaryBlocker);
   const safePreviewAsset = roleSafePreviewAsset(asset);
   if (!canSeeOperationalRecord) {
-    return <RoleSafeAssetDetailPage asset={asset} role={role} safePreviewAsset={safePreviewAsset} />;
+    return <RoleSafeAssetDetailPage asset={asset} role={role} safePreviewAsset={safePreviewAsset} related={related} />;
   }
 
   const evidenceRows: AssetRecordRow[] = [
@@ -858,6 +884,10 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   };
 
   const requestApprovedDownload = async () => {
+    if (!canRequestApprovedCopy) {
+      setDownloadMessage("Approved copy is not available from this page. Request permission or open reviewer action.");
+      return;
+    }
     if (!downloadTermsAccepted) {
       setDownloadMessage(canSeeOperationalRecord ? "Accept usage terms before requesting an approved copy." : "Accept usage terms before requesting a use copy.");
       return;
@@ -874,8 +904,8 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             : ""
       ].filter(Boolean).join("; ");
       setDownloadMessage(receipt
-        ? `${canSeeOperationalRecord ? "Download gate" : "Use request"} allowed. ${receipt}.`
-        : `${canSeeOperationalRecord ? "Download gate" : "Use request"} allowed. Receipt details were not returned.`);
+        ? `${canSeeOperationalRecord ? "Approved-copy gate" : "Use request"} allowed. ${receipt}.`
+        : `${canSeeOperationalRecord ? "Approved-copy gate" : "Use request"} allowed. Receipt details were not returned.`);
     } else {
       setDownloadMessage(`${canSeeOperationalRecord ? "Approved-copy gate" : "Use request"} blocked: ${result.reason || result.requiredAction || "Not allowed"}. Next step: ${result.requiredAction || "request DAM review"}.`);
     }
@@ -934,10 +964,10 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
               </p>
             </div>
             <div className="ed-detail-actions ed-record-actions">
-              <ActionButton tone="primary" icon={approved && canSeeOperationalRecord ? Download : FileText} onClick={approved ? requestApprovedDownload : requestReview} disabled={assetActionPending}>
-                {assetActionPending && !approved ? "Queueing review..." : actionCopy.primary}
+              <ActionButton tone="primary" icon={canRequestApprovedCopy ? FileText : Inbox} onClick={canRequestApprovedCopy ? requestApprovedDownload : requestReview} disabled={assetActionPending}>
+                {assetActionPending && !canRequestApprovedCopy ? "Queueing review..." : actionCopy.primary}
               </ActionButton>
-              {approved ? (
+              {canRequestApprovedCopy ? (
                 <label className="ed-download-terms">
                   <input type="checkbox" checked={downloadTermsAccepted} onChange={(event) => setDownloadTermsAccepted(event.target.checked)} />
                   <span>Use within listed terms</span>
@@ -947,9 +977,9 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                 <ActionButton ariaLabel="Open asset record tools" onClick={() => setActionsOpen((open) => !open)}><ChevronDown size={14} />Tools</ActionButton>
                 {actionsOpen ? (
                   <div className="ed-more-actions-menu ed-detail-actions-menu" role="menu">
-                    {approved ? (
+                    {canRequestApprovedCopy ? (
                       <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}>
-                        {canSeeOperationalRecord ? <Download size={15} /> : <FileText size={15} />}{canSeeOperationalRecord ? "Request approved copy" : "Request use copy"}
+                        <FileText size={15} />Request approved copy
                         <span>{canSeeOperationalRecord ? "Runs approved-copy gate and audit." : "Checks usage terms and records request."}</span>
                       </button>
                     ) : null}
@@ -982,8 +1012,8 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                     <h2>Record overview</h2>
                     <p>{actionCopy.heading}. {actionCopy.detail}</p>
                   </div>
-                  <ActionButton icon={approved && canSeeOperationalRecord ? Download : FileText} onClick={approved ? requestApprovedDownload : requestReview} disabled={assetActionPending}>
-                    {assetActionPending && !approved ? "Queueing review..." : actionCopy.primary}
+                  <ActionButton icon={canRequestApprovedCopy ? FileText : Inbox} onClick={canRequestApprovedCopy ? requestApprovedDownload : requestReview} disabled={assetActionPending}>
+                    {assetActionPending && !canRequestApprovedCopy ? "Queueing review..." : actionCopy.primary}
                   </ActionButton>
                 </header>
                 <div className="ed-record-answer-grid" aria-label="Current asset use state">
@@ -1052,7 +1082,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                 <header className="ed-record-panel-head">
                   <div>
                     <h2>{canViewSourceRecord ? "Versions" : "Record history"}</h2>
-                    <p>{canViewSourceRecord ? "Generated filenames, duplicate metadata when allowed, and pending replacement/sync. Display only; no version writes." : "Review requests and duplicate notes stay read-only here."}</p>
+                    <p>{canViewSourceRecord ? "Generated filenames, duplicate metadata when allowed, and pending reviewer updates. Display only; no record changes." : "Review requests and duplicate notes stay read-only here."}</p>
                   </div>
                 </header>
                 <VersionWorkflowPanel items={versionWorkflowItems} onAction={handleWorkflowAction} />
@@ -1089,7 +1119,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
           <MetadataGroup title="Use state" rows={[
             ["State", reuseAnswerLabel(reusePacket.reuse.state)],
             ["Visibility", betaVisibilityLabel(asset)],
-            [canSeeOperationalRecord ? "Download gate" : "Use request", approved ? canSeeOperationalRecord ? "Approved-copy gate available" : "Available after terms check" : reusePacket.viewerVerdict.reason],
+            [canSeeOperationalRecord ? "Approved copy" : "Use request", canRequestApprovedCopy ? "Gate available after terms check" : approved ? "Permission request only; copy not exposed here" : reusePacket.viewerVerdict.reason],
             [canViewSourceRecord ? "Source/original" : "Original access", originalAccessLabel]
           ]} />
           <MetadataGroup title="Rights" rows={[
@@ -1115,14 +1145,14 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             ["Rights expiration", asset.rightsExpirationDate || "Not provided"],
             ["Consent expiration", asset.consentExpirationDate || "Not provided"],
             ["Withdrawal", asset.withdrawalStatus || "Active"],
-            [canViewSourceRecord ? "Pending sync" : "Pending review", canViewSourceRecord ? formatSyncState(asset.pendingReviewWrite?.syncState) : asset.pendingReviewWrite ? "Reviewer follow-up queued" : "None"]
+            [canViewSourceRecord ? "Pending reviewer update" : "Pending review", canViewSourceRecord ? formatReviewUpdateState(asset.pendingReviewWrite?.syncState) : asset.pendingReviewWrite ? "Reviewer follow-up queued" : "None"]
           ]} />
           {canViewSourceRecord ? (
             <section className="ed-card">
               <header className="ed-card-head">
                 <div>
                   <h3>Source record</h3>
-                  <p>Reviewer/admin evidence only. Read-only boundary; no source media mutation or writeback.</p>
+                  <p>Reviewer/admin evidence only. Read-only boundary; no source media mutation from this page.</p>
                 </div>
                 <StatusBadge status="Read-only" />
               </header>
@@ -1146,7 +1176,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             ["API source", detail.live ? "Configured" : "Not active"],
             ["Record source", detail.source?.adapter || "unknown"],
             ["Source admin link", canOpenResourceSpace && detail.data?.resourceSpaceUrl ? "Available" : "Unavailable"],
-            ["Pending write", formatSyncState(asset.pendingReviewWrite?.syncState)]
+            ["Review update", formatReviewUpdateState(asset.pendingReviewWrite?.syncState)]
           ]} />
         </aside>
       </div>

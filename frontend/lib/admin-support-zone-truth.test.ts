@@ -4,9 +4,12 @@ import { resourceSpaceImportStatus } from "@/components/dam/enterprise/AdminPage
 import { buildIntegrationReadiness } from "@/lib/dam-readiness-integrations";
 import { sourceTruthLabel } from "@/lib/enterprise-display";
 import { resourceSpaceApiStatus } from "@/lib/media-source/resourcespace-api";
+import { roleSourceEnvelope } from "@/lib/media-source/session";
+import { fakeOperationalClaimPattern, safeSourceStatusCopy } from "@/lib/source-status-copy";
 import type { DamReadinessResult, MediaSourceStatus } from "@/lib/types";
 
-const forbiddenOpsClaim = /\b(live|synced|writeback complete|published|downloadable|production-ready)\b/i;
+const forbiddenOpsClaim = fakeOperationalClaimPattern;
+const contributorBoundaryLeak = /\b(ResourceSpace|source-system|source system|writeback)\b/i;
 
 function fakeAuditEvents() {
   return {
@@ -65,6 +68,36 @@ describe("Admin Support Zone source truth", () => {
     expect(state.label).toBe("Read-only ResourceSpace API");
     expect(sourceModeLabel(state)).toBe("Read-only API check");
     expect(`${state.label} ${sourceModeLabel(state)} ${state.detail}`).not.toMatch(forbiddenOpsClaim);
+  });
+
+  it("sanitizes unsafe source-status claims before admin copy renders them", () => {
+    const copy = safeSourceStatusCopy("Live ResourceSpace record synced, writeback complete, published, downloadable, production-ready.");
+
+    expect(copy).toContain("read-only ResourceSpace");
+    expect(copy).toContain("writeback gated");
+    expect(copy).not.toMatch(forbiddenOpsClaim);
+  });
+
+  it("keeps contributor source envelopes generic even when ResourceSpace read details exist", () => {
+    const envelope = roleSourceEnvelope("Contributor", {
+      adapter: "resourcespace-api",
+      label: "ResourceSpace API",
+      detail: "Live source-system writeback complete.",
+      readOnly: true,
+      live: true
+    });
+
+    expect(envelope.source.label).toBe("Media library");
+    expect(envelope.source.detail).toMatch(/approved copies/i);
+    const visibleCopy = [
+      envelope.source.label,
+      envelope.source.detail,
+      envelope.sourceStatus.label,
+      envelope.sourceStatus.detail,
+      envelope.sourceKind
+    ].join(" ");
+    expect(visibleCopy).not.toMatch(contributorBoundaryLeak);
+    expect(visibleCopy).not.toMatch(forbiddenOpsClaim);
   });
 
   it("keeps Support Zone integration rows read-only and writeback gated", () => {

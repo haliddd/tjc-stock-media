@@ -212,14 +212,11 @@ export async function persistIntakeBatch(input: PersistIntakeBatchInput): Promis
   try {
     assertRuntimeWriteAllowed("intake-batches");
     ensureRuntimeDir(batchDir);
-    writeRuntimeJsonFile(path.join(batchDir, "batch.json"), record);
     writeRuntimeJsonFile(manifestPath, { batchId, files: manifest });
     if (hasFiles) await writeOriginals(path.join(batchDir, "originals"), input.files, manifest);
+    writeRuntimeJsonFile(path.join(batchDir, "batch.json"), record);
     return { record, batchId, storageMode: record.storageMode, manifestPath: record.manifestPath };
   } catch (error) {
-    if (!hasFiles && input.sourceLinkCaptured) {
-      return { batchId, storageMode: "source-link-only", blockedReason: error instanceof Error ? error.message : "Runtime store write failed." };
-    }
     return { batchId, storageMode: "blocked-no-durable-store", blockedReason: error instanceof Error ? error.message : "Runtime store write failed." };
   }
 }

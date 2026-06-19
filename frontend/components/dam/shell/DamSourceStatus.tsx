@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, ChevronDown, Database, Loader2 } from "lucid
 import { DAM_LOCAL_BETA_ROLE_HEADER } from "@/lib/dam-api-client";
 import { routeWithRole } from "@/lib/role-routes";
 import { canAdmin } from "@/lib/permissions";
+import { safeSourceStatusCopy } from "@/lib/source-status-copy";
 import { cn } from "@/lib/utils";
 import type { DemoRole, MediaSourceStatus } from "@/lib/types";
 
@@ -35,7 +36,7 @@ function isMediaLibraryOnlySource(source: MediaSourceStatus, payload: SearchProb
 }
 
 function sourceDetailForProbe(source: MediaSourceStatus, hasProbeRecords: boolean) {
-  const detail = source.detail || "Source status returned.";
+  const detail = safeSourceStatusCopy(source.detail || "Source status returned.");
   return hasProbeRecords ? detail : `${detail} No records returned by this read check.`;
 }
 
@@ -121,6 +122,7 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
   const visibleDetail = adminView ? state.detail : publicSourceStatusDetail(state);
   const disconnectedLabel = state.label === "Local sample data" || state.label === "Media library";
   const modeLabel = adminView ? sourceModeLabel(state) : "Read check";
+  const sourceName = safeSourceStatusCopy(state.source?.label || "Media source");
 
   return (
     <details
@@ -140,7 +142,7 @@ export function DamSourceStatus({ role, compact = false, className }: { role: De
       >
         <Icon className={cn("size-4", state.status === "loading" && "animate-spin")} aria-hidden="true" />
         <span>{visibleLabel}</span>
-        {!compact && adminView ? <span className="hidden max-w-[11rem] truncate font-semibold text-current/72 2xl:inline">{state.source?.label || "Media source"}</span> : null}
+        {!compact && adminView ? <span className="hidden max-w-[11rem] truncate font-semibold text-current/72 2xl:inline">{sourceName}</span> : null}
         <ChevronDown className="size-3.5 opacity-70" aria-hidden="true" />
       </summary>
       <div className="dam-source-status-popover" role="region" aria-label={adminView ? "Source status details" : "Media status details"}>

@@ -67,7 +67,7 @@ const damCommands: DamCommand[] = [
   {
     id: "nav-library",
     label: "Media Library",
-    description: "Browse approved media with use guidance",
+    description: "Browse cleared media with use guidance",
     href: "/library",
     icon: Library,
     group: "Navigate",
@@ -113,8 +113,8 @@ const damCommands: DamCommand[] = [
   },
   {
     id: "nav-admin",
-    label: "Admin Zone",
-    description: "Manage portal settings, review safety, and support follow-up",
+    label: "Support Zone",
+    description: "Open readiness, role, and support checks",
     href: "/admin",
     icon: Settings2,
     group: "Navigate",
@@ -195,8 +195,8 @@ const damCommands: DamCommand[] = [
   },
   {
     id: "action-admin",
-    label: "Admin Zone",
-    description: "Open portal administration",
+    label: "Support Zone",
+    description: "Open admin readiness checks",
     href: "/admin",
     icon: Settings2,
     group: "Actions",
@@ -566,7 +566,7 @@ export function CommandPalette({
             closePalette();
           }
         }}
-        title="Media portal command center"
+        title="Media portal quick switcher"
         description="Search media, navigate routes, and open role-aware workflows."
         className="top-4 max-h-[calc(100dvh-2rem)] w-[min(100%-1rem,64rem)] translate-y-0 border border-[#9fb4a8] bg-[#fbfdfb] p-0 text-tjc-ink shadow-[0_30px_80px_rgba(7,16,13,.26)] sm:top-10 sm:max-w-5xl"
       >
@@ -574,7 +574,7 @@ export function CommandPalette({
           <div className="border-b border-[#c7d3cb] bg-white px-3 pb-3 pt-3 sm:px-5">
             <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <h2 className="text-sm font-black text-tjc-ink">Media portal command center</h2>
+                <h2 className="text-sm font-black text-tjc-ink">Media portal quick switcher</h2>
                 <p className="mt-0.5 text-xs font-semibold text-tjc-muted">Find media, open uploads, and keep review actions role-aware.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -585,7 +585,7 @@ export function CommandPalette({
             <CommandInput
               value={query}
               onValueChange={setQuery}
-              placeholder={role === "DAM Admin" ? "Search media, reference code, admin command..." : "Search media, reference code, upload or review command..."}
+              placeholder={role === "DAM Admin" ? "Search media, reference code, Support Zone..." : "Search media, reference code, upload or review..."}
               aria-label="Search media portal commands and media"
               className="min-h-12 text-base font-semibold text-tjc-ink placeholder:text-[#7d877f] sm:text-lg"
             />

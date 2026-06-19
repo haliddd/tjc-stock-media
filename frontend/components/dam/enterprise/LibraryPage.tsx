@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, Archive, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Download, FileText, Filter, Folder, FolderPlus, Grid3X3, Inbox, List, Search, ShieldCheck, SlidersHorizontal, Tags, X } from "lucide-react";
+import { AlertTriangle, Archive, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Download, Eye, FileText, Filter, Folder, FolderPlus, Grid3X3, Inbox, List, Search, ShieldCheck, SlidersHorizontal, Tags, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/components/hooks/use-pagination";
 import { useDemoRole } from "@/components/RoleProvider";
@@ -29,6 +29,7 @@ import { matchesCatalogFilter, normalizeCatalogSort } from "@/lib/catalog-langua
 import { canContribute, canReview } from "@/lib/permissions";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
 import { routeWithRole } from "@/lib/role-routes";
+import { safeNormalRoleBrowseText } from "@/lib/source-redaction";
 import {
   buildLibraryBulkActions,
   buildLibraryMetadataCsv,
@@ -164,8 +165,17 @@ function libraryTopFilterGroupsForRole(role: DemoRole): LibraryTopFilterGroup[] 
   return groups;
 }
 
-function selectLabelWithCount(label: string, count?: number) {
-  return typeof count === "number" ? `${label} (${count.toLocaleString()})` : label;
+function browseTextForRole(role: DemoRole, value = "") {
+  return canReview(role) ? value : safeNormalRoleBrowseText(value);
+}
+
+function displayFilterLabel(role: DemoRole, filter: string) {
+  return browseTextForRole(role, filter.replace(/\b\w/g, (letter) => letter.toUpperCase()));
+}
+
+function selectLabelWithCount(label: string, count?: number, role?: DemoRole) {
+  const displayLabel = role ? browseTextForRole(role, label) : label;
+  return typeof count === "number" ? `${displayLabel} (${count.toLocaleString()})` : displayLabel;
 }
 
 function sortDisplayLabel(sortOption: CatalogSort) {
@@ -254,6 +264,19 @@ function BrowseErrorCard({ message }: { message: string }) {
       <AlertTriangle size={24} aria-hidden="true" />
       <h2>Browse Media unavailable</h2>
       <p>{message}</p>
+    </section>
+  );
+}
+
+function BrowsePermissionBanner({ role }: { role: DemoRole }) {
+  return (
+    <section className="ed-library-permission-banner" aria-label="Media use guidance">
+      <ShieldCheck size={19} strokeWidth={1.9} aria-hidden="true" />
+      <div>
+        <strong>Use guidance lives on each media record.</strong>
+        <span>Open Details before sharing. Children, youth, worship, sacrament, music, and unclear contributor media need media team review.</span>
+      </div>
+      <em>{canReview(role) ? "Selection tools active" : "Details first"}</em>
     </section>
   );
 }
@@ -550,6 +573,7 @@ function LibraryFilterSelect({
 }
 
 function AppliedFilterBar({
+  role,
   query,
   savedViews = [],
   collections = [],
@@ -573,6 +597,7 @@ function AppliedFilterBar({
   onOpenFilters,
   showInlineControls
 }: {
+  role: DemoRole;
   query: string;
   savedViews?: Array<{ id: string; label: string; count: number }>;
   collections?: Array<{ id: string; name: string; count: number }>;
@@ -598,9 +623,9 @@ function AppliedFilterBar({
 }) {
   const chips = [
     ...(query ? [{ key: "query", label: `Search: ${query}`, onRemove: onClearQuery }] : []),
-    ...(viewLabel ? [{ key: "view", label: `Saved view: ${viewLabel}`, onRemove: onClearView }] : []),
-    ...(collectionLabel ? [{ key: "collection", label: `Album: ${collectionLabel}`, onRemove: onClearCollection }] : []),
-    ...filters.map((filter) => ({ key: `filter-${filter}`, label: filter.replace(/\b\w/g, (letter) => letter.toUpperCase()), onRemove: () => onRemoveFilter(filter) }))
+    ...(viewLabel ? [{ key: "view", label: `Saved view: ${browseTextForRole(role, viewLabel)}`, onRemove: onClearView }] : []),
+    ...(collectionLabel ? [{ key: "collection", label: `Album: ${browseTextForRole(role, collectionLabel)}`, onRemove: onClearCollection }] : []),
+    ...filters.map((filter) => ({ key: `filter-${filter}`, label: displayFilterLabel(role, filter), onRemove: () => onRemoveFilter(filter) }))
   ];
   const countFor = (filter: string) => filterCounts[filter] ?? visibleAssets.filter((asset) => matchesCatalogFilter(asset, filter)).length;
   const selectedFilterForGroup = (group: LibraryTopFilterGroup) => group.options.find((option) => filters.includes(option.filter))?.filter || "";
@@ -618,10 +643,10 @@ function AppliedFilterBar({
       </div>
       {showInlineControls ? <div className="ed-discovery-filter-controls">
         <LibraryFilterSelect label="Saved search" value={activeView} placeholder="All saved searches" onChange={onViewSelect}>
-          {savedViews.map((item) => <option value={item.id} key={item.id}>{selectLabelWithCount(item.label, item.count)}</option>)}
+          {savedViews.map((item) => <option value={item.id} key={item.id}>{selectLabelWithCount(item.label, item.count, role)}</option>)}
         </LibraryFilterSelect>
         <LibraryFilterSelect label="Album" value={activeCollection} placeholder="All albums" onChange={onCollectionSelect}>
-          {collections.map((item) => <option value={item.id} key={item.id}>{selectLabelWithCount(item.name, item.count)}</option>)}
+          {collections.map((item) => <option value={item.id} key={item.id}>{selectLabelWithCount(item.name, item.count, role)}</option>)}
         </LibraryFilterSelect>
         {filterGroups.map((group) => (
           <LibraryFilterSelect
@@ -631,7 +656,7 @@ function AppliedFilterBar({
             placeholder="Any"
             onChange={(value) => onSetFilterGroup(group, value)}
           >
-            {group.options.map((option) => <option value={option.filter} key={option.filter}>{selectLabelWithCount(option.label, countFor(option.filter))}</option>)}
+            {group.options.map((option) => <option value={option.filter} key={option.filter}>{selectLabelWithCount(option.label, countFor(option.filter), role)}</option>)}
           </LibraryFilterSelect>
         ))}
       </div> : null}
@@ -657,6 +682,7 @@ function AppliedFilterBar({
 }
 
 function BrowseFilterPanel({
+  role,
   savedViews = [],
   collections = [],
   visibleAssets = [],
@@ -671,6 +697,7 @@ function BrowseFilterPanel({
   onFilterToggle,
   onClearFilters
 }: {
+  role: DemoRole;
   savedViews?: Array<{ id: string; label: string; count: number }>;
   collections?: Array<{ id: string; name: string; count: number }>;
   visibleAssets?: StockMediaAsset[];
@@ -692,7 +719,7 @@ function BrowseFilterPanel({
     return (
       <label className={cn("ed-filter-option", checked && "is-active")} key={filter}>
         <input type="checkbox" checked={checked} onChange={() => onFilterToggle?.(filter)} />
-        <span>{label}</span>
+        <span>{browseTextForRole(role, label)}</span>
         {typeof count === "number" ? <em>{count.toLocaleString()}</em> : null}
       </label>
     );
@@ -713,7 +740,7 @@ function BrowseFilterPanel({
           {collections.slice(0, 8).map((collection) => (
             <label className={cn("ed-filter-option", activeCollection === collection.id && "is-active")} key={collection.id}>
               <input type="checkbox" checked={activeCollection === collection.id} onChange={() => onCollectionSelect?.(collection.id)} />
-              <span>{collection.name}</span>
+              <span>{browseTextForRole(role, collection.name)}</span>
               <em>{collection.count.toLocaleString()}</em>
             </label>
           ))}
@@ -728,7 +755,7 @@ function BrowseFilterPanel({
         <div className="ed-saved-view-list">
           {savedViews.slice(0, 8).map((view) => (
             <button className={cn(activeView === view.id && "is-active")} type="button" key={view.id} aria-current={activeView === view.id ? "true" : undefined} onClick={() => onViewSelect?.(view.id)}>
-              <span>{view.label}</span>
+              <span>{browseTextForRole(role, view.label)}</span>
               <em>{view.count.toLocaleString()}</em>
             </button>
           ))}
@@ -749,6 +776,7 @@ function BrowseFilterPanel({
 }
 
 function LibrarySavedViewStrip({
+  role,
   savedViews = [],
   activeView,
   activeCollection,
@@ -759,6 +787,7 @@ function LibrarySavedViewStrip({
   onSaveSearch,
   canSaveSearch
 }: {
+  role: DemoRole;
   savedViews?: Array<{ id: string; label: string; count: number }>;
   activeView: string;
   activeCollection: string;
@@ -789,7 +818,7 @@ function LibrarySavedViewStrip({
             key={item.id}
             onClick={() => onViewSelect(item.id)}
           >
-            {item.label}
+          {browseTextForRole(role, item.label)}
             <span>{item.count.toLocaleString()}</span>
           </button>
         ))}
@@ -863,7 +892,7 @@ function LibraryBrowserTopBar({
           {filterCount ? <em>{filterCount}</em> : null}
         </button>
         <div className="ed-view-toggle" aria-label="Asset view mode">
-          <button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-pressed={viewMode === "grid"} aria-label="Gallery view" onClick={() => onViewModeChange("grid")}><Grid3X3 size={15} aria-hidden="true" />Gallery</button>
+          <button type="button" className={viewMode === "grid" ? "is-active" : ""} aria-pressed={viewMode === "grid"} aria-label="Card gallery view" onClick={() => onViewModeChange("grid")}><Grid3X3 size={15} aria-hidden="true" />Cards</button>
           <button type="button" className={viewMode === "table" ? "is-active" : ""} aria-pressed={viewMode === "table"} aria-label="List view" onClick={() => onViewModeChange("table")}><List size={15} aria-hidden="true" />List</button>
         </div>
         {canUsePowerTools ? <div className="ed-library-density-toggle" aria-label="Grid density">
@@ -1058,7 +1087,6 @@ function BrowseAssetCard({
         >
           {selected ? <Check size={13} aria-hidden="true" /> : null}
         </button> : null}
-        <span className="ed-card-status"><BrowseAccessBadge allowed={allowed.label} /></span>
       </div>
       <strong title={title}>{title}</strong>
       <small className="ed-card-meta-row">
@@ -1067,9 +1095,18 @@ function BrowseAssetCard({
       </small>
       <small className="ed-card-meta-row">
         <span>{browseAlbum(asset)}</span>
-        <span>{mediaTypeLabel(asset)}</span>
       </small>
-      <span className="ed-card-next-step">{allowed.nextStep}</span>
+      <div className="ed-card-badge-row" aria-label="Media type and usage">
+        <span className="ed-card-type-badge">{mediaTypeLabel(asset)}</span>
+        <BrowseAccessBadge allowed={allowed.label} />
+      </div>
+      <div className="ed-card-action-row">
+        <span className="ed-card-next-step">{allowed.nextStep}</span>
+        <button className="ed-card-detail-trigger" type="button" onClick={onQuickLook} aria-label={`View details for ${title}`}>
+          <Eye size={14} strokeWidth={1.9} aria-hidden="true" />
+          Details
+        </button>
+      </div>
     </article>
   );
 }
@@ -1121,11 +1158,14 @@ function LibraryResultList({
                   <span>{selected ? <Check size={13} aria-hidden="true" /> : null}</span>
                 </label> : null}
                 <strong>{title}</strong>
-                <BrowseAccessBadge allowed={allowed.label} />
+                <span className="ed-card-badge-row">
+                  <span className="ed-card-type-badge">{mediaTypeLabel(asset)}</span>
+                  <BrowseAccessBadge allowed={allowed.label} />
+                </span>
               </header>
               <p>{browseEventDate(asset)}</p>
               <span>{browseAlbum(asset)} - {browseLocation(asset)} - {mediaTypeLabel(asset)}</span>
-              <p><strong>Next:</strong> {allowed.nextStep}</p>
+              <span className="ed-mobile-next-step"><strong>Next:</strong> {allowed.nextStep}</span>
               <button type="button" onClick={() => onQuickLook(asset)}>View details</button>
             </article>
           );
@@ -1170,12 +1210,12 @@ function LibraryResultList({
                       <span>{selected ? <Check size={13} aria-hidden="true" /> : null}</span>
                       <BrowseThumb asset={asset} />
                     </label> : <button className="ed-card-preview-button" type="button" onClick={() => onQuickLook(asset)} aria-label={`View details for ${title}`}><BrowseThumb asset={asset} /></button>}
-                    <span><strong>{title}</strong><small>{browseEventDate(asset)}</small></span>
+                    <span><strong>{title}</strong><small>{browseEventDate(asset)}</small><span className="ed-card-type-badge is-row">{mediaTypeLabel(asset)}</span></span>
                   </div>
                 </td>
                 <td><span className="ed-table-primary">{asset.eventName || asset.eventSeries || browseAlbum(asset)}</span><small>{assetDate(asset)}</small></td>
                 <td><span>{asset.tjcTerms?.[0] || asset.tags?.[0] || browseAlbum(asset)}</span><small>{browseLocation(asset)}</small></td>
-                <td><BrowseAccessBadge allowed={allowed.label} /><small>{allowed.detail}</small></td>
+                <td><BrowseAccessBadge allowed={allowed.label} /></td>
                 <td><strong className="ed-row-ref">{allowed.nextStep}</strong></td>
                 <td>
                   <div className="ed-library-row-actions">
@@ -1434,6 +1474,7 @@ export function EnterpriseLibraryPage() {
   };
   const filterPanel = (
     <BrowseFilterPanel
+      role={role}
       savedViews={search.data?.savedViews}
       collections={search.data?.collections}
       visibleAssets={assets}
@@ -1472,10 +1513,12 @@ export function EnterpriseLibraryPage() {
         canUsePowerTools={canUsePowerTools}
       />
       {libraryMessage ? <p className="ed-inline-success">{libraryMessage}</p> : null}
+      <BrowsePermissionBanner role={role} />
       {search.loading ? <LoadingCard label="Loading church media..." /> : search.error ? <BrowseErrorCard message={search.error} /> : (
         <div className={cn("ed-library-grid", inspectorOpen ? "is-inspector-open" : "is-inspector-collapsed")} aria-label="Browse Media browser">
           <section className="ed-asset-workspace" aria-label="Media results pane">
             <AppliedFilterBar
+              role={role}
               query={query}
               savedViews={search.data?.savedViews}
               collections={search.data?.collections}
@@ -1500,6 +1543,7 @@ export function EnterpriseLibraryPage() {
               showInlineControls
             />
             {canUsePowerTools ? <LibrarySavedViewStrip
+              role={role}
               savedViews={search.data?.savedViews}
               activeView={view}
               activeCollection={collection}
@@ -1565,17 +1609,17 @@ export function EnterpriseLibraryPage() {
                 <p>{noResultHelp?.guidance || "Clear filters, use a saved search, or search a broader ministry, event, album, tag, or keyword."}</p>
                 {noResultHelp?.querySuggestions.length ? (
                   <nav className="ed-empty-suggestions" aria-label="Suggested searches">
-                    {noResultHelp.querySuggestions.map((term) => <button type="button" key={term} onClick={() => runSuggestedQuery(term)}>{term}</button>)}
+                    {noResultHelp.querySuggestions.map((term) => <button type="button" key={term} onClick={() => runSuggestedQuery(term)}>{browseTextForRole(role, term)}</button>)}
                   </nav>
                 ) : null}
                 {noResultHelp?.filters.length ? (
                   <nav aria-label="Suggested recovery filters">
-                    {noResultHelp.filters.map((item) => <button type="button" key={item.filter} onClick={() => toggleFilter(item.filter)}>{item.label} <span>{item.count.toLocaleString()}</span></button>)}
+                    {noResultHelp.filters.map((item) => <button type="button" key={item.filter} onClick={() => toggleFilter(item.filter)}>{browseTextForRole(role, item.label)} <span>{item.count.toLocaleString()}</span></button>)}
                   </nav>
                 ) : null}
                 {noResultHelp?.savedViews.length ? (
                   <nav aria-label="Suggested saved views">
-                    {noResultHelp.savedViews.map((item) => <button type="button" key={item.id} onClick={() => openSuggestedView(item.id)}>{item.label}</button>)}
+                    {noResultHelp.savedViews.map((item) => <button type="button" key={item.id} onClick={() => openSuggestedView(item.id)}>{browseTextForRole(role, item.label)}</button>)}
                   </nav>
                 ) : null}
                 <div className="ed-empty-actions">

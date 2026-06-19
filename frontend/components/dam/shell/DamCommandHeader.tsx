@@ -32,11 +32,11 @@ const FIRST_LEVEL_PATHS = new Set([
 ]);
 
 const ROOT_LABELS: Record<string, string> = {
-  admin: "Admin Zone",
+  admin: "Support Zone",
   assets: "Media Library",
   collections: "Albums & Events",
   "distribution-sets": "Delivery Sets",
-  governance: "Admin Zone",
+  governance: "Support Zone",
   guide: "Help Center",
   help: "Help Center",
   insights: "Insights",

@@ -5,6 +5,7 @@ import {
   filterMyWorkTasks,
   getMyWorkSummary,
   getMyWorkTasks,
+  localRequestReceiptsKey,
   readContributorContextFromStorage,
   safeLabelsForRole,
   uploadDraftKey
@@ -56,10 +57,62 @@ describe("My Work launch role copy", () => {
     expect(contributorCopy).not.toMatch(/Approved by reviewer/i);
   });
 
+  it("builds Contributor request tasks from local request receipts", () => {
+    const storage = {
+      getItem(key: string) {
+        if (key === contributorUploadsKey) return "[]";
+        if (key === localRequestReceiptsKey) {
+          return JSON.stringify([
+            { id: "request-1", type: "Request permission", subject: "Choir photo use", status: "Local receipt", updatedAt: "Today" },
+            { id: "request-2", type: "General media help", subject: "Potluck photos", status: "Draft", updatedAt: "Yesterday" }
+          ]);
+        }
+        if (key === uploadDraftKey) return null;
+        return null;
+      }
+    };
+    const tasks = getMyWorkTasks("Contributor", readContributorContextFromStorage(storage));
+
+    expect(tasks.map((task) => task.title)).toEqual(["Request saved in this browser", "Request draft not sent"]);
+    expect(tasks.every((task) => task.category === "requests")).toBe(true);
+    expect(tasks.every((task) => task.href === "/requests")).toBe(true);
+    expect(getMyWorkSummary(tasks).find((card) => card.label === "Visible tasks")?.value).toBe(2);
+  });
+
+  it("sanitizes unsafe Contributor request receipt text and claimed outcomes", () => {
+    const storage = {
+      getItem(key: string) {
+        if (key === contributorUploadsKey) return "[]";
+        if (key === localRequestReceiptsKey) {
+          return JSON.stringify([
+            { id: "request-unsafe", type: "Request permission", subject: "ResourceSpace source writeback approved", status: "Approved", updatedAt: "Source Status today" }
+          ]);
+        }
+        if (key === uploadDraftKey) return null;
+        return null;
+      }
+    };
+    const tasks = getMyWorkTasks("Contributor", readContributorContextFromStorage(storage));
+    const visibleCopy = textOf(tasks.map(({ title, reason, related, status, age, actionLabel, detail }) => ({
+      title,
+      reason,
+      related,
+      status,
+      age,
+      actionLabel,
+      detail
+    })));
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]).toMatchObject({ related: "Request permission", status: "Waiting for follow-up" });
+    expect(visibleCopy).not.toMatch(/ResourceSpace|Source Status|source|writeback|approved/i);
+  });
+
   it("treats waiting reviewer notes as upload status, not contributor questions", () => {
     const tasks = getMyWorkTasks("Contributor", {
       status: "ready",
       receipts: [{ id: "waiting-1", batchName: "Sabbath meal", status: "Submitted", reviewerNote: "Waiting for review." }],
+      requestReceipts: [],
       hasDraft: false
     });
 
@@ -77,6 +130,7 @@ describe("My Work launch role copy", () => {
         reviewStatus: "Needs more info",
         reviewerNote: "Please confirm class name."
       }],
+      requestReceipts: [],
       hasDraft: false
     });
 
@@ -93,6 +147,7 @@ describe("My Work launch role copy", () => {
         status: "Needs more info",
         reviewerNote: "ResourceSpace writeback synced and approved."
       }],
+      requestReceipts: [],
       hasDraft: false
     });
 
@@ -113,6 +168,7 @@ describe("My Work launch role copy", () => {
     const tasks = getMyWorkTasks("Contributor", context);
 
     expect(context).toMatchObject({ status: "ready", receipts: [], hasDraft: true, draftLabel: "Saved picnic upload" });
+    expect(context.requestReceipts).toEqual([]);
     expect(tasks.map((task) => task.title)).toEqual(["Draft not sent yet"]);
   });
 
@@ -149,6 +205,9 @@ describe("My Work launch role copy", () => {
     expect(adminCopy).toMatch(/Source Status/);
     expect(adminCopy).toMatch(/Support Zone/);
     expect(adminCopy).toMatch(/ResourceSpace mapping/);
+    expect(reviewerTasks.some((task) => task.category === "source" || task.category === "support")).toBe(false);
+    expect(adminTasks.some((task) => task.category === "source")).toBe(true);
+    expect(adminTasks.some((task) => task.category === "support")).toBe(true);
     expect(textOf([...reviewerTasks, ...adminTasks])).not.toMatch(/Upload approved|\bPublished\b|\bDownloadable\b|\bSynced\b|\bLive\b|Writeback|Production-ready|Public now/i);
   });
 

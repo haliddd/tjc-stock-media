@@ -145,9 +145,8 @@ export function UploadPage() {
   const tagCount = parseUploadTags(suggestedTags).length;
   const submitReady = hasFileOrSource && intakeNotes.trim().length > 0;
   const submitDisabled = !submitReady || isSubmitting || Boolean(receipt);
-  const receiptIsLinkOnly = Boolean(receipt?.sourceLinkCaptured && !receipt.fileCount);
-  const receiptTitle = receiptIsLinkOnly ? "Link sent for review" : "Photos sent";
-  const receiptResetLabel = receiptIsLinkOnly ? "Share another link or photos" : "Share more photos";
+  const receiptTitle = "Photos sent";
+  const receiptResetLabel = "Share more photos";
   const packetItems = [
     { id: "type", label: `Media type selected: ${selectedType.label}`, complete: Boolean(intakeType) },
     { id: "file", label: hasFileOrSource ? "File or source link included" : "File or source link needed", complete: hasFileOrSource },

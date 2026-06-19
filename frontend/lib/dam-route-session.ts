@@ -9,9 +9,9 @@ import {
   type DamSessionAdapter,
   type RequestIdentityOptions
 } from "@/lib/request-identity";
-import { assetForRolePayload, savedViewsForRolePayload } from "@/lib/source-redaction";
+import { assetForRolePayload, catalogCollectionsForRolePayload, catalogDiscoveryForRolePayload, savedViewsForRolePayload } from "@/lib/source-redaction";
 import { recordUsageEvent, type UsageEventInput } from "@/lib/usage-analytics";
-import type { DamUser, DemoRole, MediaSourceStatus, SavedViewSummary, StockMediaAsset } from "@/lib/types";
+import type { CatalogCollection, DamUser, DemoRole, MediaSourceStatus, SavedViewSummary, SearchResult, StockMediaAsset } from "@/lib/types";
 
 type RouteUsageInput = Omit<UsageEventInput, "role" | "actor"> & {
   actor?: string;
@@ -40,6 +40,8 @@ export type DamSession = {
   assetPayload(asset: StockMediaAsset): StockMediaAsset;
   assetsPayload(assets: StockMediaAsset[]): StockMediaAsset[];
   savedViewsPayload(views: SavedViewSummary[]): SavedViewSummary[];
+  collectionsPayload(collections: CatalogCollection[]): CatalogCollection[];
+  discoveryPayload(discovery: SearchResult["discovery"]): SearchResult["discovery"];
   recordUsage(event: RouteUsageInput): ReturnType<typeof recordUsageEvent>;
 };
 
@@ -82,6 +84,12 @@ function createDamSession(identity: DamUser, adapter: DamSessionAdapter, roleOve
     },
     savedViewsPayload(views: SavedViewSummary[]) {
       return savedViewsForRolePayload(role, views);
+    },
+    collectionsPayload(collections: CatalogCollection[]) {
+      return catalogCollectionsForRolePayload(role, collections);
+    },
+    discoveryPayload(discovery: SearchResult["discovery"]) {
+      return catalogDiscoveryForRolePayload(role, discovery);
     },
     recordUsage(event: RouteUsageInput) {
       return recordUsageEvent({

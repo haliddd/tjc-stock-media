@@ -93,16 +93,16 @@ const neutralCollectionCopy: Record<string, { name?: string; description?: strin
 
 const sectionCopy: Record<CollectionSectionId, { title: string; description: string }> = {
   featured: {
-    title: "Featured albums / events",
-    description: "Common starting points with item-level scope."
+    title: "Browse albums / events",
+    description: "Start with visual event groups, then open an album to view item-level scope."
   },
   ministry: {
     title: "Ministry albums / events",
-    description: "Church life, worship, teaching, and teams."
+    description: "Church life, worship, teaching, fellowship, and team albums."
   },
   channel: {
     title: "Channel albums / events",
-    description: "Website, slide, print, and social groupings."
+    description: "Website, slide, print, and social groupings for visual discovery."
   },
   review: {
     title: "Review worklists",
@@ -317,14 +317,18 @@ function CollectionCard({
   const { collection, readiness, section } = model;
   const name = displayCollectionName(collection, canSeeReviewTools);
   const description = displayCollectionDescription(collection, canSeeReviewTools);
+  const isWorklist = section === "review";
+  const coverAction = canSeeReviewTools ? onSelectDetails : onOpen;
+  const coverActionLabel = canSeeReviewTools ? `Show details for ${name}` : `Open album ${name}`;
+  const primaryActionLabel = isWorklist ? "Open worklist" : "Open album";
   return (
-    <article className={`ed-collection-card${active ? " is-selected" : ""}${section === "review" ? " is-worklist" : ""}`}>
+    <article className={`ed-collection-card${active ? " is-selected" : ""}${isWorklist ? " is-worklist" : ""}`}>
       <button
         type="button"
         className="ed-collection-card-select"
-        onClick={onSelectDetails}
-        aria-label={`Show details for ${name}`}
-        aria-pressed={active}
+        onClick={coverAction}
+        aria-label={coverActionLabel}
+        aria-pressed={canSeeReviewTools ? active : undefined}
       >
         <CollectionPreviewStrip images={collection.images} />
         <span className="ed-collection-card-copy">
@@ -338,8 +342,11 @@ function CollectionCard({
         <CollectionGuidanceBadge readiness={readiness} canSeeReviewTools={canSeeReviewTools} />
       </div>
       <div className="ed-collection-card-actions">
-        <button type="button" onClick={onOpen}>Open album</button>
-        {canSeeReviewTools ? <button type="button" onClick={onSelectDetails}>{active ? "Selected" : "Details"}</button> : null}
+        <button type="button" className="is-primary" onClick={onOpen}>
+          <FolderOpen size={15} aria-hidden="true" />
+          {primaryActionLabel}
+        </button>
+        {canSeeReviewTools ? <button type="button" className="is-secondary" onClick={onSelectDetails}>{active ? "Selected" : "View details"}</button> : null}
       </div>
     </article>
   );

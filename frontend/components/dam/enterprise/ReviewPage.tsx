@@ -19,7 +19,13 @@ import { useReviewQueue } from "@/components/dam/useDamApi";
 import { assetRecordRef, displayTitle, sourceTruthLabel } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus, type EnterpriseStatus } from "@/lib/enterprise-status";
 import { initialReviewChecklistForAsset, reviewActionDisabledReason } from "@/lib/review-decision-presenter";
-import { buildSelectedReviewGuidance, reviewWaitingDays, type PendingReviewDecisionSummary } from "@/lib/review-workbench";
+import {
+  buildReviewWorkbenchState,
+  buildSelectedReviewGuidance,
+  reviewSourceReadState,
+  reviewWaitingDays,
+  type PendingReviewDecisionSummary
+} from "@/lib/review-workbench";
 import { routeWithRole } from "@/lib/role-routes";
 import type { ReviewActionBackend, ReviewQueueId } from "@/lib/workflow-policy";
 import { missingReviewFields, normalizeReviewQueueId, reviewRiskFlags } from "@/lib/workflow-policy";
@@ -1089,7 +1095,18 @@ export function EnterpriseReviewPage() {
     ["Source record", assetRecordRef(selectedMedia)],
     ["Risk signals", reviewRiskFlags(selectedMedia).slice(0, 4).join(", ")]
   ] : [];
-  const sourceUnavailable = Boolean(review.error) || (!review.loading && sourceCardValue(review.source, review.live, review.error) === "Disconnected");
+  const reviewSourceState = reviewSourceReadState({ source: review.source, live: review.live, error: review.error, loading: review.loading });
+  const sourceUnavailable = reviewSourceState === "error" || reviewSourceState === "disconnected";
+  const workbenchState = buildReviewWorkbenchState({
+    roleReady: ready,
+    accessAllowed: canAccessReview,
+    loading: review.loading,
+    error: review.error,
+    source: review.source,
+    live: review.live,
+    batchCount: batches.length,
+    filteredBatchCount: filteredBatches.length
+  });
   const statusCards = reviewStatusCards({
     batches,
     receipts: browserReceipts,
@@ -1197,7 +1214,7 @@ export function EnterpriseReviewPage() {
       </div>
     );
   }
-  if (sourceUnavailable) {
+  if (workbenchState === "review-paused") {
     return (
       <div className="enterprise-page review-uploads-page">
         <ReviewUploadsHeader cards={statusCards} subtitle="Upload intake is available, but the review source is not connected for this session." />
