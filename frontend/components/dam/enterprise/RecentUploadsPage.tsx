@@ -5,34 +5,17 @@ import { Clock3, FileImage, FileVideo, ShieldAlert, UploadCloud } from "lucide-r
 import { useDemoRole } from "@/components/RoleProvider";
 import { PageHeader } from "./EnterpriseShared";
 import { cn } from "@/lib/utils";
+import { DAM_LOCAL_BETA_ROLE_HEADER } from "@/lib/dam-api-client";
+import { normalizeUploadHistoryRow, type MyUploadHistoryResponse, type UploadHistoryRow, type UploadHistoryStatus } from "@/lib/upload-history";
 import type { DemoRole } from "@/lib/types";
 
-type UploadStatus = "Draft" | "Submitted" | "Needs more info" | "Reviewed" | "Restricted" | "Rejected";
+type UploadStatus = "Draft" | UploadHistoryStatus;
 
-type UploadRow = {
-  id: string;
-  batchName: string;
-  eventName?: string;
-  mediaType: "Photos" | "Videos" | "Photos and videos" | "Not sure";
-  fileCount: number;
-  status: UploadStatus;
-  date: string;
-  eventDate: string;
-  locationName?: string;
-  ministry: string;
-  source?: string;
-  peopleMinors: string;
-  notes: string;
-  submittedAt?: string;
-  reviewStatus?: string;
-  publishStatus?: string;
-  reviewerNote?: string;
-  roleFit: DemoRole[];
-};
+type UploadRow = Omit<UploadHistoryRow, "status"> & { status: UploadStatus };
 
 type LedgerUpload = UploadRow & {
   ledgerKey: string;
-  ledgerKind: "browser" | "example";
+  ledgerKind: "account" | "browser" | "example";
 };
 
 const contributorUploadsKey = "tjc-upload-intake-my-uploads-v1";
@@ -134,9 +117,9 @@ const exampleUploads: UploadRow[] = [
 
 const roleUploadGuidance: Record<DemoRole, string> = {
   Viewer: "Uploads appear here after review starts.",
-  Contributor: "This browser shows your recent submissions.",
-  Reviewer: "Review examples are separate from browser receipts.",
-  "DAM Admin": "Admin examples are separate from browser receipts."
+  Contributor: "Recorded receipts appear first. Browser fallback receipts stay on this device.",
+  Reviewer: "Recorded receipts and browser fallback are separate from reviewer decisions.",
+  "DAM Admin": "Recorded receipts and browser fallback are separate from admin write actions."
 };
 
 function uploadIcon(type: UploadRow["mediaType"]) {
@@ -193,6 +176,24 @@ function readStoredUploads() {
   }
 }
 
+async function readServerUploads(role: DemoRole) {
+  const response = await fetch(`/api/uploads/my?role=${encodeURIComponent(role)}`, {
+    headers: {
+      Accept: "application/json",
+      [DAM_LOCAL_BETA_ROLE_HEADER]: role
+    }
+  });
+  const payload = await response.json().catch(() => ({})) as Partial<MyUploadHistoryResponse>;
+  if (!response.ok) throw new Error(payload.storageTruth || "Recorded upload history is unavailable.");
+  const uploads = Array.isArray(payload.uploads)
+    ? payload.uploads.map(normalizeUploadHistoryRow).filter((item): item is UploadHistoryRow => Boolean(item))
+    : [];
+  return {
+    uploads: uploads as UploadRow[],
+    storageTruth: payload.storageTruth || "Recorded upload history checked."
+  };
+}
+
 function statusAction(status: UploadStatus) {
   if (status === "Draft") return "Continue draft";
   if (status === "Needs more info") return "Add info";
@@ -225,20 +226,20 @@ export function contributorReceiptStatusLabels() {
 }
 
 function statusChipsForUpload(upload: LedgerUpload) {
-  if (upload.ledgerKind === "browser") return contributorReceiptStatusLabels();
+  if (upload.ledgerKind === "account" || upload.ledgerKind === "browser") return contributorReceiptStatusLabels();
   return [reviewStatusForUpload(upload), useStatusForUpload(upload)] as const;
 }
 
 function factStatusForUpload(upload: LedgerUpload) {
-  return upload.ledgerKind === "browser" ? "Submitted" : upload.status;
+  return upload.ledgerKind === "account" || upload.ledgerKind === "browser" ? "Submitted" : upload.status;
 }
 
 function factReviewForUpload(upload: LedgerUpload) {
-  return upload.ledgerKind === "browser" ? "Waiting for review" : reviewStatusForUpload(upload);
+  return upload.ledgerKind === "account" || upload.ledgerKind === "browser" ? "Waiting for review" : reviewStatusForUpload(upload);
 }
 
 function factUseForUpload(upload: LedgerUpload) {
-  return upload.ledgerKind === "browser" ? "Do not use yet" : useStatusForUpload(upload);
+  return upload.ledgerKind === "account" || upload.ledgerKind === "browser" ? "Do not use yet" : useStatusForUpload(upload);
 }
 
 function nextStep(upload: UploadRow) {
@@ -257,27 +258,60 @@ function uploadMediaSummary(upload: UploadRow) {
 
 export function RecentUploadsPage() {
   const { role } = useDemoRole();
+  const [serverUploads, setServerUploads] = useState<UploadRow[]>([]);
   const [storedUploads, setStoredUploads] = useState<UploadRow[]>([]);
+  const [historyMessage, setHistoryMessage] = useState("Checking recorded upload history.");
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const accountUploads = useMemo<LedgerUpload[]>(() => {
+    return serverUploads
+      .filter((item) => item.roleFit.includes(role))
+      .map((item) => ({ ...item, ledgerKey: `account-${item.id}`, ledgerKind: "account" }));
+  }, [role, serverUploads]);
   const browserUploads = useMemo<LedgerUpload[]>(() => {
+    const recordedIds = new Set(serverUploads.map((item) => item.id));
     return storedUploads
       .filter((item) => item.roleFit.includes(role))
+      .filter((item) => !recordedIds.has(item.id))
       .map((item) => ({ ...item, ledgerKey: `browser-${item.id}`, ledgerKind: "browser" }));
-  }, [role, storedUploads]);
+  }, [role, serverUploads, storedUploads]);
   const exampleVisibleUploads = useMemo<LedgerUpload[]>(() => {
     if (role === "Contributor") return [];
     return exampleUploads
       .filter((item) => item.roleFit.includes(role))
       .map((item) => ({ ...item, ledgerKey: `example-${item.id}`, ledgerKind: "example" }));
   }, [role]);
-  const visibleUploads = useMemo(() => [...browserUploads, ...exampleVisibleUploads], [browserUploads, exampleVisibleUploads]);
+  const personalUploads = useMemo(() => [...accountUploads, ...browserUploads], [accountUploads, browserUploads]);
+  const visibleUploads = useMemo(() => [...personalUploads, ...exampleVisibleUploads], [personalUploads, exampleVisibleUploads]);
   const selected = useMemo(() => visibleUploads.find((item) => item.ledgerKey === selectedKey) || visibleUploads[0], [selectedKey, visibleUploads]);
-  const receiptCount = browserUploads.length;
+  const receiptCount = personalUploads.length;
   const shownCount = visibleUploads.length;
 
   useEffect(() => {
     setStoredUploads(readStoredUploads());
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setHistoryLoading(true);
+    readServerUploads(role)
+      .then(({ uploads, storageTruth }) => {
+        if (!active) return;
+        setServerUploads(uploads);
+        setHistoryMessage(storageTruth);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setServerUploads([]);
+        setHistoryMessage(error instanceof Error ? error.message : "Recorded upload history is unavailable. Browser fallback may still appear on this device.");
+      })
+      .finally(() => {
+        if (active) setHistoryLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [role]);
 
   useEffect(() => {
     if (!visibleUploads[0]) {
@@ -309,12 +343,12 @@ export function RecentUploadsPage() {
           <header className="ed-section-heading">
             <div>
               <h2>{role === "Contributor" ? "My upload receipts" : "Browser receipts"}</h2>
-              <p>{role === "Contributor" ? "This browser shows your recent submissions." : "Receipts saved in this browser only."}</p>
+              <p>{historyLoading ? "Checking recorded receipts." : historyMessage}</p>
             </div>
             <span>{role === "Contributor" ? `${receiptCount} receipt${receiptCount === 1 ? "" : "s"}` : `${shownCount} shown`}</span>
           </header>
-          {browserUploads.length ? <div className="ed-upload-ledger">
-            {browserUploads.map((upload) => {
+          {personalUploads.length ? <div className="ed-upload-ledger">
+            {personalUploads.map((upload) => {
               const Icon = uploadIcon(upload.mediaType);
               const chips = statusChipsForUpload(upload);
               return (
@@ -322,7 +356,7 @@ export function RecentUploadsPage() {
                   <Icon size={20} aria-hidden="true" />
                   <div>
                     <strong>{upload.batchName}</strong>
-                    <span>{upload.date} - {uploadMediaSummary(upload)}</span>
+                    <span>{upload.ledgerKind === "account" ? "Recorded" : "Browser fallback"} - {upload.date} - {uploadMediaSummary(upload)}</span>
                   </div>
                   <div className="ed-upload-status-stack" aria-label={`${upload.batchName} status`}>
                     {chips.map((chip) => <em key={chip}>{chip}</em>)}
@@ -334,8 +368,8 @@ export function RecentUploadsPage() {
           </div> : (
             <section className="ed-empty-state is-quiet">
               <UploadCloud size={24} aria-hidden="true" />
-              <h2>{role === "Contributor" ? "No uploads from this browser yet." : "No browser receipts on this device."}</h2>
-              <p>{role === "Contributor" ? "This browser shows your recent submissions." : "Reviewer/admin examples below are not contributor personal records."}</p>
+              <h2>{role === "Contributor" ? "No recorded uploads yet." : "No upload receipts on this device."}</h2>
+              <p>{role === "Contributor" ? "Send media for review to create a receipt. Browser fallback remains device-only." : "Reviewer/admin examples below are not contributor personal records."}</p>
             </section>
           )}
 
@@ -379,7 +413,7 @@ export function RecentUploadsPage() {
                 <UploadCloud size={18} aria-hidden="true" />
                 <div>
                   <h2>{selected.ledgerKind === "example" ? "Example batch details" : "Receipt details"}</h2>
-                  <p>{selected.ledgerKind === "example" ? "Reviewer/admin example - not a personal record." : `Submitted - ${selected.date}`}</p>
+                  <p>{selected.ledgerKind === "example" ? "Reviewer/admin example - not a personal record." : `${selected.ledgerKind === "account" ? "Recorded" : "Browser fallback"} - ${selected.date}`}</p>
                 </div>
               </header>
               <dl className="ed-route-facts">
@@ -399,11 +433,11 @@ export function RecentUploadsPage() {
               </dl>
               <section>
                 <h3>Next step</h3>
-                <p>{selected.ledgerKind === "browser" ? "Waiting for review. Use remains blocked." : nextStep(selected)}</p>
+                <p>{selected.ledgerKind === "account" || selected.ledgerKind === "browser" ? "Waiting for review. Use remains blocked." : nextStep(selected)}</p>
               </section>
               <section>
                 <h3>Timeline</h3>
-                <p><Clock3 size={14} aria-hidden="true" />{selected.ledgerKind === "browser" ? `Submitted ${selected.date}. Waiting for review.` : `Example status recorded ${selected.date}. Not contributor personal history.`}</p>
+                <p><Clock3 size={14} aria-hidden="true" />{selected.ledgerKind === "account" || selected.ledgerKind === "browser" ? `Submitted ${selected.date}. Waiting for review.` : `Example status recorded ${selected.date}. Not contributor personal history.`}</p>
               </section>
             </>
           ) : (

@@ -28,7 +28,16 @@ export async function GET(request: NextRequest) {
     const denied = savedSearchListDeniedError();
     return NextResponse.json(denied.body, { status: denied.status });
   }
-  const searches = savedSearchListForRolePayload(identity.role, await listSavedSearches());
+  let storedSearches: Awaited<ReturnType<typeof listSavedSearches>>;
+  try {
+    storedSearches = await listSavedSearches();
+  } catch {
+    return NextResponse.json({
+      error: "Saved search storage is unavailable.",
+      reasonCode: "saved-search-storage-unavailable"
+    }, { status: 503 });
+  }
+  const searches = savedSearchListForRolePayload(identity.role, storedSearches);
   appendAuditEvent(savedSearchListViewedAuditEvent(searches, identity.role, identity.id));
   return NextResponse.json(buildSavedSearchListResponse(searches));
 }
@@ -54,6 +63,12 @@ export async function POST(request: NextRequest) {
     if (isRuntimeWriteBlockedError(error)) {
       const blocked = runtimeWriteBlockedRouteError("saved-searches", error);
       return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    if (error instanceof Error && /Saved search durable storage/.test(error.message)) {
+      return NextResponse.json({
+        error: "Saved search storage is unavailable.",
+        reasonCode: "saved-search-storage-unavailable"
+      }, { status: 503 });
     }
     throw error;
   }

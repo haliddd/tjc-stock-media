@@ -1,6 +1,6 @@
 import path from "node:path";
 import { normalizeCatalogSort } from "@/lib/catalog-language";
-import { writableRuntimeRoot } from "@/lib/env";
+import { hasVercelKvConfig, productionRuntime, writableRuntimeRoot } from "@/lib/env";
 import { readLocalJsonStore, readLocalJsonStoreSync, writeLocalJsonStore } from "@/lib/local-json-store";
 import { newestByTimestamp, safeIsoTimestamp, safeIsoTimestampIdPart } from "@/lib/persisted-record-safety";
 import { canReview, normalizeContributingRoleWithFallback } from "@/lib/permissions";
@@ -20,11 +20,13 @@ export type SavedSearchRecord = {
   updatedAt: string;
   createdBy: string;
   role: DemoRole;
-  storageMode: "local-json";
+  storageMode: "local-json" | "vercel-kv";
 };
 export type SavedSearchDraft = Pick<SavedSearchRecord, "id" | "title" | "query" | "view" | "collection" | "filters" | "sort">;
 
 const savedSearchStorePath = () => path.join(writableRuntimeRoot(), "data", "runtime", "saved-searches.json");
+const savedSearchIndexKey = "tjc-stock-media:saved-searches:index";
+const savedSearchRecordPrefix = "tjc-stock-media:saved-searches:record:";
 export const maxSavedSearches = 250;
 type SavedSearchAuditEvent = Omit<AuditEventRecord, "id" | "createdAt" | "actor"> & { actor?: string };
 type SavedSearchRouteError = {
@@ -36,6 +38,20 @@ type SavedSearchRouteError = {
 
 function newestFirst(records: SavedSearchRecord[]) {
   return newestByTimestamp(records, (record) => record.updatedAt);
+}
+
+function hostedRuntime() {
+  return process.env.VERCEL === "1";
+}
+
+function savedSearchRecordKey(id: string) {
+  return `${savedSearchRecordPrefix}${id}`;
+}
+
+async function getKvClient() {
+  if (!hasVercelKvConfig()) return null;
+  const { kv } = await import("@vercel/kv");
+  return kv;
 }
 
 function safeId(value: unknown) {
@@ -104,7 +120,7 @@ function normalizeStoredSavedSearch(input: unknown): SavedSearchRecord | null {
     updatedAt,
     createdBy: normalizePersistedDisplayText(raw.createdBy, 120) || "local-beta:unknown",
     role: normalizeContributingRoleWithFallback(raw.role, "Contributor"),
-    storageMode: "local-json"
+    storageMode: raw.storageMode === "vercel-kv" ? "vercel-kv" : "local-json"
   };
 }
 
@@ -127,6 +143,13 @@ async function writeLocalSavedSearches(records: SavedSearchRecord[]) {
 }
 
 export async function listSavedSearches() {
+  const kvRecords = await readKvSavedSearches().catch((error) => {
+    if ((hostedRuntime() || productionRuntime()) && hasVercelKvConfig()) {
+      throw new Error(error instanceof Error ? error.message : "Saved search durable read failed.");
+    }
+    return null;
+  });
+  if (kvRecords) return kvRecords;
   return newestFirst(await readLocalSavedSearches()).slice(0, maxSavedSearches);
 }
 
@@ -147,7 +170,7 @@ export function savedSearchListForRolePayload(role: DemoRole, records: SavedSear
 }
 
 export function buildSavedSearchListResponse(searches: SavedSearchRecord[]) {
-  return { searches, count: searches.length, storageMode: "local-json" as const };
+  return { searches, count: searches.length, storageMode: savedSearchStorageMode(searches) };
 }
 
 export function buildSavedSearchSaveResponse(role: DemoRole, record: SavedSearchRecord) {
@@ -214,10 +237,48 @@ export function savedSearchSavedAuditEvent(
 }
 
 export async function saveSavedSearch(record: Omit<SavedSearchRecord, "storageMode">) {
+  const kv = await getKvClient();
+  if (kv) {
+    const next: SavedSearchRecord = { ...record, storageMode: "vercel-kv" };
+    const wroteKv = await writeKvSavedSearch(next).catch(() => false);
+    if (wroteKv) return next;
+    if (hostedRuntime() || productionRuntime()) throw new Error("Saved search durable storage write failed.");
+  }
   const records = await readLocalSavedSearches();
   const next: SavedSearchRecord = { ...record, storageMode: "local-json" };
   await writeLocalSavedSearches([next, ...records.filter((item) => item.id !== next.id)]);
   return next;
+}
+
+async function readKvSavedSearches() {
+  const kv = await getKvClient();
+  if (!kv) return null;
+  const ids = await kv.get<string[]>(savedSearchIndexKey).catch(() => null);
+  if (!ids?.length) return [] as SavedSearchRecord[];
+  const records = await Promise.all(ids.map((id) => kv.get<SavedSearchRecord>(savedSearchRecordKey(id)).catch(() => null)));
+  return newestFirst(records.map(normalizeStoredSavedSearch).filter(Boolean) as SavedSearchRecord[]).slice(0, maxSavedSearches);
+}
+
+async function writeKvSavedSearch(record: SavedSearchRecord) {
+  const kv = await getKvClient();
+  if (!kv) return false;
+  const ids = await kv.get<string[]>(savedSearchIndexKey).catch(() => null);
+  const nextIds = [record.id, ...(ids || []).filter((id) => id !== record.id)].slice(0, maxSavedSearches);
+  await Promise.all([
+    kv.set(savedSearchRecordKey(record.id), record),
+    kv.set(savedSearchIndexKey, nextIds)
+  ]);
+  return true;
+}
+
+function savedSearchStorageMode(records: SavedSearchRecord[]) {
+  return records.length
+    ? records.some((record) => record.storageMode === "vercel-kv")
+      ? "vercel-kv" as const
+      : "local-json" as const
+    : hasVercelKvConfig()
+    ? "vercel-kv" as const
+    : "local-json" as const;
 }
 
 export async function saveSavedSearchDraft(draft: SavedSearchDraft, actor: { id: string; role: DemoRole }) {
@@ -241,8 +302,8 @@ export function savedSearchDiagnostics() {
     order: newestFirst
   });
   return {
-    storageMode: "local-json" as const,
-    durableStorageConfigured: false,
+    storageMode: hasVercelKvConfig() ? "vercel-kv" as const : "local-json" as const,
+    durableStorageConfigured: hasVercelKvConfig(),
     count: records.length,
     latestAt: records[0]?.updatedAt || "",
     filePath

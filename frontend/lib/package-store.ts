@@ -1,5 +1,5 @@
 import path from "node:path";
-import { writableRuntimeRoot } from "@/lib/env";
+import { hasVercelKvConfig, productionRuntime, writableRuntimeRoot } from "@/lib/env";
 import { readLocalJsonStore, readLocalJsonStoreSync, writeLocalJsonStore } from "@/lib/local-json-store";
 import { newestByTimestamp, safeBoolean, safeEnumValue, safeIsoTimestamp, safeIsoTimestampIdPart, safeNonNegativeInt } from "@/lib/persisted-record-safety";
 import { canReview, normalizeContributingRoleWithFallback } from "@/lib/permissions";
@@ -30,10 +30,12 @@ export type StoredPackageDraft = {
     missingRefs: number;
     reason: string;
   };
-  storageMode: "local-json";
+  storageMode: "local-json" | "vercel-kv";
 };
 
 const packageStorePath = () => path.join(writableRuntimeRoot(), "data", "runtime", "package-drafts.json");
+const packageIndexKey = "tjc-stock-media:package-drafts:index";
+const packageRecordPrefix = "tjc-stock-media:package-drafts:record:";
 export const maxPackageDrafts = 200;
 const packageStatuses: DamPackage["status"][] = ["draft", "pending-review", "approved", "archived"];
 type PackageDraftAuditEvent = Omit<AuditEventRecord, "id" | "createdAt" | "actor"> & { actor?: string };
@@ -46,6 +48,20 @@ type PackageDraftRouteError = {
 
 function newestFirst(records: StoredPackageDraft[]) {
   return newestByTimestamp(records, (record) => record.updatedAt);
+}
+
+function hostedRuntime() {
+  return process.env.VERCEL === "1";
+}
+
+function packageRecordKey(id: string) {
+  return `${packageRecordPrefix}${id}`;
+}
+
+async function getKvClient() {
+  if (!hasVercelKvConfig()) return null;
+  const { kv } = await import("@vercel/kv");
+  return kv;
 }
 
 function safeIdentifierText(value: unknown, maxLength: number) {
@@ -112,7 +128,7 @@ function normalizeStoredPackageDraft(input: unknown): StoredPackageDraft | null 
       missingRefs: safeNonNegativeInt(governance.missingRefs),
       reason: normalizePersistedDisplayText(governance.reason, 240)
     },
-    storageMode: "local-json"
+    storageMode: safeEnumValue(raw.storageMode, ["local-json", "vercel-kv"] as const, "local-json")
   };
 }
 
@@ -135,6 +151,13 @@ async function writeLocalPackages(records: StoredPackageDraft[]) {
 }
 
 export async function listStoredPackageDrafts() {
+  const kvRecords = await readKvPackages().catch((error) => {
+    if ((hostedRuntime() || productionRuntime()) && hasVercelKvConfig()) {
+      throw new Error(error instanceof Error ? error.message : "Package draft durable read failed.");
+    }
+    return null;
+  });
+  if (kvRecords) return kvRecords;
   return newestFirst(await readLocalPackages()).slice(0, maxPackageDrafts);
 }
 
@@ -159,7 +182,7 @@ export function packageDraftSaveDeniedError(): PackageDraftRouteError {
 }
 
 export function buildPackageDraftListResponse(packages: StoredPackageDraft[]) {
-  return { packages, count: packages.length, storageMode: "local-json" as const };
+  return { packages, count: packages.length, storageMode: packageStorageMode(packages) };
 }
 
 export function buildPackageDraftSaveResponse(
@@ -230,10 +253,48 @@ export function packageDraftSavedAuditEvent(
 }
 
 export async function savePackageDraft(record: Omit<StoredPackageDraft, "storageMode">) {
+  const kv = await getKvClient();
+  if (kv) {
+    const next: StoredPackageDraft = { ...record, storageMode: "vercel-kv" };
+    const wroteKv = await writeKvPackage(next).catch(() => false);
+    if (wroteKv) return next;
+    if (hostedRuntime() || productionRuntime()) throw new Error("Package draft durable storage write failed.");
+  }
   const records = await readLocalPackages();
   const next: StoredPackageDraft = { ...record, storageMode: "local-json" };
   await writeLocalPackages([next, ...records.filter((item) => item.id !== next.id)]);
   return next;
+}
+
+async function readKvPackages() {
+  const kv = await getKvClient();
+  if (!kv) return null;
+  const ids = await kv.get<string[]>(packageIndexKey).catch(() => null);
+  if (!ids?.length) return [] as StoredPackageDraft[];
+  const records = await Promise.all(ids.map((id) => kv.get<StoredPackageDraft>(packageRecordKey(id)).catch(() => null)));
+  return newestFirst(records.map(normalizeStoredPackageDraft).filter(Boolean) as StoredPackageDraft[]).slice(0, maxPackageDrafts);
+}
+
+async function writeKvPackage(record: StoredPackageDraft) {
+  const kv = await getKvClient();
+  if (!kv) return false;
+  const ids = await kv.get<string[]>(packageIndexKey).catch(() => null);
+  const nextIds = [record.id, ...(ids || []).filter((id) => id !== record.id)].slice(0, maxPackageDrafts);
+  await Promise.all([
+    kv.set(packageRecordKey(record.id), record),
+    kv.set(packageIndexKey, nextIds)
+  ]);
+  return true;
+}
+
+function packageStorageMode(records: StoredPackageDraft[]) {
+  return records.length
+    ? records.some((record) => record.storageMode === "vercel-kv")
+      ? "vercel-kv" as const
+      : "local-json" as const
+    : hasVercelKvConfig()
+    ? "vercel-kv" as const
+    : "local-json" as const;
 }
 
 function storedGovernanceSnapshot(governance: PackageGovernancePacket): StoredPackageDraft["governance"] {
@@ -267,12 +328,15 @@ export async function savePackageDraftSubmission(draft: DamPackage, actor: { id:
 }
 
 export function packageStorageReadiness() {
+  const kvConfigured = hasVercelKvConfig();
   return {
-    storageMode: "local-json" as const,
-    durableShareStorage: false,
+    storageMode: kvConfigured ? "vercel-kv" as const : "local-json" as const,
+    durableShareStorage: kvConfigured,
     productionReadySharing: false,
     permissionTruth: false,
-    detail: "Package drafts use local JSON readiness records. They are not durable production package/share storage and do not grant permission."
+    detail: kvConfigured
+      ? "Package drafts can be stored in KV for hosted review. They still do not grant permission, create share links, or copy files."
+      : "Package drafts use local JSON readiness records. They are not durable production package/share storage and do not grant permission."
   };
 }
 
@@ -287,8 +351,8 @@ export function packageDraftDiagnostics() {
   const openDrafts = records.filter((record) => record.status !== "archived");
   const blockedRefs = records.reduce((sum, record) => sum + (record.governance?.blockedRefs || 0), 0);
   return {
-    storageMode: "local-json" as const,
-    durableStorageConfigured: false,
+    storageMode: hasVercelKvConfig() ? "vercel-kv" as const : "local-json" as const,
+    durableStorageConfigured: hasVercelKvConfig(),
     productionReadySharing: false,
     count: records.length,
     openCount: openDrafts.length,

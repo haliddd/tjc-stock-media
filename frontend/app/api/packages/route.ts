@@ -29,7 +29,15 @@ export async function GET(request: NextRequest) {
     const denied = packageDraftListDeniedError();
     return NextResponse.json(denied.body, { status: denied.status });
   }
-  const packages = await listStoredPackageDrafts();
+  let packages: Awaited<ReturnType<typeof listStoredPackageDrafts>>;
+  try {
+    packages = await listStoredPackageDrafts();
+  } catch {
+    return NextResponse.json({
+      error: "Package draft storage is unavailable.",
+      reasonCode: "package-draft-storage-unavailable"
+    }, { status: 503 });
+  }
   appendAuditEvent(packageDraftListViewedAuditEvent(packages, identity.role, identity.id));
   return NextResponse.json(buildPackageDraftListResponse(packages));
 }
@@ -53,6 +61,12 @@ export async function POST(request: NextRequest) {
     if (isRuntimeWriteBlockedError(error)) {
       const blocked = runtimeWriteBlockedRouteError("package-drafts", error);
       return NextResponse.json(blocked.body, { status: blocked.status });
+    }
+    if (error instanceof Error && /Package draft durable storage/.test(error.message)) {
+      return NextResponse.json({
+        error: "Package draft storage is unavailable.",
+        reasonCode: "package-draft-storage-unavailable"
+      }, { status: 503 });
     }
     throw error;
   }

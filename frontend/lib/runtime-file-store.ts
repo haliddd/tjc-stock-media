@@ -38,6 +38,12 @@ function feedbackTruthState(): RuntimeStateTruthState {
   return "local-only";
 }
 
+function intakeTruthState(): RuntimeStateTruthState {
+  if (hasVercelKvConfig() && hasVercelBlobConfig()) return "durable";
+  if (productionRuntime()) return "blocked";
+  return "local-only";
+}
+
 export function runtimeStateTruthMatrix(): RuntimeStateTruthRow[] {
   const genericState = genericRuntimeTruthState();
   const genericProductionTruth = genericState === "durable"
@@ -87,28 +93,38 @@ export function runtimeStateTruthMatrix(): RuntimeStateTruthRow[] {
       id: "package-drafts",
       label: "Package drafts",
       category: "package-drafts",
-      state: genericState,
-      storage: "Local JSON package draft records",
-      productionTruth: genericProductionTruth,
-      blocker: "Needs durable package/share draft store with audit, expiry, recipients, and revocation."
+      state: hasVercelKvConfig() ? "durable" : genericState,
+      storage: hasVercelKvConfig() ? "Vercel KV package draft records" : "Local JSON package draft records",
+      productionTruth: hasVercelKvConfig()
+        ? "Durable package draft storage is configured. This still does not create share links, file copies, recipients, expiry, or permission grants."
+        : genericProductionTruth,
+      blocker: "Needs approved share workflow with recipients, expiry, revocation, and audit before delivery claims."
     },
     {
       id: "intake-batches",
       label: "Intake batches",
       category: "intake-batches",
-      state: genericState,
-      storage: "Runtime intake batch JSON and local originals staging",
-      productionTruth: genericProductionTruth,
-      blocker: "Browser file intake is blocked in production without durable storage or admin/Drive intake."
+      state: intakeTruthState(),
+      storage: hasVercelKvConfig()
+        ? `Vercel KV intake records${hasVercelBlobConfig() ? " plus Blob private originals" : "; Blob private originals missing"}`
+        : "Runtime intake batch JSON and local originals staging",
+      productionTruth: hasVercelKvConfig() && hasVercelBlobConfig()
+        ? "Durable intake records and private original staging are configured; reviewer import still does not write ResourceSpace."
+        : productionRuntime()
+          ? "Production upload intake is blocked until KV records and Blob private originals are configured."
+          : "Local filesystem/runtime state only. Not hosted durability proof.",
+      blocker: "Needs backup/restore proof and reviewer import workflow before intake becomes archive or ResourceSpace writeback."
     },
     {
       id: "saved-searches",
       label: "Saved searches",
       category: "saved-searches",
-      state: genericState,
-      storage: "Local JSON saved-search records",
-      productionTruth: genericProductionTruth,
-      blocker: "Needs team/user-scoped durable profile storage before persistent saved views are promised."
+      state: hasVercelKvConfig() ? "durable" : genericState,
+      storage: hasVercelKvConfig() ? "Vercel KV saved-search records" : "Local JSON saved-search records",
+      productionTruth: hasVercelKvConfig()
+        ? "Durable saved-search storage is configured; role and team scoping still need hosted identity proof before account-level claims."
+        : genericProductionTruth,
+      blocker: "Needs hosted identity proof and backup/restore evidence before account-level saved-view claims."
     },
     {
       id: "feedback",

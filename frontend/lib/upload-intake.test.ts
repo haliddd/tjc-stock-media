@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { contributorReceiptStatusLabels, normalizeStoredUpload, useStatusForUpload } from "@/components/dam/enterprise/RecentUploadsPage";
 import { persistIntakeBatch } from "@/lib/intake-batch-store";
 import { buildUploadIntakePublicResponse, buildUploadIntakeResponse, normalizeUploadIntake, uploadIntakeSubmittedAuditEvent, uploadIntakeValidationError } from "@/lib/upload-intake";
+import { buildMyUploadHistoryResponse, intakeBatchToUploadHistoryRow } from "@/lib/upload-history";
 import { uploadReceiptCopy } from "@/lib/upload-receipt-copy";
 import type { IntakeBatchRecord, IntakeBatchStorageMode, PersistIntakeBatchResult } from "@/lib/intake-batch-store";
 
@@ -227,7 +228,7 @@ describe("upload intake batch validation", () => {
 
       expect(persisted.record).toBeUndefined();
       expect(persisted.storageMode).toBe("blocked-no-durable-store");
-      expect(persisted.blockedReason).toMatch(/Durable runtime store required/);
+      expect(persisted.blockedReason).toMatch(/KV storage/);
     } finally {
       if (previousVercelEnv === undefined) {
         delete process.env.VERCEL_ENV;
@@ -381,10 +382,13 @@ describe("upload intake batch validation", () => {
   });
 
   it("keeps My Uploads stored receipt display scrubbed of source-system claims", () => {
-    expect(recentUploadsPage).toContain("This browser shows your recent submissions.");
-    expect(recentUploadsPage).toContain("No uploads from this browser yet.");
+    expect(recentUploadsPage).toContain("/api/uploads/my");
+    expect(recentUploadsPage).toContain("Recorded receipts appear first. Browser fallback receipts stay on this device.");
+    expect(recentUploadsPage).toContain("No recorded uploads yet.");
+    expect(recentUploadsPage).toContain("Browser fallback remains device-only.");
     expect(recentUploadsPage).toContain("const unsafeContributorCopy");
     expect(recentUploadsPage).toContain("normalizeStoredUpload");
+    expect(recentUploadsPage).toContain("normalizeUploadHistoryRow");
     expect(recentUploadsPage).toContain("contributorSafeText(raw.batchName");
     expect(recentUploadsPage).toContain("Reviewer/admin examples");
     expect(recentUploadsPage).toContain("Not contributor personal records.");
@@ -392,6 +396,32 @@ describe("upload intake batch validation", () => {
     expect(recentUploadsPage).not.toContain("Source/uploader");
     expect(recentUploadsPage).not.toContain("Source link");
     expect(recentUploadsPage).not.toMatch(/durable account history/i);
+  });
+
+  it("maps server intake records to My Uploads receipts without source-system claims", () => {
+    const intake = normalizeUploadIntake(form([
+      ["sourceLink", "https://drive.google.com/example"],
+      ["batchName", "Sabbath Service"],
+      ["eventDate", "2026-06-06"],
+      ["ministry", "Internet Ministry"],
+      ["source", "Media Team"]
+    ]));
+    const record = persistedBatchResult(intake, "server-history-123", "vercel-kv").record!;
+    const row = intakeBatchToUploadHistoryRow(record);
+    const response = buildMyUploadHistoryResponse([record]);
+    const publicText = JSON.stringify(response);
+
+    expect(row).toMatchObject({
+      id: "server-history-123",
+      batchName: "Sabbath Service",
+      status: "Submitted",
+      reviewStatus: "Waiting for review",
+      publishStatus: "Do not use yet",
+      mediaType: "Not sure",
+      fileCount: 0
+    });
+    expect(response.storageTruth).toMatch(/Recorded upload history is available/);
+    expect(publicText).not.toMatch(/ResourceSpace|writeback|sync complete|downloadable|Approved Public|sourceLink|resourceSpaceWritten/i);
   });
 
   it("scrubs unsafe stored My Uploads fields before rendering", () => {
