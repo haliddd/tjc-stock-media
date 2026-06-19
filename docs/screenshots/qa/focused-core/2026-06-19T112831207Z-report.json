@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-06-19T11:30:15.999Z",
+  "base": "http://localhost:4871",
+  "routes": [
+    "Browse Media",
+    "Albums",
+    "Asset Detail",
+    "Review Uploads disconnected",
+    "Review Uploads",
+    "My Work Reviewer",
+    "My Work Admin",
+    "Requests",
+    "Help",
+    "Admin",
+    "Admin Support Zone"
+  ],
+  "screenshots": [
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-browse-media-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-albums-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-asset-detail-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-review-viewer-gate-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-reviewer-upload-review-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-my-work-reviewer-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-my-work-admin-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-requests-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-help-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-admin-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-support-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-upload-receipt-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-my-uploads-receipt-mobile.png",
+    "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/focused-core/2026-06-19T112831207Z-requests-receipt-mobile.png"
+  ],
+  "failures": [],
+  "warnings": [],
+  "consoleErrors": [],
+  "networkFailures": []
+}
