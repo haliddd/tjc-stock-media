@@ -139,8 +139,8 @@ const mediaExtensions = {
 };
 
 const statusLabels: Record<PublishStatus, string> = {
-  "Approved Public": "ResourceSpace Approved Public",
-  "Approved Internal": "ResourceSpace Approved Internal",
+  "Approved Public": "Public use approved",
+  "Approved Internal": "Internal use approved",
   "Needs Review": "Please review before public sharing",
   "Searchable Archive": "Archive only",
   "Do Not Use": "Do not publish externally",
@@ -162,6 +162,14 @@ function value(row: ResourceSpaceRecord, ...keys: string[]) {
     if (found !== undefined && found !== null && String(found).trim()) return String(found).trim();
   }
   return "";
+}
+
+function optionalBoolean(row: ResourceSpaceRecord, ...keys: string[]) {
+  const raw = value(row, ...keys).toLowerCase();
+  if (!raw) return undefined;
+  if (/^(true|yes|y|1|approved|public|internal)$/i.test(raw)) return true;
+  if (/^(false|no|n|0|not approved|none)$/i.test(raw)) return false;
+  return undefined;
 }
 
 export function splitResourceSpaceList(input?: string) {
@@ -328,13 +336,16 @@ function cleanDisplayTitle(row: ResourceSpaceRecord, fallback: string) {
 }
 
 export function normalizeResourceSpaceStatus(row: ResourceSpaceRecord): PublishStatus {
-  const raw = value(row, "publish_status", "status");
+  const raw = value(row, "publish_status", "publishStatus", "review_status", "status");
+  const usageScope = value(row, "usage_scope", "usageScope");
+  const publicSafe = optionalBoolean(row, "public_safe", "approved_for_public", "approvedForPublic") === true;
+  const internalSafe = optionalBoolean(row, "approved_for_internal", "approvedForInternal", "internal_safe") === true;
   if (raw === "Approved Public" || raw === "Approved Internal" || raw === "Needs Review" || raw === "Do Not Use") return raw;
   if (raw === "Searchable Archive" || raw === "Archive - Not Promoted") return "Searchable Archive";
   if (/possible minors|children|youth/i.test(raw)) return "Possible Minors";
-  if (value(row, "minors_visible", "children_visible").toLowerCase() === "yes") return "Possible Minors";
-  if (value(row, "public_safe").toLowerCase() === "yes" && /public/i.test(value(row, "usage_scope"))) return "Approved Public";
-  if (value(row, "public_safe").toLowerCase() === "yes" && /internal/i.test(value(row, "usage_scope"))) return "Approved Internal";
+  if (value(row, "minors_visible", "minorsVisible", "children_visible", "childrenVisible").toLowerCase() === "yes") return "Possible Minors";
+  if (publicSafe && /public/i.test(usageScope)) return "Approved Public";
+  if ((publicSafe || internalSafe) && /internal/i.test(usageScope)) return "Approved Internal";
   return "Needs Review";
 }
 
@@ -343,7 +354,7 @@ export function statusToUserLabel(status: PublishStatus) {
 }
 
 export function normalizeUsageScope(row: ResourceSpaceRecord): UsageScope {
-  const raw = value(row, "usage_scope").replace(/internal only/i, "Internal");
+  const raw = value(row, "usage_scope", "usageScope").replace(/internal only/i, "Internal");
   if (raw === "Public" || raw === "Internal" || raw === "Public and Internal" || raw === "Archive Only" || raw === "Do Not Use") return raw;
   if (/public.*internal|church-wide/i.test(raw)) return "Public and Internal";
   if (/internal/i.test(raw)) return "Internal";
@@ -357,8 +368,8 @@ export function usageScopeToUserLabel(scope: UsageScope) {
 }
 
 export function normalizePeopleRisk(row: ResourceSpaceRecord): StockMediaAsset["peopleRisk"] {
-  const minors = value(row, "minors_visible", "children_visible").toLowerCase();
-  const people = value(row, "people_visible").toLowerCase();
+  const minors = value(row, "minors_visible", "minorsVisible", "children_visible", "childrenVisible").toLowerCase();
+  const people = value(row, "people_visible", "peopleVisible").toLowerCase();
   if (minors === "yes") return "Possible minors";
   if (people === "yes") return "Adults visible";
   if (people === "no") return "No people";
@@ -376,7 +387,7 @@ function normalizeMediaType(row: ResourceSpaceRecord): StockMediaAsset["mediaTyp
 }
 
 function normalizeRightsStatus(row: ResourceSpaceRecord) {
-  const raw = value(row, "rights_status");
+  const raw = value(row, "rights_status", "rightsStatus");
   if (!raw) return undefined;
   if (/^(approved public|approved internal|needs review|searchable archive|archive - not promoted|do not use|possible minors)$/i.test(raw)) {
     return undefined;
@@ -403,7 +414,7 @@ export function imageUrlsForResource(id: string, cacheKey?: string) {
 }
 
 export function validateResourceSpaceRecord(row: ResourceSpaceRecord) {
-  const id = value(row, "resource_id", "resourcespace_ref", "canonical_asset_id", "ref");
+  const id = value(row, "resource_id", "resource_space_id", "resourceSpaceId", "resourcespace_ref", "canonical_asset_id", "ref");
   return {
     ok: Boolean(id),
     id,
@@ -413,6 +424,14 @@ export function validateResourceSpaceRecord(row: ResourceSpaceRecord) {
 
 function isMeaningful(value?: string) {
   return Boolean(value && !/^(unknown|not exported|not applicable|none|n\/a|needs review|review required)$/i.test(value.trim()));
+}
+
+function isMeaningfulRightsEvidence(value?: string) {
+  return Boolean(
+    value &&
+      isMeaningful(value) &&
+      !/^(approved public|approved internal|public use approved|internal use approved|please review before public sharing|searchable archive|archive only|do not publish externally|do not use|possible minors|contains children\/youth)$/i.test(value.trim())
+  );
 }
 
 export type MetadataContractValidation = {
@@ -430,19 +449,21 @@ export function validateAssetMetadataContract(asset: StockMediaAsset): MetadataC
   const warnField = (field: string, present: boolean) => {
     if (!present) warnings.push(field);
   };
+  const reviewer = asset.reviewer || asset.reviewedBy || asset.reviewed_by;
+  const reviewedDate = asset.reviewedDate || asset.reviewedAt || asset.reviewed_at;
 
-  requireField("asset_id", Boolean(asset.id || asset.resourceSpaceId));
+  requireField("asset_id", Boolean(asset.id || asset.resourceSpaceId || asset.resource_space_id));
   requireField("media_type", Boolean(asset.mediaType));
   requireField("source_system", Boolean(asset.sourceSystem || asset.sourcePlatform));
-  requireField("source_album_or_event", Boolean(asset.sourceAlbum || asset.sourceFolder || asset.collection || asset.eventName));
+  requireField("source_album_or_event", Boolean(asset.sourceAlbum || asset.source_album || asset.sourceFolder || asset.collection || asset.eventName));
   requireField("original_filename", Boolean(asset.originalFilename));
   requireField("master_custody_status", asset.masterCustodyPathStatus === "verified" || Boolean(asset.masterDrivePath));
-  requireField("checksum_sha256", Boolean(asset.checksumSha256));
+  requireField("checksum_sha256", Boolean(asset.checksumSha256 || asset.checksum_sha256 || asset.checksum));
 
   if (asset.status === "Approved Public" || asset.status === "Approved Internal") {
-    requireField("rights_status", isMeaningful(asset.rightsStatus));
-    requireField("reviewed_by", Boolean(asset.reviewer));
-    requireField("reviewed_date", Boolean(asset.reviewedDate));
+    requireField("rights_status", isMeaningfulRightsEvidence(asset.rightsStatus || asset.rights_status));
+    requireField("reviewed_by", Boolean(reviewer));
+    requireField("reviewed_date", Boolean(reviewedDate));
     requireField("approval_notes", isMeaningful(asset.rightsNotes));
     requireField("people_visible", Boolean(asset.peopleRisk && asset.peopleRisk !== "Unknown"));
     requireField("approved_use_copy", Boolean(asset.imageUrls?.download));
@@ -486,9 +507,18 @@ export function normalizeResourceSpaceRecord(row: ResourceSpaceRecord): StockMed
   const usageScope = normalizeUsageScope(row);
   const rawTitle = value(row, "human_title_final", "title", "original_filename") || `Resource ${id}`;
   const title = cleanDisplayTitle(row, rawTitle);
-  const collection = value(row, "source_album", "import_batch", "event_or_topic", "event_name") || "ResourceSpace export";
-  const checksumSha256 = value(row, "checksum_sha256") || undefined;
-  const imageUrls = imageUrlsForResource(id, checksumSha256 || value(row, "reviewed_date") || id);
+  const sourceAlbum = value(row, "source_album", "sourceAlbum", "import_batch", "event_or_topic", "event_name") || undefined;
+  const sourcePath = value(row, "source_path", "sourcePath") || undefined;
+  const resourceSpaceId = value(row, "resource_id", "resource_space_id", "resourceSpaceId", "resourcespace_ref", "ref") || undefined;
+  const checksumSha256 = value(row, "checksum_sha256", "checksumSha256", "checksum") || undefined;
+  const reviewedBy = value(row, "reviewed_by", "reviewedBy", "reviewer") || undefined;
+  const reviewedAt = value(row, "reviewed_at", "reviewedAt", "reviewed_date", "reviewedDate") || undefined;
+  const lastSyncedAt = value(row, "last_synced_at", "lastSyncedAt", "last_imported_at", "import_date") || undefined;
+  const syncSource = value(row, "sync_source", "syncSource") || undefined;
+  const approvedForPublic = optionalBoolean(row, "approved_for_public", "approvedForPublic", "public_safe");
+  const approvedForInternal = optionalBoolean(row, "approved_for_internal", "approvedForInternal", "internal_safe");
+  const collection = sourceAlbum || "Media library import";
+  const imageUrls = imageUrlsForResource(id, checksumSha256 || reviewedAt || id);
   const fileSizeBytes = safeNonNegativeInt(value(row, "file_size", "original_file_size_bytes")) || undefined;
   const peopleRisk = normalizePeopleRisk(row);
 
@@ -506,29 +536,38 @@ export function normalizeResourceSpaceRecord(row: ResourceSpaceRecord): StockMed
     visibility: status === "Approved Public" ? "public" : status === "Approved Internal" ? "internal" : "reviewer",
     peopleRisk,
     sourcePlatform: value(row, "source_platform") || undefined,
-    sourceSystem: value(row, "source_system") || undefined,
+    sourceSystem: value(row, "source_system", "sync_source", "syncSource") || undefined,
     sourceAccount: value(row, "source_account") || undefined,
-    sourceAlbum: value(row, "source_album", "import_batch", "event_or_topic", "event_name") || undefined,
-    sourceAlbumPath: value(row, "source_album_path") || undefined,
-    sourceAlbumMemberships: splitResourceSpaceList(value(row, "source_album_memberships")),
+    sourceAlbum,
+    source_album: sourceAlbum,
+    sourceAlbumPath: value(row, "source_album_path", "sourceAlbumPath") || undefined,
+    sourceAlbumMemberships: splitResourceSpaceList(value(row, "source_album_memberships", "sourceAlbumMemberships")),
     eventName: value(row, "event_name", "event_or_topic") || undefined,
     eventSeries: value(row, "event_series") || undefined,
     eventDate: value(row, "event_date") || undefined,
     capturedDate: value(row, "captured_date") || undefined,
     fileModifiedDate: value(row, "file_modified_date", "modified_date", "mtime") || undefined,
-    importDate: value(row, "import_date") || undefined,
+    importDate: value(row, "import_date", "last_imported_at") || undefined,
     imageDimensions: value(row, "image_dimensions") || undefined,
     rightsStatus: normalizeRightsStatus(row),
-    workflowState: value(row, "workflow_state") || undefined,
+    rights_status: value(row, "rights_status", "rightsStatus") || undefined,
+    workflowState: value(row, "workflow_state", "review_status", "workflowState") || undefined,
+    review_status: value(row, "review_status", "workflow_state", "status") || undefined,
     qualityStatus: value(row, "quality_status") || undefined,
     sensitiveContext: value(row, "sensitive_context") || undefined,
     consentStatus: value(row, "consent_status") || undefined,
     usageTerms: splitResourceSpaceList(value(row, "usage_terms")),
     duplicateGroup: value(row, "duplicate_group") || undefined,
     duplicateRole: value(row, "duplicate_role") || undefined,
+    checksum: checksumSha256,
+    checksum_sha256: checksumSha256,
     checksumSha256,
-    reviewer: value(row, "reviewed_by") || undefined,
-    reviewedDate: value(row, "reviewed_date") || undefined,
+    reviewer: reviewedBy,
+    reviewedBy,
+    reviewed_by: reviewedBy,
+    reviewedAt,
+    reviewed_at: reviewedAt,
+    reviewedDate: reviewedAt,
     rightsNotes: value(row, "approval_notes", "notes") || undefined,
     usageGuidance:
       status === "Approved Public"
@@ -539,8 +578,18 @@ export function normalizeResourceSpaceRecord(row: ResourceSpaceRecord): StockMed
             ? "Use with care: children/youth may be visible. Please ask a media coworker before public sharing."
             : "Please review before sharing publicly. A reviewer must approve this asset before reuse.",
     downloadPolicy: normalizeDownloadPolicy(status),
-    resourceSpaceId: value(row, "resource_id", "resourcespace_ref", "ref") || undefined,
-    sourcePath: value(row, "source_path") || undefined,
+    resourceSpaceId,
+    resource_space_id: resourceSpaceId,
+    sourcePath,
+    source_path: sourcePath,
+    approvedForPublic,
+    approved_for_public: approvedForPublic,
+    approvedForInternal,
+    approved_for_internal: approvedForInternal,
+    lastSyncedAt,
+    last_synced_at: lastSyncedAt,
+    syncSource,
+    sync_source: syncSource,
     masterDrivePath: value(row, "master_drive_path") || undefined,
     masterCustodyPathStatus: normalizeMasterCustodyPathStatus(value(row, "master_custody_path_status", "master_drive_path_status")),
     originalFilename: value(row, "original_filename") || undefined,

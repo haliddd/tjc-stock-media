@@ -1,31 +1,51 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowRight,
   BookOpen,
+  Camera,
   CheckCircle2,
   ChevronDown,
-  Download,
-  ExternalLink,
-  FileCheck2,
-  FileLock2,
+  FileQuestion,
   FileText,
   FolderOpen,
-  Globe2,
+  HelpCircle,
+  Inbox,
   MessageCircle,
   Search,
   ShieldCheck,
-  UploadCloud
+  UploadCloud,
+  UserCheck
 } from "lucide-react";
+import { useDemoRole } from "@/components/RoleProvider";
+import { canReview } from "@/lib/permissions";
+import { routeWithRole } from "@/lib/role-routes";
 
 type HelpTask = {
   id: string;
   title: string;
   summary: string;
+  action: string;
   href: string;
   icon: typeof Search;
+  opsOnly?: boolean;
+};
+
+type HelpArticle = {
+  id: string;
+  title: string;
+  detail: string;
+  advanced?: boolean;
+};
+
+type HelpPolicy = {
+  id: string;
+  title: string;
+  detail: string;
+  opsOnly?: boolean;
 };
 
 type HelpFaq = {
@@ -33,151 +53,350 @@ type HelpFaq = {
   answer: string;
 };
 
+type LocalRequestReceipt = {
+  id?: unknown;
+  status?: unknown;
+};
+
+const localRequestReceiptKeys = [
+  "tjc-media-request-receipts-v1",
+  "tjc-help-request-receipts-v1"
+];
+
 const gettingStarted = [
-  { label: "1. Find media", detail: "Search by use case, event, ministry, topic, or package.", icon: Search },
-  { label: "2. Check status", detail: "Open the record to review approval, rights, and usage.", icon: ShieldCheck },
-  { label: "3. Download", detail: "Download the approved derivative for your intended use.", icon: Download },
-  { label: "4. If unsure", detail: "Request DAM review for help or additional access.", icon: ArrowRight }
+  { label: "1. Find media", detail: "Search by event, ministry, topic, or intended use.", icon: Search },
+  { label: "2. Check usage", detail: "Open the item and read the visible use guidance.", icon: ShieldCheck },
+  { label: "3. Request permission if needed", detail: "Ask before using anything unclear, sensitive, or restricted.", icon: FileQuestion },
+  { label: "4. Use only after review/clearance", detail: "Wait for the media team when permission is unclear.", icon: UserCheck }
 ];
 
-const commonTasks: HelpTask[] = [
-  { id: "find", title: "How to find approved photos", summary: "Search by use case, event, ministry, topic, or package, then confirm Approved for reuse before using a photo.", href: "/", icon: Search },
-  { id: "status", title: "Check approval status", summary: "View approval, rights, usage scope, and expiration.", href: "/", icon: ShieldCheck },
-  { id: "download", title: "Download approved copy", summary: "Open the record and download the approved derivative.", href: "/", icon: Download },
-  { id: "collection", title: "Use a collection", summary: "Start from a curated ministry collection and confirm each item.", href: "/collections", icon: FolderOpen },
-  { id: "source", title: "Request source-file access", summary: "Request access to source/original files when needed.", href: "/requests", icon: FileLock2 },
-  { id: "send", title: "Send media for review", summary: "Submit files or links for review and approval.", href: "/upload", icon: UploadCloud },
-  { id: "public", title: "Public / external use", summary: "Review rules for public, social, and external use.", href: "/help#policies", icon: Globe2 },
-  { id: "incident", title: "Rights incident or takedown", summary: "Report rights issues or request content removal.", href: "/requests", icon: FileCheck2 }
-];
+function helpTasks(opsView: boolean): HelpTask[] {
+  return [
+    {
+      id: "find-media",
+      title: "Find media",
+      summary: "Search for photos and collections by ministry, event, topic, or use.",
+      action: "Search library",
+      href: "/",
+      icon: Search
+    },
+    {
+      id: "upload-photos",
+      title: "Upload photos",
+      summary: "Send a focused batch with event, people, and permission notes.",
+      action: "Start upload",
+      href: "/upload",
+      icon: UploadCloud
+    },
+    {
+      id: "check-uploads",
+      title: "Check my uploads",
+      summary: "Review recent submissions saved on this browser.",
+      action: "Open uploads",
+      href: "/recent-uploads",
+      icon: Inbox
+    },
+    {
+      id: "request-permission",
+      title: "Request permission",
+      summary: "Ask before public, sensitive, unclear, or new use.",
+      action: "Start request",
+      href: "/requests",
+      icon: FileQuestion
+    },
+    {
+      id: "privacy-rights",
+      title: "Report a privacy or rights issue",
+      summary: "Flag consent, copyright, credit, removal, or sensitive-media concerns.",
+      action: "Report issue",
+      href: "/requests",
+      icon: AlertTriangle
+    },
+    {
+      id: "original-files",
+      title: opsView ? "Ask for source/high-resolution access" : "Request help with original files",
+      summary: opsView
+        ? "Use a tracked request when original or high-resolution access is needed."
+        : "Ask the media team when a normal preview is not enough.",
+      action: "Ask for help",
+      href: "/requests",
+      icon: Camera
+    },
+    {
+      id: "contact-team",
+      title: "Contact media team",
+      summary: "Send a question with the event, deadline, audience, and intended use.",
+      action: "Contact team",
+      href: "/requests",
+      icon: MessageCircle
+    }
+  ];
+}
 
-const reviewReasons = [
-  "Approval, rights, or scope is unclear",
-  "Need access to source/original files",
-  "New use, audience, or channel",
-  "Rights incident or takedown"
-];
-
-const quickLinks = [
-  { title: "Collections", detail: "Open ministry collections and kits", href: "/collections", icon: FolderOpen },
-  { title: "Recent uploads", detail: "Open recent intake ledger", href: "/recent-uploads", icon: UploadCloud },
-  { title: "Source-file access", detail: "Read request guidance", href: "#source-access", icon: FileLock2 },
-  { title: "Review requests", detail: "Open request operations", href: "/requests", icon: FileText }
-];
-
-const policies = [
-  { title: "Usage policy", detail: "Approved uses and restrictions" },
-  { title: "Rights & consent", detail: "Copyright, consent, and licensing" },
-  { title: "Official TJC Identity Site ↗", detail: "Logo, color, typography, and identity guidance.", href: "https://identity.tjc.org", external: true },
-  { title: "Public use rules", detail: "Social, web, and external distribution" },
-  { title: "Metadata standards", detail: "Naming, tagging, and descriptions" }
-];
-
-const helpArticles = [
+const usefulArticles: HelpArticle[] = [
   {
-    title: "How to find approved photos",
-    detail: "Search the library, open the media record, and confirm Approved for reuse, usage scope, reviewer, and review date before using a photo."
+    id: "find-media",
+    title: "Find media for church use",
+    detail: "Search broadly first, then narrow by event, ministry, topic, people, or intended channel."
   },
   {
-    title: "How to request reuse",
-    detail: "Open a reuse request when approval, audience, channel, or derivative access is unclear. Include use scope, deadline, and ministry owner."
+    id: "upload-photos",
+    title: "Prepare a photo upload",
+    detail: "Send one event or ministry batch at a time with dates, people notes, and permission context."
   },
   {
-    title: "Why source files are restricted",
-    detail: "Source/original files stay restricted to protect custody, consent, rights evidence, and the controlled DAM record."
+    id: "usage-check",
+    title: "Check whether media can be used",
+    detail: "Read the visible guidance and ask for permission when the audience, channel, or people shown are unclear."
   },
   {
-    title: "What photo-only beta means",
-    detail: "Photos are the controlled beta surface. Non-photo records may appear as reference or review items, but video/audio import remains reserved."
+    id: "request-permission",
+    title: "Request permission for a new use",
+    detail: "Include where the media will appear, who will see it, when you need it, and why it matters."
   },
   {
-    title: "Report a rights issue",
-    detail: "Pause distribution when license, consent, credit, takedown, or public-use scope is unclear."
-  },
-  {
-    title: "Review people/minors evidence",
-    detail: "Confirm visible people, youth/minors possibility, consent evidence, and allowed audience before external use."
-  },
-  {
-    title: "Build a distribution set",
-    detail: "Collect approved references for an internal set without copying source files or bypassing item-level clearance."
-  },
-  {
-    title: "Understand source custody model",
-    detail: "The portal shows role-safe records. Source custody and approval evidence remain governed by DAM policy."
-  },
-  {
-    title: "Why downloads are locked",
-    detail: "Downloads stay locked when evidence, approved derivative, reviewer date, or use scope is missing."
-  },
-  {
-    title: "What Portal Ready means",
-    detail: "Portal Ready means current evidence supports the shown use scope. It is not a blanket public approval."
+    id: "privacy-issue",
+    title: "Report privacy or rights concerns",
+    detail: "Pause use and contact the media team if consent, credit, ownership, or removal is disputed."
   }
 ];
+
+const advancedArticles: HelpArticle[] = [
+  {
+    id: "review-flow",
+    title: "How review and clearance works",
+    detail: "Reviewers check people, consent, usage scope, ownership, and sensitivity before broader use."
+  },
+  {
+    id: "original-access",
+    title: "Original and high-resolution requests",
+    detail: "Reviewer/admin access requests need a ministry purpose, deadline, audience, and handling plan.",
+    advanced: true
+  },
+  {
+    id: "photo-beta",
+    title: "Current photo support",
+    detail: "Photo workflows are prioritized; audio, video, and documents may need separate review timing."
+  },
+  {
+    id: "review-evidence",
+    title: "People and minors review",
+    detail: "Reviewers should confirm visible people, youth/minors possibility, permission evidence, and allowed audience.",
+    advanced: true
+  }
+];
+
+function policyItems(opsView: boolean): HelpPolicy[] {
+  const publicPolicies: HelpPolicy[] = [
+    { id: "usage", title: "Usage rules", detail: "Use media only for the audience, channel, and purpose that has been cleared." },
+    { id: "privacy", title: "Privacy and consent", detail: "Ask before using media with children, sensitive settings, or unclear permission." },
+    { id: "restricted", title: "Restricted media", detail: "Do not use items marked restricted, private, unclear, or needing review." },
+    { id: "ask", title: "When to ask permission", detail: "Ask for public use, new channels, people concerns, edits, or urgent deadlines." }
+  ];
+
+  if (!opsView) return publicPolicies;
+
+  return [
+    ...publicPolicies,
+    { id: "rights-consent", title: "Rights & consent", detail: "Review owner, license, consent, credit, expiry, and allowed audience.", opsOnly: true },
+    { id: "source-access", title: "Source access", detail: "Use tracked approval for original or high-resolution handling.", opsOnly: true },
+    { id: "metadata", title: "Metadata standards", detail: "Keep event, ministry, date, people notes, usage scope, and reviewer fields consistent.", opsOnly: true },
+    { id: "support-zone", title: "Support Zone process", detail: "Route blocked launch issues through the admin support queue.", opsOnly: true }
+  ];
+}
 
 const faqs: HelpFaq[] = [
   {
-    question: "How do I find approved photos?",
-    answer: "Search the library, open the record, and confirm Approved for reuse, usage scope, reviewer, and review date before use."
+    question: "Can I use a photo as soon as I find it?",
+    answer: "Use it only when the visible guidance clearly supports your audience, channel, and purpose."
   },
   {
-    question: "How do I request reuse?",
-    answer: "Open a reuse request with the record, intended channel, audience, deadline, and ministry owner. Requests do not approve public use by themselves."
+    question: "When should I request permission?",
+    answer: "Request permission when public use, people shown, ownership, edits, audience, or deadline is unclear."
   },
   {
-    question: "Why are source files restricted?",
-    answer: "Source files remain restricted so custody, consent, rights evidence, and the hosted DAM record stay controlled."
+    question: "How do I check my uploads?",
+    answer: "Open Recent Uploads to see submissions saved on this browser; these receipts are local and limited."
   },
   {
-    question: "What does photo-only beta mean?",
-    answer: "The beta supports photo intake and reuse review. Non-photo records can remain reference/review items until later import phases."
+    question: "What should I include in a help request?",
+    answer: "Include the media item, event, intended use, audience, deadline, ministry owner, and the question you need answered."
   }
 ];
 
+const reviewReasons = [
+  "Public or external use is planned",
+  "People, privacy, or children may be involved",
+  "Permission, ownership, or credit is unclear",
+  "Original or high-resolution handling is needed"
+];
+
+const quickLinks = [
+  { title: "Library", detail: "Search media and collections", href: "/", icon: FolderOpen },
+  { title: "Upload photos", detail: "Send a focused photo batch", href: "/upload", icon: UploadCloud },
+  { title: "Recent uploads", detail: "Check browser-saved submissions", href: "/recent-uploads", icon: Inbox },
+  { title: "Use rules", detail: "Read media-use policies", href: "#policies", icon: BookOpen }
+];
+
+function textMatches(query: string, fields: string[]) {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = fields.join(" ").toLowerCase();
+  return terms.every((term) => haystack.includes(term));
+}
+
+function readOpenRequestReceiptCount() {
+  try {
+    for (const key of localRequestReceiptKeys) {
+      const parsed = JSON.parse(window.localStorage.getItem(key) || "[]") as unknown;
+      if (!Array.isArray(parsed)) continue;
+      const open = parsed.filter((item): item is LocalRequestReceipt => {
+        if (!item || typeof item !== "object") return false;
+        const status = String((item as LocalRequestReceipt).status || "open").toLowerCase();
+        return !/closed|complete|done|resolved|cancelled/.test(status);
+      });
+      if (open.length) return open.length;
+    }
+  } catch {
+    return 0;
+  }
+  return 0;
+}
+
 export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) {
+  const { role } = useDemoRole();
+  const opsView = canReview(role);
   const [query, setQuery] = useState("");
   const [openFaq, setOpenFaq] = useState(0);
+  const [openRequestCount, setOpenRequestCount] = useState(0);
 
-  const visibleTasks = useMemo(() => {
-    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return commonTasks;
-    return commonTasks.filter((task) => {
-      const haystack = `${task.title} ${task.summary}`.toLowerCase();
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [query]);
+  useEffect(() => {
+    setOpenRequestCount(readOpenRequestReceiptCount());
+  }, []);
 
-  const leftTasks = visibleTasks.filter((_, index) => index % 2 === 0);
-  const rightTasks = visibleTasks.filter((_, index) => index % 2 === 1);
+  const tasks = useMemo(() => helpTasks(opsView), [opsView]);
+  const policies = useMemo(() => policyItems(opsView), [opsView]);
+  const articles = useMemo(
+    () => opsView ? [...usefulArticles, ...advancedArticles] : [...usefulArticles, ...advancedArticles.filter((article) => !article.advanced)],
+    [opsView]
+  );
+
+  const searchResults = useMemo(() => {
+    const trimmed = query.trim();
+    if (!trimmed) return { tasks: [], articles: [], policies: [] };
+    return {
+      tasks: tasks.filter((task) => textMatches(trimmed, [task.title, task.summary, task.action])),
+      articles: articles.filter((article) => textMatches(trimmed, [article.title, article.detail])),
+      policies: policies.filter((policy) => textMatches(trimmed, [policy.title, policy.detail]))
+    };
+  }, [articles, policies, query, tasks]);
+
+  const hasSearch = query.trim().length > 0;
+  const hasSearchResults = searchResults.tasks.length || searchResults.articles.length || searchResults.policies.length;
+  const shownArticles = usefulArticles.slice(0, policyCenter ? 4 : 5);
+  const hiddenArticles = articles.filter((article) => !shownArticles.some((shown) => shown.id === article.id));
+
+  const roleHref = (href: string) => routeWithRole(href, role);
 
   return (
     <div className="dam-help-center" data-route-identity="help">
       <main className="help-center-main">
         <section className="help-center-hero" aria-labelledby="help-center-title">
           <div>
-            <h1 id="help-center-title">{policyCenter ? "Policy Center" : "Help Center"}</h1>
-            <p>{policyCenter ? "Policy-safe DAM guidance for reuse, rights, consent, and metadata standards." : "DAM guidance, rights policy, and role-safe support instructions."}</p>
+            <h1 id="help-center-title">Help Center</h1>
+            <p>Find guidance, request help, or check media-use rules.</p>
           </div>
-          <form className="help-center-search" role="search">
-            <Search size={19} strokeWidth={1.9} aria-hidden="true" />
-            <label htmlFor="help-center-search-input" className="sr-only">Search help articles, topics, and guides</label>
+          <form className="help-center-search" role="search" onSubmit={(event) => event.preventDefault()}>
+            <Search size={20} strokeWidth={1.9} aria-hidden="true" />
+            <label htmlFor="help-center-search-input" className="sr-only">Search help articles, tasks, or policies</label>
             <input
               id="help-center-search-input"
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search help articles, topics, and guides..."
+              placeholder="Search help articles, tasks, or policies..."
             />
           </form>
         </section>
 
-        <section className="help-center-proof" aria-label="Safe copy rule">
-          <span><ShieldCheck size={22} strokeWidth={1.9} aria-hidden="true" /></span>
-          <div>
-            <strong>Approved derivative is the safe copy</strong>
-            <p>Use the approved copy for distribution. Source/original access is restricted by default.</p>
-            <Link href="#faq">Learn more about safe reuse <ArrowRight size={15} aria-hidden="true" /></Link>
+        {hasSearch ? (
+          <section className="help-search-results" aria-labelledby="help-search-results-title" aria-live="polite">
+            <header>
+              <h2 id="help-search-results-title">Search results</h2>
+              <span>{hasSearchResults ? `${searchResults.tasks.length + searchResults.articles.length + searchResults.policies.length} found` : "No matches yet"}</span>
+            </header>
+            {hasSearchResults ? (
+              <div className="help-search-result-groups">
+                {searchResults.tasks.length ? (
+                  <div>
+                    <h3>Tasks</h3>
+                    {searchResults.tasks.map((task) => {
+                      const TaskIcon = task.icon;
+                      return (
+                        <Link className="help-search-result" href={roleHref(task.href)} key={task.id}>
+                          <TaskIcon size={18} strokeWidth={1.8} aria-hidden="true" />
+                          <span><strong>{task.title}</strong><small>{task.action}</small></span>
+                          <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                {searchResults.articles.length ? (
+                  <div>
+                    <h3>Articles</h3>
+                    {searchResults.articles.slice(0, 4).map((article) => (
+                      <a className="help-search-result" href={`#article-${article.id}`} key={article.id}>
+                        <BookOpen size={18} strokeWidth={1.8} aria-hidden="true" />
+                        <span><strong>{article.title}</strong><small>{article.detail}</small></span>
+                        <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+                {searchResults.policies.length ? (
+                  <div>
+                    <h3>Policies</h3>
+                    {searchResults.policies.slice(0, 4).map((policy) => (
+                      <a className="help-search-result" href={`#policy-${policy.id}`} key={policy.id}>
+                        <ShieldCheck size={18} strokeWidth={1.8} aria-hidden="true" />
+                        <span><strong>{policy.title}</strong><small>{policy.detail}</small></span>
+                        <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="help-empty-state" role="status">
+                <HelpCircle size={28} strokeWidth={1.8} aria-hidden="true" />
+                <div>
+                  <strong>No help results found</strong>
+                  <p>Try “permission,” “upload,” “privacy,” or contact the media team for help.</p>
+                </div>
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        <section className="help-primary-tasks" aria-labelledby="primary-help-title">
+          <header>
+            <h2 id="primary-help-title">What do you need help with?</h2>
+          </header>
+          <div className="help-task-card-grid">
+            {tasks.map((task) => {
+              const TaskIcon = task.icon;
+              return (
+                <Link className="help-task-card" href={roleHref(task.href)} key={task.id}>
+                  <span className="help-task-icon"><TaskIcon size={22} strokeWidth={1.85} aria-hidden="true" /></span>
+                  <span>
+                    <strong>{task.title}</strong>
+                    <small>{task.summary}</small>
+                    <em>{task.action} <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></em>
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
@@ -201,10 +420,10 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
         </section>
 
         <section className="help-center-tasks" data-primary-section="help-articles" aria-labelledby="help-articles-title">
-          <h2 id="help-articles-title">Help articles</h2>
+          <h2 id="help-articles-title">Helpful articles</h2>
           <div className="help-article-grid">
-            {helpArticles.map((article) => (
-              <article id={article.title === "Request source access" ? "source-access" : undefined} key={article.title}>
+            {shownArticles.map((article) => (
+              <article id={`article-${article.id}`} key={article.id}>
                 <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
                 <div>
                   <strong>{article.title}</strong>
@@ -213,92 +432,91 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
               </article>
             ))}
           </div>
-        </section>
-
-        <section className="help-center-tasks" aria-labelledby="common-tasks-title">
-          <h2 id="common-tasks-title">Common tasks</h2>
-          {visibleTasks.length ? (
-            <div className="help-task-columns">
-              {[leftTasks, rightTasks].map((tasks, columnIndex) => (
-                <div className="help-task-column" key={columnIndex}>
-                  {tasks.map((task) => {
-                    const TaskIcon = task.icon;
-                    return (
-                      <Link className="help-task-row" href={task.href} key={task.id}>
-                        <TaskIcon size={22} strokeWidth={1.85} aria-hidden="true" />
-                        <span>
-                          <strong>{task.title}</strong>
-                          <small>{task.summary}</small>
-                        </span>
-                        <ArrowRight size={17} strokeWidth={1.8} aria-hidden="true" />
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="help-empty-result">No help task matched. Request DAM review when unsure.</p>
-          )}
+          {hiddenArticles.length ? (
+            <details className="help-article-details" open={hasSearch}>
+              <summary>View all articles</summary>
+              <div className="help-article-grid">
+                {hiddenArticles.map((article) => (
+                  <article id={`article-${article.id}`} key={article.id}>
+                    <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
+                    <div>
+                      <strong>{article.title}</strong>
+                      <p>{article.detail}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </section>
 
         <section id="faq" className="help-center-faq" aria-labelledby="faq-title">
           <header>
-            <h2 id="faq-title">Help topics (FAQ)</h2>
-            <Link href="/help">View all articles <ArrowRight size={15} aria-hidden="true" /></Link>
+            <h2 id="faq-title">Questions people ask</h2>
           </header>
           <div className="help-faq-list">
             {faqs.map((item, index) => {
               const isOpen = openFaq === index;
+              const contentId = `help-faq-${index}`;
               return (
                 <article className={isOpen ? "is-open" : ""} key={item.question}>
-                  <button type="button" onClick={() => setOpenFaq(isOpen ? -1 : index)} aria-expanded={isOpen}>
+                  <button type="button" onClick={() => setOpenFaq(isOpen ? -1 : index)} aria-expanded={isOpen} aria-controls={contentId}>
                     <span>{item.question}</span>
                     <ChevronDown size={18} strokeWidth={1.8} aria-hidden="true" />
                   </button>
-                  {isOpen ? <p>{item.answer}</p> : null}
+                  {isOpen ? <p id={contentId}>{item.answer}</p> : null}
                 </article>
               );
             })}
           </div>
         </section>
+
+        <section id="policies" className="help-center-tasks help-policy-section" aria-labelledby="help-policies-title">
+          <h2 id="help-policies-title">Media-use rules</h2>
+          <div className="help-policy-grid">
+            {policies.map((item) => (
+              <article id={`policy-${item.id}`} className={item.opsOnly ? "is-advanced" : ""} key={item.id}>
+                <ShieldCheck size={20} strokeWidth={1.8} aria-hidden="true" />
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       </main>
 
-      <aside className="help-center-rail" aria-label="Media help documentation">
-        <section className="help-side-card">
-          <h2>Documentation scope</h2>
-          <p className="help-side-copy">This page explains DAM rules and safe support paths. Request records live in Requests. Assigned work lives in My Tasks.</p>
-        </section>
-
-        <section className="help-side-card">
-          <h2>My open requests</h2>
-          <div className="help-open-requests">
-            <span><strong>2</strong><small>Waiting on me</small></span>
-            <span><strong>4</strong><small>Open total</small></span>
-          </div>
-          <Link className="help-review-primary" href="/requests">
-            Open Requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" />
-          </Link>
-        </section>
-
-        <section id="request-review" className="help-review-card">
+      <aside className="help-center-rail" aria-label="Media help actions">
+        <section className="help-review-card">
           <header>
             <MessageCircle size={22} strokeWidth={1.8} aria-hidden="true" />
             <div>
-              <h2>How to request DAM review</h2>
-              <p>If approval, source access, rights, or use scope is unclear, open a request with enough context for safe triage.</p>
+              <h2>Need help?</h2>
+              <p>Start a request when a media item, upload, permission question, or rights concern needs a person.</p>
             </div>
           </header>
-          <Link className="help-review-primary" href="/requests">Open Requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
-          <div>
-            <h3>When to request review</h3>
-            <ul>
-              {reviewReasons.map((reason) => (
-                <li key={reason}><CheckCircle2 size={15} strokeWidth={1.9} aria-hidden="true" />{reason}</li>
-              ))}
-            </ul>
-          </div>
-          <Link href="#faq">Learn more about request types <ArrowRight size={15} aria-hidden="true" /></Link>
+          <Link className="help-review-primary" href={roleHref("/requests")}>Start a request <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
+          <Link className="help-review-secondary" href={roleHref("/requests")}>Check open requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
+        </section>
+
+        {openRequestCount > 0 ? (
+          <section className="help-side-card" aria-label="Local open request receipts">
+            <h2>My open requests</h2>
+            <div className="help-open-requests">
+              <span><strong>{openRequestCount}</strong><small>Open on this browser</small></span>
+            </div>
+            <Link className="help-review-secondary" href={roleHref("/requests")}>Open my requests <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
+          </section>
+        ) : null}
+
+        <section id="request-review" className="help-side-card">
+          <h2>When to ask</h2>
+          <ul className="help-check-list">
+            {reviewReasons.map((reason) => (
+              <li key={reason}><CheckCircle2 size={15} strokeWidth={1.9} aria-hidden="true" />{reason}</li>
+            ))}
+          </ul>
         </section>
 
         <section className="help-side-card">
@@ -307,7 +525,7 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
             {quickLinks.map((item) => {
               const LinkIcon = item.icon;
               return (
-                <Link href={item.href} key={item.title}>
+                <Link href={roleHref(item.href)} key={item.title}>
                   <LinkIcon size={21} strokeWidth={1.8} aria-hidden="true" />
                   <span><strong>{item.title}</strong><small>{item.detail}</small></span>
                   <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -317,15 +535,19 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
           </div>
         </section>
 
-        <section id="policies" className="help-side-card">
-          <h2>Policies &amp; Guidelines</h2>
+        <section className="help-side-card">
+          <h2>Good request details</h2>
           <div className="help-link-list is-policy">
-            {policies.map((item) => (
-              <Link href={item.href || "/help"} key={item.title} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined}>
-                <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
-                <span><strong>{item.title}</strong><small>{item.detail}</small></span>
-                {item.external ? <ExternalLink size={15} strokeWidth={1.8} aria-hidden="true" /> : null}
-              </Link>
+            {[
+              ["Media item", "Link, title, or clear description"],
+              ["Intended use", "Audience, channel, and deadline"],
+              ["People shown", "Children, privacy, or sensitivity notes"],
+              ["Decision needed", "Permission, issue report, upload help, or original-file help"]
+            ].map(([title, detail]) => (
+              <div className="help-info-row" key={title}>
+                <FileText size={20} strokeWidth={1.8} aria-hidden="true" />
+                <span><strong>{title}</strong><small>{detail}</small></span>
+              </div>
             ))}
           </div>
         </section>

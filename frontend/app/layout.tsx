@@ -43,7 +43,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "True Jesus Church Media Library",
-  description: "Approved media for ministry teams"
+  description: "Media portal for ministry teams"
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

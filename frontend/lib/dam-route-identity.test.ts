@@ -2,21 +2,29 @@ import { describe, expect, it } from "vitest";
 import { isDamShellRouteActive } from "@/lib/dam-route-identity";
 
 const navItems = [
-  { label: "Library", href: "/" },
+  { label: "Media Library", href: "/library", activeHrefs: ["/"] },
+  { label: "Albums & Events", href: "/collections" },
   { label: "Requests", href: "/requests" },
-  { label: "My Tasks", href: "/my-tasks", activeHrefs: ["/tasks"] },
+  { label: "My Work", href: "/my-tasks", activeHrefs: ["/tasks"] },
   { label: "Help Center", href: "/help", activeHrefs: ["/guide"] },
-  { label: "Policy Center", href: "/governance/policy-center", activeHrefs: ["/help?section=policies#policies", "/guide?section=policies#policies"] },
-  { label: "Recent Uploads", href: "/recent-uploads" },
-  { label: "Review Queue", href: "/review" },
-  { label: "Rights & Consent", href: "/governance/rights-consent", activeHrefs: ["/review?queue=rights-review"] },
-  { label: "Metadata Health", href: "/governance/metadata-health" },
-  { label: "Audit Log", href: "/governance/audit-log", activeHrefs: ["/admin#audit-logs"] },
-  { label: "Integrations", href: "/governance/integrations" },
-  { label: "Control Center", href: "/admin" },
-  { label: "Users & Roles", href: "/admin/users", activeHrefs: ["/admin/roles"] },
-  { label: "Taxonomy", href: "/admin/taxonomy" },
-  { label: "Settings", href: "/admin/settings" }
+  { label: "My Uploads", href: "/recent-uploads", activeHrefs: ["/library?view=recent-uploads"] },
+  { label: "Review Uploads", href: "/review", activeHrefs: ["/review?queue=pending", "/review?queue=rights-review"] },
+  {
+    label: "Admin Zone",
+    href: "/admin",
+    activeHrefs: [
+      "/admin/users",
+      "/admin/roles",
+      "/admin/taxonomy",
+      "/admin/settings",
+      "/governance",
+      "/governance/rights-consent",
+      "/governance/metadata-health",
+      "/governance/policy-center",
+      "/governance/audit-log",
+      "/governance/integrations"
+    ]
+  }
 ];
 
 function activeLabels(pathname: string, currentSearch = "", currentHash = "") {
@@ -26,39 +34,44 @@ function activeLabels(pathname: string, currentSearch = "", currentHash = "") {
 }
 
 describe("DAM route identity", () => {
-  it("keeps Requests, My Tasks, Help Center, and Recent Uploads distinct", () => {
+  it("keeps Requests, Help Center, Albums & Events, My Work, and upload history distinct", () => {
     expect(activeLabels("/requests/REQ-1024")).toEqual(["Requests"]);
-    expect(activeLabels("/my-tasks")).toEqual(["My Tasks"]);
-    expect(activeLabels("/tasks")).toEqual(["My Tasks"]);
+    expect(activeLabels("/")).toEqual(["Media Library"]);
+    expect(activeLabels("/collections")).toEqual(["Albums & Events"]);
+    expect(activeLabels("/my-tasks")).toEqual(["My Work"]);
+    expect(activeLabels("/tasks")).toEqual(["My Work"]);
     expect(activeLabels("/help")).toEqual(["Help Center"]);
     expect(activeLabels("/guide")).toEqual(["Help Center"]);
-    expect(activeLabels("/recent-uploads")).toEqual(["Recent Uploads"]);
+    expect(activeLabels("/recent-uploads")).toEqual(["My Uploads"]);
+    expect(activeLabels("/library", "view=recent-uploads")).toEqual(["My Uploads"]);
+    expect(activeLabels("/requests", "view=my-tasks")).toEqual(["Requests"]);
   });
 
-  it("does not let bare Help Center steal policy or workflow routes", () => {
-    expect(activeLabels("/help", "section=policies", "policies")).toEqual(["Policy Center"]);
-    expect(activeLabels("/guide", "section=policies", "policies")).toEqual(["Policy Center"]);
+  it("keeps Help Center active for policy help pages without a global Policy Center item", () => {
+    expect(activeLabels("/help", "section=policies", "policies")).toEqual(["Help Center"]);
+    expect(activeLabels("/guide", "section=policies", "policies")).toEqual(["Help Center"]);
     expect(activeLabels("/requests")).not.toContain("Help Center");
     expect(activeLabels("/my-tasks")).not.toContain("Help Center");
+    expect(activeLabels("/recent-uploads")).not.toContain("Help Center");
   });
 
-  it("keeps normal review queues under Review Queue while rights review maps to Rights & Consent", () => {
-    expect(activeLabels("/review", "queue=missing-evidence")).toEqual(["Review Queue"]);
-    expect(activeLabels("/review", "queue=metadata")).toEqual(["Review Queue"]);
-    expect(activeLabels("/review", "queue=rights-review")).toEqual(["Rights & Consent"]);
+  it("keeps all review queues under Review Uploads", () => {
+    expect(activeLabels("/review", "queue=missing-evidence")).toEqual(["Review Uploads"]);
+    expect(activeLabels("/review", "queue=metadata")).toEqual(["Review Uploads"]);
+    expect(activeLabels("/review", "queue=rights-review")).toEqual(["Review Uploads"]);
   });
 
-  it("keeps governance and admin sidebar identity exact", () => {
-    expect(activeLabels("/governance")).toEqual([]);
-    expect(activeLabels("/governance/rights-consent", "", "rights-policies")).toEqual(["Rights & Consent"]);
-    expect(activeLabels("/governance/metadata-health")).toEqual(["Metadata Health"]);
-    expect(activeLabels("/governance/policy-center")).toEqual(["Policy Center"]);
-    expect(activeLabels("/governance/audit-log")).toEqual(["Audit Log"]);
-    expect(activeLabels("/governance/integrations")).toEqual(["Integrations"]);
-    expect(activeLabels("/admin")).toEqual(["Control Center"]);
-    expect(activeLabels("/admin/users")).toEqual(["Users & Roles"]);
-    expect(activeLabels("/admin/roles")).toEqual(["Users & Roles"]);
-    expect(activeLabels("/admin/taxonomy")).toEqual(["Taxonomy"]);
-    expect(activeLabels("/admin/settings", "", "integrations")).toEqual(["Settings"]);
+  it("keeps all admin and governance routes under one Admin Zone sidebar item", () => {
+    expect(activeLabels("/governance")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/governance/rights-consent", "", "rights-consent")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/governance/metadata-health")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/governance/policy-center")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/governance/audit-log")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/governance/integrations")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/admin")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/admin/users")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/admin/roles")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/admin/taxonomy")).toEqual(["Admin Zone"]);
+    expect(activeLabels("/admin/settings", "", "integrations")).toEqual(["Admin Zone"]);
   });
 });

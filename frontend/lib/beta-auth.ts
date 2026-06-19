@@ -19,7 +19,7 @@ export const betaPersonas: BetaPersona[] = [
     role: "Viewer",
     label: "Viewer",
     envName: "BETA_VIEWER_PASSWORD",
-    description: "Viewer can browse approved media only."
+    description: "Viewer can browse media with role-safe guidance."
   },
   {
     role: "Contributor",

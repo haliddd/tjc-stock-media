@@ -7,6 +7,7 @@ import { AlertTriangle, Bell, Box, CheckCircle2, ClipboardCheck, Database, Downl
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAdminReadiness } from "@/components/dam/useDamApi";
 import { adminNavItems, adminNavLabel, integrationReadinessColumns, integrationState, policySummaryRows, systemHealthRows } from "@/lib/admin-control";
+import { sourceTruthLabel } from "@/lib/enterprise-display";
 import { enterpriseMetadataSchemaRows, metadataSchemaHealthSummary } from "@/lib/enterprise-metadata";
 import type { EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaSourceIsLive } from "@/lib/media-source/truth";
@@ -17,11 +18,11 @@ import type { BetaFeedbackIncidentState, BetaFeedbackOwner, BetaFeedbackRecord, 
 import { ActionButton, CustodyMapPanel, ErrorCard, KpiCard, LoadingCard, PageHeader, SourcePill, StatusBadge } from "./EnterpriseShared";
 
 const roleRows = [
-  ["Viewer", "Find approved media", "Approved copy only", "No", "No", "No"],
+  ["Viewer", "Browse church media", "Approved copy only", "No", "No", "No"],
   ["Contributor", "Find and submit media", "Approved copy only", "Yes", "No", "No"],
   ["Reviewer", "Review evidence and decisions", "Role-gated previews", "Yes", "Yes", "No"],
   ["DAM Admin observer", "Read readiness and blockers", "Role-gated previews", "Yes", "Yes", "Read-only"],
-  ["Prototype operator", "Configure rehearsal operations after proof", "Role-gated previews", "Yes", "Yes", "Controlled"]
+  ["Verified operator", "Configure controlled operations after proof", "Role-gated previews", "Yes", "Yes", "Controlled"]
 ];
 
 const teamRows = [
@@ -62,14 +63,14 @@ const storageTruthRows: AdminTruthRow[] = [
     state: "local-only",
     storage: "Portal audit plus pending write queue",
     truth: "Portal review decisions can be queued locally. ResourceSpace remains final truth.",
-    blocker: "Needs durable reviewer decision store and verified ResourceSpace sync handoff."
+    blocker: "Needs durable reviewer decision store, explicit write approval, and ResourceSpace re-read proof."
   },
   {
     item: "Pending ResourceSpace writes",
     state: "blocked",
     storage: "Runtime pending-write JSON files",
-    truth: "Live ResourceSpace writeback is disabled unless explicit server env and field map proof exist.",
-    blocker: "No live writeback proof. Pending writes are not ResourceSpace truth."
+    truth: "ResourceSpace writeback stays gated unless explicit server env, field map proof, reviewer confirmation, and post-write re-read evidence exist.",
+    blocker: "No applied write is treated as ResourceSpace truth without confirmation re-read."
   },
   {
     item: "Package drafts",
@@ -89,14 +90,14 @@ const storageTruthRows: AdminTruthRow[] = [
     item: "Saved searches",
     state: "local-only",
     storage: "Local JSON saved-search records",
-    truth: "Saved views are prototype convenience only, not team profile durability.",
+    truth: "Saved views are convenience records only, not team profile durability.",
     blocker: "Needs team/user-scoped durable profile storage."
   },
   {
     item: "Feedback",
     state: "local-only",
     storage: "Local JSON unless KV/Blob are configured",
-    truth: "Feedback can support local rehearsal triage only. It is not broad tester durability proof.",
+    truth: "Feedback can support restricted-access triage only. It is not broad tester durability proof.",
     blocker: "Needs durable triage, attachment storage, owner/status audit trail, and export proof."
   },
   {
@@ -113,14 +114,14 @@ const identityTruthRows: AdminTruthRow[] = [
     item: "Demo role",
     state: "local-only",
     source: "Client role provider",
-    truth: "Local prototype browsing only. Not authentication, not SSO, not real user impersonation.",
+    truth: "Local role browsing only. Not authentication, not SSO, not real user impersonation.",
     blocker: "Replace with verified user identity before external access claims."
   },
   {
-    item: "Prototype login",
+    item: "Rehearsal login",
     state: "prototype-login",
     source: "Signed session cookie plus middleware headers",
-    truth: "Useful for rehearsal role checks, but not IdP-backed production identity.",
+    truth: "Useful for restricted role checks, but not IdP-backed production identity.",
     blocker: "Needs real accounts, lifecycle, group mapping, and audit actor proof."
   },
   {
@@ -155,13 +156,32 @@ const adminNavByHash = new Map(adminNavItems.map((item) => [item.id, item.id]));
 adminNavByHash.set(DEFAULT_ADMIN_HASH, DEFAULT_ADMIN_NAV);
 adminNavByHash.set("overview", DEFAULT_ADMIN_NAV);
 adminNavByHash.set("users", "users-roles");
+adminNavByHash.set("rights", "rights-consent");
+adminNavByHash.set("rights-policies", "rights-consent");
+adminNavByHash.set("metadata", "metadata-health");
+adminNavByHash.set("metadata-schemas", "metadata-health");
+adminNavByHash.set("policy", "policy-audit");
+adminNavByHash.set("audit", "policy-audit");
+adminNavByHash.set("audit-logs", "policy-audit");
+adminNavByHash.set("review-workflows", "policy-audit");
+adminNavByHash.set("storage-retention", "source-import");
+adminNavByHash.set("system-settings", "system-settings");
 adminNavByHash.set("launch-readiness-section", DEFAULT_ADMIN_NAV);
 adminNavByHash.set("governance-policies-section", DEFAULT_ADMIN_NAV);
 adminNavByHash.set("audit-activity-section", DEFAULT_ADMIN_NAV);
 adminNavByHash.set("system-health-section", DEFAULT_ADMIN_NAV);
 const adminCanonicalHashAliases = new Map<string, string>([
   ["overview", DEFAULT_ADMIN_HASH],
-  ["users", "users-roles"]
+  ["users", "users-roles"],
+  ["rights", "rights-consent"],
+  ["rights-policies", "rights-consent"],
+  ["metadata", "metadata-health"],
+  ["metadata-schemas", "metadata-health"],
+  ["policy", "policy-audit"],
+  ["audit", "policy-audit"],
+  ["audit-logs", "policy-audit"],
+  ["review-workflows", "policy-audit"],
+  ["storage-retention", "source-import"]
 ]);
 const adminFocusTargetByHash = new Map<string, string>([
   [DEFAULT_ADMIN_HASH, "admin-launch-summary-title"],
@@ -172,12 +192,12 @@ const adminFocusTargetByHash = new Map<string, string>([
 ]);
 
 const adminPageIdentityByPath = new Map<string, { title: string; subtitle: string }>([
-  ["/admin", { title: "Control Center", subtitle: "Local prototype status for source health, audit activity, storage honesty, identity proof, and policy-sensitive workflows." }],
+  ["/admin", { title: "Admin", subtitle: "Admin tools for users, rights, metadata, policy, audit, source import, taxonomy, integrations, and settings." }],
   ["/governance/rights-consent", { title: "Rights & Consent", subtitle: "Evidence, consent, owner/license, minors, and public-use approvals." }],
   ["/governance/metadata-health", { title: "Metadata Health", subtitle: "Required fields, duplicate candidates, taxonomy drift, and orphaned records." }],
-  ["/governance/policy-center", { title: "Policy Center", subtitle: "Download gates, source restrictions, roles, approval, consent, and expiration rules." }],
-  ["/governance/audit-log", { title: "Audit Log", subtitle: "Upload, edit, approval, download, export, and policy events." }],
-  ["/governance/integrations", { title: "Integrations", subtitle: "ResourceSpace, Google Shared Drive, portal, storage, and identity health." }],
+  ["/governance/policy-center", { title: "Policy & Audit", subtitle: "Download gates, source restrictions, approvals, expiration rules, and audit events." }],
+  ["/governance/audit-log", { title: "Policy & Audit", subtitle: "Upload, edit, approval, download, export, and policy events." }],
+  ["/governance/integrations", { title: "Support Zone", subtitle: "Backend connection, storage, identity, and review handoff status." }],
   ["/admin/users", { title: "Users & Roles", subtitle: "Role-safe permissions and user assignments." }],
   ["/admin/taxonomy", { title: "Taxonomy", subtitle: "Ministry, event, collection, tag, and metadata vocabularies." }],
   ["/admin/settings", { title: "Settings", subtitle: "DAM workspace settings and operational controls." }]
@@ -187,8 +207,8 @@ const adminModuleTitleByPath = new Map<string, string>([
   ["/admin", "Overview"],
   ["/governance/rights-consent", "Rights & Consent"],
   ["/governance/metadata-health", "Metadata Health"],
-  ["/governance/policy-center", "Policy Center"],
-  ["/governance/audit-log", "Audit Log"],
+  ["/governance/policy-center", "Policy & Audit"],
+  ["/governance/audit-log", "Policy & Audit"],
   ["/governance/integrations", "Integrations"],
   ["/admin/users", "Users & Roles"],
   ["/admin/taxonomy", "Taxonomy"],
@@ -197,10 +217,15 @@ const adminModuleTitleByPath = new Map<string, string>([
 
 const legacyAdminModuleMap = new Map<string, string>([
   ["dashboard", DEFAULT_ADMIN_NAV],
-  ["rights", "rights-policies"],
-  ["metadata", "metadata-schemas"],
-  ["policy", "rights-policies"],
-  ["audit", "audit-logs"],
+  ["rights", "rights-consent"],
+  ["rights-policies", "rights-consent"],
+  ["metadata", "metadata-health"],
+  ["metadata-schemas", "metadata-health"],
+  ["policy", "policy-audit"],
+  ["audit", "policy-audit"],
+  ["audit-logs", "policy-audit"],
+  ["review-workflows", "policy-audit"],
+  ["storage-retention", "source-import"],
   ["integrations", "integrations"],
   ["settings", "system-settings"],
   ["users", "users-roles"],
@@ -268,7 +293,7 @@ function truthStateTone(state: AdminTruthState): AdminStatusTone {
 
 function truthStateLabel(state: AdminTruthState) {
   if (state === "not-proven") return "Not production-proven";
-  if (state === "prototype-login") return "Prototype login";
+  if (state === "prototype-login") return "Rehearsal login";
   if (state === "header-shim") return "Header shim";
   return state;
 }
@@ -358,7 +383,7 @@ type GovernanceQueueItem = {
 };
 
 function governanceActionTitle(fact: BetaReadinessFact) {
-  if (fact.state === "block" && fact.source === "launch-readiness") return "Resolve local rehearsal blocker";
+  if (fact.state === "block" && fact.source === "launch-readiness") return "Resolve readiness blocker";
   if (fact.source === "integration") return "Review integration evidence";
   if (fact.source === "environment" || fact.source === "git-hygiene") return "Verify policy exception";
   if (fact.state === "block") return "Review blocker evidence";
@@ -377,7 +402,7 @@ function governanceEvidenceMeta(fact: BetaReadinessFact, readiness?: DamReadines
   if (integration) return `${integration.owner} · ${integrationState(integration)}`;
   if (fact.source === "qa-report") return "Browser/API smoke evidence";
   if (fact.source === "catalog") return readiness?.auditLog.latestAt ? `Last audit activity ${readiness.auditLog.latestAt}` : "Catalog governance fact";
-  if (fact.source === "launch-readiness") return readiness?.betaReadiness.generatedAt ? `Rehearsal fact generated ${new Date(readiness.betaReadiness.generatedAt).toLocaleString()}` : "Local rehearsal fact";
+  if (fact.source === "launch-readiness") return readiness?.betaReadiness.generatedAt ? `Readiness fact generated ${new Date(readiness.betaReadiness.generatedAt).toLocaleString()}` : "Readiness fact";
   if (fact.source === "environment") return "Runtime environment fact";
   if (fact.source === "git-hygiene") return "Git hygiene fact";
   return betaFactSourceLabel(fact.source);
@@ -406,7 +431,7 @@ function LaunchReadinessSummary({ readiness, onSelectModule }: { readiness?: Dam
   const auditActivity = readiness?.auditLog.recent[0];
   const launchFact = facts.find((item) => item.source === "launch-readiness" && item.state !== "pass") || facts.find((item) => item.source === "launch-readiness");
   const stateTone: AdminStatusTone = beta?.ready ? "Healthy" : blockers.length ? "Critical" : "Warning";
-  const stateLabel = beta?.ready ? "Local rehearsal checks pass" : blockers.length ? "Local rehearsal HOLD" : "Local rehearsal hold";
+  const stateLabel = beta?.ready ? "Local checks pass" : blockers.length ? "Operational HOLD" : "Operational hold";
   const queueItems = governanceQueueItems(readiness);
   const primaryQueueItem = queueItems[0];
   const remainingQueueItems = queueItems.slice(1);
@@ -420,21 +445,21 @@ function LaunchReadinessSummary({ readiness, onSelectModule }: { readiness?: Dam
     <section id={DEFAULT_ADMIN_HASH} className={`ed-card ed-launch-summary is-${stateTone.toLowerCase()}`} aria-labelledby="admin-launch-summary-title">
       <div className="ed-launch-summary-primary">
         <div>
-          <span className="ed-section-eyebrow">Local prototype</span>
+          <span className="ed-section-eyebrow">Read-only readiness</span>
           <h2 id="admin-launch-summary-title" tabIndex={-1}>{stateLabel}</h2>
-          <p>{beta?.ready ? "Local rehearsal checks passed. This is still not beta-ready until hosted durability, production-proven identity, catalog proof, and owner signoff are complete." : blockers.length ? "Resolve critical blockers before any teammate rehearsal invite." : "Proceed with local rehearsal only until warnings are accepted or cleared."}</p>
+          <p>{beta?.ready ? "Local checks passed. Hosted durability, identity proof, catalog proof, and owner signoff are still required." : blockers.length ? "Resolve critical blockers before any teammate invite." : "Proceed only after warnings are accepted or cleared."}</p>
         </div>
         <div className="ed-launch-verdict">
           <AdminStatusBadge tone={stateTone} label={stateLabel} />
           <strong>{beta?.score || 0}%</strong>
-          <span>proof score</span>
+          <span>evidence score</span>
         </div>
       </div>
       <div className="ed-governance-queue" aria-labelledby="governance-action-queue-title">
         <header>
           <div>
             <span className="ed-section-eyebrow">Governance Action Queue</span>
-            <h3 id="governance-action-queue-title">Exception-first rehearsal work</h3>
+            <h3 id="governance-action-queue-title">Exception-first readiness work</h3>
             <p>Critical blockers first, warnings second. Evidence links stay inside existing governance sections.</p>
           </div>
           <div className="ed-governance-queue-counts" aria-label={`${blockers.length} critical blockers and ${warnings.length} warnings`}>
@@ -461,7 +486,7 @@ function LaunchReadinessSummary({ readiness, onSelectModule }: { readiness?: Dam
               </article>
               {remainingQueueItems.length ? (
                 <details className="ed-governance-queue-more">
-                  <summary>More rehearsal actions: {remainingQueueItems.filter((item) => item.severity === "Critical").length} critical, {remainingQueueItems.filter((item) => item.severity === "Warning").length} warnings</summary>
+                  <summary>More readiness actions: {remainingQueueItems.filter((item) => item.severity === "Critical").length} critical, {remainingQueueItems.filter((item) => item.severity === "Warning").length} warnings</summary>
                   <div className="ed-governance-queue-list">
                     {remainingQueueItems.map((item) => (
                       <article className={`is-${item.severity.toLowerCase()}`} key={item.fact.id}>
@@ -488,22 +513,22 @@ function LaunchReadinessSummary({ readiness, onSelectModule }: { readiness?: Dam
               <div className="ed-governance-queue-main">
                 <AdminStatusBadge tone="Healthy" />
                 <div>
-                  <h4>No open rehearsal exceptions</h4>
-                  <p>Keep scheduled smoke, audit export, and reviewer proof current during local rehearsal.</p>
+                  <h4>No open readiness exceptions</h4>
+                  <p>Keep scheduled smoke, audit export, and reviewer proof current.</p>
                 </div>
               </div>
               <div className="ed-governance-queue-meta">
-                <span>Rehearsal evidence</span>
+                <span>Readiness evidence</span>
                 <small>Current readiness facts</small>
-                <a href="#launch-readiness-section" aria-label="View rehearsal evidence" onClick={(event) => viewEvidence(event, "launch-readiness-section")}>View evidence</a>
+                <a href="#launch-readiness-section" aria-label="View readiness evidence" onClick={(event) => viewEvidence(event, "launch-readiness-section")}>View evidence</a>
               </div>
             </article>
           )}
         </div>
       </div>
       <details className="ed-launch-evidence-detail">
-        <summary>Local rehearsal evidence, audit activity, and system facts</summary>
-        <div className="ed-launch-facts" aria-label="Local rehearsal facts">
+        <summary>Readiness evidence, audit activity, and system facts</summary>
+        <div className="ed-launch-facts" aria-label="Readiness facts">
           <article className={blockers.length ? "is-critical" : "is-healthy"}>
             <AdminStatusBadge tone={blockers.length ? "Critical" : "Healthy"} label={blockers.length ? "Critical" : "Healthy"} />
             <strong>{blockers.length}</strong>
@@ -532,7 +557,7 @@ function LaunchReadinessSummary({ readiness, onSelectModule }: { readiness?: Dam
             <AdminStatusBadge tone={factTone(launchFact)} label={launchFact?.state === "block" ? "Critical" : launchFact?.state === "warn" ? "Warning" : "Healthy"} />
             <strong>{launchFact?.ready ? "Current" : "Review"}</strong>
             <span>Governance activity</span>
-            <p>{launchFact?.detail || "Local rehearsal facts are loading."}</p>
+            <p>{launchFact?.detail || "Readiness facts are loading."}</p>
           </article>
         </div>
       </details>
@@ -587,9 +612,9 @@ function betaNextActions(readiness?: DamReadinessResult | null) {
   const facts = readiness?.betaReadiness.facts || [];
   if (!facts.length) {
     return [
-      "Restore readiness data before making rehearsal or invite decisions.",
+      "Restore readiness data before making access or invite decisions.",
       "Rerun browser QA and hosted smoke after readiness data is available.",
-      "Keep ResourceSpace writeback and public launch claims disabled."
+      "Keep ResourceSpace/source-system writeback disabled."
     ];
   }
   const blocked = facts.filter((item) => item.state === "block");
@@ -598,8 +623,8 @@ function betaNextActions(readiness?: DamReadinessResult | null) {
   if (actions.length) return actions;
   return [
     "Run hosted smoke against invite URL before teammate batch.",
-    "Export Feedback Inbox after first local rehearsal pass.",
-    "Keep ResourceSpace writeback disabled unless owner approves."
+    "Export Feedback Inbox after first controlled access pass.",
+    "Keep ResourceSpace/source-system writeback disabled unless owner approves."
   ];
 }
 
@@ -610,7 +635,7 @@ function nextBatchDecision(readiness?: DamReadinessResult | null) {
       tone: "Warning" as AdminStatusTone,
       label: "Readiness unavailable",
       detail: "Readiness facts are not loaded; absence of blockers is not a pass.",
-      action: "Restore readiness data, rerun browser QA and hosted smoke, then decide rehearsal users."
+      action: "Restore readiness data, rerun browser QA and hosted smoke, then decide access users."
     };
   }
   const p0GateIds = ["hosted-181-record-proof", "durable-fail-closed-boundary", "team-beta-owner-signoff"];
@@ -620,24 +645,24 @@ function nextBatchDecision(readiness?: DamReadinessResult | null) {
   if (p0Blocks.length) {
     return {
       tone: "Critical" as AdminStatusTone,
-      label: "Rehearsal HOLD",
+      label: "Access HOLD",
       detail: `${p0Blocks.length}/3 P0 gates blocked: ${p0Blocks.map((item) => item.label).join(", ")}.`,
-      action: "No teammate rehearsal invite approval. Need hosted 181 proof, durable/fail-closed boundary, and Hali/Enoch signoff before invites."
+      action: "No teammate invite approval. Need hosted 181 proof, durable/fail-closed boundary, and Hali/Enoch signoff before invites."
     };
   }
   if (blockers.length) {
     return {
       tone: "Critical" as AdminStatusTone,
-      label: "Rehearsal HOLD",
+      label: "Access HOLD",
       detail: `${blockers.length} blocker${blockers.length === 1 ? "" : "s"} remain after signoff check.`,
-      action: "Clear critical blockers before any teammate rehearsal batch."
+      action: "Clear critical blockers before any teammate access batch."
     };
   }
   return {
     tone: warnings.length ? "Warning" as AdminStatusTone : "Healthy" as AdminStatusTone,
-    label: warnings.length ? "Owner review needed" : "Local rehearsal pass",
+    label: warnings.length ? "Owner review needed" : "Operational pass",
     detail: warnings.length ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"} need owner acceptance.` : "No readiness blockers reported; still verify current hosted smoke before any invite.",
-    action: warnings.length ? "Owner accepts warnings or waits for fixes before rehearsal continues." : "Run invite URL smoke, export feedback packet, then owner decides next named rehearsal users."
+    action: warnings.length ? "Owner accepts warnings or waits for fixes before access continues." : "Run invite URL smoke, export feedback packet, then owner decides next named users."
   };
 }
 
@@ -650,7 +675,7 @@ function BetaCommandCenter({ readiness, compact = false }: { readiness?: DamRead
   const coverageGates = betaCoverageGates(readiness);
   const nextBatch = nextBatchDecision(readiness);
   const recommendation = beta?.ready
-    ? "Local rehearsal checks passed"
+    ? "Local checks passed"
     : blocked.length
       ? "Hold until blockers clear"
       : "Dry-run only until proof is current";
@@ -659,7 +684,7 @@ function BetaCommandCenter({ readiness, compact = false }: { readiness?: DamRead
   if (compact) {
     return (
       <section className="ed-card ed-beta-command-center is-compact">
-        <header className="ed-card-head"><div><h3>Local rehearsal evidence</h3><p>{recommendation}</p></div><AdminStatusBadge tone={beta?.ready ? "Healthy" : blocked.length ? "Critical" : "Warning"} label={beta?.ready ? "Rehearsal pass" : "Hold"} /></header>
+        <header className="ed-card-head"><div><h3>Operational readiness evidence</h3><p>{recommendation}</p></div><AdminStatusBadge tone={beta?.ready ? "Healthy" : blocked.length ? "Critical" : "Warning"} label={beta?.ready ? "Local pass" : "Hold"} /></header>
         <div className="ed-beta-mini-grid">
           <span><strong>{passes.length}</strong><small>pass</small></span>
           <span><strong>{warnings.length}</strong><small>warn</small></span>
@@ -671,20 +696,20 @@ function BetaCommandCenter({ readiness, compact = false }: { readiness?: DamRead
   }
 
   return (
-    <section className="ed-card ed-admin-module ed-beta-command-center" aria-label="Local rehearsal readiness evidence">
+    <section className="ed-card ed-admin-module ed-beta-command-center" aria-label="Operational readiness evidence">
       <header className="ed-card-head">
         <div>
-          <h3>Local rehearsal readiness</h3>
-          <p>Pass/hold evidence for teammate rehearsal. Blocks are invite stoppers; warnings are rehearsal follow-ups.</p>
+          <h3>Operational readiness</h3>
+          <p>Pass/hold evidence for controlled access. Blocks are invite stoppers; warnings are owner follow-ups.</p>
         </div>
         <AdminStatusBadge tone={beta?.ready ? "Healthy" : blocked.length ? "Critical" : "Warning"} label={recommendation} />
       </header>
       <div className="ed-admin-stat-grid">
-        <article><strong>{beta?.score || 0}%</strong><span>local proof score</span><small>{beta?.generatedAt ? `generated ${new Date(beta.generatedAt).toLocaleString()}` : "not generated"}</small></article>
+        <article><strong>{beta?.score || 0}%</strong><span>evidence score</span><small>{beta?.generatedAt ? `generated ${new Date(beta.generatedAt).toLocaleString()}` : "not generated"}</small></article>
         <article><strong>{blocked.length}</strong><span>invite blockers</span><small>{warnings.length} warnings</small></article>
         <article><strong>{passes.length}/{facts.length || 0}</strong><span>facts passing</span><small>from script, QA, env, catalog</small></article>
       </div>
-      <div className="ed-beta-coverage-grid" aria-label="Local rehearsal coverage gates">
+      <div className="ed-beta-coverage-grid" aria-label="Readiness coverage gates">
         {coverageGates.map((gate) => <article className={`ed-beta-gate is-${gate.state}`} key={gate.id}><AdminStatusBadge tone={factTone(gate)} label={gate.state === "pass" ? "Healthy" : gate.state === "block" ? "Critical" : "Warning"} /><strong>{gate.value}</strong><span>{gate.label}</span><p>{gate.detail}</p></article>)}
       </div>
       <details className="ed-beta-fact-disclosure">
@@ -701,13 +726,13 @@ function BetaCommandCenter({ readiness, compact = false }: { readiness?: DamRead
         </div>
       </details>
       <section className="ed-beta-next-actions">
-        <h4>Next rehearsal decision</h4>
+        <h4>Next access decision</h4>
         <article className="ed-next-batch-decision">
           <AdminStatusBadge tone={nextBatch.tone} label={nextBatch.label} />
           <strong>{nextBatch.detail}</strong>
           <p>{nextBatch.action}</p>
         </article>
-        <div className="ed-next-batch-gates" aria-label="P0 local rehearsal gates">
+        <div className="ed-next-batch-gates" aria-label="P0 access gates">
           {["hosted-181-record-proof", "durable-fail-closed-boundary", "team-beta-owner-signoff"].map((id) => {
             const fact = facts.find((item) => item.id === id);
             return <p className={fact?.ready ? "is-ready" : "is-blocked"} key={id}><strong>{fact?.label || id}</strong><span>{fact?.detail || "Gate not reported."}</span></p>;
@@ -720,6 +745,167 @@ function BetaCommandCenter({ readiness, compact = false }: { readiness?: DamRead
   );
 }
 
+function resourceSpaceImportStatus(readiness?: DamReadinessResult | null) {
+  const source = readiness?.source;
+  if (!source) return "Not loaded";
+  if (mediaSourceIsLive(source)) return source.readOnly ? "API read-only" : "API read path";
+  if (source.adapter === "exported-metadata") return "Import snapshot";
+  if (source.adapter === "bundled-beta-catalog") return "Read-only catalog snapshot";
+  if (source.adapter === "demo-fallback") return "Catalog source unavailable";
+  return source.label;
+}
+
+function AdminFocusSummary({ readiness, onSelectModule }: { readiness?: DamReadinessResult | null; onSelectModule: SelectAdminModule }) {
+  const metrics = readiness?.metrics;
+  const nextBatch = nextBatchDecision(readiness);
+  const metadataGapCount = (metrics?.missingSource || 0) + (metrics?.taxonomyDrift || 0) + (metrics?.aiEnrichment || 0);
+  const rightsConsentCount = (metrics?.rightsReview || 0) + (metrics?.childrenYouth || 0) + (metrics?.staleApprovals || 0);
+  const focusCards: Array<{
+    id: string;
+    label: string;
+    value: string;
+    detail: string;
+    nav: string;
+    tone: AdminStatusTone;
+  }> = [
+    {
+      id: "portal-readiness",
+      label: "Portal readiness",
+      value: (metrics?.portalReady || 0).toLocaleString(),
+      detail: "Approved, rights-safe, derivative-ready records only.",
+      nav: "overview",
+      tone: metrics?.portalReady ? "Healthy" : "Warning"
+    },
+    {
+      id: "users-roles",
+      label: "Users & roles",
+      value: "4 roles",
+      detail: "Viewer, Contributor, Reviewer, DAM Admin. Identity proof still separate.",
+      nav: "users-roles",
+      tone: "Warning"
+    },
+    {
+      id: "tjc-link-invites",
+      label: "TJC Link / invite status",
+      value: nextBatch.label,
+      detail: nextBatch.action,
+      nav: "overview",
+      tone: nextBatch.tone
+    },
+    {
+      id: "review-policy",
+      label: "Review policy",
+      value: (metrics?.needsReview || 0).toLocaleString(),
+      detail: "Needs Review / Do Not Publish remains default until reviewer evidence clears.",
+      nav: "policy-audit",
+      tone: metrics?.needsReview ? "Warning" : "Healthy"
+    },
+    {
+      id: "rights-consent",
+      label: "Rights/consent health",
+      value: rightsConsentCount.toLocaleString(),
+      detail: "Rights, consent, minors/youth, stale approval, and recheck blockers.",
+      nav: "rights-consent",
+      tone: rightsConsentCount ? "Warning" : "Healthy"
+    },
+    {
+      id: "metadata-health",
+      label: "Metadata health",
+      value: metadataGapCount.toLocaleString(),
+      detail: "Missing source bridge, taxonomy drift, and suggestions needing human review.",
+      nav: "metadata-health",
+      tone: metadataGapCount ? "Warning" : "Healthy"
+    },
+    {
+      id: "audit-log",
+      label: "Audit log",
+      value: (readiness?.auditLog.count || 0).toLocaleString(),
+      detail: readiness?.auditLog.latestAt ? `Last event ${readiness.auditLog.latestAt}` : "No actor-backed event loaded.",
+      nav: "policy-audit",
+      tone: readiness?.auditLog.count ? "Info" : "Warning"
+    },
+    {
+      id: "resourcespace-import",
+      label: "Support Zone status",
+      value: resourceSpaceImportStatus(readiness),
+      detail: "Read-only boundary. No ResourceSpace/source-system writeback claim without explicit gate, reviewer confirmation, and source re-read proof.",
+      nav: "integrations",
+      tone: mediaSourceIsLive(readiness?.source) ? "Info" : "Warning"
+    }
+  ];
+
+  return (
+    <section className="ed-card ed-admin-module" aria-label="Admin focus areas">
+      <header className="ed-card-head">
+        <div>
+          <h3>Admin focus</h3>
+          <p>Portal workflow health first; backend details stay in admin view.</p>
+        </div>
+        <StatusBadge status="Read-only" />
+      </header>
+      <div className="ed-module-grid">
+        {focusCards.map((card) => (
+          <section className="ed-card ed-module-card" key={card.id}>
+            <AdminStatusBadge tone={card.tone} label={card.label} />
+            <h3>{card.value}</h3>
+            <p>{card.detail}</p>
+            <button className="ed-link-button" type="button" onClick={() => onSelectModule(card.nav)}>{card.label}</button>
+          </section>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ResourceSpaceBoundaryPanel({ readiness }: { readiness?: DamReadinessResult | null }) {
+  const source = readiness?.source;
+  const live = mediaSourceIsLive(source);
+  const reviewWrites = (readiness?.integrationReadiness || []).find((row) => row.id === "review-writes");
+  const rows = [
+    {
+      label: "Source of truth",
+      value: source?.label || "Not loaded",
+      detail: source?.detail || "Readiness source not loaded; do not infer health from missing data."
+    },
+    {
+      label: "Connection",
+      value: live ? "Configured API read path" : "No API connection claim",
+      detail: live ? "Treat as read-only unless write capability is explicitly proven." : "Current data is an import/snapshot or local fixture."
+    },
+    {
+      label: "Portal boundary",
+      value: "Workflow layer",
+      detail: "Portal displays approved copies, queues review requests, and records local audit evidence."
+    },
+    {
+      label: "Review handoff",
+      value: reviewWrites ? integrationState(reviewWrites) : "Disabled",
+      detail: reviewWrites?.detail || "Reviewer action is prepared locally, not applied to ResourceSpace."
+    },
+    {
+      label: "Missing bridge fields",
+      value: (readiness?.metrics.missingSource || 0).toLocaleString(),
+      detail: "Missing bridge fields are admin/debug facts, not normal user copy."
+    }
+  ];
+
+  return (
+    <section className="ed-card ed-admin-module" aria-label="Support Zone truth boundary">
+      <header className="ed-card-head">
+        <div>
+          <h3>Support Zone status</h3>
+          <p>Backend boundary: read-only inspection, no source mutation, no ResourceSpace/source-system writeback, no upload-to-ResourceSpace path.</p>
+        </div>
+        <SourcePill source={source} live={live} />
+      </header>
+      <table className="ed-table">
+        <thead><tr><th>Boundary</th><th>Status</th><th>Truth note</th></tr></thead>
+        <tbody>{rows.map((row) => <tr key={row.label}><td>{row.label}</td><td><strong>{row.value}</strong></td><td>{row.detail}</td></tr>)}</tbody>
+      </table>
+    </section>
+  );
+}
+
 function AdminSourceNotice({ loading, error }: { loading: boolean; error?: string | null }) {
   if (!loading && !error) return null;
   const Icon = loading ? RefreshCw : AlertTriangle;
@@ -728,8 +914,8 @@ function AdminSourceNotice({ loading, error }: { loading: boolean; error?: strin
     <section className={`ed-admin-source-notice ${error ? "is-offline" : "is-loading"}`} aria-live="polite">
       <Icon size={18} aria-hidden="true" />
       <div>
-        <strong>{loading ? "Loading readiness data" : "ResourceSpace data unavailable"}</strong>
-        <p>{loading ? "Admin modules will hydrate when readiness finishes loading." : "Live DAM metrics are unavailable. Static governance views remain visible; writes and launch claims stay disabled."}</p>
+        <strong>{loading ? "Loading readiness data" : "Support Zone data unavailable"}</strong>
+        <p>{loading ? "Admin modules will hydrate when readiness finishes loading." : "DAM metrics are unavailable. Static governance views remain visible; writes and launch claims stay disabled."}</p>
       </div>
       {error ? <span>{error}</span> : null}
     </section>
@@ -742,8 +928,8 @@ function AdminRiskStrip({ readiness, disconnected }: { readiness?: DamReadinessR
 
   return (
     <section className="ed-admin-mobile-truth" aria-label="Admin readiness summary">
-      <span><strong>Local prototype</strong><small>Read-only observer</small></span>
-      <span><strong>ResourceSpace</strong><small>{sourceLabel}</small></span>
+      <span><strong>Rehearsal mode</strong><small>Read-only observer</small></span>
+      <span><strong>Support Zone</strong><small>{sourceLabel}</small></span>
       <span><strong>Durable state</strong><small>Missing</small></span>
       <span><strong>Identity</strong><small>Not production-proven</small></span>
       <span><strong>Proof score</strong><small>{proofScore}%</small></span>
@@ -762,19 +948,19 @@ function AdminRail({ readiness, onSelectModule }: { readiness?: DamReadinessResu
         <header className="ed-card-head">
           <div>
             <h3>Readiness Snapshot</h3>
-            <p>{hasReadiness ? readiness?.source.detail : "Live readiness is not loaded."}</p>
+            <p>{hasReadiness ? readiness?.source.detail : "Readiness data is not loaded."}</p>
           </div>
           <AdminStatusBadge tone={hasReadiness ? "Warning" : "Disabled"} label={hasReadiness ? "Read-only" : "Offline"} />
         </header>
         {hasReadiness ? (
           policySummaryRows(readiness).map((row) => <p className="ed-row-between" key={row.label}><span>{row.label}</span><strong>{row.value.toLocaleString()}</strong></p>)
         ) : (
-          <p className="ed-empty-copy">Counts hidden while ResourceSpace is unavailable. No zeroes shown as success.</p>
+          <p className="ed-empty-copy">Counts hidden while Support Zone data is unavailable. No zeroes shown as success.</p>
         )}
-        <ActionButton onClick={() => onSelectModule("rights-policies")}>Open policies</ActionButton>
+        <ActionButton onClick={() => onSelectModule("rights-consent")}>Open policies</ActionButton>
       </section>
       <section className="ed-card">
-        <header className="ed-card-head"><h3>Recent Activity</h3><button className="ed-link-button" type="button" onClick={() => onSelectModule("audit-logs")}>Activity</button></header>
+        <header className="ed-card-head"><h3>Recent Activity</h3><button className="ed-link-button" type="button" onClick={() => onSelectModule("policy-audit")}>Activity</button></header>
         {recentActivity.length ? recentActivity.map((item) => <p className="ed-activity" key={item.id}><Bell size={16} />{item.summary}<small>{item.actor ? `${item.actor} · ` : ""}{item.role} · {item.createdAt}</small></p>) : <p className="ed-empty-copy">No actor-backed activity loaded.</p>}
       </section>
       <section className="ed-card">
@@ -861,7 +1047,7 @@ function FeedbackInboxModule({ compact = false }: { compact?: boolean } = {}) {
   return (
     <section className="ed-card ed-admin-module beta-feedback-inbox">
       <header className="ed-card-head">
-        <div><h3>Feedback Inbox</h3><p>Teammate reports from local rehearsal task mode. Use agent-ready for implementation backlog.</p></div>
+        <div><h3>Feedback Inbox</h3><p>Teammate reports from restricted testing. Use agent-ready for implementation backlog.</p></div>
         <div className="beta-feedback-actions">
           <button className="ed-link-button" type="button" onClick={() => void loadFeedback()}><RefreshCw size={14} />Refresh</button>
           <button className="ed-link-button" type="button" onClick={() => void exportJson()}><Download size={14} />Export JSON</button>
@@ -878,7 +1064,7 @@ function FeedbackInboxModule({ compact = false }: { compact?: boolean } = {}) {
         <div>
           <strong>{feedback.some((item) => item.incidentState === "triggered") ? "Next batch paused by incident trigger." : "Next batch needs zero critical open reports and assigned owners."}</strong>
           <p>Export current filters for owner review. Critical or privacy/safety feedback should move to incident watch before more testers are invited.</p>
-          <p>Feedback storage shown here: {storageModes.length ? storageModes.join(", ") : "no records yet"}. `local-json` is local snapshot evidence, not hosted durability proof.</p>
+          <p>Feedback storage shown here: {storageModes.length ? storageModes.join(", ") : "no records yet"}. Runtime snapshots are not hosted durability proof.</p>
         </div>
       </section>
       <div className="beta-feedback-filters">
@@ -887,7 +1073,7 @@ function FeedbackInboxModule({ compact = false }: { compact?: boolean } = {}) {
         <label>Route<select value={routeFilter} onChange={(event) => setRouteFilter(event.target.value)}>{routes.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label>Role<select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>{roles.map((item) => <option key={item}>{item}</option>)}</select></label>
       </div>
-      {loading ? <LoadingCard label="Loading local rehearsal feedback..." /> : message ? <ErrorCard message={message} /> : (
+      {loading ? <LoadingCard label="Loading restricted-access feedback..." /> : message ? <ErrorCard message={message} /> : (
         <div className="beta-feedback-list">
           {filtered.length ? filtered.map((item) => (
             <article className="beta-feedback-item" key={item.id}>
@@ -990,35 +1176,35 @@ function AdminOperationalReadinessModules({
       value: metrics?.needsReview || 0,
       detail: "Review workload before any broader reuse.",
       action: "Review",
-      nav: "review-workflows"
+      nav: "policy-audit"
     },
     {
       label: "Blocked by Consent",
       value: metrics?.childrenYouth || 0,
       detail: "People/minors and consent-sensitive records.",
       action: "Policies",
-      nav: "rights-policies"
+      nav: "rights-consent"
     },
     {
       label: "Rights Expiring / Recheck Needed",
       value: metrics?.staleApprovals || 0,
       detail: "Lifecycle/recheck blockers stay ahead of usage metrics.",
       action: "Policies",
-      nav: "rights-policies"
+      nav: "rights-consent"
     },
     {
       label: "Metadata Gaps",
       value: (metrics?.taxonomyDrift || 0) + (metrics?.aiEnrichment || 0),
       detail: "Required fields, taxonomy drift, and suggestions needing human decision.",
       action: "Metadata",
-      nav: "metadata-schemas"
+      nav: "metadata-health"
     },
     {
       label: "Source Custody Gaps",
       value: metrics?.missingSource || 0,
       detail: "Source/provenance needs confirmation; no private paths exposed here.",
       action: "Storage",
-      nav: "storage-retention"
+      nav: "source-import"
     },
     {
       label: "Duplicate Links",
@@ -1028,25 +1214,11 @@ function AdminOperationalReadinessModules({
       nav: "taxonomy"
     },
     {
-      label: "Distribution Blockers",
-      value: (readiness?.actionBacklog || []).filter((item) => /package|share|distribution/i.test(`${item.id} ${item.label} ${item.action}`)).reduce((sum, item) => sum + item.count, 0),
-      detail: "Distribution set drafts remain blocked by item-level clearance.",
-      action: "Review",
-      nav: "review-workflows"
-    },
-    {
-      label: "Feedback Inbox",
-      value: "Open",
-      detail: "Open triage inbox; counts load inside module from feedback storage.",
-      action: "Feedback",
-      nav: "feedback-inbox"
-    },
-    {
       label: "Import Audit Coverage",
       value: readiness?.auditLog.count || 0,
       detail: "Actor-backed audit evidence, not production readiness by itself.",
       action: "Audit",
-      nav: "audit-logs"
+      nav: "policy-audit"
     }
   ];
 
@@ -1077,18 +1249,19 @@ function OverviewModule({ readiness, onSelectModule, compact = false }: { readin
   return (
     <>
       <section className="ed-admin-section" aria-labelledby="launch-readiness-section">
-        <header><div><span className="ed-section-eyebrow">Local prototype</span><h3 id="launch-readiness-section" tabIndex={-1}>Blocking evidence</h3></div><p>Exception-first controls before any teammate rehearsal.</p></header>
+        <header><div><span className="ed-section-eyebrow">Read-only readiness</span><h3 id="launch-readiness-section" tabIndex={-1}>Blocking evidence</h3></div><p>Exception-first controls before any teammate access.</p></header>
+        <AdminFocusSummary readiness={readiness} onSelectModule={onSelectModule} />
         <BetaCommandCenter readiness={readiness} compact={compact} />
       </section>
       <details className="ed-admin-section ed-admin-overview-drilldown" open={!compact}>
         <summary>
           <span><span className="ed-section-eyebrow">Governance policies</span><strong id="governance-policies-section" tabIndex={-1}>Access boundaries and custody</strong></span>
-          <small>Source truth, policy counts, role boundaries. No writeback.</small>
+          <small>Source truth, policy counts, role boundaries. ResourceSpace/source-system writeback disabled.</small>
         </summary>
         <div className="ed-admin-section-body">
           <AdminOperationalReadinessModules readiness={readiness} onSelectModule={onSelectModule} />
           <CustodyMapPanel readiness={readiness} />
-          <div className="ed-kpi-grid is-four"><KpiCard label="Records" value={(readiness?.assetCount || 0).toLocaleString()} delta="ResourceSpace-backed" icon={Database} /><KpiCard label="Readiness" value={`${readiness?.score || 0}/100`} delta="policy score" icon={Shield} /><KpiCard label="Needs Review" value={(readiness?.metrics.needsReview || 0).toLocaleString()} delta="queue count" icon={FileText} /><KpiCard label="Audit Events" value={(readiness?.auditLog.count || 0).toLocaleString()} delta="portal log" icon={Box} /></div>
+          <div className="ed-kpi-grid is-four"><KpiCard label="Records" value={(readiness?.assetCount || 0).toLocaleString()} delta={sourceTruthLabel(readiness?.source)} icon={Database} /><KpiCard label="Readiness" value={`${readiness?.score || 0}/100`} delta="policy score" icon={Shield} /><KpiCard label="Needs Review" value={(readiness?.metrics.needsReview || 0).toLocaleString()} delta="queue count" icon={FileText} /><KpiCard label="Audit Events" value={(readiness?.auditLog.count || 0).toLocaleString()} delta="portal log" icon={Box} /></div>
           <div className="ed-module-grid">{(readiness?.actionBacklog || []).slice(0, 6).map((item) => <section className="ed-card ed-module-card" key={item.id}><AdminStatusBadge tone={item.severity === "critical" || item.severity === "high" ? "Critical" : item.severity === "medium" ? "Warning" : "Info"} label={item.severity} /><h3>{item.label}</h3><p>{item.action}</p><small>{item.count.toLocaleString()} · {item.owner}</small></section>)}</div>
         </div>
       </details>
@@ -1098,16 +1271,17 @@ function OverviewModule({ readiness, onSelectModule, compact = false }: { readin
           <small>Denied, queued, preview, allowed.</small>
         </summary>
         <div className="ed-admin-section-body">
-          <AuditTable readiness={readiness} onViewAll={() => onSelectModule("audit-logs")} compact={compact} />
+          <AuditTable readiness={readiness} onViewAll={() => onSelectModule("policy-audit")} compact={compact} />
         </div>
       </details>
       <details className="ed-admin-section ed-admin-overview-drilldown" open={!compact}>
         <summary>
           <span><span className="ed-section-eyebrow">Integration health</span><strong id="system-health-section" tabIndex={-1}>Source and integration state</strong></span>
-          <small>Read-only until writeback approval.</small>
+          <small>Read-only until ResourceSpace/source-system writeback gate is proven.</small>
         </summary>
         <div className="ed-admin-section-body">
-          <section className="ed-card"><header className="ed-card-head"><div><h3>Integration Status</h3><p>ResourceSpace, Drive, S3, and portal readiness.</p></div><SourcePill source={readiness?.source} live={mediaSourceIsLive(readiness?.source)} /></header><IntegrationTable rows={readiness?.integrationReadiness || []} /></section>
+          <ResourceSpaceBoundaryPanel readiness={readiness} />
+          <section className="ed-card"><header className="ed-card-head"><div><h3>Integration Status</h3><p>Source read path, Drive custody, S3 delivery gate, and portal readiness.</p></div><SourcePill source={readiness?.source} live={mediaSourceIsLive(readiness?.source)} /></header><IntegrationTable rows={readiness?.integrationReadiness || []} /></section>
         </div>
       </details>
     </>
@@ -1122,8 +1296,8 @@ function MetadataSchemaConsole({ readiness }: { readiness?: DamReadinessResult |
     <section className="ed-card ed-admin-module">
       <header className="ed-card-head">
         <div>
-          <h3>Metadata Fields</h3>
-          <p>Admin-only field governance. ResourceSpace remains metadata truth; Shared Drive remains master custody.</p>
+          <h3>Metadata Health</h3>
+          <p>Field coverage, required metadata, taxonomy drift, and source binding checks.</p>
         </div>
         <StatusBadge status="Read-only" />
       </header>
@@ -1217,7 +1391,7 @@ function TaxonomyGovernanceConsole({ readiness }: { readiness?: DamReadinessResu
         </tbody>
       </table>
       <section className="ed-card">
-        <header className="ed-card-head"><div><h3>Observed vocabulary</h3><p>Current ResourceSpace-backed terms remain evidence, not automatic policy changes.</p></div><StatusBadge status="Read-only" /></header>
+        <header className="ed-card-head"><div><h3>Observed vocabulary</h3><p>Current source-system terms remain evidence, not automatic policy changes.</p></div><StatusBadge status="Read-only" /></header>
         <table className="ed-table">
           <thead><tr><th>Term</th><th>Count</th><th>Kind</th></tr></thead>
           <tbody>{vocabulary.slice(0, 12).map((row) => <tr key={`${row.kind}-${row.term}`}><td>{row.term}</td><td>{row.count.toLocaleString()}</td><td>{row.kind}</td></tr>)}</tbody>
@@ -1234,14 +1408,42 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
   if (activeNav === "feedback-inbox") return <FeedbackInboxModule compact={compact} />;
   if (activeNav === "users-roles") return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Users & Access</h3><p>Identity not production-proven. Demo roles, prototype login, and SSO header mapping do not prove production identity.</p></div><StatusBadge status="Pending setup" /></header>
+      <header className="ed-card-head"><div><h3>Users & Access</h3><p>Identity not production-proven. Role switch, restricted login, and SSO header mapping do not prove production identity.</p></div><StatusBadge status="Pending setup" /></header>
       <div className="ed-admin-stat-grid">
         <article><strong>4</strong><span>role tiers</span><small>Viewer, Contributor, Reviewer, DAM Admin</small></article>
-        <article><strong>Local</strong><span>prototype fallback</span><small>Role switch remains for rehearsal QA only</small></article>
+        <article><strong>Local</strong><span>role switch fallback</span><small>Restricted testing only</small></article>
         <article><strong>Not proven</strong><span>production identity</span><small>Needs trusted IdP header proof</small></article>
       </div>
       <TruthMatrixTable rows={identityTruthRows} mode="identity" />
       <table className="ed-table"><thead><tr><th>Role</th><th>Primary job</th><th>Download</th><th>Upload</th><th>Review</th><th>Admin</th></tr></thead><tbody>{roleRows.map((row) => <tr key={row[0]}>{row.map((cell, index) => <td key={`${row[0]}-${index}`}>{cell}</td>)}</tr>)}</tbody></table>
+    </section>
+  );
+  if (activeNav === "rights-consent") return (
+    <section className="ed-card ed-admin-module">
+      <header className="ed-card-head"><div><h3>Rights & Consent</h3><p>Consent-sensitive records, public/internal use gates, and rights recheck work.</p></div><StatusBadge status={metrics?.rightsReview ? "Degraded" : "Operational"} /></header>
+      <div className="ed-admin-stat-grid">{policySummaryRows(readiness).map((row) => <article key={row.label}><strong>{row.value.toLocaleString()}</strong><span>{row.label}</span><small>current catalog</small></article>)}</div>
+      <table className="ed-table"><thead><tr><th>Policy</th><th>Blocked</th><th>Detail</th></tr></thead><tbody>{(readiness?.portalPolicy || []).map((row) => <tr key={row.id}><td>{row.label}</td><td>{row.blocked.toLocaleString()}</td><td>{row.detail}</td></tr>)}</tbody></table>
+    </section>
+  );
+  if (activeNav === "metadata-health") return (
+    <MetadataSchemaConsole readiness={readiness} />
+  );
+  if (activeNav === "policy-audit") return (
+    <>
+      <section className="ed-card ed-admin-module">
+        <header className="ed-card-head"><div><h3>Policy & Audit</h3><p>Policy exceptions, review queue health, queued writes, and actor-backed activity.</p></div><StatusBadge status={integrations.find((row) => row.id === "review-writes") ? integrationState(integrations.find((row) => row.id === "review-writes")!) : "Not configured"} /></header>
+        <div className="ed-admin-stat-grid"><article><strong>{(metrics?.needsReview || 0).toLocaleString()}</strong><span>needs review</span><small>queue count</small></article><article><strong>{readiness?.auditLog.queued || 0}</strong><span>queued audit events</span><small>portal log</small></article><article><strong>{readiness?.auditLog.denied || 0}</strong><span>denied actions</span><small>role safety</small></article></div>
+        <div className="ed-module-grid">{(readiness?.actionBacklog || []).map((item) => <section className="ed-card ed-module-card" key={item.id}><ClipboardCheck size={22} /><h3>{item.label}</h3><p>{item.action}</p><small>{item.count.toLocaleString()} · {item.owner}</small></section>)}</div>
+      </section>
+      <AuditTable readiness={readiness} compact={compact} />
+    </>
+  );
+  if (activeNav === "source-import") return (
+    <section className="ed-card ed-admin-module">
+      <header className="ed-card-head"><div><h3>Source / Import</h3><p>Source custody, import evidence, derivative readiness, and local storage truth.</p></div><StatusBadge status="Read-only" /></header>
+      <div className="ed-admin-stat-grid"><article><strong>{(metrics?.renditionGaps || 0).toLocaleString()}</strong><span>rendition gaps</span><small>approved copy readiness</small></article><article><strong>{(metrics?.missingSource || 0).toLocaleString()}</strong><span>missing source</span><small>custody evidence</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
+      <TruthMatrixTable rows={storageTruthRows} mode="storage" />
+      <IntegrationTable rows={integrations.filter((row) => ["master-originals", "approved-copy-delivery", "metadata-source"].includes(row.id))} />
     </section>
   );
   if (activeNav === "roles-permissions") return (
@@ -1271,35 +1473,45 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
   );
   if (activeNav === "review-workflows") return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Review Sync</h3><p>Pending review writes queue locally unless live ResourceSpace writeback is fully configured.</p></div><StatusBadge status={integrations.find((row) => row.id === "review-writes") ? integrationState(integrations.find((row) => row.id === "review-writes")!) : "Not configured"} /></header>
+      <header className="ed-card-head"><div><h3>Review handoff</h3><p>Pending review updates queue in the portal. ResourceSpace remains truth until a gated write is confirmed by re-read.</p></div><StatusBadge status={integrations.find((row) => row.id === "review-writes") ? integrationState(integrations.find((row) => row.id === "review-writes")!) : "Not configured"} /></header>
       <div className="ed-admin-stat-grid"><article><strong>{(metrics?.needsReview || 0).toLocaleString()}</strong><span>needs review</span><small>queue count</small></article><article><strong>{readiness?.auditLog.queued || 0}</strong><span>queued audit events</span><small>portal log</small></article><article><strong>{readiness?.auditLog.denied || 0}</strong><span>denied actions</span><small>role safety</small></article></div>
       <div className="ed-module-grid">{(readiness?.actionBacklog || []).map((item) => <section className="ed-card ed-module-card" key={item.id}><ClipboardCheck size={22} /><h3>{item.label}</h3><p>{item.action}</p><small>{item.count.toLocaleString()} · {item.owner}</small></section>)}</div>
     </section>
   );
   if (activeNav === "storage-retention") return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Storage</h3><p>Durable state missing. Local prototype state is not hosted durability proof, and production writes fail closed where durable storage is required.</p></div><StatusBadge status="Read-only" /></header>
-      <div className="ed-admin-stat-grid"><article><strong>2.45 TB</strong><span>used</span><small>display-only pilot metric</small></article><article><strong>{(metrics?.renditionGaps || 0).toLocaleString()}</strong><span>rendition gaps</span><small>approved copy readiness</small></article><article><strong>{(metrics?.missingSource || 0).toLocaleString()}</strong><span>missing source</span><small>custody evidence</small></article></div>
+      <header className="ed-card-head"><div><h3>Storage</h3><p>Durable state missing. Runtime state is not hosted durability proof, and writes fail closed where durable storage is required.</p></div><StatusBadge status="Read-only" /></header>
+      <div className="ed-admin-stat-grid"><article><strong>Unavailable</strong><span>storage usage</span><small>connect durable storage reporting</small></article><article><strong>{(metrics?.renditionGaps || 0).toLocaleString()}</strong><span>rendition gaps</span><small>approved copy readiness</small></article><article><strong>{(metrics?.missingSource || 0).toLocaleString()}</strong><span>missing source</span><small>custody evidence</small></article></div>
       <TruthMatrixTable rows={storageTruthRows} mode="storage" />
       <IntegrationTable rows={integrations.filter((row) => ["master-originals", "approved-copy-delivery", "metadata-source"].includes(row.id))} />
     </section>
   );
   if (activeNav === "ai-moderation") return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>AI Assist</h3><p>AI suggestions are assistive only. Human review and ResourceSpace fields remain truth.</p></div><StatusBadge status="Pending setup" /></header>
+      <header className="ed-card-head"><div><h3>AI Assist</h3><p>AI suggestions are assistive only. Human review and source fields remain truth.</p></div><StatusBadge status="Pending setup" /></header>
       <div className="ed-admin-stat-grid"><article><strong>{(metrics?.aiEnrichment || 0).toLocaleString()}</strong><span>AI enrichment</span><small>candidate queue</small></article><article><strong>{(metrics?.taxonomyDrift || 0).toLocaleString()}</strong><span>taxonomy drift</span><small>human cleanup</small></article><article><strong>{(metrics?.duplicateCandidates || 0).toLocaleString()}</strong><span>duplicates</span><small>review before merge</small></article></div>
     </section>
   );
   if (activeNav === "integrations") return (
+    <>
+      <ResourceSpaceBoundaryPanel readiness={readiness} />
+      <section className="ed-card ed-admin-module">
+        <header className="ed-card-head"><div><h3>Integrations</h3><p>API read, snapshot, read-only, and setup states by backend system.</p></div><SourcePill source={readiness?.source} live={mediaSourceIsLive(readiness?.source)} /></header>
+        <IntegrationTable rows={integrations} />
+      </section>
+    </>
+  );
+  if (activeNav === "system-settings") return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Integrations</h3><p>Live/read-only/setup states by backend system.</p></div><SourcePill source={readiness?.source} live={mediaSourceIsLive(readiness?.source)} /></header>
+      <header className="ed-card-head"><div><h3>Settings</h3><p>Read-only operational settings and current source status.</p></div><StatusBadge status="Read-only" /></header>
       <IntegrationTable rows={integrations} />
+      <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
     </section>
   );
   if (activeNav === "audit-logs") return <AuditTable readiness={readiness} compact={compact} />;
   return (
     <section className="ed-card ed-admin-module">
-      <header className="ed-card-head"><div><h3>Integration Status</h3><p>Configuration status for ResourceSpace, writeback, preview proxy, and audit evidence.</p></div><StatusBadge status={readiness?.source.readOnly ? "Read-only" : "Operational"} /></header>
+      <header className="ed-card-head"><div><h3>Integration Status</h3><p>Configuration status for ResourceSpace read path, writeback gate, preview proxy, and audit evidence.</p></div><StatusBadge status={readiness?.source.readOnly ? "Read-only" : "Operational"} /></header>
       <IntegrationTable rows={integrations} />
       <div className="ed-admin-stat-grid"><article><strong>{readiness?.score || 0}/100</strong><span>readiness</span><small>policy score</small></article><article><strong>{readiness?.auditLog.count || 0}</strong><span>audit events</span><small>portal log</small></article><article><strong>{readiness?.source.label || "Unknown"}</strong><span>source mode</span><small>{readiness?.source.detail || "not loaded"}</small></article></div>
     </section>
@@ -1308,7 +1520,7 @@ function AdminModuleContent({ activeNav, readiness, onSelectModule, compact = fa
 
 export function EnterpriseAdminPage({ initialModule, adminOnly = false }: { initialModule?: string; adminOnly?: boolean } = {}) {
   const { role, ready } = useDemoRole();
-  const pathname = usePathname();
+  const pathname = usePathname() || "/admin";
   const [activeNav, setActiveNav] = useState(() => normalizeAdminInitialModule(initialModule));
   const [compactAdmin, setCompactAdmin] = useState(false);
   const admin = useAdminReadiness(role);
@@ -1316,7 +1528,7 @@ export function EnterpriseAdminPage({ initialModule, adminOnly = false }: { init
   const initialNav = normalizeAdminInitialModule(initialModule);
   const pageIdentity = adminPageIdentityByPath.get(pathname) || {
     title: "Governance",
-    subtitle: "Local prototype policies, audit activity, storage honesty, identity proof, and integration health for the DAM workspace."
+    subtitle: "Readiness policies, audit activity, storage honesty, identity proof, and integration health."
   };
   const activeModuleTitle = activeNav === initialNav
     ? adminModuleTitleByPath.get(pathname) || adminNavLabel(activeNav)
@@ -1365,15 +1577,28 @@ export function EnterpriseAdminPage({ initialModule, adminOnly = false }: { init
     <div className="enterprise-page enterprise-admin-control">
       <PageHeader title={pageIdentity.title} subtitle={pageIdentity.subtitle} />
       <AdminRiskStrip readiness={readiness} disconnected={Boolean(admin.error)} />
-      <section className="ed-admin-mode-banner" aria-label="Admin prototype access boundary">
+      <section className="ed-admin-mode-banner" aria-label="Admin access boundary">
         <div>
-          <AdminStatusBadge tone={operatorVerified ? "Healthy" : "Disabled"} label={operatorVerified ? "Prototype operator" : "Admin observer"} />
-          <strong>{operatorVerified ? "Controlled local rehearsal controls available" : "Read-only observer mode"}</strong>
-          <p>Local prototype only. Not beta-ready. Hosted proof missing. Config changes, secrets, paid hosting changes, source mutation, public launch, and ResourceSpace writeback stay disabled until operator proof is explicit.</p>
+          <AdminStatusBadge tone={operatorVerified ? "Healthy" : "Disabled"} label={operatorVerified ? "Verified operator" : "Admin observer"} />
+          <strong>{operatorVerified ? "Controlled access controls available" : "Read-only observer mode"}</strong>
+          <p>ResourceSpace/source-system writeback is not enabled. Config changes, source mutation, public launch, and the writeback gate stay disabled until operator proof is explicit.</p>
         </div>
-        <span>No paid June charge. No public launch claim.</span>
+        <span>Read-only mode.</span>
       </section>
       <AdminSourceNotice loading={admin.loading} error={admin.error} />
+      <nav className="ed-admin-nav" aria-label="Admin page sections">
+        {adminNavItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={activeNav === item.id ? "is-active" : undefined}
+            aria-current={activeNav === item.id ? "page" : undefined}
+            onClick={() => selectAdminNav(item.id)}
+          >
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
       <div className="ed-admin-grid">
         <section className="ed-admin-main" aria-labelledby="admin-active-module-title">
           <header className="ed-admin-module-title">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Box, ClipboardList, Grid3X3, HelpCircle, Library, Settings, type LucideIcon } from "lucide-react";
+import { Clock3, Grid3X3, HelpCircle, LayoutDashboard, Library, MessageSquareText, ShieldAlert, UploadCloud, type LucideIcon } from "lucide-react";
 import { routeWithRole } from "@/lib/role-routes";
 import type { DemoRole } from "@/lib/types";
 import { cn } from "@/lib/ui";
@@ -12,26 +12,25 @@ type AppNavItem = {
   label: string;
   mobileLabel?: string;
   icon: LucideIcon;
-  group: "Browse" | "Workflow" | "Operations";
-  adminOnly?: boolean;
-  reviewerOnly?: boolean;
+  group: "Photos" | "Actions" | "Admin" | "Help";
+  roles?: DemoRole[];
 };
 
 const appNav: AppNavItem[] = [
-  { href: "/", label: "Assets", mobileLabel: "Assets", icon: Library, group: "Browse" },
-  { href: "/collections", label: "Collections", mobileLabel: "Collections", icon: Grid3X3, group: "Browse" },
-  { href: "/packages", label: "Package Builder", mobileLabel: "Builder", icon: Box, group: "Workflow" },
-  { href: "/help", label: "Help Center", mobileLabel: "Help", icon: HelpCircle, group: "Workflow" },
-  { href: "/review", label: "Review", mobileLabel: "Review", icon: ClipboardList, group: "Operations", reviewerOnly: true },
-  { href: "/insights", label: "Insights", mobileLabel: "Insights", icon: BarChart3, group: "Operations" },
-  { href: "/admin", label: "Admin", mobileLabel: "Admin", icon: Settings, group: "Operations", adminOnly: true },
+  { href: "/library", label: "Browse Photos", mobileLabel: "Browse", icon: Library, group: "Photos" },
+  { href: "/collections", label: "Collections", mobileLabel: "Collections", icon: Grid3X3, group: "Photos" },
+  { href: "/upload", label: "Upload Photos", mobileLabel: "Upload", icon: UploadCloud, group: "Actions", roles: ["Contributor", "Reviewer", "DAM Admin"] },
+  { href: "/recent-uploads", label: "My Uploads", mobileLabel: "Uploads", icon: Clock3, group: "Actions", roles: ["Contributor"] },
+  { href: "/review", label: "Review Uploads", mobileLabel: "Review", icon: ShieldAlert, group: "Actions", roles: ["Reviewer", "DAM Admin"] },
+  { href: "/my-tasks", label: "My Work", mobileLabel: "Work", icon: Clock3, group: "Actions", roles: ["Reviewer", "DAM Admin"] },
+  { href: "/requests", label: "Requests", mobileLabel: "Requests", icon: MessageSquareText, group: "Actions" },
+  { href: "/admin", label: "Admin", mobileLabel: "Admin", icon: LayoutDashboard, group: "Admin", roles: ["DAM Admin"] },
+  { href: "/help", label: "Help", mobileLabel: "Help", icon: HelpCircle, group: "Help" },
 ];
 
 function navItemsForRole(role: DemoRole) {
-  const reviewer = role === "Reviewer" || role === "DAM Admin";
   return appNav.filter((item) => {
-    if (item.adminOnly && role !== "DAM Admin") return false;
-    if (item.reviewerOnly && !reviewer) return false;
+    if (item.roles && !item.roles.includes(role)) return false;
     return true;
   });
 }
@@ -43,15 +42,15 @@ type AppNavProps = {
 };
 
 export function AppNav({ role, variant = "mobile", onNavigate }: AppNavProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const top = variant === "top";
   const menu = variant === "menu";
   const visibleItems = navItemsForRole(role);
   const navGroups = menu
-    ? (["Browse", "Workflow", "Operations"] as const)
+    ? (["Photos", "Actions", "Admin", "Help"] as const)
       .map((group) => ({ group, items: visibleItems.filter((item) => item.group === group) }))
       .filter(({ items }) => items.length)
-    : [{ group: "Browse" as const, items: visibleItems }];
+    : [{ group: "Photos" as const, items: visibleItems }];
   const renderNavItem = (item: AppNavItem) => {
     const Icon = item.icon;
     const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);

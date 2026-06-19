@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     id: assetId,
     message: reviewerCanReview
       ? "Review request queued for reviewer follow-up. ResourceSpace remains unchanged until a reviewer completes the decision."
-      : "Review request sent to the media team. They will follow up before this asset is used.",
+      : "Review request queued for media team follow-up before this asset is used.",
     ...reviewerPayload,
     ...session.sourceEnvelope(source)
   }, { status: 202 });

@@ -24,12 +24,12 @@ const missions: Record<DemoRole, BetaMission[]> = {
   Contributor: [
     { label: "Submit harmless intake", detail: "Use a safe test image/link and complete intake metadata." },
     { label: "Trigger missing context", detail: "Leave one required review field blank and confirm validation explains it." },
-    { label: "Queue reviewer handoff", detail: "Submit complete intake and confirm it stays submitted, unpublished, and gated for reviewer evidence." }
+    { label: "Queue reviewer handoff", detail: "Submit complete intake and confirm it stays submitted, not public, and gated for reviewer evidence." }
   ],
   Reviewer: [
     { label: "Try approve without evidence", detail: "Confirm approval stays disabled until evidence and note are complete." },
     { label: "Queue valid decision", detail: "Complete checklist, add note, and queue a pending review write." },
-    { label: "Inspect ResourceSpace truth", detail: "Verify copy says queued portal write is not final ResourceSpace success." }
+    { label: "Inspect source-system truth", detail: "Verify copy says queued portal work is not final source-system success." }
   ],
   "DAM Admin": [
     { label: "Inspect blockers", detail: "Open readiness, rights policies, and review sync status." },
@@ -39,7 +39,7 @@ const missions: Record<DemoRole, BetaMission[]> = {
 };
 
 const routeLinks = [
-  { href: "/", label: "Library" },
+  { href: "/library", label: "Library" },
   { href: "/upload", label: "Upload" },
   { href: "/review", label: "Review" },
   { href: "/admin", label: "Admin" },
@@ -154,17 +154,17 @@ export function BetaPrototypeTools() {
   return (
     <>
       {betaTaskModeEnabled ? (
-        <aside className={`beta-task-panel ${taskMode ? "is-open" : ""} ${collapsed ? "is-collapsed" : ""}`} aria-label="Beta task mode">
+        <aside className={`beta-task-panel ${taskMode ? "is-open" : ""} ${collapsed ? "is-collapsed" : ""}`} aria-label="Internal test checklist">
           <button className="beta-task-toggle" type="button" onClick={toggleTaskMode}>
             <PanelRightOpen size={16} />
-            {taskMode ? "Task mode on" : "Task mode"}
+            {taskMode ? "Test checklist on" : "Test checklist"}
           </button>
           {taskMode ? (
             <div className="beta-task-body">
               <header>
                 <div>
-                  <span>Internal beta</span>
-                  <h2>{role} missions</h2>
+                  <span>Internal testing</span>
+                  <h2>{role} checklist</h2>
                 </div>
                 <button type="button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "Expand beta tasks" : "Collapse beta tasks"}>
                   <ChevronDown size={16} />
@@ -174,12 +174,12 @@ export function BetaPrototypeTools() {
                 <>
                   <section className="beta-limit-panel" aria-label="Beta limits">
                     <ShieldAlert size={18} />
-                    <p>Beta testing only. No sensitive media. Role switch is simulated QA access; not production auth, not SSO, not real user impersonation, and not permission delegation. No live ResourceSpace writeback. Queued review is not ResourceSpace success. Stop testing for Critical/P0 privacy, source-truth, or download-gate issues.</p>
+                    <p>Internal testing only. No sensitive media. Role switch is QA-only access; not production auth, not SSO, not real user impersonation, and not permission delegation. No live source-system writeback. Queued review is not final source-system success. Stop testing for Critical/P0 privacy, source-truth, or download-gate issues.</p>
                   </section>
                   <section className="beta-progress-panel" aria-label="Mission progress">
                     <div>
                       <strong>{completedMissionCount}/{activeMissions.length}</strong>
-                      <span>{role} mission progress</span>
+                      <span>{role} checklist progress</span>
                     </div>
                     <progress value={completedMissionCount} max={activeMissions.length} aria-label={`${missionProgress}% complete`} />
                   </section>
@@ -231,7 +231,7 @@ export function BetaPrototypeTools() {
               <label>Actual<textarea required value={actual} onChange={(event) => setActual(event.target.value)} placeholder="What happened instead?" /></label>
               <label>Name optional<input value={reporterName} onChange={(event) => setReporterName(event.target.value)} placeholder="Your name" /></label>
               <label>Redacted screenshot or link optional<input value={screenshotLink} onChange={(event) => setScreenshotLink(event.target.value)} placeholder="Paste a redacted screenshot, Loom, or note link" /></label>
-              <section className="beta-report-safety"><AlertTriangle size={16} /><span>No people, minors, source paths, private URLs, or sensitive media in reports. File attachments are disabled for this beta.</span></section>
+              <section className="beta-report-safety"><AlertTriangle size={16} /><span>No people, minors, source paths, private URLs, or sensitive media in reports. File attachments are disabled for this test cycle.</span></section>
               {message ? <p className={message.startsWith("Saved") ? "beta-report-success" : "beta-report-error"}>{message.startsWith("Saved") ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}{message}</p> : null}
               <footer>
                 <button type="button" onClick={() => setReportOpen(false)}>Close</button>

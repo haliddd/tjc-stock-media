@@ -11,6 +11,7 @@ import { DamCommandHeader } from "@/components/dam/shell/DamCommandHeader";
 import { getVisibleMobileNavItems, workspaceCopyForPath } from "@/components/dam/shell/damShellNav";
 import { useDemoRole } from "@/components/RoleProvider";
 import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { isDamShellRouteActive } from "@/lib/dam-route-identity";
 import { routeWithRole } from "@/lib/role-routes";
 
 const SIDEBAR_STORAGE_KEY = "tjc-dam-sidebar-open";
@@ -46,35 +47,31 @@ function DamFooter() {
   return (
     <footer className="relative z-10 mx-auto flex w-full max-w-[1760px] flex-wrap items-center gap-3 border-t border-[#d8e1da] px-4 py-6 text-sm font-semibold text-tjc-muted md:px-6">
       <Link href={routeWithRole("/help", role)} className="font-black text-tjc-evergreen">Help Center</Link>
-      <span>Review queues, evidence, and audit-safe actions stay together.</span>
-      <span>{betaLocked ? "Internal beta access. Role personas are for QA testing only. Not production SSO." : "Production access follows assigned DAM roles."}</span>
+      <span>Uploads, review, and approved photos stay together.</span>
+      <span>{betaLocked ? "Restricted media portal access. Use only assigned beta workflows." : "Access follows assigned media portal roles."}</span>
     </footer>
   );
-}
-
-function isActiveMobilePath(pathname: string, href: string) {
-  if (href === "/library") return pathname === "/" || pathname === "/library" || pathname.startsWith("/library/");
-  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function MobileAppBars() {
   const { role } = useDemoRole();
   const { setOpenMobile } = useSidebar();
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
-  const workspace = workspaceCopyForPath(pathname, searchParams.toString());
+  const currentSearch = searchParams?.toString() || "";
+  const workspace = workspaceCopyForPath(pathname, currentSearch);
   const bottomItems = getVisibleMobileNavItems(role);
 
   return (
     <>
       <header className="dam-mobile-topbar" aria-label="Mobile app bar">
-        <Link href={routeWithRole("/library", role)} className="dam-mobile-brand" aria-label="Open Library">
+        <Link href={routeWithRole("/", role)} className="dam-mobile-brand" aria-label="Open Media Portal">
           <span aria-hidden="true">
             <img src="/brand/tjc-logo-english-color.png" alt="" />
           </span>
           <strong>{workspace.title}</strong>
         </Link>
-        <Link className="dam-mobile-icon" href={routeWithRole("/library", role)} aria-label="Search Library" title="Search Library">
+        <Link className="dam-mobile-icon" href={routeWithRole("/library", role)} aria-label="Search media" title="Search media">
           <Search size={18} aria-hidden="true" />
         </Link>
         <button className="dam-mobile-icon" type="button" onClick={() => setOpenMobile(true)} aria-label="Open navigation menu" title="Open navigation menu">
@@ -84,7 +81,12 @@ function MobileAppBars() {
       <nav className="dam-mobile-bottom-nav" aria-label="Primary mobile navigation">
         {bottomItems.map((item) => {
           const Icon = item.icon;
-          const active = isActiveMobilePath(pathname, item.href);
+          const active = isDamShellRouteActive({
+            pathname,
+            currentSearch,
+            href: item.href,
+            activeHrefs: item.activeHrefs
+          });
           return (
             <Link key={item.href} href={routeWithRole(item.href, role)} aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined}>
               <Icon size={18} aria-hidden="true" />
@@ -98,9 +100,19 @@ function MobileAppBars() {
 }
 
 function HelpFooterGate() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   if (!pathname.startsWith("/help") && !pathname.startsWith("/guide")) return null;
   return <DamFooter />;
+}
+
+function BetaPrototypeToolsGate() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setEnabled(params.get("taskMode") === "1");
+  }, []);
+  if (!enabled) return null;
+  return <BetaPrototypeTools />;
 }
 
 function BetaAccessBanner() {
@@ -115,12 +127,12 @@ function BetaAccessBanner() {
     router.refresh();
   }
   return (
-    <section className="beta-access-banner" aria-label="Internal beta access notice">
-      <strong>Internal beta access</strong>
-      <span>Role personas are for QA testing only.</span>
-      <span>Not production SSO.</span>
-      <span>Do not upload sensitive production media yet.</span>
-      <span>Live DAM media storage may be pending; unavailable records stay clearly marked.</span>
+    <section className="beta-access-banner" aria-label="Restricted media portal access notice">
+      <strong>Restricted media portal access</strong>
+      <span>Use only assigned restricted-access workflows.</span>
+      <span>Identity setup is still being verified.</span>
+      <span>Keep sensitive media out until access is confirmed.</span>
+      <span>Unavailable photos stay clearly marked.</span>
       <button type="button" onClick={logout} disabled={loggingOut}>Log out</button>
     </section>
   );
@@ -144,7 +156,7 @@ export function DamShell({ children }: { children: ReactNode }) {
         <div id="main-content" className="relative z-10 min-w-0 flex-1 pb-4 md:pb-10">
           <Suspense fallback={null}>{children}</Suspense>
         </div>
-        <BetaPrototypeTools />
+        <BetaPrototypeToolsGate />
         <Toaster
           position="bottom-center"
           offset={{ bottom: "7.25rem" }}

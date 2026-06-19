@@ -32,30 +32,30 @@ const FIRST_LEVEL_PATHS = new Set([
 ]);
 
 const ROOT_LABELS: Record<string, string> = {
-  admin: "Admin",
-  assets: "Library",
-  collections: "Collections",
-  "distribution-sets": "Distribution Sets",
-  governance: "Governance",
+  admin: "Admin Zone",
+  assets: "Media Library",
+  collections: "Albums & Events",
+  "distribution-sets": "Delivery Sets",
+  governance: "Admin Zone",
   guide: "Help Center",
   help: "Help Center",
   insights: "Insights",
-  library: "Library",
-  "my-tasks": "My Tasks",
-  packages: "Distribution Sets",
-  "recent-uploads": "Recent Uploads",
+  library: "Media Library",
+  "my-tasks": "My Work",
+  packages: "Delivery Sets",
+  "recent-uploads": "My Uploads",
   requests: "Requests",
-  review: "Review Queue",
-  tasks: "My Tasks",
-  upload: "Upload"
+  review: "Review Uploads",
+  tasks: "My Work",
+  upload: "Upload Photos"
 };
 
 const DETAIL_LABELS: Record<string, string> = {
-  assets: "Asset Detail",
-  collections: "Collection Detail",
-  "distribution-sets": "Distribution Set Detail",
-  packages: "Distribution Set Detail",
-  review: "Review Detail"
+  assets: "Photo Detail",
+  collections: "Album & Event",
+  "distribution-sets": "Delivery Set",
+  packages: "Delivery Set",
+  review: "Review Upload"
 };
 
 function humanizeSegment(segment: string) {
@@ -67,7 +67,7 @@ function humanizeSegment(segment: string) {
 function nestedBreadcrumbForPath(pathname: string, currentTitle: string) {
   const assetMatch = pathname.match(/^\/assets\/([^/]+)/);
   if (assetMatch) {
-    return ["Library", decodeURIComponent(assetMatch[1]), "Asset Detail"];
+    return ["Media Library", decodeURIComponent(assetMatch[1]), "Photo Detail"];
   }
 
   const segments = pathname.split("/").filter(Boolean);
@@ -86,11 +86,11 @@ function nestedBreadcrumbForPath(pathname: string, currentTitle: string) {
 }
 
 export function DamCommandHeader() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
   if (FIRST_LEVEL_PATHS.has(pathname)) return null;
 
-  const workspace = workspaceCopyForPath(pathname, searchParams.toString());
+  const workspace = workspaceCopyForPath(pathname, searchParams?.toString() || "");
   const nestedBreadcrumb = nestedBreadcrumbForPath(pathname, workspace.title);
 
   return (

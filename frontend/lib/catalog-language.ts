@@ -179,7 +179,7 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
     id: "no-people",
     label: "No people",
     description: "Lower-risk details, textures, and object photos.",
-    reason: "Uses exported people visibility metadata.",
+    reason: "Uses people visibility fields when present.",
     match: (asset) => asset.peopleRisk === "No people" && (asset.status === "Approved Public" || asset.status === "Approved Internal")
   },
   {
@@ -200,7 +200,7 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
     id: "recently-approved",
     label: "Recently approved",
     description: "Newest reviewed public/internal assets.",
-    reason: "Uses exported review date where present.",
+    reason: "Uses review date when present.",
     match: (asset) => Boolean(asset.reviewedDate) && assetIsApproved(asset)
   },
   {
@@ -331,27 +331,27 @@ export const savedViewDefinitions: SavedViewDefinition[] = [
 export const collectionDefinitions: CollectionDefinition[] = [
   {
     id: "approved-public-delivery",
-    name: "Approved Public",
+    name: "Public Use",
     group: "Source collections",
-    description: "Public delivery set built from reviewed asset records",
+    description: "Reviewed media for public church communication",
     searchQuery: "approved public ready to use public delivery",
     terms: ["approved public", "public", "ready", "website", "social", "print"],
     routeFilter: "approved public"
   },
   {
     id: "approved-internal-delivery",
-    name: "Approved Internal",
+    name: "Internal Ministry",
     group: "Source collections",
-    description: "Internal delivery set for ministry teams and member-facing material",
+    description: "Media for ministry teams and member-facing material",
     searchQuery: "approved internal ministry internal use",
     terms: ["approved internal", "internal", "ministry", "member"],
     routeFilter: "approved internal"
   },
   {
     id: "review-intake",
-    name: "Review Intake",
+    name: "Needs Review",
     group: "Source collections",
-    description: "Records awaiting review before reuse",
+    description: "Albums and assets waiting for reviewer approval",
     searchQuery: "needs review pending review missing rights people minors",
     terms: ["needs review", "pending review", "review", "rights", "consent", "minor"],
     routeFilter: "needs review"
@@ -360,7 +360,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
     id: "archive-reference",
     name: "Archive Reference",
     group: "Source collections",
-    description: "Searchable reference records not promoted for reuse",
+    description: "Archive/reference media searchable for history, not promoted for reuse",
     searchQuery: "archive searchable archive reference",
     terms: ["archive", "searchable archive", "reference", "preservation"],
     routeFilter: "archive only"
@@ -409,14 +409,14 @@ export const collectionDefinitions: CollectionDefinition[] = [
     id: "web-slides",
     name: "Web & Slides",
     group: "Channel collections",
-    description: "Graphics, slide backgrounds, and web-ready assets",
+    description: "Graphics, slide backgrounds, and website-friendly media",
     searchQuery: "graphic slide website hero",
     terms: ["graphic", "graphics", "slide", "website", "stage", "hero"],
     routeFilter: "website channel"
   },
   {
     id: "social-ready",
-    name: "Social Ready",
+    name: "Social Use",
     group: "Channel collections",
     description: "Square, event, and detail assets cleared for social use",
     searchQuery: "social channel square event detail",
@@ -425,18 +425,18 @@ export const collectionDefinitions: CollectionDefinition[] = [
   },
   {
     id: "projection-ready",
-    name: "Projection Ready",
+    name: "Projection Use",
     group: "Channel collections",
-    description: "Slides, worship backgrounds, and presentation-friendly records",
+    description: "Slides, worship backgrounds, and presentation-friendly media",
     searchQuery: "projection channel slide worship background",
     terms: ["projection", "slide", "presentation", "worship", "background", "stage"],
     routeFilter: "projection channel"
   },
   {
     id: "print-ready",
-    name: "Print Ready",
+    name: "Print Use",
     group: "Channel collections",
-    description: "Newsletter, bulletin, and print-use records",
+    description: "Newsletter, bulletin, and print-use media",
     searchQuery: "print channel newsletter bulletin",
     terms: ["print", "newsletter", "bulletin", "publication", "document"],
     routeFilter: "print channel"
@@ -445,7 +445,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
     id: "missing-rights",
     name: "Missing Rights",
     group: "Governance collections",
-    description: "Records needing rights basis or consent evidence",
+    description: "Albums with assets needing rights basis or consent evidence",
     searchQuery: "missing rights rights review consent review",
     terms: ["rights", "consent", "permission", "license", "unknown rights"],
     routeFilter: "rights basis missing"
@@ -463,7 +463,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
     id: "missing-derivative",
     name: "Missing Derivative",
     group: "Governance collections",
-    description: "Approved records missing derivative or dimension readiness",
+    description: "Assets missing preview or dimension readiness",
     searchQuery: "missing derivative rendition gap dimensions",
     terms: ["derivative", "rendition", "dimensions", "download", "preview"],
     routeFilter: "rendition gap"
@@ -472,7 +472,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
     id: "duplicate-cleanup",
     name: "Duplicate Cleanup",
     group: "Governance collections",
-    description: "Potential duplicate/version records needing cleanup decisions",
+    description: "Potential duplicate/version assets needing cleanup decisions",
     searchQuery: "duplicate cleanup version canonical",
     terms: ["duplicate", "version", "canonical", "cleanup"],
     routeFilter: "duplicate candidate"
@@ -481,7 +481,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
     id: "stale-approval",
     name: "Stale Approval",
     group: "Governance collections",
-    description: "Previously approved records due for recheck",
+    description: "Previously approved assets due for recheck",
     searchQuery: "stale approval recheck due lifecycle review",
     terms: ["stale", "approval", "recheck", "lifecycle", "expired"],
     routeFilter: "stale approval"
@@ -508,7 +508,7 @@ export const viewAliases = new Map([
 export const intentDefinitions: SearchIntentDefinition[] = [
   { view: "website-hero", confidence: "exact", terms: ["website hero"] },
   { view: "website-hero", confidence: "synonym", terms: ["hero", "banner", "header"] },
-  { view: "portal-ready", confidence: "exact", terms: ["public safe", "safe for web", "governed reusable"] },
+  { view: "portal-ready", confidence: "exact", terms: ["public safe", "safe for web", "approved for reuse"] },
   { view: "no-people", confidence: "exact", terms: ["no people"] },
   { view: "children-youth-review", confidence: "synonym", terms: ["children", "youth", "minors", "minor"] },
   { view: "needs-review", confidence: "exact", terms: ["needs review", "review"] },

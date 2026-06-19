@@ -45,7 +45,7 @@ export function buildIntegrationReadiness({
   const writebackFieldMap = resourceSpaceWritebackFieldMapDiagnostics();
   const runtimeStore = runtimeStoreDiagnostics();
   const derivativeIndex = derivativeIndexDiagnostics();
-  const liveWritebackReady = apiConfigured && resourceSpaceWritebackEnabled() && writebackFieldMap.valid;
+  const writebackGateConfigured = apiConfigured && resourceSpaceWritebackEnabled() && writebackFieldMap.valid;
   const brandHubConfigured = Boolean(brandKitCollectionId("BRAND_KIT_MVP_2024_COLLECTION_ID"));
   const sourceIsResourceSpace = status.adapter === "resourcespace-api" || status.adapter === "exported-metadata" || status.adapter === "bundled-beta-catalog";
   return [
@@ -55,19 +55,19 @@ export function buildIntegrationReadiness({
       ready: sourceIsResourceSpace,
       owner: "ResourceSpace",
       state: status.adapter === "exported-metadata" || status.adapter === "bundled-beta-catalog" ? "Read-only" : sourceIsResourceSpace ? "Operational" : "Blocked",
-      detail: status.detail
+      detail: `${status.detail} This row proves catalog read/input state only; it does not prove ResourceSpace writeback.`
     },
     {
       id: "resourcespace-live-api",
-      label: "ResourceSpace live API",
+      label: "ResourceSpace API read",
       ready: status.adapter === "resourcespace-api" && resourceSpaceApiReadDiagnostics.complete,
       owner: "ResourceSpace",
       state: status.adapter === "resourcespace-api" && resourceSpaceApiReadDiagnostics.complete ? "Operational" : apiConfigured ? "Degraded" : "Not configured",
       detail: apiConfigured
         ? resourceSpaceApiReadDiagnostics.complete
-          ? `Live API read completed ${resourceSpaceApiReadDiagnostics.records.toLocaleString()} record${resourceSpaceApiReadDiagnostics.records === 1 ? "" : "s"} over ${resourceSpaceApiReadDiagnostics.pages.toLocaleString()} page${resourceSpaceApiReadDiagnostics.pages === 1 ? "" : "s"}.`
-          : `Live API read is incomplete or failed safely; export fallback may be in use. Last error: ${resourceSpaceApiReadDiagnostics.error || "none"}.`
-        : "Server-side ResourceSpace API credentials are not configured. Export mode remains read-only."
+          ? `API read completed ${resourceSpaceApiReadDiagnostics.records.toLocaleString()} record${resourceSpaceApiReadDiagnostics.records === 1 ? "" : "s"} over ${resourceSpaceApiReadDiagnostics.pages.toLocaleString()} page${resourceSpaceApiReadDiagnostics.pages === 1 ? "" : "s"}. This is read-only evidence.`
+          : `API read is incomplete or failed safely; snapshot fallback may be in use. Last error: ${resourceSpaceApiReadDiagnostics.error || "none"}.`
+        : "Server-side ResourceSpace API credentials are not configured. Snapshot mode remains read-only."
     },
     {
       id: "resourcespace-field-map",
@@ -79,7 +79,7 @@ export function buildIntegrationReadiness({
         ? fieldMap.valid
           ? `${fieldMap.configuredKeys.length.toLocaleString()} configured keys. Missing required keys: ${fieldMap.missing.join(", ") || "none"}.`
           : `Invalid RESOURCESPACE_FIELD_MAP_JSON: ${fieldMap.error}`
-        : "Using built-in beta field map. Set RESOURCESPACE_FIELD_MAP_JSON after ResourceSpace metadata fields are finalized."
+        : "Using built-in field map for internal rehearsal. Set RESOURCESPACE_FIELD_MAP_JSON after ResourceSpace metadata fields are finalized."
     },
     {
       id: "resourcespace-preview",
@@ -89,21 +89,21 @@ export function buildIntegrationReadiness({
       state: sourceIsResourceSpace && derivativeIndex.indexed ? "Operational" : sourceIsResourceSpace ? "Degraded" : "Blocked",
       detail: sourceIsResourceSpace
         ? `Previews route through backend thumbnail API and derivative manifest. Indexed entries: ${derivativeIndex.entries.toLocaleString()}. Missing derivatives show explicit unavailable states. ${derivativeIndex.detail}`
-        : "Preview route falls back only when ResourceSpace/export data is unavailable."
+        : "Preview route falls back only when ResourceSpace records or snapshots are unavailable."
     },
     {
       id: "review-writes",
-      label: "ResourceSpace review writeback",
-      ready: liveWritebackReady,
+      label: "ResourceSpace review writeback gate",
+      ready: false,
       owner: "ResourceSpace",
-      state: liveWritebackReady ? "Degraded" : apiConfigured ? "Read-only" : "Not configured",
-      detail: liveWritebackReady
-        ? "Live writeback is enabled behind server-only env flags. Each decision still runs API smoke and records sync failure instead of faking success."
+      state: writebackGateConfigured ? "Read-only" : apiConfigured ? "Read-only" : "Not configured",
+      detail: writebackGateConfigured
+        ? "Writeback env and field map are configured, but this admin surface remains gated. Reviewer confirmation, post-write re-read proof, and owner approval are required before any ResourceSpace mutation is treated as truth."
         : apiConfigured && resourceSpaceWritebackEnabled()
           ? `Writeback flags are enabled, but explicit review field refs are missing or invalid: ${writebackFieldMap.missing.join(", ") || writebackFieldMap.error || "unknown field map issue"}.`
         : apiConfigured
           ? "Credentials are present, but writeback is disabled until RESOURCESPACE_ENABLE_WRITEBACK=1 and RESOURCESPACE_WRITEBACK_MODE=live."
-        : "Review decisions save as portal pending-sync events. They are not final ResourceSpace truth."
+        : "Review decisions save as portal pending-handoff events. They are not final ResourceSpace truth."
     },
     {
       id: "runtime-state-store",
@@ -119,7 +119,7 @@ export function buildIntegrationReadiness({
       ready: pending.count === 0,
       owner: "DAM Admin",
       state: pending.count === 0 ? "Operational" : "Degraded",
-      detail: `${pending.count.toLocaleString()} pending write${pending.count === 1 ? "" : "s"}. Last attempt: ${pending.lastAttemptAt || "none"}. Last error: ${pending.lastError || "none"}.`
+      detail: `${pending.count.toLocaleString()} pending handoff${pending.count === 1 ? "" : "s"}. Last attempt: ${pending.lastAttemptAt || "none"}. Last error: ${pending.lastError || "none"}. ResourceSpace must be re-read before a reviewer decision is treated as applied.`
     },
     {
       id: "audit-log",
@@ -139,7 +139,7 @@ export function buildIntegrationReadiness({
       state: ssoConfigured && trustedSsoHeadersEnabled() ? "Degraded" : "Pending setup",
       detail: ssoConfigured && trustedSsoHeadersEnabled()
         ? "Trusted-header SSO shim is enabled. Production still needs real IdP header/group claim verification."
-        : "SSO-ready shim is implemented, but local role selection remains beta fallback until trusted IdP headers are enabled."
+        : "SSO-ready shim is implemented, but local role selection remains internal rehearsal fallback until trusted IdP headers are enabled."
     },
     {
       id: "church-invite-codes",
@@ -149,9 +149,9 @@ export function buildIntegrationReadiness({
       state: !betaAuthEnabled() ? "Pending setup" : inviteCodes.configured ? "Operational" : "Blocked",
       detail: betaAuthEnabled()
         ? inviteCodes.configured
-          ? `${inviteCodes.locationCount.toLocaleString()} church/location entr${inviteCodes.locationCount === 1 ? "y" : "ies"} configured for beta invite checks. Raw code values are never shown.`
+          ? `${inviteCodes.locationCount.toLocaleString()} church/location entr${inviteCodes.locationCount === 1 ? "y" : "ies"} configured for controlled invite checks. Raw code values are never shown.`
           : "Beta auth is enabled, but no church/location invite code entries are configured for Contributor, Reviewer, or DAM Admin login."
-        : "Beta auth is not enabled in this runtime. Configure beta auth and church/location invite entries before real team login."
+        : "Restricted login is not enabled in this runtime. Configure restricted login and church/location invite entries before real team login."
     },
     {
       id: "role-gates",
@@ -184,11 +184,11 @@ export function buildIntegrationReadiness({
     {
       id: "approved-copy-delivery",
       label: "Approved copy delivery",
-      ready: portalReady > 0,
+      ready: portalReady > 0 && s3Configured,
       owner: "Portal",
-      state: portalReady > 0 ? "Operational" : "Blocked",
+      state: portalReady > 0 ? (s3Configured ? "Degraded" : "Pending setup") : "Blocked",
       detail: portalReady
-        ? `${portalReady.toLocaleString()} portal-ready asset${portalReady === 1 ? "" : "s"} can be downloaded as approved copies.`
+        ? `${portalReady.toLocaleString()} portal-ready asset${portalReady === 1 ? "" : "s"} can request an approved-copy gate. Delivery storage still needs configured proof before rollout.`
         : `${approvedPublic.toLocaleString()} ResourceSpace-approved public asset${approvedPublic === 1 ? "" : "s"} still need portal reuse checks before copy delivery.`
     },
     {
@@ -235,7 +235,7 @@ export function buildIntegrationReadiness({
       ready: packages.count > 0,
       owner: "Portal",
       state: packages.count > 0 ? "Degraded" : "Pending setup",
-      detail: `Package drafts use ${packages.storageMode}; suitable for local/private beta only, not wider rollout. Production-ready sharing: ${packages.productionReadySharing ? "yes" : "no"}. Drafts: ${packages.count.toLocaleString()}; open: ${packages.openCount.toLocaleString()}; blocked refs: ${packages.blockedRefs.toLocaleString()}. Connect durable backend storage before package sharing or invites.`
+      detail: `Package drafts use ${packages.storageMode}; suitable for local/private beta only, not wider rollout. Wider-rollout sharing: ${packages.productionReadySharing ? "yes" : "no"}. Drafts: ${packages.count.toLocaleString()}; open: ${packages.openCount.toLocaleString()}; blocked refs: ${packages.blockedRefs.toLocaleString()}. Connect durable backend storage before package sharing or invites.`
     },
     {
       id: "brand-kit-collections",
@@ -245,15 +245,15 @@ export function buildIntegrationReadiness({
       state: brandHubConfigured ? "Degraded" : "Pending setup",
       detail: brandHubConfigured
         ? "BRAND_KIT_MVP_2024_COLLECTION_ID is configured. Verify mapped assets have real ResourceSpace review and audit needs."
-        : "Do not mirror logo/template downloads in the DAM. Link to identity.tjc.org unless assets require ResourceSpace review/audit."
+        : "Do not mirror logo/template delivery in the DAM. Link to identity.tjc.org unless assets require ResourceSpace review/audit."
     },
     {
       id: "package-publishing",
-      label: "Package publishing",
+      label: "Package delivery handoff",
       ready: false,
       owner: "DAM Admin",
       state: "Read-only",
-      detail: "Package builder stores ResourceSpace references in portal state. Publishing remains blocked until share links, audit, and all-item rights checks are wired."
+      detail: "Package builder stores ResourceSpace references in portal state. ZIPs, public links, sends, and approved-copy delivery remain blocked until durable share storage, audit, and all-item rights checks are wired."
     }
   ];
 }

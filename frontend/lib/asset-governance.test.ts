@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetGovernancePassport, assetLibraryScanSummary } from "@/lib/asset-governance";
+import { assetGovernancePassport, assetHasPortalTruthBoundary, assetLibraryScanSummary, assetPortalBlockers, assetReviewComplete, assetSourceRecordTruthRows } from "@/lib/asset-governance";
 import type { StockMediaAsset } from "@/lib/types";
 
 function asset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsset {
@@ -45,12 +45,12 @@ describe("asset library governance scan", () => {
     const serialized = JSON.stringify({ scan, passport });
 
     expect(scan.nextAction).toBe("Request DAM review");
-    expect(scan.sourceCustodyLabel).toBe("Source/original restricted");
+    expect(scan.sourceCustodyLabel).toBe("Full file restricted");
     expect(serialized).not.toContain("/Shared Drives/private");
     expect(serialized).not.toContain("private-master.jpg");
     expect(serialized).not.toContain("aaaaaaaaaaaa");
     expect(JSON.stringify(assetLibraryScanSummary(privateAsset, "Contributor"))).not.toContain("ResourceSpace");
-    expect(assetLibraryScanSummary(privateAsset, "Reviewer").sourceCustodyLabel).toBe("ResourceSpace ref");
+    expect(assetLibraryScanSummary(privateAsset, "Reviewer").sourceCustodyLabel).toBe("Source record ref");
   });
 
   it("changes next action by role without clearing review gates", () => {
@@ -65,5 +65,61 @@ describe("asset library governance scan", () => {
 
     expect(assetLibraryScanSummary(reviewAsset, "Viewer").nextAction).toBe("Request DAM review");
     expect(assetLibraryScanSummary(reviewAsset, "Reviewer").nextAction).toBe("Verify consent");
+  });
+
+  it("uses bridge aliases for source truth without clearing rights gates", () => {
+    const bridged = asset({
+      status: "Approved Public",
+      usageScope: "Public",
+      peopleRisk: "No people",
+      rightsStatus: undefined,
+      rights_status: "Rights approved",
+      rightsBasis: "TJC-owned",
+      reviewer: undefined,
+      reviewedDate: undefined,
+      reviewed_by: "Reviewer One",
+      reviewed_at: "2026-06-01",
+      resourceSpaceId: undefined,
+      resource_space_id: "rs-9001",
+      checksumSha256: undefined,
+      checksum: "b".repeat(64),
+      sourcePath: undefined,
+      source_path: "/Shared Drives/archive/album/source.jpg",
+      sourceAlbum: undefined,
+      source_album: "Sabbath album",
+      sourceSystem: "ResourceSpace import",
+      originalFilename: "source.jpg",
+      masterCustodyPathStatus: "verified",
+      imageDimensions: "2400 x 1600",
+      imageUrls: {
+        small: "/small.jpg",
+        card: "/card.jpg",
+        collection: "/collection.jpg",
+        detail: "/detail.jpg",
+        download: "/download.jpg"
+      },
+      downloadPolicy: "approved-copy-allowed",
+      approvedChannels: ["website"]
+    });
+    const blockers = assetPortalBlockers(bridged);
+
+    expect(assetHasPortalTruthBoundary(bridged)).toBe(true);
+    expect(assetReviewComplete(bridged)).toBe(true);
+    expect(blockers).not.toContain("Import/source truth missing");
+    expect(blockers).not.toContain("Metadata contract missing: rights_status");
+    expect(blockers).not.toContain("Metadata contract missing: reviewed_by");
+    expect(blockers).not.toContain("Metadata contract missing: reviewed_date");
+    expect(blockers).not.toContain("Reviewer/date missing");
+    expect(blockers).toContain("Rights/consent unclear");
+    expect(assetSourceRecordTruthRows(bridged)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "Source record ID", value: "rs-9001" }),
+      expect.objectContaining({ label: "Source album", value: "Sabbath album" }),
+      expect.objectContaining({ label: "Reviewer", value: "Reviewer One" }),
+      expect.objectContaining({ label: "Checksum", value: "b".repeat(64) })
+    ]));
+    expect(assetSourceRecordTruthRows(bridged, { privateCustodyRestricted: true })).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "Source path", value: "Restricted to DAM admin" }),
+      expect.objectContaining({ label: "Checksum", value: "Restricted to DAM admin" })
+    ]));
   });
 });

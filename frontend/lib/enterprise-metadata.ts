@@ -347,7 +347,7 @@ export function assetRecordRenditionRows(asset: StockMediaAsset, role: DemoRole)
       id: "video-placeholder",
       label: "Video/audio",
       value: "Transcode placeholder",
-      detail: "Low-res preview, captions, and stream/download variants are not live writes in this prototype.",
+      detail: "Low-res preview, captions, and stream/download variants are not live writes from this screen.",
       tone: "pending"
     });
   }
@@ -519,7 +519,7 @@ export function inspectorMetadataRows({
     return [
       ["Reviewer", metadataValue(asset.reviewer)],
       ["Reviewed date", metadataValue(asset.reviewedDate)],
-      ["Pending sync", asset.pendingReviewWrite ? "Pending ResourceSpace write" : "None"]
+      ["Pending sync", asset.pendingReviewWrite ? "Pending source update" : "None"]
     ];
   }
 

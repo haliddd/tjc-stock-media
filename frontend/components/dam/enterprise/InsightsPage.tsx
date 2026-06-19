@@ -51,9 +51,9 @@ type PriorityAction = {
 };
 
 const insightPeriods: Array<{ id: InsightPeriodId; label: string; helper: string }> = [
-  { id: "current-export", label: "Current export", helper: "ResourceSpace counts from the latest metadata export." },
-  { id: "events-14d", label: "Last 14 days", helper: "Portal usage panels use dated SQLite events when available." },
-  { id: "events-30d", label: "Last 30 days", helper: "Ready for longer durable analytics history; empty periods stay honest." }
+  { id: "current-export", label: "Library snapshot", helper: "Counts from the current media library snapshot." },
+  { id: "events-14d", label: "Last 14 days", helper: "Portal activity panels use recorded usage history when available." },
+  { id: "events-30d", label: "Last 30 days", helper: "Longer history appears here when available; empty periods stay honest." }
 ];
 
 const defaultInsightFilters: InsightFilterState = {
@@ -318,7 +318,7 @@ function ReadinessSummary({ counts, result }: { counts: SearchResult["counts"]; 
     : missingMetadata
       ? "Next: improve metadata health"
       : needsReview
-        ? "Next: process review queue"
+        ? "Next: review submitted uploads"
         : "Next: expand Portal Ready supply";
   const facts = [
     ["Total records", formatCount(rawTotal)],
@@ -336,7 +336,7 @@ function ReadinessSummary({ counts, result }: { counts: SearchResult["counts"]; 
           <p>{formatCount(portalReady)} of {formatCount(rawTotal)} assets are Portal Ready</p>
           <em>{nextStep}</em>
         </div>
-        <a className="ed-action is-primary" href={routeWithRole(rightsReview ? "/review?queue=rights-review" : "/review", role)}>Open review queue</a>
+        <a className="ed-action is-primary" href={routeWithRole(rightsReview ? "/review?queue=rights-review" : "/review", role)}>Open Review Uploads</a>
       </div>
       <div className="ed-readiness-meter" aria-label={`${readiness}% portal ready`}><span style={{ width: `${readiness}%` }} /></div>
       <div className="ed-readiness-facts">
@@ -610,7 +610,7 @@ function AdminInsights({
       <ReadinessSummary counts={counts} result={result} />
       <PriorityActions result={result} />
       <div className="ed-insights-board is-admin">
-        {filters.review ? <InsightPanel title="Review Workload" action="Open review queue" actionHref="/review"><MetricRows rows={reviewRows} /></InsightPanel> : null}
+        {filters.review ? <InsightPanel title="Review Workload" action="Open Review Uploads" actionHref="/review"><MetricRows rows={reviewRows} /></InsightPanel> : null}
         {filters.review ? <InsightPanel title="Governance / Risk Summary" action={role === "DAM Admin" ? "Open admin" : undefined} actionHref={role === "DAM Admin" ? "/admin" : undefined}><div className="ed-risk-list">{riskRows.map(([label, value, tone]) => <p key={label} className={`is-${tone}`}><span>{label}</span><strong>{value.toLocaleString()}</strong></p>)}</div><small>Based on current period export</small></InsightPanel> : null}
         {filters.usage ? <InsightPanel title="Top Assets"><TopAssetsList assets={assets} usage={usage} />{!usage?.topAssets?.length ? <SampleLabel>Sample data until usage logging is connected</SampleLabel> : null}</InsightPanel> : null}
         {filters.source ? <InsightPanel title="Source Health / Integration Status"><SourceHealth total={rawTotal} usageTotal={usage?.totalEvents || 0} sourceLabelText={sourceText} /><p className="ed-footnote"><Info size={14} /> Operational diagnostics visible to reviewer/admin roles.</p></InsightPanel> : null}
@@ -675,7 +675,7 @@ function ViewerInsights({
         <InsightPanel title="Frequently Used Topics" action="Browse all topics" actionHref="/?view=saved"><TopicsList usage={usage} savedViews={savedViews} /></InsightPanel>
         <InsightPanel title="Recently Viewed Assets"><div className="ed-recent-assets">{assets.slice(0, 5).map((asset) => <article key={asset.id}><AssetThumb asset={asset} /><strong>{displayTitle(asset)}<small>{assetType(asset)} · {formatBytes(asset.fileSizeBytes)}</small></strong><span>Visible</span></article>)}</div></InsightPanel>
         <InsightPanel title="Top Categories" action="Explore all categories" actionHref="/collections"><CategoryDonut assets={assets} visibleTotal={visible} /></InsightPanel>
-        <InsightPanel title="Approved Media Reuse Guide" action="View policies" actionHref="/help#policies">{reuseGuide.map(([title, detail]) => <p className="ed-guide-row" key={title}><CheckCircle2 size={16} /><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
+        <InsightPanel title="Media Reuse Guide" action="View policies" actionHref="/help#policies">{reuseGuide.map(([title, detail]) => <p className="ed-guide-row" key={title}><CheckCircle2 size={16} /><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
         <InsightPanel title="Tips & Shortcuts" action="View help center" actionHref="/help">{tips.map(([title, detail, Icon]) => <p className="ed-tip-row" key={title}><i><Icon size={16} /></i><strong>{title}<small>{detail}</small></strong></p>)}</InsightPanel>
       </div>
     </>
@@ -685,7 +685,7 @@ function ViewerInsights({
 export function EnterpriseInsightsPage() {
   const { role } = useDemoRole();
   const searchParams = useSearchParams();
-  const activePanel = searchParams.get("panel");
+  const activePanel = searchParams?.get("panel");
   const metadataPanel = activePanel === "metadata";
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -701,7 +701,7 @@ export function EnterpriseInsightsPage() {
   const subtitle = metadataPanel
     ? "Track field coverage, missing metadata, and reviewer-ready record quality."
     : operationalView ? "Monitor library readiness, review workload, and governance signals." : "Role-safe overview of your visible media, saved views, and collections.";
-  const activePeriodLabel = insightPeriods.find((period) => period.id === activePeriod)?.label || "Current export";
+  const activePeriodLabel = insightPeriods.find((period) => period.id === activePeriod)?.label || "Library snapshot";
 
   useEffect(() => {
     setFilters(metadataPanel ? metadataInsightFilters : defaultInsightFilters);
@@ -744,7 +744,7 @@ export function EnterpriseInsightsPage() {
   return (
     <div className="enterprise-page enterprise-insights">
       <PageHeader title={title} subtitle={subtitle} actions={<><PeriodMenu activePeriod={activePeriod} onToggle={() => { setPeriodMenuOpen((open) => !open); setFiltersOpen(false); }} />{operationalView ? <><ActionButton icon={Filter} onClick={() => { setFiltersOpen((open) => !open); setPeriodMenuOpen(false); }}>{filtersOpen ? "Hide filters" : "Filters"}</ActionButton><ActionButton icon={Download} onClick={exportInsights} disabled={insights.loading}>Export</ActionButton></> : null}</>} />
-      {periodMenuOpen ? <PeriodPickerPanel activePeriod={activePeriod} onSelect={(period) => { setActivePeriod(period); setPeriodMenuOpen(false); setExportStatus(`${insightPeriods.find((item) => item.id === period)?.label || "Current export"} selected. ResourceSpace counts remain latest export.`); }} /> : null}
+      {periodMenuOpen ? <PeriodPickerPanel activePeriod={activePeriod} onSelect={(period) => { setActivePeriod(period); setPeriodMenuOpen(false); setExportStatus(`${insightPeriods.find((item) => item.id === period)?.label || "Library snapshot"} selected. Visible counts remain tied to the current media library snapshot.`); }} /> : null}
       {filtersOpen && operationalView ? <InsightFilterPanel filters={filters} onChange={setFilters} onReset={() => setFilters(defaultInsightFilters)} /> : null}
       {exportStatus ? <p className="ed-inline-success ed-insight-status">{exportStatus}</p> : null}
       <section className={operationalView ? "ed-approved-banner" : "ed-role-safe-banner"}>{operationalView ? <Database size={22} /> : <Info size={22} />}<div><strong>{operationalView ? sourceLabel(insights.source) : "Role-safe insights"}</strong><span>{operationalView ? (insights.source?.detail || "Media library source unavailable.") : "These insights reflect only the content you can view based on your role and permissions."}</span></div><span>{operationalView ? (hasUsageRows ? "Usage rows from portal analytics" : "Usage analytics not connected") : "Operational details are hidden for this role."}</span></section>

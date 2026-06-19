@@ -224,11 +224,11 @@ done
 
 if grep -q 'ed-beta-command-center' frontend/components/dam/enterprise/AdminPage.tsx \
   && grep -q 'Actor-backed audit evidence' frontend/components/dam/enterprise/AdminPage.tsx \
-  && grep -q 'Local rehearsal coverage gates' frontend/components/dam/enterprise/AdminPage.tsx \
+  && grep -q 'Readiness coverage gates' frontend/components/dam/enterprise/AdminPage.tsx \
   && grep -q 'Next actions' frontend/components/dam/enterprise/AdminPage.tsx; then
-  pass "Admin local rehearsal command center shows coverage gates, actor audit proof, and next actions"
+  pass "Admin readiness command center shows coverage gates, actor audit proof, and next actions"
 else
-  fail "Admin local rehearsal command center proof surface missing"
+  fail "Admin readiness command center proof surface missing"
 fi
 
 if node scripts/live-dam-surface-guard.mjs >${RUN_TMP_DIR}/tjc-live-dam-surface-guard.txt 2>&1; then

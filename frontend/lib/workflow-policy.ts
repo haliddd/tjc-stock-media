@@ -7,6 +7,8 @@ import {
   assetHasTaxonomyDrift,
   assetHasTestimonyRisk,
   assetHasUnresolvedAiSuggestionDebt,
+  assetReviewedDate,
+  assetReviewerLabel,
   assetIsDuplicateCandidate,
   assetIsArchiveOnly,
   assetIsApproved,
@@ -37,13 +39,13 @@ export const uploadBetaBoundaries = {
   forbidden: [
     "Video/audio or files over 100 MB in browser upload; use the large-media/admin intake path",
     "Source-media renames, deletes, moves, or Git commits",
-    "Public approval, download enablement, or ResourceSpace approval writeback from upload"
+    "Public approval, download enablement, or final approval writeback from upload"
   ],
   defaultState: {
     received: "Received",
     review: "Needs Review",
     usage: "Do Not Publish",
-    custody: "Source custody stays outside this browser upload; ResourceSpace remains review/search layer"
+    custody: "Source custody stays outside this browser upload; media library review remains the approval layer"
   }
 } as const;
 
@@ -228,8 +230,8 @@ export function reviewRiskFlags(asset: StockMediaAsset, duplicateGroupCounts?: M
 
 export function missingReviewFields(asset: StockMediaAsset) {
   const fields: string[] = [];
-  if (assetIsApproved(asset) && !asset.reviewer) fields.push("reviewer");
-  if (assetIsApproved(asset) && !asset.reviewedDate) fields.push("review date");
+  if (assetIsApproved(asset) && !assetReviewerLabel(asset)) fields.push("reviewer");
+  if (assetIsApproved(asset) && !assetReviewedDate(asset)) fields.push("review date");
   if (!asset.peopleRisk || asset.peopleRisk === "Unknown") fields.push("people/minors");
   if (!meaningfulMetadataValue(asset.consentStatus)) fields.push("consent");
   if (assetNeedsRightsReview(asset) && !asset.rightsNotes) fields.push("rights notes");

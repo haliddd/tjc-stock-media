@@ -1,11 +1,11 @@
-import { assetResourceRef } from "@/lib/asset-refs";
+import { assetResourceRef, publicAssetRef } from "@/lib/asset-refs";
 import {
   assetIsArchiveOnly,
   assetIsBlocked,
   assetNeedsReview,
   assetNeedsRightsReview
 } from "@/lib/asset-governance";
-import { assetRecordRef, assetType } from "@/lib/enterprise-display";
+import { assetType } from "@/lib/enterprise-display";
 import { canAdmin, canContribute, canReview } from "@/lib/permissions";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
 import type { DemoRole, StockMediaAsset } from "@/lib/types";
@@ -105,7 +105,7 @@ export function shouldShowBulkBar(selectedCount: number) {
 }
 
 function actionStatus(eligibleCount: number, totalCount: number) {
-  if (!totalCount) return "Select assets";
+  if (!totalCount) return "Select media";
   if (eligibleCount === totalCount) return `${eligibleCount} of ${totalCount} eligible`;
   if (eligibleCount > 0) return `${eligibleCount} of ${totalCount} eligible`;
   return "None eligible";
@@ -130,7 +130,7 @@ function csvCell(value: string | number | undefined | null) {
 }
 
 export function buildLibraryMetadataCsv(assets: StockMediaAsset[]) {
-  const headers = ["id", "title", "status", "type", "collection", "rights", "usage-scope", "reference"];
+  const headers = ["id", "title", "status", "type", "album", "rights", "allowed-use", "reference"];
   const rows = assets.map((asset) => [
     asset.id,
     asset.title || "",
@@ -139,7 +139,7 @@ export function buildLibraryMetadataCsv(assets: StockMediaAsset[]) {
     asset.collection || "",
     asset.rightsStatus || asset.consentStatus || "",
     asset.usageScope,
-    assetRecordRef(asset)
+    publicAssetRef(asset)
   ]);
 
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
@@ -153,16 +153,16 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
   const metadataCount = assets.filter((asset) => !assetIsBlocked(asset)).length;
   const restrictedCount = assets.filter((asset) => !downloadEligible(asset, role)).length;
   const unclearCount = assets.filter(rightsUnclear).length;
-  const sourceRestrictedReason = "Bulk download uses approved-copy gate only. Source/original files remain restricted.";
-  const bulkWorkflowReason = "Requires an existing governed workflow. Bulk writeback is not enabled in beta.";
-  const collectionWorkflowReason = "Use the Collections page or existing collection draft workflow. Bulk collection writeback is not enabled in beta.";
-  const reuseWorkflowReason = "Use asset record or Help request workflow. Bulk reuse requests are not enabled in beta.";
-  const reviewWorkflowReason = "Use the Review queue or upload workflow. Bulk review writeback is not enabled in beta.";
+  const sourceRestrictedReason = "Approved-use copies require existing item permission. Private archive files stay protected.";
+  const bulkWorkflowReason = "Use the normal request workflow for this change.";
+  const collectionWorkflowReason = "Use the Albums workflow for album changes.";
+  const reuseWorkflowReason = "Use media details or Help to request permission.";
+  const reviewWorkflowReason = "Use Uploads or Review Uploads for review changes.";
 
   const actions: LibraryBulkAction[] = [
     {
       id: "add-to-collection",
-      label: "Add to collection",
+      label: "Add to album",
       visible: true,
       enabled: false,
       eligibleCount: totalCount,
@@ -172,7 +172,7 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
     },
     {
       id: "create-collection",
-      label: "Create collection",
+      label: "Create album",
       visible: true,
       enabled: false,
       eligibleCount: totalCount,
@@ -182,24 +182,24 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
     },
     {
       id: "request-reuse",
-      label: "Request reuse",
+      label: "Request permission",
       visible: true,
       enabled: false,
       eligibleCount: reusableRequestCount,
       totalCount,
       statusLabel: actionStatus(reusableRequestCount, totalCount),
       warning: unclearCount ? `${unclearCount} selected item${unclearCount === 1 ? "" : "s"} have unclear rights or consent.` : undefined,
-      disabledReason: reusableRequestCount ? reuseWorkflowReason : "Do Not Use or archive-only assets cannot start reuse requests."
+      disabledReason: reusableRequestCount ? reuseWorkflowReason : "Do Not Use or archive-only media cannot start permission requests."
     },
     {
       id: "send-review",
-      label: "Send to review",
+      label: "Request review",
       visible: canContribute(role),
       enabled: false,
       eligibleCount: reviewCount,
       totalCount,
       statusLabel: actionStatus(reviewCount, totalCount),
-      disabledReason: reviewCount ? reviewWorkflowReason : "Selected assets have no review-required signal in current role-safe view."
+      disabledReason: reviewCount ? reviewWorkflowReason : "Selected media have no review-required signal in current role-safe view."
     },
     {
       id: "assign-tags",
@@ -223,18 +223,18 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
     },
     {
       id: "download-approved",
-      label: "Download approved copies",
+      label: "Request copies",
       visible: true,
       enabled: false,
       eligibleCount: downloadCount,
       totalCount,
       statusLabel: actionStatus(downloadCount, totalCount),
-      warning: restrictedCount ? `${restrictedCount} selected item${restrictedCount === 1 ? "" : "s"} excluded by approved-copy gate.` : sourceRestrictedReason,
-      disabledReason: downloadCount ? `Open full records to run individual approved-copy download gates. ${sourceRestrictedReason}` : `No selected asset has an approved derivative available. ${sourceRestrictedReason}`
+      warning: restrictedCount ? `${restrictedCount} selected item${restrictedCount === 1 ? "" : "s"} need permission before copy requests.` : sourceRestrictedReason,
+      disabledReason: downloadCount ? `Request copies per eligible item. ${sourceRestrictedReason}` : `No selected media has an approved-use copy available. ${sourceRestrictedReason}`
     },
     {
       id: "export-metadata",
-      label: "Export metadata",
+      label: "Download list",
       visible: true,
       enabled: totalCount > 0,
       eligibleCount: totalCount,
@@ -269,7 +269,7 @@ export function buildLibraryBulkActions(assets: StockMediaAsset[], role: DemoRol
       eligibleCount: metadataCount,
       totalCount,
       statusLabel: actionStatus(metadataCount, totalCount),
-      disabledReason: "Archive is admin-only and disabled in beta until ResourceSpace writeback is verified."
+      disabledReason: "Archive is admin-only and disabled in beta until source-system writeback is verified."
     }
   ];
 
@@ -287,10 +287,10 @@ export function buildLibrarySelectionSummary(assets: StockMediaAsset[], role: De
     return right[1] - left[1] || left[0].localeCompare(right[0]);
   });
   const warnings = [
-    "Source/original files are excluded from bulk actions.",
-    assets.some(rightsUnclear) ? "Rights or consent unclear: request review before reuse/download." : "",
-    assets.some((asset) => !downloadEligible(asset, role)) ? "Some assets are not eligible for approved-copy download." : "",
-    assets.some(assetIsBlocked) ? "Do Not Use assets can only be reviewed by authorized roles." : ""
+    "Private archive files are excluded from selected-media actions.",
+    assets.some(rightsUnclear) ? "Rights or consent unclear: request review before reuse or download." : "",
+    assets.some((asset) => !downloadEligible(asset, role)) ? "Some media are not eligible for gated download." : "",
+    assets.some(assetIsBlocked) ? "Do Not Use media can only be reviewed by authorized roles." : ""
   ].filter(Boolean);
 
   return {
@@ -299,8 +299,8 @@ export function buildLibrarySelectionSummary(assets: StockMediaAsset[], role: De
     typeBreakdown: countBy(assets, assetTypeLabel),
     rightsBreakdown,
     sharedTags: intersection(assets.map((asset) => asset.tags || [])).slice(0, 8),
-    references: unique(assets.map(assetRecordRef)).slice(0, 24),
-    resourceSpaceIds: unique(assets.map(assetResourceRef)).slice(0, 24),
+    references: unique(assets.map(publicAssetRef)).slice(0, 24),
+    resourceSpaceIds: canReview(role) ? unique(assets.map(assetResourceRef)).slice(0, 24) : [],
     warnings,
     actions: buildLibraryBulkActions(assets, role)
   };

@@ -4,8 +4,8 @@ import { imageUrlsForResource } from "@/lib/resourcespace-schema";
 
 export const demoFallbackStatus: MediaSourceStatus = {
   adapter: "demo-fallback",
-  label: "Local demo data",
-  detail: "Hosted ResourceSpace export not connected in this environment. Records are read-only local demo data; source files remain restricted.",
+  label: "Local sample data",
+  detail: "Hosted ResourceSpace export not connected in this environment. Records are read-only local sample data; source files remain restricted.",
   readOnly: true
 };
 

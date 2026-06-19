@@ -56,18 +56,18 @@ export function requestIdentityTruthMatrix(): IdentityTruthRow[] {
       state: "local-only",
       acceptedInProduction: false,
       source: "Client demo role provider",
-      truth: "Useful for local prototype browsing only; not authentication and not audit-grade identity.",
+      truth: "Useful for local role browsing only; not authentication and not audit-grade identity.",
       blocker: "Replace with verified user identity before beta or production access claims."
     },
     {
       id: "beta-login",
-      label: "Prototype login",
+      label: "Rehearsal login",
       state: betaAuth ? "prototype-login" : "local-only",
       acceptedInProduction: false,
-      source: "Signed prototype session cookie and middleware headers",
+      source: "Signed rehearsal session cookie and middleware headers",
       truth: betaAuth
         ? "Middleware-verified role session exists for local rehearsal, but it is not an IdP-backed user account."
-        : "Prototype login is disabled; role falls back to local-only demo behavior.",
+        : "Rehearsal login is disabled; role falls back to local-only role behavior.",
       blocker: "Needs real user account, group mapping, lifecycle, and audit actor proof."
     },
     {

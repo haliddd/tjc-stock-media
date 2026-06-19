@@ -44,6 +44,16 @@ export type AssetLibraryScanSummary = {
   nextActionDetail: string;
 };
 
+export type AssetSourceRecordTruthRow = {
+  label: string;
+  value: string;
+  detail?: string;
+};
+
+export function assetCanInspectSourceRecord(role: DemoRole) {
+  return role === "Reviewer" || role === "DAM Admin";
+}
+
 export function assetIsApproved(asset: StockMediaAsset) {
   return asset.status === "Approved Public" || asset.status === "Approved Internal";
 }
@@ -191,12 +201,103 @@ export function assetLifecycleIsCurrent(asset: StockMediaAsset, now: Date | numb
 export function assetHasSourceProvenance(asset: StockMediaAsset) {
   return Boolean(
     asset.sourcePath ||
+      asset.source_path ||
       asset.sourceAccount ||
       asset.sourceSystem ||
       asset.sourceAlbumPath ||
+      asset.sourceAlbum ||
+      asset.source_album ||
       asset.sourceAlbumMemberships?.length ||
       asset.eventName ||
-      (asset.collection && asset.collection !== "ResourceSpace export")
+      (asset.collection && asset.collection !== "ResourceSpace export" && asset.collection !== "Media library import")
+  );
+}
+
+export function assetSourceRecordId(asset: StockMediaAsset) {
+  const value = asset.resourceSpaceId || asset.resource_space_id;
+  return value ? String(value) : "";
+}
+
+export function assetSourceChecksum(asset: StockMediaAsset) {
+  return asset.checksumSha256 || asset.checksum_sha256 || asset.checksum || "";
+}
+
+export function assetRightsStatusLabel(asset: StockMediaAsset) {
+  return asset.rightsStatus || asset.rights_status || "";
+}
+
+export function assetReviewerLabel(asset: StockMediaAsset) {
+  return asset.reviewer || asset.reviewedBy || asset.reviewed_by || "";
+}
+
+export function assetReviewedDate(asset: StockMediaAsset) {
+  return asset.reviewedDate || asset.reviewedAt || asset.reviewed_at || "";
+}
+
+export function assetLastImportedOrSyncedAt(asset: StockMediaAsset) {
+  return asset.lastSyncedAt || asset.last_synced_at || asset.importDate || "";
+}
+
+export function assetSourceAlbumLabel(asset: StockMediaAsset) {
+  return asset.sourceAlbum || asset.source_album || asset.sourceFolder || asset.collection || "";
+}
+
+export function assetSourcePathLabel(asset: StockMediaAsset) {
+  return asset.sourcePath || asset.source_path || asset.sourceAlbumPath || asset.masterDrivePath || "";
+}
+
+export function assetSourceRecordTruthRows(asset: StockMediaAsset, options?: { privateCustodyRestricted?: boolean }): AssetSourceRecordTruthRow[] {
+  const recordId = assetSourceRecordId(asset);
+  const lastImportedOrSynced = assetLastImportedOrSyncedAt(asset);
+  const sourceAlbum = assetSourceAlbumLabel(asset);
+  const sourcePath = assetSourcePathLabel(asset);
+  const checksum = assetSourceChecksum(asset);
+  const reviewStatus = asset.workflowState || asset.review_status || asset.status || "";
+  const rightsStatus = assetRightsStatusLabel(asset);
+  const reviewer = assetReviewerLabel(asset);
+  const reviewedAt = assetReviewedDate(asset);
+  const publicApproval = asset.approvedForPublic ?? asset.approved_for_public;
+  const internalApproval = asset.approvedForInternal ?? asset.approved_for_internal;
+  const privateValue = options?.privateCustodyRestricted ? "Restricted to DAM admin" : "Not provided";
+  const privateMissingDetail = options?.privateCustodyRestricted ? "Private custody evidence is hidden for this role." : "Missing bridge field.";
+  const sourcePathValue = options?.privateCustodyRestricted ? privateValue : sourcePath || privateValue;
+  const sourcePathDetail = options?.privateCustodyRestricted
+    ? privateMissingDetail
+    : sourcePath ? "Read-only evidence. Portal must not rename, move, or mutate source media." : privateMissingDetail;
+  const checksumValue = options?.privateCustodyRestricted ? privateValue : checksum || privateValue;
+  const checksumDetail = options?.privateCustodyRestricted
+    ? privateMissingDetail
+    : checksum ? "Checksum evidence only; no file mutation." : privateMissingDetail;
+  return [
+    { label: "Source record ID", value: recordId || "Missing bridge field", detail: recordId ? "Record lookup reference." : "Local/demo records may not expose this bridge." },
+    { label: "Last source check", value: lastImportedOrSynced || "Not provided", detail: asset.syncSource || asset.sync_source || "No automatic source update claim." },
+    { label: "Source album", value: sourceAlbum || "Not provided" },
+    { label: "Source path", value: sourcePathValue, detail: sourcePathDetail },
+    { label: "Rights status", value: rightsStatus || "Not provided" },
+    { label: "Review status", value: reviewStatus || "Not provided" },
+    { label: "Approval flags", value: `public: ${publicApproval === undefined ? "not provided" : publicApproval ? "yes" : "no"} / internal: ${internalApproval === undefined ? "not provided" : internalApproval ? "yes" : "no"}` },
+    { label: "Reviewer", value: reviewer || "Not provided", detail: reviewedAt ? `Reviewed ${reviewedAt}` : "Review date not provided." },
+    { label: "Checksum", value: checksumValue, detail: checksumDetail },
+    { label: "Boundary", value: "Read-only source", detail: "Portal displays workflow state and reviewed copies only. No writeback." }
+  ];
+}
+
+export function assetHasImportedSourceTruth(asset: StockMediaAsset) {
+  return Boolean(
+    asset.resourceSpaceId ||
+      asset.resource_space_id ||
+      assetSourceChecksum(asset) ||
+      asset.sourceSystem ||
+      asset.syncSource ||
+      asset.sync_source ||
+      asset.importBatch ||
+      asset.sourceAlbum ||
+      asset.source_album ||
+      asset.sourceFolder ||
+      asset.sourceAlbumPath ||
+      asset.sourceAlbumMemberships?.length ||
+      assetSourcePathLabel(asset) ||
+      assetLastImportedOrSyncedAt(asset)
   );
 }
 
@@ -205,7 +306,7 @@ export function assetNeedsSourceReview(asset: StockMediaAsset) {
 }
 
 export function assetNeedsRightsReview(asset: StockMediaAsset) {
-  const rightsStatus = (asset.rightsStatus || "").toLowerCase();
+  const rightsStatus = assetRightsStatusLabel(asset).toLowerCase();
   const consentStatus = (asset.consentStatus || "").toLowerCase();
   const rightsNotes = (asset.rightsNotes || "").toLowerCase();
   const rightsText = `${rightsStatus} ${consentStatus} ${rightsNotes}`;
@@ -219,6 +320,30 @@ export function assetNeedsRightsReview(asset: StockMediaAsset) {
   if (rightsClearPattern.test(rightsText)) return false;
   if (assetIsApproved(asset)) return true;
   return assetNeedsReview(asset) && !rightsText.trim();
+}
+
+export function assetIsRightsSafeLocalFixture(asset: StockMediaAsset) {
+  const fixtureSource = [
+    asset.sourceSystem,
+    asset.sourcePlatform,
+    asset.syncSource,
+    asset.sync_source
+  ].filter(Boolean).join(" ");
+  const looksLocalFixture = /fixture|demo|local|bundled|sample/i.test(fixtureSource);
+  return Boolean(
+    looksLocalFixture &&
+      assetIsApproved(asset) &&
+      assetHasCompatibleUsageScope(asset) &&
+      !assetIsBlocked(asset) &&
+      !assetIsArchiveOnly(asset) &&
+      !assetHasChildrenYouthRisk(asset) &&
+      !assetNeedsRightsReview(asset) &&
+      assetReviewComplete(asset)
+  );
+}
+
+export function assetHasPortalTruthBoundary(asset: StockMediaAsset) {
+  return assetHasImportedSourceTruth(asset) || assetIsRightsSafeLocalFixture(asset);
 }
 
 export function assetNeedsUsageGuidance(asset: StockMediaAsset) {
@@ -245,7 +370,7 @@ export function assetIsDuplicateCandidate(asset: StockMediaAsset, duplicateGroup
 }
 
 export function assetReviewComplete(asset: StockMediaAsset) {
-  return Boolean(asset.reviewer && asset.reviewedDate);
+  return Boolean(assetReviewerLabel(asset) && assetReviewedDate(asset));
 }
 
 export function assetNeedsAiEnrichment(asset: StockMediaAsset) {
@@ -274,10 +399,11 @@ export function assetIsPortalReady(asset: StockMediaAsset) {
 }
 
 export function assetNeedsStaleApprovalReview(asset: StockMediaAsset, now: Date | number = new Date()) {
+  const reviewedDate = assetReviewedDate(asset);
   if (!assetLifecycleIsCurrent(asset, now)) return true;
-  if (!assetIsApproved(asset) || !asset.reviewedDate) return false;
+  if (!assetIsApproved(asset) || !reviewedDate) return false;
   const referenceDate = now instanceof Date ? now : new Date();
-  const reviewed = new Date(asset.reviewedDate);
+  const reviewed = new Date(reviewedDate);
   if (Number.isNaN(reviewed.getTime())) return false;
   return referenceDate.getTime() - reviewed.getTime() > 1000 * 60 * 60 * 24 * 180;
 }
@@ -285,6 +411,7 @@ export function assetNeedsStaleApprovalReview(asset: StockMediaAsset, now: Date 
 export function assetPortalBlockers(asset: StockMediaAsset) {
   const blockers: string[] = [];
   const contract = validateAssetMetadataContract(asset);
+  if (!assetHasPortalTruthBoundary(asset)) blockers.push("Import/source truth missing");
   if (assetIsBlocked(asset)) blockers.push("Do not use");
   if (assetIsArchiveOnly(asset)) blockers.push("Archive only");
   if (asset.status !== "Approved Public") blockers.push("Not Approved Public");
@@ -367,9 +494,9 @@ function reuseTierSummary(asset: StockMediaAsset) {
 }
 
 function sourceCustodySummary(asset: StockMediaAsset, role: DemoRole = "Viewer") {
-  if (role === "Viewer" || role === "Contributor") return "Source/original restricted";
+  if (role === "Viewer" || role === "Contributor") return "Full file restricted";
   if (!assetHasSourceProvenance(asset)) return "Source trace missing";
-  if (asset.resourceSpaceId) return "ResourceSpace ref";
+  if (asset.resourceSpaceId || asset.resource_space_id) return "Source record ref";
   if (asset.sourceSystem) return "Source recorded";
   return "Custody recorded";
 }
@@ -415,7 +542,7 @@ function nextLibraryAction(asset: StockMediaAsset, role: DemoRole = "Viewer") {
   if (assetHasRenditionGap(asset)) {
     return {
       action: canReviewRole ? "Create approved derivative" : "Open record",
-      detail: "Approved copy is missing; source/original stays restricted."
+      detail: "Approved copy is missing; full-resolution file stays restricted."
     };
   }
   return {
@@ -444,7 +571,7 @@ export function assetLibraryScanSummary(asset: StockMediaAsset, role: DemoRole =
   return {
     trustLabel: portalReady ? "Portal Ready" : blocked ? "Do Not Use" : archive ? "Archive only" : internal ? "Internal ready" : "Needs review",
     trustDetail: portalReady
-      ? "Approved derivative available; source/original remains protected."
+      ? "Approved derivative available; full-resolution file remains protected."
       : blocked
         ? "Restriction blocks normal reuse."
         : archive
@@ -481,9 +608,13 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
   const policyScore = scoreFromBooleans([
     blockers.length === 0,
     warnings.length === 0,
-    Boolean(asset.checksumSha256),
+    Boolean(assetSourceChecksum(asset)),
     Boolean(asset.imageUrls?.download)
   ]);
+  const reviewer = assetReviewerLabel(asset);
+  const reviewedDate = assetReviewedDate(asset);
+  const checksum = assetSourceChecksum(asset);
+  const rightsStatus = assetRightsStatusLabel(asset);
 
   return {
     score: Math.round((health.score + policyScore) / 2),
@@ -499,7 +630,7 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
       },
       {
         label: "Rights",
-        value: assetNeedsRightsReview(asset) ? "Unknown - reviewer should confirm before public use" : asset.rightsStatus || asset.rightsNotes || "Rights review pending",
+        value: assetNeedsRightsReview(asset) ? "Unknown - reviewer should confirm before public use" : rightsStatus || asset.rightsNotes || "Rights review pending",
         tone: assetNeedsRightsReview(asset) ? "warn" : "ok"
       },
       {
@@ -509,13 +640,13 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
       },
       {
         label: "Review",
-        value: asset.reviewer && asset.reviewedDate ? `${asset.reviewer} / ${asset.reviewedDate}` : "Review pending",
+        value: reviewer && reviewedDate ? `${reviewer} / ${reviewedDate}` : "Review pending",
         tone: assetReviewComplete(asset) ? "ok" : "warn"
       },
       {
         label: "Checksum",
-        value: asset.checksumSha256 ? "Checksum recorded" : "Not exported",
-        tone: asset.checksumSha256 ? "ok" : "info"
+        value: checksum ? "Checksum recorded" : "Not exported",
+        tone: checksum ? "ok" : "info"
       },
       {
         label: "Portal",
@@ -526,23 +657,23 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
     auditTrail: [
       {
         event: "Imported / indexed",
-        actor: asset.sourceSystem || "ResourceSpace export",
+        actor: asset.sourceSystem || "Imported record",
         date: asset.importDate || asset.capturedDate || asset.eventDate || "Date not exported",
         detail: assetHasSourceProvenance(asset) ? sourceCustodySummary(asset, "Reviewer") : "Source trace pending",
         tone: assetHasSourceProvenance(asset) ? "ok" : "warn"
       },
       {
         event: "Workflow state",
-        actor: "ResourceSpace",
-        date: asset.reviewedDate || "Pending",
+        actor: "Source record",
+        date: reviewedDate || "Pending",
         detail: asset.workflowState || asset.status,
         tone: assetNeedsReview(asset) ? "warn" : "info"
       },
       {
         event: "Rights decision",
-        actor: asset.reviewer || "Reviewer pending",
-        date: asset.reviewedDate || "Pending",
-        detail: asset.rightsNotes || asset.rightsStatus || "Rights notes not exported",
+        actor: reviewer || "Reviewer pending",
+        date: reviewedDate || "Pending",
+        detail: asset.rightsNotes || rightsStatus || "Rights notes not exported",
         tone: assetNeedsRightsReview(asset) ? "warn" : "ok"
       },
       {
@@ -575,7 +706,7 @@ export function assetGovernancePassport(asset: StockMediaAsset): AssetGovernance
       {
         label: "Original/master",
         available: false,
-        detail: "Source file remains restricted to approved media operations",
+        detail: "Source file remains restricted to media team operations",
         intent: "Archive/master preservation"
       }
     ]
@@ -614,6 +745,6 @@ export function countAssetGovernance(assets: StockMediaAsset[], now = new Date()
     childrenYouth: assets.filter(assetHasChildrenYouthRisk).length,
     missingSource: assets.filter(assetNeedsSourceReview).length,
     rightsReview: assets.filter(assetNeedsRightsReview).length,
-    approvedThisMonth: assets.filter((asset) => asset.reviewedDate?.startsWith(monthPrefix) && assetIsApproved(asset)).length
+    approvedThisMonth: assets.filter((asset) => assetReviewedDate(asset).startsWith(monthPrefix) && assetIsApproved(asset)).length
   };
 }

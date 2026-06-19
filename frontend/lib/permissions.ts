@@ -62,7 +62,9 @@ export function canOpenResourceSpace(role: DemoRole) {
 }
 
 export function canAccessRoute(role: DemoRole, route: string) {
-  switch (routeAccessForPathname(routePathname(route))) {
+  const pathname = routePathname(route);
+
+  switch (routeAccessForPathname(pathname)) {
     case "admin":
       return canAdmin(role);
     case "review":

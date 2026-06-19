@@ -34,10 +34,10 @@ export async function POST(request: NextRequest) {
       role: session.role,
       actor: session.identity.id,
       status: "blocked",
-      summary: "Internal beta login blocked because beta auth is disabled.",
+      summary: "Restricted access login blocked because beta auth is disabled.",
       details: { reason: "beta-auth-disabled" }
     });
-    return NextResponse.json({ error: "Internal beta access is not enabled." }, { status: 404 });
+    return NextResponse.json({ error: "Restricted access is not enabled." }, { status: 404 });
   }
 
   const body = await readJsonObject(request);

@@ -12,7 +12,6 @@ import {
   Download,
   FileText,
   Filter,
-  Folder,
   HardDrive,
   Info,
   Lock,
@@ -35,7 +34,7 @@ import type { DamReadinessResult, DemoRole, MediaSourceStatus, ReuseBlocker, Sto
 import { useDemoRole } from "@/components/RoleProvider";
 import { custodyMapRows, custodyMapStatus } from "@/lib/admin-control";
 import { inspectorDrawerTabs } from "@/lib/asset-record-workbench";
-import { assetDate, assetRecordRef, assetType, displayTitle, formatBytes, recordIdLabel, sourceNoun, sourceTruthLabel } from "@/lib/enterprise-display";
+import { assetDate, assetRecordRef, assetType, displayTitle, formatBytes, recordIdLabel, sourceTruthLabel } from "@/lib/enterprise-display";
 import { inspectorMetadataRows } from "@/lib/enterprise-metadata";
 import { assetEnterpriseStatus, statusToneClass, type EnterpriseStatus } from "@/lib/enterprise-status";
 import { mediaPreviewState, mediaPreviewUnavailableReason } from "@/lib/media-preview-state";
@@ -46,13 +45,13 @@ import { cn } from "@/lib/ui";
 
 export function StatusBadge({ status }: { status: EnterpriseStatus }) {
   const label = status === "Approved"
-    ? "Portal Ready"
+    ? "Approved within scope"
     : status === "Missing Consent"
       ? "Consent needed"
       : status === "Restricted"
-        ? "Restricted source"
+        ? "Restricted"
         : status === "Read-only"
-          ? "Internal only"
+          ? "Read-only"
           : status;
   return <span className={cn("ed-badge", statusToneClass(status))}>{label}</span>;
 }
@@ -64,7 +63,7 @@ function primaryBlockerLabel(blockers: ReuseBlocker[] = []) {
 function blockerEvidenceHint(blocker: ReuseBlocker) {
   if (blocker.code === "blocked-rights") return "Rights, consent, approved channel, or required notice evidence.";
   if (blocker.code === "blocked-people-minors") return "People visibility, youth/minors, and consent evidence.";
-  if (blocker.code === "blocked-source") return "Source custody and record provenance confirmation.";
+  if (blocker.code === "blocked-source") return "Record provenance confirmation.";
   if (blocker.code === "blocked-derivative") return "Approved derivative/copy before download or distribution.";
   if (blocker.code === "blocked-reviewer-date") return "Reviewer, review date, or lifecycle recheck.";
   if (blocker.code === "blocked-sensitive") return "Doctrine, sacrament, hymn/music, testimony, or pastoral review.";
@@ -80,17 +79,19 @@ function roleCanActOnReview(role: DemoRole) {
 function TrustAnswerStrip({
   visible,
   reuse,
+  sourceLabel = "Record basis",
   source
 }: {
   visible: string;
   reuse: string;
+  sourceLabel?: string;
   source?: string;
 }) {
   return (
-    <div className="ed-trust-answer-strip" aria-label="Beta visibility and reuse answers">
-      <span><small>Beta visibility</small><strong>{visible}</strong></span>
+    <div className="ed-trust-answer-strip" aria-label="Portal visibility and reuse answers">
+      <span><small>Portal visibility</small><strong>{visible}</strong></span>
       <span><small>Reuse/download</small><strong>{reuse}</strong></span>
-      {source ? <span><small>Source truth</small><strong>{source}</strong></span> : null}
+      {source ? <span><small>{sourceLabel}</small><strong>{source}</strong></span> : null}
     </div>
   );
 }
@@ -179,13 +180,14 @@ export function ClearanceStatusPanel({
       <TrustAnswerStrip
         visible={presentation ? betaVisibilityLabel(asset) : "Visibility unknown"}
         reuse={presentation ? reuseAnswerLabel(presentation.packet.reuse.state) : "Needs review before reuse"}
+        sourceLabel={roleCanActOnReview(role) ? "Source truth" : "Record basis"}
         source={sourceTruthLabel(source)}
       />
       <div className="ed-verdict-body">
         <span aria-hidden="true">{approved ? <Check size={24} /> : <Lock size={22} />}</span>
         <div className="ed-verdict-summary">
           <strong>{presentation?.canUseTitle || "Review required before use"}</strong>
-          <small>{presentation?.canUseSummary || `Review required before using this ${sourceNoun(source)} record.`}</small>
+          <small>{presentation?.canUseSummary || "Review required before using this media record."}</small>
           <p>{presentation?.canUseReason || "Usage rights are not fully provided."}</p>
         </div>
       </div>
@@ -336,24 +338,16 @@ export function RoleSafeActionBar({
           disabledReason={packet.access.downloadApprovedCopy.reason || "Clearance must pass before download."}
           onClick={onDownloadApprovedCopy}
         >
-          Download approved copy
+          Request approved copy
         </ActionButton>
         <ActionButton icon={FileText} onClick={onRequestReview}>
           {presentation.requestReviewLabel}
-        </ActionButton>
-        <ActionButton
-          icon={Folder}
-          disabled
-          disabledReason="Use Distribution Sets for governed drafts. No collection membership grants permission."
-          onClick={() => onMessage?.("Use Distribution Sets for governed drafts.")}
-        >
-          Add to distribution set
         </ActionButton>
       </div>
       {!packet.access.downloadApprovedCopy.allowed ? (
         <LockedActionNotice reason={packet.access.downloadApprovedCopy.reason || "Reviewer action required before an approved derivative can be downloaded."} />
       ) : null}
-      <p className="ed-action-helper">No public links, CDN/embed, portal shortcuts, or source-file delivery in v1 beta.</p>
+      <p className="ed-action-helper">No public links, CDN/embed, portal shortcuts, or full-resolution delivery from this panel.</p>
     </section>
   );
 }
@@ -417,7 +411,7 @@ export function DistributionReadinessCard({
     <section className="ed-card">
       <header className="ed-card-head">
         <div>
-          <h3>Distribution set readiness</h3>
+          <h3>Collection readiness</h3>
           <p>{detail}</p>
         </div>
         <StatusBadge status={state} />
@@ -426,10 +420,10 @@ export function DistributionReadinessCard({
         <span><strong>{selectedCount.toLocaleString()}</strong><small>selected</small></span>
         <span><strong>{readyCount.toLocaleString()}</strong><small>item-ready</small></span>
         <span><strong>{blockerCount.toLocaleString()}</strong><small>blockers</small></span>
-        <span><strong>0</strong><small>source files</small></span>
+        <span><strong>0</strong><small>full-resolution files</small></span>
       </div>
       {blockers.length ? <div className="ed-decision-reasons">{blockers.slice(0, 4).map((blocker) => <span key={blocker}>{blocker}</span>)}</div> : null}
-      <p className="ed-action-helper">One blocked item blocks the set. Collections and distribution sets are curation, not permission.</p>
+      <p className="ed-action-helper">One blocked item blocks reuse. Collections are curation, not permission.</p>
     </section>
   );
 }
@@ -633,15 +627,19 @@ export function DamToolbar({
 }
 
 export function SourcePill({ source, live }: { source?: MediaSourceStatus | null; live?: boolean }) {
+  const { role } = useDemoRole();
+  if (!roleCanActOnReview(role)) {
+    return <span className="ed-source-pill">Media library</span>;
+  }
   return <span className={cn("ed-source-pill", live && "is-live", source?.adapter === "demo-fallback" && "is-fallback")}>{sourceTruthLabel(source)}</span>;
 }
 
-export function LoadingCard({ label = "Loading ResourceSpace data..." }: { label?: string }) {
-  return <section className="ed-card ed-empty-state" role="status"><Database size={24} /><h2>{label}</h2><p>Source connection pending where noted. Unavailable media stays clearly marked. No frontend secrets are used.</p></section>;
+export function LoadingCard({ label = "Loading media library..." }: { label?: string }) {
+  return <section className="ed-card ed-empty-state" role="status"><Database size={24} /><h2>{label}</h2><p>Connection pending where noted. Unavailable media stays clearly marked. No frontend secrets are used.</p></section>;
 }
 
 export function ErrorCard({ message, source }: { message: string; source?: MediaSourceStatus | null }) {
-  return <section className="ed-card ed-empty-state"><AlertTriangle size={24} /><h2>{sourceNoun(source)} data unavailable</h2><p>{message}</p><SourcePill source={source} /></section>;
+  return <section className="ed-card ed-empty-state"><AlertTriangle size={24} /><h2>This view needs attention</h2><p>{message}</p><SourcePill source={source} /></section>;
 }
 
 function assetPreviewUrl(asset: StockMediaAsset, fit: "cover" | "contain") {
@@ -652,7 +650,7 @@ function assetPreviewUrl(asset: StockMediaAsset, fit: "cover" | "contain") {
 
 function previewFallbackDetail(state: ReturnType<typeof mediaPreviewState>) {
   if (state === "Preview failed") return "Approved derivative not loaded";
-  if (state === "Preview restricted") return "Source/original remains restricted";
+  if (state === "Preview restricted") return "Full-resolution file remains restricted";
   if (state === "Unsupported file type") return "Approved derivative not loaded";
   if (state === "Preview loading") return "Loading preview state";
   return "Approved derivative not loaded";
@@ -674,7 +672,7 @@ export function AssetThumb({ asset, className, fit = "cover" }: { asset?: StockM
       <div className={cn("ed-doc-thumb ed-preview-fallback", previewFallbackTone(state), className)} aria-label={asset ? `Preview unavailable for ${displayTitle(asset)}` : "Preview loading"}>
         <strong>Preview unavailable</strong>
         <span>{previewFallbackDetail(state)}</span>
-        <small>{state === "Preview restricted" ? "Approved derivative not loaded" : "Source/original remains restricted"}</small>
+        <small>{state === "Preview restricted" ? "Approved derivative not loaded" : "Full-resolution file remains restricted"}</small>
         {asset ? <small>Reference {assetRecordRef(asset)}</small> : <small>{mediaPreviewUnavailableReason(state)}</small>}
       </div>
     );
@@ -881,13 +879,13 @@ export function PremiumTaxonomyRail({
       { label: "Portrait", filter: "portrait" },
       { label: "Square", filter: "square" }
     ] },
-    { label: "Source custody", options: [
-      { label: "DAM record", filter: "resourcespace" },
+    { label: "Record readiness", options: [
+      { label: "Imported record", filter: "resourcespace" },
       { label: "LM Photos import", filter: "lm photos" },
       { label: "Manual upload", filter: "photographer" }
     ] },
-    { label: "Metadata Completeness", options: [
-      { label: "Metadata enrichment", filter: "metadata enrichment" },
+    { label: "Details completeness", options: [
+      { label: "Details enrichment", filter: "metadata enrichment" },
       { label: "Taxonomy drift", filter: "taxonomy drift" }
     ] }
   ];
@@ -978,7 +976,7 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
       <aside className="ed-inspector ed-panel ed-inspector-empty">
         <span className="ed-empty-eyebrow">Context rail</span>
         <h2>No asset selected</h2>
-        <p>{sourceNoun(source)} search returned no visible assets. Use this rail to keep the next safe action obvious.</p>
+        <p>No visible assets in this view. Use this rail to keep the next safe action obvious.</p>
         <div className="ed-empty-intel">
           <span><strong>1</strong><small>Reset filters</small></span>
           <span><strong>2</strong><small>Try saved views</small></span>
@@ -991,8 +989,9 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
   const presentation = presentAssetDetailContext(asset, role, source);
   const tabRows = inspectorMetadataRows({ asset, tab, source, role });
   const allowedRenditions = new Set(presentation.packet.reuse.allowedRenditions || []);
+  const canInspectSource = roleCanActOnReview(role);
   const renditionRows = [
-    { label: "Original", state: "Restricted", detail: "Master/source remains request-only" },
+    { label: canInspectSource ? "Original" : "Full file", state: "Restricted", detail: canInspectSource ? "Master/source remains request-only" : "Full-resolution file remains request-only" },
     { label: "Thumbnail", state: asset.thumbnail ? "Available" : "Missing", detail: "Role-safe preview derivative" },
     { label: "Web copy", state: allowedRenditions.has("web") || asset.imageUrls?.download ? "Gate required" : "Request", detail: "Approved-copy download only" },
     { label: "Social crop", state: asset.damFilenames?.social ? "Planned" : "Not generated", detail: "Draft rendition slot" },
@@ -1002,7 +1001,7 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
   const inspectorSummaryRows = [
     { label: "Metadata", value: asset.collection || "Unassigned", detail: `${assetType(asset)} / ${assetRecordRef(asset)}` },
     { label: "Rights", value: asset.rightsStatus || asset.usageScope || "Needs Review", detail: asset.peopleRisk || "People/minors unknown" },
-    { label: "Renditions", value: `${readyRenditions}/5 ready`, detail: "Original restricted; approved copies gated" },
+    { label: "Renditions", value: `${readyRenditions}/5 ready`, detail: canInspectSource ? "Original restricted; approved copies gated" : "Full-resolution file restricted; approved copies gated" },
     { label: "Versions", value: asset.versionOrEdition || asset.damFilenames?.web || "No replacement", detail: asset.duplicateGroup ? "Duplicate group tracked" : "No duplicate group visible" },
     { label: "Activity", value: asset.reviewedDate || asset.importDate || "Review pending", detail: asset.reviewer ? "Reviewer recorded" : "No reviewer yet" }
   ];
@@ -1058,11 +1057,10 @@ export function InspectorDrawer({ asset, source, live }: { asset?: StockMediaAss
       </dl>
       {message ? <p className="ed-inline-success">{message}</p> : null}
       <div className="ed-inspector-actions">
-        <ActionButton tone="dark" icon={Download} disabled disabledReason="Open the full record to run the approved-copy download gate. Source files remain restricted.">Download</ActionButton>
-        <ActionButton icon={Folder} disabled disabledReason="Use Distribution Sets for governed references. This panel does not copy source files.">Add to distribution set</ActionButton>
+        <ActionButton tone="dark" icon={Download} disabled disabledReason="Open the full record to run the approved-copy download gate. Full-resolution files remain restricted.">Download</ActionButton>
       </div>
-      <LockedActionNotice reason="Open the full record to run the approved-copy gate. Reviewer evidence, approved derivative, and source restrictions still apply." />
-      <p className="ed-action-helper">Open full record for approved-copy ticket checks. Distribution actions stay gated; no ZIP, public link, or source-file copy is created.</p>
+      <LockedActionNotice reason="Open the full record to run the approved-copy gate. Reviewer evidence, approved derivative, and full-resolution restrictions still apply." />
+      <p className="ed-action-helper">Open full record for approved-copy ticket checks. No ZIP, public link, or full-resolution copy is created.</p>
     </aside>
   );
 }
@@ -1138,12 +1136,11 @@ export function AssetQuickLookDrawer({
         <div className="ed-quicklook-actions">
           <Link className="ed-action is-dark" href={routeWithRole(`/assets/${asset.id}`, role)}>Open full record</Link>
           <ActionButton icon={Download} disabled disabledReason={canUseAsset ? "Use full record download gate before any approved-copy download." : "Needs review before download is available."}>Download</ActionButton>
-          <ActionButton icon={Folder} disabled disabledReason={canUseAsset ? "Use Distribution Sets for governed references." : "Resolve rights review before adding this asset to a distribution set."}>Add to distribution set</ActionButton>
         </div>
         <div className="px-5 pb-3">
           <LockedActionNotice reason={canUseAsset ? "Use full record ticket gate before downloading an approved copy." : "Reviewer action required before any approved-copy download is available."} />
         </div>
-        <p className="ed-action-helper px-5 pb-5">Quick look is read-only. Source files remain restricted; no distribution copy, ZIP, or public link is created here.</p>
+        <p className="ed-action-helper px-5 pb-5">Quick look is read-only. Full-resolution files remain restricted; no ZIP or public link is created here.</p>
       </SheetContent>
     </Sheet>
   );
@@ -1157,7 +1154,7 @@ export function MiniLine({ tone = "indigo" }: { tone?: "indigo" | "green" | "ora
 export function KpiCard({ label, value, delta, icon: Icon, danger = false, showTrend = true }: { label: string; value: string; delta: string; icon: LucideIcon; danger?: boolean; showTrend?: boolean }) {
   return (
     <article className="ed-card ed-kpi">
-      <div><span>{label}</span><strong>{value}</strong><small className={danger ? "is-down" : ""}>{delta}</small><small>ResourceSpace / portal period</small></div>
+      <div><span>{label}</span><strong>{value}</strong><small className={danger ? "is-down" : ""}>{delta}</small><small>current portal period</small></div>
       <i><Icon size={18} /></i>
       {showTrend ? <MiniLine tone={danger ? "red" : "indigo"} /> : null}
     </article>
@@ -1167,7 +1164,7 @@ export function KpiCard({ label, value, delta, icon: Icon, danger = false, showT
 export function ChartCard({ title, large = false, sample = false, children }: { title: string; large?: boolean; sample?: boolean; children?: ReactNode }) {
   return (
     <section className={cn("ed-card ed-chart", large && "is-large")}>
-      <header><h3>{title}</h3><button type="button" disabled title="Expanded analytics view pending beta instrumentation.">View all</button></header>
+      <header><h3>{title}</h3><button type="button" disabled title="Expanded analytics view pending instrumentation.">View all</button></header>
       {sample ? <p className="ed-sample-label">Sample until portal usage logging is connected</p> : null}
       {children}
     </section>

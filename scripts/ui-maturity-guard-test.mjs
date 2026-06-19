@@ -102,9 +102,9 @@ expectFail("missing-download-lock-copy", (targetRoot) => {
   write(targetRoot, file, read(targetRoot, file).replace("Open the full record to run the approved-copy gate", "Open full record"));
 });
 
-expectFail("missing-preview-redaction-note", (targetRoot) => {
+expectFail("missing-review-decision-panel", (targetRoot) => {
   const file = "frontend/components/dam/enterprise/ReviewPage.tsx";
-  write(targetRoot, file, read(targetRoot, file).replace("Role-safe derivative only. Source/original hidden.", "Preview"));
+  write(targetRoot, file, read(targetRoot, file).replace('className="review-decision-panel"', 'className="review-panel"'));
 });
 
 expectFail("client-node-env-regression", (targetRoot) => {
@@ -138,7 +138,9 @@ expectFail("requests-help-center-regression", (targetRoot) => {
 
 expectFail("my-tasks-help-center-regression", (targetRoot) => {
   const file = "frontend/components/dam/enterprise/MyTasksPage.tsx";
-  write(targetRoot, file, read(targetRoot, file).replace('title="My Tasks"', 'title="Help Center"'));
+  write(targetRoot, file, read(targetRoot, file)
+    .replaceAll('"My Work"', '"Help Center"')
+    .replace('data-primary-section="my-work-dashboard"', 'data-primary-section="help-articles"'));
 });
 
 expectFail("requests-nav-href-regression", (targetRoot) => {

@@ -372,7 +372,7 @@ if (!uploadIntakeSource.includes("normalizePublicTextField") || !uploadIntakeSou
 if (!intakeRoutingSource.includes("LARGE_MEDIA_LIMIT_BYTES") || !intakeRoutingSource.includes("function fileRequiresAdminIntake") || !intakeRoutingSource.includes("file.size > LARGE_MEDIA_LIMIT_BYTES") || !intakeRoutingSource.includes("/^video\\//i") || !intakeRoutingSource.includes("/^audio\\//i")) {
   failures.push("intake-routing must own large-media threshold and video/audio admin-intake detection used by upload-intake");
 }
-if (/normalize(DateField|DisplayTextField|PublicTextField|UrlField)\(|missingRequired|invalidTags|largeFiles|uploadDefaultState|upload_(denied|submitted)|role-cannot-submit|This role can search approved media but cannot upload|Upload intake denied for role/.test(uploadRouteSource)) {
+if (/normalize(DateField|DisplayTextField|PublicTextField|UrlField)\(|missingRequired|invalidTags|largeFiles|uploadDefaultState|upload_(denied|submitted)|role-cannot-submit|This role can browse media but cannot upload|Upload intake denied for role/.test(uploadRouteSource)) {
   failures.push(`${uploadRoute} must not hand-roll upload intake field normalization, validation, denial copy, audit details, or response payloads`);
 }
 if (/normalizeTextField\(form\.get/.test(uploadRouteSource)) {

@@ -139,8 +139,6 @@ export type PermissionCapability =
   | "Approve public use"
   | "Restrict or reject asset"
   | "Create collection"
-  | "Create distribution set"
-  | "Export distribution set"
   | "Edit policy"
   | "View full audit log";
 
@@ -148,25 +146,23 @@ export const permissionMatrix: Array<{
   capability: PermissionCapability;
   Viewer: string;
   Contributor: string;
-  "Rights Reviewer": string;
+  Reviewer: string;
   "DAM Admin": string;
 }> = [
-  { capability: "Search Library", Viewer: "Yes", Contributor: "Yes", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "View approved derivative", Viewer: "Scoped", Contributor: "Scoped", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Download approved derivative", Viewer: "Scoped", Contributor: "Scoped", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "View restricted source file", Viewer: "No", Contributor: "No by default", "Rights Reviewer": "Scoped", "DAM Admin": "Yes, audited" },
-  { capability: "Request source access", Viewer: "Yes", Contributor: "Yes", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Upload assets", Viewer: "No", Contributor: "Yes", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Edit submitted metadata", Viewer: "No", Contributor: "Own draft/submitted", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Attach rights evidence", Viewer: "No", Contributor: "Yes", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Approve internal use", Viewer: "No", Contributor: "No", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Approve public use", Viewer: "No", Contributor: "No", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Restrict or reject asset", Viewer: "No", Contributor: "No", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Create collection", Viewer: "Scoped", Contributor: "Scoped", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Create distribution set", Viewer: "Scoped", Contributor: "Scoped", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Export distribution set", Viewer: "Scoped", Contributor: "Scoped", "Rights Reviewer": "Yes", "DAM Admin": "Yes" },
-  { capability: "Edit policy", Viewer: "No", Contributor: "No", "Rights Reviewer": "No", "DAM Admin": "Yes" },
-  { capability: "View full audit log", Viewer: "Limited", Contributor: "Own records only", "Rights Reviewer": "Review scope", "DAM Admin": "Yes" }
+  { capability: "Search Library", Viewer: "Yes", Contributor: "Yes", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "View approved derivative", Viewer: "Scoped", Contributor: "Scoped", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Download approved derivative", Viewer: "Scoped", Contributor: "Scoped", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "View restricted source file", Viewer: "No", Contributor: "No by default", Reviewer: "Scoped", "DAM Admin": "Yes, audited" },
+  { capability: "Request source access", Viewer: "Yes", Contributor: "Yes", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Upload assets", Viewer: "No", Contributor: "Yes", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Edit submitted metadata", Viewer: "No", Contributor: "Own draft/submitted", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Attach rights evidence", Viewer: "No", Contributor: "Yes", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Approve internal use", Viewer: "No", Contributor: "No", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Approve public use", Viewer: "No", Contributor: "No", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Restrict or reject asset", Viewer: "No", Contributor: "No", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Create collection", Viewer: "Scoped", Contributor: "Scoped", Reviewer: "Yes", "DAM Admin": "Yes" },
+  { capability: "Edit policy", Viewer: "No", Contributor: "No", Reviewer: "No", "DAM Admin": "Yes" },
+  { capability: "View full audit log", Viewer: "Limited", Contributor: "Own records only", Reviewer: "Review scope", "DAM Admin": "Yes" }
 ];
 
 export const statusMeta: Record<DisplayStatus, {
@@ -642,10 +638,10 @@ export const governanceRecords: Record<string, GovernanceRecord[]> = {
     { id: "p5", name: "Role permissions", status: "Portal Ready", owner: "DAM Admin", updated: "2026-06-11", detail: "Contributor, reviewer, and admin routes remain role-scoped." }
   ],
   integrations: [
-    { id: "i1", name: "ResourceSpace sync", status: "In Review", owner: "DAM Admin", updated: "2026-06-15", detail: "Search and review layer active; live writeback remains gated." },
+    { id: "i1", name: "Source review handoff", status: "In Review", owner: "DAM Admin", updated: "2026-06-15", detail: "Search and review layer tracked; live source-system updates remain gated." },
     { id: "i2", name: "Google Shared Drive custody", status: "Portal Ready", owner: "Archive admin", updated: "2026-06-15", detail: "Master source custody remains outside portal package flows." },
     { id: "i3", name: "Identity provider", status: "Needs Evidence", owner: "Admin", updated: "2026-06-14", detail: "Production SSO role mapping pending." },
-    { id: "i4", name: "Pending write queue", status: "Blocked", owner: "DAM Admin", updated: "2026-06-13", detail: "ResourceSpace writeback remains disabled until adapter proof exists." },
+    { id: "i4", name: "Pending source updates", status: "Blocked", owner: "DAM Admin", updated: "2026-06-13", detail: "Source-system updates remain disabled until adapter proof exists." },
     { id: "i5", name: "Portal runtime store", status: "Needs Evidence", owner: "Platform", updated: "2026-06-12", detail: "Hosted durability proof still required before broad beta." }
   ]
 };

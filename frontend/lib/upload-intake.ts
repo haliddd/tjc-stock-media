@@ -209,8 +209,8 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     task("Checksum processing pending", files.length > 0),
     task("Duplicate group processing pending", duplicateHints.length > 0),
     task("Derivative generation after review", files.length > 0 || Boolean(sourceLink)),
-    task("DAM sync pending; upload does not write approval truth", true),
-    task("Field map readiness required before live writeback", true)
+    task("Media team handoff pending", true),
+    task("Upload does not approve media for use", true)
   ]);
   const systemWarnings = unique([
     ...detected.confirmationNeeded.map((item) => `${item} needs confirmation`),
@@ -300,7 +300,7 @@ export function uploadIntakeValidationError(intake: UploadIntakePacket): UploadI
 }
 
 export function uploadIntakeRoleDeniedError(): UploadIntakeValidationError {
-  return { body: { error: "This role can search approved media but cannot upload." }, status: 403 };
+  return { body: { error: "This role can browse media but cannot upload." }, status: 403 };
 }
 
 export function uploadIntakeAuditStatus(intake: UploadIntakePacket) {

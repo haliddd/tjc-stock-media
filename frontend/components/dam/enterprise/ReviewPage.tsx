@@ -1,433 +1,1393 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronRight, FileText, Filter, Grid3X3, Lock, Minus, MoreVertical, Plus, Save, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import {
+  AlertTriangle,
+  Clock3,
+  Database,
+  FileText,
+  FolderOpen,
+  ImageIcon,
+  Info,
+  Lock,
+  X
+} from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
-import { useDownloadGate, useReviewQueue } from "@/components/dam/useDamApi";
-import { assetRecordRef, assetType, displayTitle, formatBytes } from "@/lib/enterprise-display";
+import { useReviewQueue } from "@/components/dam/useDamApi";
+import { assetRecordRef, displayTitle, sourceTruthLabel } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus, type EnterpriseStatus } from "@/lib/enterprise-status";
-import { presentReviewContext } from "@/lib/portal-context-presenters";
-import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
-import { buildSelectedReviewGuidance, checklistActionLabel, reviewEvidenceGroups, reviewWaitingDays, type PendingReviewDecisionSummary } from "@/lib/review-workbench";
+import { initialReviewChecklistForAsset, reviewActionDisabledReason } from "@/lib/review-decision-presenter";
+import { buildSelectedReviewGuidance, reviewWaitingDays, type PendingReviewDecisionSummary } from "@/lib/review-workbench";
 import { routeWithRole } from "@/lib/role-routes";
-import type { ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
-import { normalizeReviewQueueId, reviewGovernanceGroupsForAsset, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
+import type { ReviewActionBackend, ReviewQueueId } from "@/lib/workflow-policy";
+import { missingReviewFields, normalizeReviewQueueId, reviewRiskFlags } from "@/lib/workflow-policy";
+import type { DemoRole, ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
 import { cn } from "@/lib/ui";
-import { ActionButton, AssetThumb, ErrorCard, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
+import { AssetThumb, LoadingCard } from "./EnterpriseShared";
 
-const reviewQueuePageSizeOptions = [8, 12, 20];
+type ReviewUploadStatus = "New" | "Needs info" | "Rights attention" | "Ready to approve" | "Approved" | "Restricted" | "Rejected";
+
+type ReviewUploadBatch = {
+  id: string;
+  eventName: string;
+  uploadedBy: string;
+  eventDate: string;
+  submittedDate: string;
+  ministry: string;
+  status: ReviewUploadStatus;
+  reason: string;
+  items: StockMediaAsset[];
+  photoCount: number;
+  videoCount: number;
+  rightsAttentionCount: number;
+  needsInfoCount: number;
+  readyCount: number;
+};
+
+type SimpleCheck = {
+  id: "event" | "rights" | "people" | "scope";
+  label: string;
+  done: boolean;
+  detail: string;
+  action: string;
+};
+
+type BrowserUploadReceipt = {
+  id: string;
+  batchName: string;
+  mediaType: string;
+  fileCount: number;
+  status: string;
+  date: string;
+  eventDate?: string;
+  ministry?: string;
+  reviewStatus?: string;
+};
+
+type ReviewShellAction = {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  tone?: "primary" | "secondary";
+};
+
+type ReviewStatusCard = {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "ok" | "warn" | "blocked" | "neutral";
+};
+
 const approvalScopes: UsageScope[] = ["Public", "Public and Internal", "Internal", "Archive Only", "Do Not Publish", "Do Not Use"];
-const evidenceRequiredBeforeCompletion = new Set<keyof ReviewEvidenceChecklist>([
-  "rightsConfirmed",
-  "attributionConfirmed",
-  "creditRequirementChecked"
-]);
+const reviewNoteId = "review-upload-note";
+const usageScopeId = "review-upload-usage-scope";
+const contributorUploadsKey = "tjc-upload-intake-my-uploads-v1";
+const drawerFocusableSelector = [
+  "a[href]",
+  "button:not([disabled])",
+  "textarea:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])'
+].join(", ");
 
-function reviewChipLabels(asset: StockMediaAsset) {
-  const flags = reviewRiskFlags(asset);
-  const chips = new Set<string>();
-  reviewGovernanceGroupsForAsset(asset, Boolean(asset.pendingReviewWrite)).filter((group) => group.active).forEach((group) => chips.add(group.label));
-  if (assetEnterpriseStatus(asset) === "Needs Review") chips.add("Needs review");
-  if (flags.includes("Rights unclear")) chips.add("Rights missing");
-  if (flags.includes("People/minors status unresolved")) chips.add("People unresolved");
-  if (flags.some((flag) => /source/i.test(flag))) chips.add("Source missing");
-  return [...chips].slice(0, 4);
+function getDrawerFocusableElements(container: HTMLElement) {
+  return Array.from(container.querySelectorAll<HTMLElement>(drawerFocusableSelector)).filter((element) => (
+    element.tabIndex >= 0
+    && element.getAttribute("aria-disabled") !== "true"
+    && !element.closest("[hidden], [aria-hidden='true']")
+    && element.getClientRects().length > 0
+  ));
+}
+
+function meaningful(value?: string | null) {
+  return Boolean(value && !/^(unknown|not exported|not applicable|none|n\/a)$/i.test(value.trim()));
+}
+
+function displayDate(value?: string | null, fallback = "Date needed") {
+  if (!value) return fallback;
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(parsed));
+}
+
+function assetHasEventName(asset?: StockMediaAsset) {
+  return Boolean(asset && [
+    asset.eventName,
+    asset.sourceAlbum,
+    asset.collection
+  ].some(meaningful));
+}
+
+function assetHasEventDate(asset?: StockMediaAsset) {
+  return Boolean(asset && [asset.eventDate, asset.capturedDate].some(meaningful));
+}
+
+function eventDateFor(asset?: StockMediaAsset) {
+  return asset?.eventDate || asset?.capturedDate || "";
+}
+
+function submittedDateFor(asset?: StockMediaAsset) {
+  return asset?.importDate || asset?.fileModifiedDate || asset?.capturedDate || asset?.eventDate || "";
+}
+
+function eventNameFor(asset?: StockMediaAsset) {
+  return asset?.eventName || asset?.sourceAlbum || asset?.collection || "Submitted church media";
+}
+
+function ministryFor(asset?: StockMediaAsset) {
+  return asset?.collection || asset?.church || asset?.region || "Media ministry";
+}
+
+function uploadedByFor(asset?: StockMediaAsset) {
+  const sourceAccount = meaningful(asset?.sourceAccount) ? asset?.sourceAccount : "";
+  if (sourceAccount && !/resourcespace|export|snapshot/i.test(sourceAccount)) return sourceAccount;
+  return "Contributor pending";
+}
+
+function batchKeyFor(asset: StockMediaAsset) {
+  return [
+    asset.importBatch,
+    asset.eventName,
+    asset.eventDate,
+    asset.sourceAlbum,
+    asset.sourceAlbumPath,
+    asset.collection
+  ].find((value) => meaningful(value)) || asset.id;
+}
+
+function assetNeedsRightsAttention(asset: StockMediaAsset) {
+  const missing = missingReviewFields(asset);
+  return missing.includes("consent") || missing.includes("rights notes") || !assetHasRightsConsentProof(asset);
+}
+
+function assetNeedsPeopleAttention(asset: StockMediaAsset) {
+  return !asset.peopleRisk || asset.peopleRisk === "Unknown" || /minor|children|youth/i.test(asset.peopleRisk);
+}
+
+function assetNeedsEventInfo(asset: StockMediaAsset) {
+  return !assetHasEventName(asset) || !assetHasEventDate(asset);
+}
+
+function assetIsReadyCandidate(asset: StockMediaAsset) {
+  return !assetNeedsRightsAttention(asset) && !assetNeedsPeopleAttention(asset) && !assetNeedsEventInfo(asset) && asset.usageScope !== "Do Not Publish" && asset.status === "Needs Review";
+}
+
+function batchStatusFor(items: StockMediaAsset[]): ReviewUploadStatus {
+  if (items.every((asset) => asset.status === "Approved Public" || asset.status === "Approved Internal")) return "Approved";
+  if (items.every((asset) => asset.status === "Do Not Use")) return "Restricted";
+  if (items.some(assetNeedsRightsAttention)) return "Rights attention";
+  if (items.some((asset) => assetNeedsEventInfo(asset) || missingReviewFields(asset).length)) return "Needs info";
+  if (items.some(assetIsReadyCandidate)) return "Ready to approve";
+  return "New";
+}
+
+function batchReasonFor(items: StockMediaAsset[], status: ReviewUploadStatus) {
+  if (!items.length) return "No media in this upload";
+  const count = items.length;
+  const noun = count === 1 ? "media item" : "media items";
+  if (items.some(assetNeedsRightsAttention)) return "Rights proof missing";
+  if (items.some(assetNeedsPeopleAttention)) return "People/minors visible";
+  if (items.some(assetNeedsEventInfo)) return "Needs event date";
+  if (status === "Ready to approve") return "Ready for reviewer decision";
+  if (status === "Approved") return "Approved items stay governed";
+  if (status === "Restricted") return "Do not publish";
+  return `${count.toLocaleString()} ${noun} waiting for review`;
+}
+
+function buildReviewUploadBatches(assets: StockMediaAsset[]): ReviewUploadBatch[] {
+  const groups = new Map<string, StockMediaAsset[]>();
+  for (const asset of assets) {
+    const key = batchKeyFor(asset);
+    groups.set(key, [...(groups.get(key) || []), asset]);
+  }
+
+  return [...groups.entries()].map(([id, items]) => {
+    const sorted = [...items].sort((left, right) => {
+      const leftDate = Date.parse(submittedDateFor(left)) || 0;
+      const rightDate = Date.parse(submittedDateFor(right)) || 0;
+      return rightDate - leftDate;
+    });
+    const first = sorted[0];
+    const status = batchStatusFor(sorted);
+    return {
+      id,
+      eventName: eventNameFor(first),
+      uploadedBy: uploadedByFor(first),
+      eventDate: displayDate(eventDateFor(first)),
+      submittedDate: displayDate(submittedDateFor(first), "Submitted date needed"),
+      ministry: ministryFor(first),
+      status,
+      reason: batchReasonFor(sorted, status),
+      items: sorted,
+      photoCount: sorted.filter((asset) => asset.mediaType === "photo").length,
+      videoCount: sorted.filter((asset) => asset.mediaType === "video").length,
+      rightsAttentionCount: sorted.filter(assetNeedsRightsAttention).length,
+      needsInfoCount: sorted.filter((asset) => assetNeedsEventInfo(asset) || missingReviewFields(asset).length).length,
+      readyCount: sorted.filter(assetIsReadyCandidate).length
+    };
+  }).sort((left, right) => {
+    const statusOrder: Record<ReviewUploadStatus, number> = {
+      "Rights attention": 0,
+      "Needs info": 1,
+      "New": 2,
+      "Ready to approve": 3,
+      "Approved": 4,
+      "Restricted": 5,
+      "Rejected": 6
+    };
+    return statusOrder[left.status] - statusOrder[right.status] || right.items.length - left.items.length;
+  });
+}
+
+function simpleStatusTone(status: ReviewUploadStatus) {
+  if (status === "Ready to approve" || status === "Approved") return "is-ready";
+  if (status === "Rights attention") return "is-rights";
+  if (status === "Restricted" || status === "Rejected") return "is-restricted";
+  if (status === "Needs info") return "is-needs-info";
+  return "is-new";
+}
+
+function displayReviewUploadStatus(status: ReviewUploadStatus) {
+  if (status === "Ready to approve") return "Ready for decision";
+  if (status === "Restricted") return "Do Not Publish";
+  if (status === "Rejected") return "Restricted follow-up";
+  return status;
+}
+
+function countMedia(batch: ReviewUploadBatch) {
+  const pieces = [
+    batch.photoCount ? `${batch.photoCount} photo${batch.photoCount === 1 ? "" : "s"}` : "",
+    batch.videoCount ? `${batch.videoCount} video${batch.videoCount === 1 ? "" : "s"}` : ""
+  ].filter(Boolean);
+  return pieces.length ? pieces.join(" / ") : `${batch.items.length} media item${batch.items.length === 1 ? "" : "s"}`;
+}
+
+function peopleFlagForBatch(batch: ReviewUploadBatch) {
+  if (batch.items.some((asset) => /minor|children|youth/i.test(asset.peopleRisk || ""))) return "Possible minors";
+  if (batch.items.some((asset) => asset.peopleRisk === "Adults visible")) return "Adults visible";
+  if (batch.items.length && batch.items.every((asset) => asset.peopleRisk === "No people")) return "No people";
+  return "People/minors unknown";
+}
+
+function assetHasDownloadCopy(asset?: StockMediaAsset) {
+  return Boolean(asset?.imageUrls?.download || asset?.downloadPolicy === "approved-copy-allowed" || asset?.downloadPolicy === "internal-approved-copy-allowed");
+}
+
+function assetHasRightsConsentProof(asset?: StockMediaAsset) {
+  if (!asset) return false;
+  const rightsText = `${asset.rightsStatus || ""} ${asset.rightsNotes || ""} ${asset.rightsBasis || ""}`;
+  const consentText = `${asset.consentStatus || ""} ${asset.rightsNotes || ""}`;
+  const rightsClear = Boolean(
+    asset.rightsBasis && asset.rightsBasis !== "unknown"
+  ) || /rights approved|rights clear|permission confirmed|tjc-owned|tjc owned|licensed|license|contributor/i.test(rightsText);
+  const consentClear = Boolean(asset.consentReleaseRecordId)
+    || asset.peopleRisk === "No people"
+    || /consent confirmed|not applicable|documented exception|release/i.test(consentText);
+  return rightsClear && consentClear;
+}
+
+function assetHasSourceEvidence(asset?: StockMediaAsset) {
+  if (!asset) return false;
+  return [
+    asset.resourceSpaceId,
+    asset.resource_space_id,
+    asset.sourceSystem,
+    asset.sourcePlatform,
+    asset.sourceAccount,
+    asset.sourceFolder,
+    asset.sourceAlbum,
+    asset.sourceAlbumPath,
+    asset.sourcePath,
+    asset.source_path,
+    asset.importBatch
+  ].some((value) => meaningful(String(value || "")));
+}
+
+function buildSimpleChecks(asset: StockMediaAsset | undefined, checklist: ReviewEvidenceChecklist, approvalScope: UsageScope | ""): SimpleCheck[] {
+  const sourceDone = Boolean(checklist.sourceConfirmed || assetHasSourceEvidence(asset));
+  const eventDone = Boolean(asset && assetHasEventName(asset) && assetHasEventDate(asset) && sourceDone);
+  const rightsDone = Boolean(assetHasRightsConsentProof(asset) && checklist.rightsConfirmed && checklist.proofLinkAttached && checklist.attributionConfirmed && checklist.creditRequirementChecked);
+  const peopleDone = Boolean(checklist.peopleVisibilityConfirmed && checklist.childrenYouthChecked);
+  const scopeDone = Boolean(
+    checklist.usageScopeSelected
+    && checklist.sensitiveContextChecked
+    && checklist.expirationRereviewSet
+    && checklist.derivativeAvailable
+    && approvalScope
+  );
+  return [
+    {
+      id: "event",
+      label: "Event/source",
+      done: eventDone,
+      detail: eventDone ? "Event details and source evidence are present." : "Confirm event name, date, ministry, and source before approval.",
+      action: eventDone ? "Open advanced" : "Add details"
+    },
+    {
+      id: "rights",
+      label: "Rights/consent",
+      done: rightsDone,
+      detail: rightsDone ? "Rights/consent proof is noted for this decision." : "Add owner/license, consent, or proof note before approval.",
+      action: rightsDone ? "Open advanced" : "Add proof"
+    },
+    {
+      id: "people",
+      label: "People/minors",
+      done: peopleDone,
+      detail: peopleDone ? "People/minors review is marked complete." : "Choose allowed scope when people/minors are visible.",
+      action: peopleDone ? "Open advanced" : "Choose usage"
+    },
+    {
+      id: "scope",
+      label: "Usage scope",
+      done: scopeDone,
+      detail: scopeDone ? `Scope selected: ${approvalScope}.` : "Select usage scope.",
+      action: scopeDone ? "Open advanced" : "Choose usage"
+    }
+  ];
+}
+
+function nextActionFor(asset: StockMediaAsset | undefined, checks: SimpleCheck[], publicDisabledReason: string) {
+  const missing = checks.find((check) => !check.done);
+  if (missing?.id === "event") return { message: "This upload needs event/source details before review.", button: "Add details", target: "event" as const };
+  if (missing?.id === "rights") return { message: "Rights/consent proof is missing.", button: "Add proof", target: "rights" as const };
+  if (missing?.id === "people") return { message: "People/minors are visible or not yet resolved. Choose usage scope.", button: "Choose usage", target: "people" as const };
+  if (missing?.id === "scope") return { message: "Choose how this media can be used.", button: "Choose usage", target: "scope" as const };
+  if (publicDisabledReason) return { message: "Required checks are close, but approval still has a safety blocker.", button: "Open advanced", target: "advanced" as const };
+  return { message: "Required checks are complete for reviewer decision.", button: "Prepare decision", target: "approve" as const };
+}
+
+function approvalMetadataMissing(action: "Approve Public" | "Approve Internal", reviewerName: string, reviewDate: string, approvalScope: UsageScope | "") {
+  const missing: string[] = [];
+  if (reviewerName.trim().length < 2) missing.push("Reviewer name missing");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(reviewDate) || reviewDate > new Date().toISOString().slice(0, 10)) missing.push("Review date missing or future");
+  if (!approvalScope) missing.push("Approval usage scope missing");
+  if (action === "Approve Public" && approvalScope && !["Public", "Public and Internal"].includes(approvalScope)) missing.push("Public approval requires Public or Public and Internal scope");
+  if (action === "Approve Internal" && approvalScope && !["Internal", "Public and Internal"].includes(approvalScope)) missing.push("Internal approval requires Internal or Public and Internal scope");
+  return missing;
+}
+
+function disabledReasonForAction({
+  asset,
+  action,
+  checklist,
+  note,
+  reviewerName,
+  reviewDate,
+  approvalScope
+}: {
+  asset?: StockMediaAsset;
+  action: ReviewActionBackend;
+  checklist: ReviewEvidenceChecklist;
+  note: string;
+  reviewerName: string;
+  reviewDate: string;
+  approvalScope: UsageScope | "";
+}) {
+  if (!asset) return "Select media first.";
+  if (action === "Request More Info" || action === "Do Not Use") {
+    return note.trim().length > 10 ? "" : "Reviewer note missing";
+  }
+  const reviewMissing = reviewActionDisabledReason({ asset, action, checklist, note });
+  const approvalMissing = action === "Approve Public" || action === "Approve Internal"
+    ? approvalMetadataMissing(action, reviewerName, reviewDate, approvalScope)
+    : [];
+  return [reviewMissing, ...approvalMissing].filter(Boolean).join(". ");
+}
+
+function sanitizedTechnicalRows(asset?: StockMediaAsset) {
+  if (!asset) return [];
+  return [
+    ["Source record ID", assetRecordRef(asset)],
+    ["Import batch", asset.importBatch || "Not exported"],
+    ["Source album", asset.sourceAlbum || "Not exported"],
+    ["Source path", asset.sourceAlbumPath || asset.sourcePath ? "Hidden in portal" : "Not exported"],
+    ["Checksum", asset.checksumSha256 ? "Present, hidden in portal" : "Not exported"],
+    ["Preview/download copy", assetHasDownloadCopy(asset) ? "Preview/download copy listed" : "No approved copy listed"],
+    ["Workflow state", asset.workflowState || "Not exported"],
+    ["Pending review update", asset.pendingReviewWrite ? `${asset.pendingReviewWrite.requestedStatus} / ${asset.pendingReviewWrite.syncState}` : "None"]
+  ];
+}
+
+function normalizeBrowserReceipt(value: unknown): BrowserUploadReceipt | null {
+  const raw = (value || {}) as Partial<BrowserUploadReceipt>;
+  if (!raw.id || !raw.batchName) return null;
+  return {
+    id: String(raw.id),
+    batchName: String(raw.batchName),
+    mediaType: String(raw.mediaType || "Not sure"),
+    fileCount: Math.max(0, Math.trunc(Number(raw.fileCount) || 0)),
+    status: String(raw.status || "Submitted"),
+    date: String(raw.date || "Recent"),
+    eventDate: raw.eventDate ? String(raw.eventDate) : undefined,
+    ministry: raw.ministry ? String(raw.ministry) : undefined,
+    reviewStatus: raw.reviewStatus ? String(raw.reviewStatus) : undefined
+  };
+}
+
+function readBrowserReceipts() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(contributorUploadsKey) || "[]") as unknown[];
+    return Array.isArray(parsed) ? parsed.map(normalizeBrowserReceipt).filter((item): item is BrowserUploadReceipt => Boolean(item)).slice(0, 4) : [];
+  } catch {
+    return [];
+  }
+}
+
+function sourceCardValue(source: Parameters<typeof sourceTruthLabel>[0], live?: boolean, error?: string | null) {
+  if (error) return "Read unavailable";
+  if (!source) return "Disconnected";
+  if (source.adapter === "demo-fallback" || source.adapter === "media-library") return "Disconnected";
+  if (live) return "Connected";
+  if (source.readOnly) return "Read-only";
+  return "Configured";
+}
+
+function sourceCardDetail(source: Parameters<typeof sourceTruthLabel>[0], role: string, error?: string | null) {
+  if (error) return role === "DAM Admin" ? error : "Review source could not be checked. Upload intake can still remain separate.";
+  if (!source) return "No review source status returned yet.";
+  if (role === "DAM Admin") return `${sourceTruthLabel(source)}: ${source.detail}`;
+  return source.adapter === "demo-fallback" || source.adapter === "media-library"
+    ? "Review source is not connected in this session."
+    : "Review source can be read for this workflow.";
+}
+
+function reviewStatusCards({
+  batches,
+  receipts,
+  source,
+  live,
+  error,
+  role,
+  accessAllowed,
+  loading
+}: {
+  batches: ReviewUploadBatch[];
+  receipts: BrowserUploadReceipt[];
+  source: Parameters<typeof sourceTruthLabel>[0];
+  live?: boolean;
+  error?: string | null;
+  role: string;
+  accessAllowed: boolean;
+  loading?: boolean;
+}): ReviewStatusCard[] {
+  const sourceValue = loading ? "Checking" : sourceCardValue(source, live, error);
+  const queueBlocked = !accessAllowed || Boolean(error) || sourceValue === "Disconnected";
+  return [
+    {
+      label: "Upload intake",
+      value: receipts.length ? "Receipts on this browser" : "Available",
+      detail: receipts.length
+        ? `${receipts.length.toLocaleString()} local submission receipt${receipts.length === 1 ? "" : "s"} found. Not durable review records.`
+        : "Contributors can submit uploads through intake; review still requires source access.",
+      tone: "ok"
+    },
+    {
+      label: "Review queue",
+      value: !accessAllowed ? "Access needed" : loading ? "Checking" : queueBlocked ? "Paused" : batches.length ? `${batches.length.toLocaleString()} batch${batches.length === 1 ? "" : "es"}` : "No uploads waiting",
+      detail: !accessAllowed
+        ? "Reviewer or DAM Admin role required."
+        : queueBlocked
+          ? "Uploads can be submitted, but review is paused."
+          : batches.length
+            ? "Batches below need reviewer evidence or decision."
+            : "No uploads waiting for review.",
+      tone: !accessAllowed || queueBlocked ? "warn" : "ok"
+    },
+    {
+      label: "Source system",
+      value: sourceValue,
+      detail: sourceCardDetail(source, role, error),
+      tone: error || sourceValue === "Disconnected" ? "blocked" : sourceValue === "Checking" ? "neutral" : "ok"
+    }
+  ];
+}
+
+function ReviewUploadsHeader({ cards, subtitle = "Review submitted event media before use guidance changes." }: { cards: ReviewStatusCard[]; subtitle?: string }) {
+  return (
+    <header className="review-uploads-header">
+      <div>
+        <span>Media review</span>
+        <h1>Review Uploads</h1>
+        <p>{subtitle}</p>
+      </div>
+      <section aria-label="Review upload summary">
+        {cards.map((card) => (
+          <article className={cn(card.tone && `is-${card.tone}`)} key={card.label}>
+            <strong>{card.value}</strong>
+            <span>{card.label}</span>
+            <small>{card.detail}</small>
+          </article>
+        ))}
+      </section>
+    </header>
+  );
+}
+
+function ReviewQueueOverview({
+  queues,
+  activeQueueId,
+  sourceUnavailable
+}: {
+  queues?: Array<{ id: string; label: string; description: string; count: number }>;
+  activeQueueId: ReviewQueueId;
+  sourceUnavailable?: boolean;
+}) {
+  const visibleQueues = queues?.length ? queues : [
+    { id: activeQueueId, label: "Review queue", description: sourceUnavailable ? "Queue counts unavailable while source read is paused." : "No queues returned yet.", count: 0 }
+  ];
+  return (
+    <section className="review-queue-overview" aria-label="Available review queues">
+      <header>
+        <div>
+          <h2>Available queues</h2>
+          <p>{sourceUnavailable ? "Queue counts need a source check." : "Open lanes for reviewer triage."}</p>
+        </div>
+      </header>
+      <div>
+        {visibleQueues.slice(0, 8).map((queue) => (
+          <article className={cn(queue.id === activeQueueId && "is-active")} key={queue.id}>
+            <strong>{queue.count.toLocaleString()}</strong>
+            <span>{queue.label}</span>
+            <small>{queue.description}</small>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BrowserReceiptsPanel({ receipts, role }: { receipts: BrowserUploadReceipt[]; role: DemoRole }) {
+  if (!receipts.length) return null;
+  return (
+    <section className="review-browser-receipts" aria-label="Recent submissions from this browser">
+      <header>
+        <div>
+          <Clock3 size={18} aria-hidden="true" />
+          <h2>Recent submissions from this browser</h2>
+        </div>
+        <Link href={routeWithRole("/recent-uploads", role)}>View My Uploads</Link>
+      </header>
+      <p>Browser receipts help contributors find recent submissions. They are not durable review records and do not enable approval actions.</p>
+      <div>
+        {receipts.map((receipt) => (
+          <article key={receipt.id}>
+            <strong>{receipt.batchName}</strong>
+            <span>{receipt.date} · {receipt.fileCount ? `${receipt.fileCount} file${receipt.fileCount === 1 ? "" : "s"}` : receipt.mediaType}</span>
+            <small>{receipt.reviewStatus || receipt.status || "Submitted"}</small>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TechnicalDetails({
+  role,
+  source,
+  error,
+  queueId,
+  canReview,
+  batches
+}: {
+  role: string;
+  source: Parameters<typeof sourceTruthLabel>[0];
+  error?: string | null;
+  queueId: ReviewQueueId;
+  canReview: boolean;
+  batches: ReviewUploadBatch[];
+}) {
+  if (role !== "DAM Admin") return null;
+  const rows: Array<[string, string]> = [
+    ["Queue", queueId],
+    ["Role can review", canReview ? "Yes" : "No"],
+    ["Rendered batches", batches.length.toLocaleString()],
+    ["Source adapter", source?.adapter || "None"],
+    ["Source label", source ? sourceTruthLabel(source) : "None"],
+    ["Read-only", source?.readOnly ? "Yes" : "No"],
+    ["Source detail", source?.detail || "No source status payload"],
+    ["Read error", error || "None"]
+  ];
+  return (
+    <details className="review-technical-details">
+      <summary>Admin technical details</summary>
+      <dl>
+        {rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      </dl>
+    </details>
+  );
+}
+
+function ReviewShellActions({ actions }: { actions: ReviewShellAction[] }) {
+  return (
+    <nav className="review-shell-actions" aria-label="Review upload next actions">
+      {actions.map((action) => action.href ? (
+        <Link className={cn(action.tone === "primary" && "is-primary")} href={action.href} key={action.label}>{action.label}</Link>
+      ) : (
+        <button className={cn(action.tone === "primary" && "is-primary")} type="button" onClick={action.onClick} key={action.label}>{action.label}</button>
+      ))}
+    </nav>
+  );
+}
+
+function ReviewRecoveryPanel({
+  title,
+  body,
+  icon,
+  actions
+}: {
+  title: string;
+  body: string;
+  icon: ReactNode;
+  actions: ReviewShellAction[];
+}) {
+  return (
+    <section className="review-recovery-panel">
+      <div className="review-recovery-icon" aria-hidden="true">{icon}</div>
+      <div>
+        <h2>{title}</h2>
+        <p>{body}</p>
+        <ReviewShellActions actions={actions} />
+      </div>
+    </section>
+  );
+}
+
+function ReviewBatchQueue({
+  batches,
+  selectedBatchId,
+  search,
+  setSearch,
+  onSelect
+}: {
+  batches: ReviewUploadBatch[];
+  selectedBatchId?: string;
+  search: string;
+  setSearch: (value: string) => void;
+  onSelect: (batchId: string) => void;
+}) {
+  return (
+    <aside className="review-batch-queue" aria-label="Upload batches">
+      <header>
+        <div>
+          <h2>Uploads to review</h2>
+          <p>{batches.length.toLocaleString()} batch{batches.length === 1 ? "" : "es"}</p>
+        </div>
+      </header>
+      <label>
+        <span>Find upload</span>
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search event, uploader, ministry..." />
+      </label>
+      <div className="review-batch-list">
+        {batches.map((batch) => (
+          <button className={cn("review-batch-card", selectedBatchId === batch.id && "is-active")} type="button" key={batch.id} onClick={() => onSelect(batch.id)}>
+            <span className={cn("review-upload-status", simpleStatusTone(batch.status))}>{displayReviewUploadStatus(batch.status)}</span>
+            <strong>{batch.eventName}</strong>
+            <small>{batch.reason}</small>
+            <dl>
+              <div><dt>Uploaded by</dt><dd>{batch.uploadedBy}</dd></div>
+              <div><dt>Submitted date</dt><dd>{batch.submittedDate}</dd></div>
+              <div><dt>Event date</dt><dd>{batch.eventDate}</dd></div>
+              <div><dt>File count</dt><dd>{countMedia(batch)}</dd></div>
+              <div><dt>Ministry/group</dt><dd>{batch.ministry}</dd></div>
+              <div><dt>People/minors flag</dt><dd>{peopleFlagForBatch(batch)}</dd></div>
+            </dl>
+            <em>Review batch</em>
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function ReviewBatchSummary({ batch, selectedMedia }: { batch: ReviewUploadBatch; selectedMedia?: StockMediaAsset }) {
+  return (
+    <section className="review-batch-summary" aria-label="Selected upload summary">
+      <div>
+        <span className={cn("review-upload-status", simpleStatusTone(batch.status))}>{displayReviewUploadStatus(batch.status)}</span>
+        <h2>{batch.eventName}</h2>
+        <p>{batch.reason}</p>
+      </div>
+      <dl>
+        <div><dt>Uploaded by</dt><dd>{batch.uploadedBy}</dd></div>
+        <div><dt>Event date</dt><dd>{batch.eventDate}</dd></div>
+        <div><dt>Ministry</dt><dd>{batch.ministry}</dd></div>
+        <div><dt>Files</dt><dd>{countMedia(batch)}</dd></div>
+        <div><dt>Current status</dt><dd>{selectedMedia ? assetEnterpriseStatus(selectedMedia) : "None selected"}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
+function NextActionBanner({ message, button, onAction }: { message: string; button: string; onAction: () => void }) {
+  return (
+    <section className="review-next-action" aria-label="Next review action">
+      <Info size={18} aria-hidden="true" />
+      <div>
+        <strong>{message}</strong>
+        <span>One decision at a time. Safety checks still apply.</span>
+      </div>
+      <button type="button" onClick={onAction}>{button}</button>
+    </section>
+  );
+}
+
+function MediaReviewCanvas({
+  batch,
+  selectedMedia,
+  selectedMediaId,
+  onSelectMedia
+}: {
+  batch: ReviewUploadBatch;
+  selectedMedia?: StockMediaAsset;
+  selectedMediaId?: string;
+  onSelectMedia: (id: string) => void;
+}) {
+  return (
+    <section className="media-review-canvas" aria-label="Media preview">
+      <div className="media-review-preview">
+        {selectedMedia ? (
+          <>
+            <AssetThumb asset={selectedMedia} className="media-review-main-image" fit="contain" />
+            <span><Lock size={14} aria-hidden="true" />Safe preview only</span>
+          </>
+        ) : (
+          <div className="media-review-empty"><ImageIcon size={28} /><strong>No media selected</strong></div>
+        )}
+      </div>
+      <div className="media-review-thumbs" aria-label="Batch media">
+        {batch.items.map((asset, index) => (
+          <button className={cn(selectedMediaId === asset.id && "is-active")} type="button" key={asset.id} onClick={() => onSelectMedia(asset.id)}>
+            <AssetThumb asset={asset} />
+            <span>{index + 1}</span>
+          </button>
+        ))}
+      </div>
+      <section className="media-review-fields" aria-label="Simple media details">
+        <div><span>Event</span><strong>{batch.eventName}</strong></div>
+        <div><span>Date</span><strong>{batch.eventDate}</strong></div>
+        <div><span>Ministry</span><strong>{batch.ministry}</strong></div>
+        <div><span>People/minors visible</span><strong>{selectedMedia?.peopleRisk || "Not sure"}</strong></div>
+        <div><span>Suggested album</span><strong>{selectedMedia?.sourceAlbum || selectedMedia?.collection || "Choose during review"}</strong></div>
+        <div><span>Notes</span><strong>{selectedMedia?.rightsNotes || selectedMedia?.usageGuidance || "No reviewer note yet"}</strong></div>
+      </section>
+    </section>
+  );
+}
+
+function SimpleChecklist({
+  checks,
+  onAction
+}: {
+  checks: SimpleCheck[];
+  onAction: (check: SimpleCheck) => void;
+}) {
+  return (
+    <div className="simple-review-checklist">
+      {checks.map((check, index) => (
+        <article className={cn(check.done && "is-done")} key={check.id}>
+          <span>{index + 1}</span>
+          <div>
+            <strong>{check.label}</strong>
+            <p>{check.detail}</p>
+          </div>
+          <em>{check.done ? "Done" : "Needs attention"}</em>
+          <button type="button" onClick={() => onAction(check)}>{check.action}</button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function DecisionButton({
+  children,
+  disabledReason,
+  onClick,
+  tone = "secondary"
+}: {
+  children: ReactNode;
+  disabledReason?: string;
+  onClick: () => void;
+  tone?: "primary" | "danger" | "secondary";
+}) {
+  return (
+    <button className={cn("review-decision-button", tone === "primary" && "is-primary", tone === "danger" && "is-danger")} type="button" disabled={Boolean(disabledReason)} title={disabledReason || undefined} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+function ReviewDecisionPanel({
+  selectedMedia,
+  checks,
+  comment,
+  setComment,
+  reviewerName,
+  setReviewerName,
+  reviewDate,
+  setReviewDate,
+  approvalScope,
+  setApprovalScope,
+  decisionMessage,
+  actionReasons,
+  onSimpleCheckAction,
+  onDecision,
+  onReject,
+  onSaveDraft,
+  onOpenAdvanced
+}: {
+  selectedMedia?: StockMediaAsset;
+  checks: SimpleCheck[];
+  comment: string;
+  setComment: (value: string) => void;
+  reviewerName: string;
+  setReviewerName: (value: string) => void;
+  reviewDate: string;
+  setReviewDate: (value: string) => void;
+  approvalScope: UsageScope | "";
+  setApprovalScope: (value: UsageScope | "") => void;
+  decisionMessage: string;
+  actionReasons: Record<string, string>;
+  onSimpleCheckAction: (check: SimpleCheck) => void;
+  onDecision: (action: ReviewActionBackend, status: EnterpriseStatus, label?: string) => void;
+  onReject: () => void;
+  onSaveDraft: () => void;
+  onOpenAdvanced: () => void;
+}) {
+  return (
+    <aside className="review-decision-panel" aria-label="Decision panel">
+      <header>
+        <h2>Review decision</h2>
+        <p>{selectedMedia ? displayTitle(selectedMedia) : "Select media from this upload."}</p>
+      </header>
+      <SimpleChecklist checks={checks} onAction={onSimpleCheckAction} />
+      <label className="review-note-box">
+        <span>Reviewer note</span>
+        <textarea id={reviewNoteId} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Add a note for the contributor or future reviewers..." />
+      </label>
+      <div className="review-approval-fields">
+        <label>
+          <span>Reviewer</span>
+          <input value={reviewerName} onChange={(event) => setReviewerName(event.target.value)} placeholder="Reviewer name" />
+        </label>
+        <label>
+          <span>Review date</span>
+          <input type="date" value={reviewDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setReviewDate(event.target.value)} />
+        </label>
+        <label>
+          <span>Usage scope</span>
+          <select id={usageScopeId} value={approvalScope} onChange={(event) => setApprovalScope(event.target.value as UsageScope | "")}>
+            <option value="">Select scope</option>
+            {approvalScopes.map((scope) => <option key={scope} value={scope}>{scope}</option>)}
+          </select>
+        </label>
+      </div>
+      {decisionMessage ? <p className="review-decision-message">{decisionMessage}</p> : null}
+      <nav className="review-decision-actions" aria-label="Batch-level review actions">
+        <DecisionButton tone="primary" disabledReason={actionReasons.public} onClick={() => onDecision("Approve Public", "Approved", "Prepare public review")}>Prepare public review</DecisionButton>
+        <DecisionButton disabledReason={actionReasons.internal} onClick={() => onDecision("Approve Internal", "Approved", "Prepare internal review")}>Prepare internal review</DecisionButton>
+        <DecisionButton tone="danger" disabledReason={actionReasons.restrict} onClick={() => onDecision("Do Not Use", "Restricted", "Keep restricted")}>Keep restricted</DecisionButton>
+        <DecisionButton tone="danger" disabledReason={actionReasons.reject} onClick={onReject}>Restrict use</DecisionButton>
+        <DecisionButton disabledReason={actionReasons.info} onClick={() => onDecision("Request More Info", "Needs Review", "Request info")}>Request info</DecisionButton>
+        <button type="button" onClick={onSaveDraft}>Save draft</button>
+      </nav>
+      <button className="review-advanced-link" type="button" onClick={onOpenAdvanced}>Open advanced details</button>
+    </aside>
+  );
+}
+
+function AdvancedReviewDetailsDrawer({
+  open,
+  onClose,
+  role,
+  source,
+  selectedMedia,
+  checks,
+  missingLabels,
+  auditRows
+}: {
+  open: boolean;
+  onClose: () => void;
+  role: string;
+  source: Parameters<typeof sourceTruthLabel>[0];
+  selectedMedia?: StockMediaAsset;
+  checks: SimpleCheck[];
+  missingLabels: string[];
+  auditRows: Array<[string, string]>;
+}) {
+  const drawerRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const animationFrame = window.requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      if (previousFocus && document.contains(previousFocus)) {
+        previousFocus.focus();
+      }
+    };
+  }, [open]);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
+    const focusableElements = getDrawerFocusableElements(drawer);
+    if (!focusableElements.length) {
+      event.preventDefault();
+      drawer.focus();
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    const activeElement = document.activeElement;
+    const focusIsInsideDrawer = Boolean(activeElement && drawer.contains(activeElement));
+
+    if (event.shiftKey) {
+      if (!focusIsInsideDrawer || activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      }
+      return;
+    }
+
+    if (!focusIsInsideDrawer || activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <div className="advanced-review-backdrop" role="presentation">
+      <aside ref={drawerRef} className="advanced-review-drawer" role="dialog" aria-modal="true" aria-label="Advanced review details" tabIndex={-1} onKeyDown={handleKeyDown}>
+        <header>
+          <div>
+            <span>{role}</span>
+            <h2>Advanced details</h2>
+            <p>Technical source/import information stays hidden until reviewer or admin opens it.</p>
+          </div>
+          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close advanced details"><X size={18} /></button>
+        </header>
+        <section>
+          <h3>Source/import</h3>
+          <dl>
+            <div><dt>Source truth</dt><dd>{sourceTruthLabel(source)}</dd></div>
+            {sanitizedTechnicalRows(selectedMedia).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
+        </section>
+        <section>
+          <h3>Full policy checklist</h3>
+          <dl>
+            {checks.map((check) => <div key={check.id}><dt>{check.label}</dt><dd>{check.done ? "Done" : check.detail}</dd></div>)}
+            {missingLabels.slice(0, 8).map((label) => <div key={label}><dt>Blocked by</dt><dd>{label}</dd></div>)}
+          </dl>
+        </section>
+        <section>
+          <h3>Audit/readiness</h3>
+          <dl>
+            {auditRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
+        </section>
+        <section>
+          <h3>Raw metadata summary</h3>
+          <p>Private URLs, source/original paths, and checksum values are hidden in portal. Open source system for raw private values.</p>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function EmptyReviewUploads({ actions }: { actions: ReviewShellAction[] }) {
+  return (
+    <main className="review-uploads-empty">
+      <FileText size={32} aria-hidden="true" />
+      <h2>No uploads waiting for review</h2>
+      <p>New submitted photos and videos will appear here when source records are available for reviewer triage.</p>
+      <ReviewShellActions actions={actions} />
+    </main>
+  );
 }
 
 export function EnterpriseReviewPage() {
   const { role, ready } = useDemoRole();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [queueId, setQueueId] = useState<ReviewQueueId>(() => normalizeReviewQueueId(searchParams.get("queue")));
+  const [queueId, setQueueId] = useState<ReviewQueueId>(() => normalizeReviewQueueId(searchParams?.get("queue")));
   const review = useReviewQueue(role, queueId);
-  const rawQueue = review.data?.assets || [];
-  const pendingWritesByAssetId = review.data?.pendingWrites || {};
-  const [pageSize, setPageSize] = useState(12);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<"preview" | "oldest" | "newest">("preview");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [pendingDecisionById, setPendingDecisionById] = useState<Record<string, PendingReviewDecisionSummary>>({});
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
+  const [batchSearch, setBatchSearch] = useState("");
+  const [checklist, setChecklist] = useState<ReviewEvidenceChecklist>(() => initialReviewChecklistForAsset(undefined));
   const [comment, setComment] = useState("");
   const [reviewerName, setReviewerName] = useState("");
   const [reviewDate, setReviewDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [approvalScope, setApprovalScope] = useState<UsageScope | "">("");
-  const [checklist, setChecklist] = useState<ReviewEvidenceChecklist>(emptyReviewChecklist);
   const [decisionMessage, setDecisionMessage] = useState("");
-  const [reviewListMessage, setReviewListMessage] = useState("");
-  const [queueSearch, setQueueSearch] = useState("");
-  const [previewExpanded, setPreviewExpanded] = useState(false);
-  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
-  const downloadGate = useDownloadGate(selectedId || "", role);
-  const queue = useMemo(() => {
-    const dateValue = (asset: (typeof rawQueue)[number]) => Date.parse(asset.importDate || asset.capturedDate || asset.reviewedDate || "") || 0;
-    if (sortOrder === "preview") return rawQueue;
-    return [...rawQueue].sort((left, right) => sortOrder === "oldest" ? dateValue(left) - dateValue(right) : dateValue(right) - dateValue(left));
-  }, [rawQueue, sortOrder]);
-  const filteredQueue = useMemo(() => {
-    const query = queueSearch.trim().toLowerCase();
-    if (!query) return queue;
-    return queue.filter((asset) => [
-      displayTitle(asset),
-      assetRecordRef(asset),
-      asset.collection,
-      asset.sourceSystem,
-      asset.sourcePlatform,
-      asset.usageScope,
-      assetEnterpriseStatus(asset)
-    ].filter(Boolean).join(" ").toLowerCase().includes(query));
-  }, [queue, queueSearch]);
-  const pageCount = Math.max(1, Math.ceil(filteredQueue.length / pageSize));
-  const safeCurrentPage = Math.min(currentPage, pageCount);
-  const pageStart = (safeCurrentPage - 1) * pageSize;
-  const pageEnd = Math.min(pageStart + pageSize, filteredQueue.length);
-  const pagedQueue = useMemo(() => filteredQueue.slice(pageStart, pageEnd), [filteredQueue, pageStart, pageEnd]);
+  const [pendingDecisionById, setPendingDecisionById] = useState<Record<string, PendingReviewDecisionSummary>>({});
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [browserReceipts, setBrowserReceipts] = useState<BrowserUploadReceipt[]>([]);
+
+  const canAccessReview = role === "Reviewer" || role === "DAM Admin";
+  const rawQueue = review.data?.assets || [];
+  const batches = useMemo(() => buildReviewUploadBatches(rawQueue), [rawQueue]);
+  const filteredBatches = useMemo(() => {
+    const query = batchSearch.trim().toLowerCase();
+    if (!query) return batches;
+    return batches.filter((batch) => [
+      batch.eventName,
+      batch.uploadedBy,
+      batch.eventDate,
+      batch.submittedDate,
+      batch.ministry,
+      batch.status,
+      batch.reason
+    ].join(" ").toLowerCase().includes(query));
+  }, [batches, batchSearch]);
+  const selectedBatch = filteredBatches.find((batch) => batch.id === selectedBatchId) || filteredBatches[0];
+  const selectedMedia = selectedBatch?.items.find((asset) => asset.id === selectedMediaId) || selectedBatch?.items[0];
+  const selectedPendingWrite = selectedMedia ? review.data?.pendingWrites?.[selectedMedia.id] : undefined;
+  const selectedPending = selectedMedia ? pendingDecisionById[selectedMedia.id] || (selectedPendingWrite ? {
+    status: "Needs Review" as EnterpriseStatus,
+    action: selectedPendingWrite.requestedStatus,
+    message: "Review follow-up is already queued. Approval status remains unchanged until completed."
+  } : undefined) : undefined;
+  const selectedGuidance = buildSelectedReviewGuidance({ asset: selectedMedia, checklist, comment, pending: selectedPending });
+  const simpleChecks = buildSimpleChecks(selectedMedia, checklist, approvalScope);
+  const actionReasons = {
+    public: disabledReasonForAction({ asset: selectedMedia, action: "Approve Public", checklist, note: comment, reviewerName, reviewDate, approvalScope }),
+    internal: disabledReasonForAction({ asset: selectedMedia, action: "Approve Internal", checklist, note: comment, reviewerName, reviewDate, approvalScope }),
+    info: disabledReasonForAction({ asset: selectedMedia, action: "Request More Info", checklist, note: comment, reviewerName, reviewDate, approvalScope }),
+    restrict: disabledReasonForAction({ asset: selectedMedia, action: "Do Not Use", checklist, note: comment, reviewerName, reviewDate, approvalScope }),
+    reject: selectedMedia ? (comment.trim().length > 10 ? "" : "Reviewer note missing") : "Select media first."
+  };
+  const nextAction = nextActionFor(selectedMedia, simpleChecks, actionReasons.public);
+  const auditRows: Array<[string, string]> = selectedMedia ? [
+    ["Imported", displayDate(selectedMedia.importDate || selectedMedia.capturedDate || selectedMedia.eventDate, "Date not exported")],
+    ["Waiting", `${reviewWaitingDays(selectedMedia) || 0} day${reviewWaitingDays(selectedMedia) === 1 ? "" : "s"}`],
+    ["Current status", assetEnterpriseStatus(selectedMedia)],
+    ["Source record", assetRecordRef(selectedMedia)],
+    ["Risk signals", reviewRiskFlags(selectedMedia).slice(0, 4).join(", ")]
+  ] : [];
+  const sourceUnavailable = Boolean(review.error) || (!review.loading && sourceCardValue(review.source, review.live, review.error) === "Disconnected");
+  const statusCards = reviewStatusCards({
+    batches,
+    receipts: browserReceipts,
+    source: review.source,
+    live: review.live,
+    error: review.error,
+    role,
+    accessAllowed: canAccessReview,
+    loading: review.loading
+  });
+
+  const supportHref = role === "DAM Admin" ? routeWithRole("/governance/integrations", role) : "";
+  const nextActions = ({ retry = false, includeUploads = true }: { retry?: boolean; includeUploads?: boolean } = {}) => {
+    const actions: ReviewShellAction[] = [];
+    if (retry) actions.push({ label: "Retry source check", onClick: review.refresh, tone: "primary" });
+    if (supportHref) actions.push({ label: "Open Support Zone", href: supportHref });
+    if (browserReceipts.length || role === "Contributor") actions.push({ label: "View My Uploads", href: routeWithRole("/recent-uploads", role) });
+    if (includeUploads && role !== "Viewer") actions.push({ label: "Upload Photos", href: routeWithRole("/upload", role) });
+    actions.push({ label: "Browse Media", href: routeWithRole("/library", role) });
+    return actions;
+  };
 
   useEffect(() => {
-    setCurrentPage((page) => Math.min(page, pageCount));
-  }, [pageCount]);
-
-  useEffect(() => {
-    if (!pagedQueue.length) {
-      if (!selectedId && filteredQueue[0]) setSelectedId(filteredQueue[0].id);
-      return;
-    }
-
-    if (!selectedId || !pagedQueue.some((asset) => asset.id === selectedId)) {
-      setSelectedId(pagedQueue[0].id);
-    }
-  }, [pagedQueue, filteredQueue, selectedId]);
-
-  useEffect(() => {
-    const nextQueue = normalizeReviewQueueId(searchParams.get("queue"));
+    const nextQueue = normalizeReviewQueueId(searchParams?.get("queue"));
     setQueueId(nextQueue);
   }, [searchParams]);
 
   useEffect(() => {
-    const selectedAsset = queue.find((asset) => asset.id === selectedId);
-    setChecklist(initialReviewChecklistForAsset(selectedAsset));
+    setBrowserReceipts(readBrowserReceipts());
+  }, []);
+
+  useEffect(() => {
+    if (!selectedBatch || selectedBatchId === selectedBatch.id) return;
+    setSelectedBatchId(selectedBatch.id);
+  }, [selectedBatch, selectedBatchId]);
+
+  useEffect(() => {
+    if (!selectedBatch) {
+      setSelectedMediaId(null);
+      return;
+    }
+    if (!selectedMediaId || !selectedBatch.items.some((asset) => asset.id === selectedMediaId)) {
+      setSelectedMediaId(selectedBatch.items[0]?.id || null);
+    }
+  }, [selectedBatch, selectedMediaId]);
+
+  useEffect(() => {
+    const nextChecklist = initialReviewChecklistForAsset(selectedMedia);
+    setChecklist(assetHasSourceEvidence(selectedMedia) ? { ...nextChecklist, sourceConfirmed: true } : nextChecklist);
     setComment("");
     setReviewerName("");
     setReviewDate(new Date().toISOString().slice(0, 10));
     setApprovalScope("");
     setDecisionMessage("");
-    setMoreActionsOpen(false);
-  }, [queue, selectedId]);
+    setAdvancedOpen(false);
+  }, [selectedMedia]);
 
-  if (!ready) return <div className="enterprise-page"><LoadingCard label="Loading role..." /></div>;
-  if (role !== "Reviewer" && role !== "DAM Admin") return <div className="enterprise-page"><section className="ed-card ed-access-block"><Lock size={28} /><h1>Review inbox requires reviewer access</h1><p>Approvals, evidence review, assignment, and decision actions are available only to Reviewer and DAM Admin roles.</p><Link href={routeWithRole("/", role)}>Return to Asset Library</Link></section></div>;
-  if (review.loading) return <div className="enterprise-page"><LoadingCard label="Loading ResourceSpace review queue..." /></div>;
-  if (review.error) return <div className="enterprise-page"><ErrorCard message={review.error} source={review.source} /></div>;
-  const selectedAsset = queue.find((asset) => asset.id === selectedId) || queue[0];
-  const rightsUsageView = queueId === "rights-review";
-  const pageTitle = rightsUsageView ? "Rights & Usage" : "Review Queue";
-  const selectedStatus = assetEnterpriseStatus(selectedAsset);
-  const currentQueueLabel = review.data?.queues?.find((item) => item.id === queueId)?.label || "Pending review";
-  const selectedPendingWrite = pendingWritesByAssetId[selectedAsset?.id || ""];
-  const selectedPending = pendingDecisionById[selectedAsset?.id || ""] || (selectedPendingWrite ? {
-    status: "Needs Review" as EnterpriseStatus,
-    action: selectedPendingWrite.requestedStatus,
-    message: `Queued ${selectedPendingWrite.requestedStatus} / ${selectedPendingWrite.syncState}. ResourceSpace remains unchanged until sync succeeds or media team completes follow-up.`
-  } : undefined);
-  const evidenceCompletion = reviewEvidenceCompletion(checklist, comment);
-  const evidencePercent = Math.round((evidenceCompletion.completed / evidenceCompletion.total) * 100);
-  const selectedGuidance = buildSelectedReviewGuidance({ asset: selectedAsset, checklist, comment, pending: selectedPending });
-  const reviewPresentation = selectedAsset ? presentReviewContext({
-    asset: selectedAsset,
-    role,
-    currentStatus: selectedStatus,
-    pendingStatus: selectedPending?.status,
-    nextBestAction: selectedGuidance.nextBestAction,
-    approvalReady: selectedGuidance.approvalReady,
-    queueLabel: rightsUsageView ? "Rights reviewer" : "Reviewer queue",
-    source: review.source
-  }) : null;
-  const evidenceTableRows = reviewPresentation?.evidenceTableRows || [];
-  const sensitiveEvidence = selectedGuidance.sensitiveMinistryEvidence || [];
-  const approvalMetadataMissing = (action: "Approve Public" | "Approve Internal") => {
-    const missing: string[] = [];
-    if (reviewerName.trim().length < 2) missing.push("Reviewer name missing");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(reviewDate) || reviewDate > new Date().toISOString().slice(0, 10)) missing.push("Review date missing or future");
-    if (!approvalScope) missing.push("Approval usage scope missing");
-    if (action === "Approve Public" && approvalScope && !["Public", "Public and Internal"].includes(approvalScope)) missing.push("Public approval requires Public or Public and Internal scope");
-    if (action === "Approve Internal" && approvalScope && !["Internal", "Public and Internal"].includes(approvalScope)) missing.push("Internal approval requires Internal or Public and Internal scope");
-    return missing;
+  if (!ready) {
+    return (
+      <div className="enterprise-page review-uploads-page">
+        <ReviewUploadsHeader cards={statusCards} subtitle="Checking role and review queue access." />
+        <LoadingCard label="Loading role..." />
+      </div>
+    );
+  }
+  if (!canAccessReview) {
+    return (
+      <main className="enterprise-page review-uploads-page">
+        <ReviewUploadsHeader cards={statusCards} subtitle="Review decisions are restricted to assigned reviewers and DAM Admins." />
+        <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
+        <ReviewRecoveryPanel
+          icon={<Lock size={24} />}
+          title="Reviewer access needed"
+          body="This account can submit or track uploads where allowed, but cannot open reviewer decisions."
+          actions={nextActions({ includeUploads: role !== "Viewer" })}
+        />
+        <BrowserReceiptsPanel receipts={browserReceipts} role={role} />
+      </main>
+    );
+  }
+  if (review.loading) {
+    return (
+      <div className="enterprise-page review-uploads-page">
+        <ReviewUploadsHeader cards={statusCards} subtitle="Checking submitted uploads and source status." />
+        <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
+        <LoadingCard label="Loading submitted uploads..." />
+        <BrowserReceiptsPanel receipts={browserReceipts} role={role} />
+      </div>
+    );
+  }
+  if (review.error) {
+    return (
+      <div className="enterprise-page review-uploads-page">
+        <ReviewUploadsHeader cards={statusCards} subtitle="Uploads can be submitted, but review is paused until source read works." />
+        <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
+        <ReviewRecoveryPanel
+          icon={<AlertTriangle size={24} />}
+          title={browserReceipts.length ? "Uploads can be submitted, but review is paused" : "Review queue needs attention"}
+          body="Review Uploads could not read source records. No approval, publishing, download, or sync outcome is implied."
+          actions={nextActions({ retry: true })}
+        />
+        <BrowserReceiptsPanel receipts={browserReceipts} role={role} />
+        <TechnicalDetails role={role} source={review.source} error={review.error} queueId={queueId} canReview={canAccessReview} batches={batches} />
+      </div>
+    );
+  }
+  if (sourceUnavailable) {
+    return (
+      <div className="enterprise-page review-uploads-page">
+        <ReviewUploadsHeader cards={statusCards} subtitle="Upload intake is available, but the review source is not connected for this session." />
+        <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
+        <ReviewRecoveryPanel
+          icon={<Database size={24} />}
+          title={browserReceipts.length ? "Uploads can be submitted, but review is paused" : "Review queue needs attention"}
+          body="Source records are not connected, so reviewer queues cannot be treated as durable review work."
+          actions={nextActions({ retry: true })}
+        />
+        <BrowserReceiptsPanel receipts={browserReceipts} role={role} />
+        <TechnicalDetails role={role} source={review.source} error={review.error} queueId={queueId} canReview={canAccessReview} batches={batches} />
+      </div>
+    );
+  }
+  if (!batches.length) {
+    return (
+      <div className="enterprise-page review-uploads-page">
+        <ReviewUploadsHeader cards={statusCards} subtitle="No source-backed upload batches are waiting right now." />
+        <ReviewQueueOverview queues={review.data?.queues} activeQueueId={queueId} />
+        <EmptyReviewUploads actions={nextActions({ retry: true })} />
+        <BrowserReceiptsPanel receipts={browserReceipts} role={role} />
+        <TechnicalDetails role={role} source={review.source} error={review.error} queueId={queueId} canReview={canAccessReview} batches={batches} />
+      </div>
+    );
+  }
+  if (!filteredBatches.length) {
+    return (
+      <div className="enterprise-page review-uploads-page">
+        <ReviewUploadsHeader cards={statusCards} subtitle="Review batches are available; current search has no matches." />
+        <ReviewQueueOverview queues={review.data?.queues} activeQueueId={queueId} />
+        <ReviewRecoveryPanel
+          icon={<FolderOpen size={24} />}
+          title="No upload batches match this search"
+          body="Clear or change the search to return to available review batches."
+          actions={nextActions({ retry: true, includeUploads: false })}
+        />
+        <BrowserReceiptsPanel receipts={browserReceipts} role={role} />
+      </div>
+    );
+  }
+
+  const focusReviewNote = (message: string) => {
+    setDecisionMessage(message);
+    window.requestAnimationFrame(() => document.getElementById(reviewNoteId)?.focus());
   };
-  const publicApprovalMetadataMissing = approvalMetadataMissing("Approve Public");
-  const publicDisabledReason = selectedAsset
-    ? [reviewActionDisabledReason({ asset: selectedAsset, action: "Approve Public", checklist, note: comment }), ...publicApprovalMetadataMissing].filter(Boolean).join(". ")
-    : "";
-  const requestInfoDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Request More Info", checklist, note: comment }) : "";
-  const restrictDisabledReason = selectedAsset ? reviewActionDisabledReason({ asset: selectedAsset, action: "Do Not Use", checklist, note: comment }) : "";
-  const selectQueue = (nextQueue: ReviewQueueId) => {
-    setQueueId(nextQueue);
-    setCurrentPage(1);
-    setSelectedId(null);
-    router.push(routeWithRole(`/review?queue=${encodeURIComponent(nextQueue)}`, role), { scroll: false });
+  const focusUsageScope = (message: string) => {
+    setDecisionMessage(message);
+    window.requestAnimationFrame(() => document.getElementById(usageScopeId)?.focus());
   };
-  const toggleChecklist = (field: keyof ReviewEvidenceChecklist) => {
-    setChecklist((current) => ({ ...current, [field]: !current[field] }));
+  const runSimpleCheckAction = (check: SimpleCheck) => {
+    if (check.id === "event") {
+      if (check.done) setAdvancedOpen(true);
+      else if (selectedMedia && assetHasEventName(selectedMedia) && assetHasEventDate(selectedMedia) && comment.trim().length > 10) {
+        setChecklist((current) => ({ ...current, sourceConfirmed: true }));
+        setDecisionMessage("Source/context proof marked from reviewer note.");
+      } else {
+        focusReviewNote("Add missing event/source details to the reviewer note or ask the contributor for them.");
+      }
+      return;
+    }
+    if (check.id === "rights") {
+      if (!assetHasRightsConsentProof(selectedMedia)) {
+        focusReviewNote("Rights/consent proof is missing. Add proof when available or ask the contributor for more information.");
+        return;
+      }
+      if (comment.trim().length > 10) {
+        setChecklist((current) => ({ ...current, rightsConfirmed: true, attributionConfirmed: true, creditRequirementChecked: true, proofLinkAttached: true }));
+        setDecisionMessage("Rights/consent proof marked from reviewer note.");
+      } else {
+        focusReviewNote("Add rights/consent proof in the reviewer note before marking this done.");
+      }
+      return;
+    }
+    if (check.id === "people") {
+      setChecklist((current) => ({ ...current, peopleVisibilityConfirmed: true, childrenYouthChecked: true }));
+      focusUsageScope("People/minors marked reviewed. Choose usage scope before approval.");
+      return;
+    }
+    if (check.id === "scope") {
+      if (approvalScope) {
+        setChecklist((current) => ({ ...current, usageScopeSelected: true, sensitiveContextChecked: true, expirationRereviewSet: true, derivativeAvailable: assetHasDownloadCopy(selectedMedia) || current.derivativeAvailable }));
+        setDecisionMessage("Usage scope marked for this review.");
+      } else {
+        focusUsageScope("Choose usage scope before approval.");
+      }
+    }
   };
-  const selectNextAsset = () => {
-    if (!filteredQueue.length || !selectedAsset) return;
-    const currentIndex = filteredQueue.findIndex((asset) => asset.id === selectedAsset.id);
-    const next = filteredQueue[(currentIndex + 1) % filteredQueue.length];
-    setSelectedId(next?.id || filteredQueue[0]?.id || null);
+  const runNextAction = () => {
+    if (nextAction.target === "approve") {
+      decide("Approve Public", "Approved", "Prepare decision");
+    } else if (nextAction.target === "advanced") {
+      setAdvancedOpen(true);
+    } else {
+      const check = simpleChecks.find((item) => item.id === nextAction.target);
+      if (check) runSimpleCheckAction(check);
+    }
   };
-  const decide = async (nextStatus: EnterpriseStatus, action: "Approve Public" | "Request More Info" | "Do Not Use") => {
-    if (!selectedAsset) return;
-    const disabledReason = reviewActionDisabledReason({ asset: selectedAsset, action, checklist, note: comment });
+  const saveDraft = () => {
+    if (!selectedMedia) return;
+    setPendingDecisionById((current) => ({
+      ...current,
+      [selectedMedia.id]: {
+        status: "Needs Review",
+        action: "Draft saved",
+        message: "Draft note saved. Source media and review status are unchanged."
+      }
+    }));
+    setDecisionMessage("Draft saved. No approval or media change happened.");
+  };
+  const rejectWithoutWriteback = () => {
+    if (!selectedMedia) return;
+    if (actionReasons.reject) {
+      setDecisionMessage(`Review blocked. ${actionReasons.reject}.`);
+      return;
+    }
+    const message = "Restricted follow-up prepared for reviewer follow-up. No approval status or media changed.";
+    setPendingDecisionById((current) => ({
+      ...current,
+      [selectedMedia.id]: {
+        status: "Needs Review",
+        action: "Restrict use",
+        message
+      }
+    }));
+    setDecisionMessage(message);
+  };
+  const decide = (action: ReviewActionBackend, _nextStatus: EnterpriseStatus, label?: string) => {
+    if (!selectedMedia) return;
+    const disabledReason = disabledReasonForAction({ asset: selectedMedia, action, checklist, note: comment, reviewerName, reviewDate, approvalScope });
     if (disabledReason) {
       setDecisionMessage(`Review blocked. ${disabledReason}.`);
       return;
     }
-    const response = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role, id: selectedAsset.id, action, notes: comment || `Reviewer decision for ${displayTitle(selectedAsset)}. Pending ResourceSpace sync required.`, checklist, reviewerName, reviewDate, approvalScope }) });
-    const payload = await response.json().catch(() => ({}));
-    const syncState = typeof payload.syncState === "string" ? payload.syncState : response.ok ? "queued" : "blocked";
-    const prefix = syncState === "synced_to_resourcespace" ? "Synced to ResourceSpace." : syncState === "sync_failed" ? "Sync failed." : syncState === "blocked" ? "Blocked." : "Queued for ResourceSpace sync.";
-    const message = `${prefix} ${payload.message || payload.error || "ResourceSpace writeback is not configured. This decision is saved as a portal pending-sync event."}`;
-    if (response.ok) {
-      setPendingDecisionById((current) => ({ ...current, [selectedAsset.id]: { status: nextStatus, message, action } }));
-    }
+    const message = `${label || action} prepared for media-team follow-up. No approval status or media changed.`;
+    setPendingDecisionById((current) => ({
+      ...current,
+      [selectedMedia.id]: { status: "Needs Review", message, action: label || action }
+    }));
     setDecisionMessage(message);
   };
-  const queuePortalNote = (action: string) => {
-    if (!selectedAsset) return;
-    const message = `${action} noted for ${displayTitle(selectedAsset)}. ResourceSpace remains unchanged until live writeback is configured.`;
-    setPendingDecisionById((current) => ({ ...current, [selectedAsset.id]: { status: "Read-only", message, action } }));
-    setDecisionMessage(message);
-    setComment((current) => current || message);
-  };
-  const requestGatedDownload = async () => {
-    if (!selectedAsset) return;
-    const payload = await downloadGate.requestDownload({ reason: `Reviewer gated download check for ${displayTitle(selectedAsset)}`, variant: "review-preview" });
-    if (payload.allowed && payload.downloadUrl) {
-      setDecisionMessage("Download gate approved. Opening approved copy.");
-      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-    setDecisionMessage(payload.message || payload.reason || "Download gate blocked this request.");
-  };
-  const runMoreAction = (action: "details" | "rights" | "download-gate") => {
-    setMoreActionsOpen(false);
-    if (action === "details") {
-      setDecisionMessage("Details remain in the selected record and evidence rail for this proofing view.");
-      return;
-    }
-    if (action === "rights") {
-      setDecisionMessage("Rights evidence is reviewed in the checklist and decision rail.");
-      return;
-    }
-    void requestGatedDownload();
-  };
+
   return (
-    <div className="enterprise-page enterprise-review">
-      <div className="ed-review-grid">
-        <aside className="ed-review-list ed-panel">
-          <header className="ed-review-list-head">
-            <div>
-              <h2>Queue list</h2>
-              <p>{filteredQueue.length.toLocaleString()} active records{queueSearch.trim() ? ` from ${queue.length.toLocaleString()} queue records` : ""}.</p>
-            </div>
-            <IconButton label="Filter" onClick={() => setReviewListMessage("Use saved views and search for this review pass. More facets stay disabled until ResourceSpace exposes stable review fields.")}><Filter size={16} /></IconButton>
-          </header>
-          <SourcePill source={review.source} live={review.live} />
-          <div className="ed-review-inbox-head">
-            <span>{currentQueueLabel}</span>
-            <strong>{filteredQueue.length.toLocaleString()} active</strong>
-          </div>
-          <label className="ed-review-queue-search">
-            <Search size={14} aria-hidden="true" />
-            <span className="sr-only">Search review queue</span>
-            <input value={queueSearch} onChange={(event) => { setQueueSearch(event.target.value); setCurrentPage(1); }} placeholder="Search title, ID, collection..." />
-          </label>
-          <div className="ed-review-queue-tabs" aria-label="Review queues">
-            {(review.data?.queues || []).map((tab) => (
-              <button className={cn(queueId === tab.id && "is-active")} type="button" key={tab.id} aria-current={queueId === tab.id ? "true" : undefined} onClick={() => selectQueue(normalizeReviewQueueId(tab.id))}>
-                <span>{tab.label}</span>
-                <em>{tab.count.toLocaleString()}</em>
-              </button>
-            ))}
-          </div>
-          {reviewListMessage ? <p className="ed-inline-success">{reviewListMessage}</p> : null}
-          <div className="ed-review-list-tools" aria-label="Review queue paging controls">
-            <span>Sort by</span>
-            <button className="ed-sort" type="button" onClick={() => { setSortOrder((order) => order === "preview" ? "oldest" : order === "oldest" ? "newest" : "preview"); setCurrentPage(1); }}>{sortOrder === "preview" ? "Preview first" : sortOrder === "oldest" ? "Oldest first" : "Newest first"} <ChevronDown size={14} /></button>
-            <button type="button" aria-label="Sort preview first" onClick={() => { setSortOrder("preview"); setCurrentPage(1); }}><Grid3X3 size={14} /></button>
-            <button type="button" aria-label="Sort ascending" onClick={() => { setSortOrder("oldest"); setCurrentPage(1); }}><ArrowUp size={14} /></button>
-            <button type="button" aria-label="Sort descending" onClick={() => { setSortOrder("newest"); setCurrentPage(1); }}><ArrowDown size={14} /></button>
-            <label className="ed-page-size">
-              <span>Rows per page</span>
-              <select
-                aria-label="Rows per review queue page"
-                value={pageSize}
-                onChange={(event) => {
-                  setPageSize(Number(event.target.value));
-                  setCurrentPage(1);
-                }}
-              >
-                {reviewQueuePageSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </label>
-          </div>
-          {pagedQueue.map((asset) => {
-            const recordAgeDays = reviewWaitingDays(asset);
-            const rowFlags = reviewChipLabels(asset);
-            return <button className={cn("ed-queue-item", selectedAsset?.id === asset.id && "is-active")} type="button" key={asset.id} onClick={() => setSelectedId(asset.id)}><AssetThumb asset={asset} /><span><strong title={displayTitle(asset)}>{displayTitle(asset)}</strong><small>{assetType(asset)} · {formatBytes(asset.fileSizeBytes)}</small><small>Record {assetRecordRef(asset)}{recordAgeDays ? ` · ${recordAgeDays}d` : ""}</small><span className="ed-review-row-meta">{rowFlags.map((flag) => <em key={flag}>{flag}</em>)}</span>{pendingDecisionById[asset.id] || pendingWritesByAssetId[asset.id] || asset.pendingReviewWrite ? <em>Pending sync</em> : null}</span></button>;
-          })}
-          <nav className="ed-review-pager" aria-label="Review queue pages">
-            <span>{filteredQueue.length ? `${(pageStart + 1).toLocaleString()}-${pageEnd.toLocaleString()} of ${filteredQueue.length.toLocaleString()}` : "No review records"}</span>
-            <button type="button" aria-label="Previous page" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1}>‹</button>
-            {Array.from({ length: Math.min(4, pageCount) }, (_, index) => index + 1).map((page) => <button className={safeCurrentPage === page ? "is-active" : ""} type="button" key={page} onClick={() => setCurrentPage(page)}>{page}</button>)}
-            <button type="button" aria-label="Next page" onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))} disabled={safeCurrentPage === pageCount}>›</button>
-          </nav>
-        </aside>
-        {selectedAsset ? (
-          <>
-            <main className="ed-review-canvas">
-              <div className="ed-breadcrumb">{pageTitle} <span>/</span> ResourceSpace {assetRecordRef(selectedAsset)}</div>
-              <header className="ed-detail-header">
-                <div className="ed-review-title-row">
-                  <div>
-                    <h1 title={displayTitle(selectedAsset)}>{displayTitle(selectedAsset)}</h1>
-                    <span className="ed-file-soft">{selectedStatus} · {selectedAsset.usageScope || "Not published"} · {(selectedAsset.fileExtension || assetType(selectedAsset)).toUpperCase()}</span>
-                  </div>
-                  <div className="ed-detail-actions">
-                    <ActionButton tone="primary" icon={Save} onClick={() => queuePortalNote("Reviewer progress saved")}>Save progress</ActionButton>
-                    <ActionButton icon={ArrowRight} onClick={selectNextAsset}>Next asset</ActionButton>
-                    <div className="ed-review-more-menu">
-                      <button className="ed-action" type="button" aria-haspopup="menu" aria-expanded={moreActionsOpen} onClick={() => setMoreActionsOpen((open) => !open)}>
-                        <MoreVertical size={16} aria-hidden="true" />
-                        More actions
-                      </button>
-                      {moreActionsOpen ? (
-                        <div className="ed-review-more-popover" role="menu" aria-label="More reviewer actions">
-                          <button type="button" role="menuitem" onClick={() => runMoreAction("details")}>Open details tab</button>
-                          <button type="button" role="menuitem" onClick={() => runMoreAction("rights")}>Review rights tab</button>
-                          <button type="button" role="menuitem" onClick={() => runMoreAction("download-gate")}>Check download gate</button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </header>
-              <div className={cn("ed-hero-preview is-review", previewExpanded && "is-expanded")}>
-                <span className="ed-preview-derivative-label">Portal-safe preview derivative</span>
-                <AssetThumb asset={selectedAsset} className="ed-review-preview-image" fit="contain" />
-                <div className="ed-preview-redaction-note" aria-label="Preview redaction notice">
-                  <Lock size={14} aria-hidden="true" />
-                  <span>Role-safe derivative only. Source/original hidden.</span>
-                </div>
-                <button className="ed-preview-corner" type="button" aria-label="Open preview record" onClick={() => queuePortalNote("Preview record opened")}>▣</button>
-                <div className="ed-preview-toolbar" aria-label="Preview zoom controls">
-                  <button type="button" aria-label="Zoom out" disabled title="Zoom controls are disabled until safe preview tooling is connected."><Minus size={15} /></button>
-                  <button type="button" aria-label="Zoom in" disabled title="Zoom controls are disabled until safe preview tooling is connected."><Plus size={15} /></button>
-                  <strong>100%</strong>
-                  <button type="button" aria-label={previewExpanded ? "Collapse preview" : "Expand preview"} onClick={() => setPreviewExpanded((expanded) => !expanded)}><Grid3X3 size={15} /></button>
-                </div>
-                <button className="ed-preview-ratio" type="button" onClick={() => setPreviewExpanded((expanded) => !expanded)}>1:1</button>
-              </div>
-              <section className="ed-review-summary-strip" aria-label="Selected review record details">
-                <span><small>Record ID</small><strong>{assetRecordRef(selectedAsset)}</strong></span>
-                <span><small>Rights status</small><strong>{selectedAsset.rightsStatus || "Needs evidence"}</strong></span>
-                <span><small>Policy</small><strong>{selectedAsset.downloadPolicy || "not-downloadable"}</strong></span>
-                <span><small>Review queue</small><strong>{currentQueueLabel}</strong></span>
-              </section>
-              <section className="ed-review-proof-notes" aria-label="Proofing comments">
-                <h2>Comments</h2>
-                <textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Add proofing note, evidence gap, or reviewer decision context..." />
-                <p>{reviewPresentation?.nextAction}: {reviewPresentation?.nextDetail}</p>
-              </section>
-            </main>
-            <aside className="ed-review-rail">
-              <section className="ed-card ed-review-evidence-panel">
-                <header className="ed-evidence-head">
-                  <div>
-                    <h3>Evidence and next action</h3>
-                    <p>{selectedStatus}</p>
-                  </div>
-                  <strong>{evidenceCompletion.completed}/{evidenceCompletion.total}</strong>
-                </header>
-                <div className="ed-evidence-progress"><strong>{evidenceCompletion.completed}/{evidenceCompletion.total} checks complete</strong><span>{evidencePercent}%</span></div>
-                <div className="ed-evidence-meter" aria-label={`${evidenceCompletion.completed} of ${evidenceCompletion.total} review checks complete`}><span style={{ width: `${evidencePercent}%` }} /></div>
-                <p className="ed-evidence-model">Checklist model: 11 evidence checks plus 1 reviewer note. Rights checks require evidence before approval can proceed.</p>
-                <p className="ed-evidence-next"><span>Next required check</span><strong>{evidenceCompletion.missingLabels[0] || "Ready for final reviewer action"}</strong></p>
-                <div className="ed-evidence-table">
-                  {evidenceTableRows.map(([leftLabel, leftValue, rightLabel, rightValue]) => (
-                    <div key={`${leftLabel}-${rightLabel}`}>
-                      <dt>{leftLabel}</dt><dd>{leftValue}</dd><dt>{rightLabel}</dt><dd>{rightValue}</dd>
-                    </div>
-                  ))}
-                </div>
-                {selectedGuidance.approveMissingLabels.length ? <p className="ed-review-missing"><AlertTriangle size={16} />Approval blocked until required evidence is complete.<span>Missing: {selectedGuidance.approveMissingLabels.slice(0, 3).join(", ")}.</span></p> : <p className="ed-inline-success">Evidence packet can be queued for approval review.</p>}
-                <div className="ed-sensitive-evidence" aria-label="Sensitive ministry evidence model">
-                  <h4>Sensitive ministry evidence</h4>
-                  {sensitiveEvidence.map((item) => (
-                    <p className={cn(item.active && "is-active", item.blocked && "is-blocked")} key={item.id}>
-                      <span><strong>{item.label}</strong><small>{item.owner} · {item.detail}</small></span>
-                      <em>{item.blocked ? item.missingEvidence.slice(0, 2).join(", ") : item.active ? "evidence required" : "not signaled"}</em>
-                    </p>
-                  ))}
-                </div>
-                {decisionMessage ? <p className="ed-inline-success">{decisionMessage}</p> : null}
-                <div className="ed-evidence-checks">
-                  {reviewEvidenceGroups.map((group) => (
-                    <section className="ed-evidence-group" key={group.title}>
-                      <h4>{group.title}<span>{group.fields.filter((field) => checklist[field]).length}/{group.fields.length}</span></h4>
-                      {group.fields.map((field) => {
-                        const item = reviewChecklistItems.find((candidate) => candidate.field === field);
-                        if (!item) return null;
-                        const complete = checklist[item.field];
-                        const evidenceLocked = evidenceRequiredBeforeCompletion.has(item.field) && !checklist.proofLinkAttached && !complete;
-                        return <label className={cn(complete && "is-complete", evidenceLocked && "is-locked")} key={item.field}><input type="checkbox" checked={complete} disabled={evidenceLocked} onChange={() => toggleChecklist(item.field)} /><span><strong>{item.label}</strong><small>{evidenceLocked ? "Add proof link or evidence note before this can be completed." : item.hint}</small></span><em>{checklistActionLabel(item.field, complete)}</em><ChevronRight size={16} /></label>;
-                      })}
-                      {group.title === "Approval decision" ? (
-                        <label className={comment.trim().length > 10 ? "is-complete is-note" : "is-note"}>
-                          <span><strong>Reviewer note</strong><small>Required for final decision</small></span>
-                          <textarea className="ed-review-note" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Add evidence note, reviewer name, scope, or follow-up needed..." />
-                        </label>
-                      ) : null}
-                    </section>
-                  ))}
-                </div>
-                <section className="ed-evidence-group" aria-label="Required approval evidence">
-                  <h4>Approval evidence<span>{[reviewerName.trim().length >= 2, Boolean(reviewDate), Boolean(approvalScope)].filter(Boolean).length}/3</span></h4>
-                  <label className={reviewerName.trim().length >= 2 ? "is-complete is-note" : "is-note"}>
-                    <span><strong>Reviewer</strong><small>Required for public/internal approval</small></span>
-                    <input className="ed-review-note" value={reviewerName} onChange={(event) => setReviewerName(event.target.value)} placeholder="Reviewer name" />
-                  </label>
-                  <label className={reviewDate ? "is-complete is-note" : "is-note"}>
-                    <span><strong>Review date</strong><small>Today or earlier</small></span>
-                    <input className="ed-review-note" type="date" value={reviewDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setReviewDate(event.target.value)} />
-                  </label>
-                  <label className={approvalScope ? "is-complete is-note" : "is-note"}>
-                    <span><strong>Usage scope</strong><small>Separate from publish status</small></span>
-                    <select className="ed-review-note" value={approvalScope} onChange={(event) => setApprovalScope(event.target.value as UsageScope | "")}>
-                      <option value="">Select scope</option>
-                      {approvalScopes.map((scope) => <option value={scope} key={scope}>{scope}</option>)}
-                    </select>
-                  </label>
-                </section>
-                <section className="ed-card" aria-label="AI and taxonomy governance">
-                  <h3>AI and taxonomy governance</h3>
-                  <p>AI tags, titles, people/minor flags, duplicate hints, and taxonomy suggestions are non-authoritative. Human reviewer must accept, edit, or reject suggestions before rights or reuse decisions rely on them.</p>
-                </section>
-                <div className="ed-review-panel-actions">
-                  <ActionButton tone="primary" icon={Save} onClick={() => queuePortalNote("Reviewer progress saved")}>Save progress</ActionButton>
-                  <ActionButton icon={FileText} onClick={() => queuePortalNote("Submission package review requested")}>View details</ActionButton>
-                </div>
-                <nav className="ed-review-decision-actions" aria-label="Review decision actions">
-                  <button type="button" disabled={Boolean(publicDisabledReason)} title={publicDisabledReason || "Evidence complete for decision queueing."} onClick={() => decide("Approved", "Approve Public")}>Approve</button>
-                  <button type="button" disabled={Boolean(requestInfoDisabledReason)} title={requestInfoDisabledReason || "Evidence complete for request decision."} onClick={() => decide("Needs Review", "Request More Info")}>Needs evidence</button>
-                  <button type="button" disabled={Boolean(restrictDisabledReason)} title={restrictDisabledReason || "Evidence complete for restriction decision."} onClick={() => decide("Restricted", "Do Not Use")}>Reject</button>
-                </nav>
-                <p className="ed-action-disabled-reason">{publicDisabledReason || "Public approval evidence checks are complete; ResourceSpace still remains final truth."}</p>
-              </section>
-            </aside>
-          </>
-        ) : <main><ErrorCard message="No reviewable ResourceSpace records found." source={review.source} /></main>}
+    <div className="enterprise-page review-uploads-page">
+      <ReviewUploadsHeader cards={statusCards} />
+      <ReviewQueueOverview queues={review.data?.queues} activeQueueId={queueId} />
+      <div className="review-uploads-workflow">
+        <ReviewBatchQueue
+          batches={filteredBatches}
+          selectedBatchId={selectedBatch?.id}
+          search={batchSearch}
+          setSearch={setBatchSearch}
+          onSelect={(batchId) => {
+            setSelectedBatchId(batchId);
+            const batch = filteredBatches.find((item) => item.id === batchId);
+            setSelectedMediaId(batch?.items[0]?.id || null);
+          }}
+        />
+        <main className="review-upload-detail">
+          <NextActionBanner message={nextAction.message} button={nextAction.button} onAction={runNextAction} />
+          <ReviewBatchSummary batch={selectedBatch!} selectedMedia={selectedMedia} />
+          <MediaReviewCanvas batch={selectedBatch!} selectedMedia={selectedMedia} selectedMediaId={selectedMedia?.id} onSelectMedia={setSelectedMediaId} />
+        </main>
+        <ReviewDecisionPanel
+          selectedMedia={selectedMedia}
+          checks={simpleChecks}
+          comment={comment}
+          setComment={setComment}
+          reviewerName={reviewerName}
+          setReviewerName={setReviewerName}
+          reviewDate={reviewDate}
+          setReviewDate={setReviewDate}
+          approvalScope={approvalScope}
+          setApprovalScope={setApprovalScope}
+          decisionMessage={decisionMessage || selectedPending?.message || ""}
+          actionReasons={actionReasons}
+          onSimpleCheckAction={runSimpleCheckAction}
+          onDecision={decide}
+          onReject={rejectWithoutWriteback}
+          onSaveDraft={saveDraft}
+          onOpenAdvanced={() => setAdvancedOpen(true)}
+        />
       </div>
+      <AdvancedReviewDetailsDrawer
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
+        role={role}
+        source={review.source}
+        selectedMedia={selectedMedia}
+        checks={simpleChecks}
+        missingLabels={selectedGuidance.approveMissingLabels}
+        auditRows={auditRows}
+      />
     </div>
   );
 }

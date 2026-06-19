@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Download, FileText, PackageCheck, Star } from "lucide-react";
+import { ChevronDown, Download, FileText, Star } from "lucide-react";
 import { isRoleSafePreviewSrc } from "@/components/MediaPreview";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAssetDetail, useDownloadGate, useReviewRequest, type DownloadGateResponse } from "@/components/dam/useDamApi";
-import { assetHasRenditionGap, assetMetadataHealth } from "@/lib/asset-governance";
+import { assetCanInspectSourceRecord, assetHasRenditionGap, assetMetadataHealth, assetSourceChecksum, assetSourceRecordTruthRows, type AssetSourceRecordTruthRow } from "@/lib/asset-governance";
 import { assetDetailTabs } from "@/lib/asset-record-workbench";
 import { assetRecordRef, assetType, displayTitle, recordIdLabel, sourceTruthLabel } from "@/lib/enterprise-display";
 import {
@@ -68,8 +68,8 @@ function detailActionCopy(role: string, approved: boolean, reason: string, block
       detail: role === "Viewer"
         ? "Gate records usage terms and delivers only approved derivative."
         : "Gate mints one-time ticket, records audit, and keeps originals restricted.",
-      primary: "Download approved copy",
-      secondary: role === "DAM Admin" ? "Review source policy" : "Request source access"
+      primary: "Request approved copy",
+      secondary: role === "DAM Admin" ? "Review source policy" : "Ask about full file"
     };
   }
   const reviewerLabel = role === "DAM Admin" ? "assign reviewer or policy owner" : role === "Reviewer" ? "record reviewer decision" : "ask reviewer to clear evidence";
@@ -126,7 +126,7 @@ type VersionWorkflowItem = {
 };
 
 function canSeePrivateAssetRecordFields(role: DemoRole) {
-  return role === "DAM Admin";
+  return assetCanInspectSourceRecord(role);
 }
 
 function canSeeOperationalAssetRecordFields(role: DemoRole) {
@@ -140,11 +140,12 @@ function safeValue(value: unknown, fallback = "Not provided") {
 }
 
 function shortChecksum(asset: StockMediaAsset, role: DemoRole) {
-  if (!asset.checksumSha256) {
-    return role === "DAM Admin" ? "Checksum missing from current export" : "Source check not exported";
+  const checksum = assetSourceChecksum(asset);
+  if (!checksum) {
+    return assetCanInspectSourceRecord(role) ? "Checksum missing from current import" : "File check not recorded";
   }
-  if (!canSeePrivateAssetRecordFields(role)) return "Source check recorded; value hidden";
-  return `SHA-256 ${asset.checksumSha256.slice(0, 12)}...`;
+  if (!canSeePrivateAssetRecordFields(role)) return "File check recorded; value hidden";
+  return `SHA-256 ${checksum.slice(0, 12)}...`;
 }
 
 function sourceRelationLabel(asset: StockMediaAsset, role: DemoRole) {
@@ -152,7 +153,34 @@ function sourceRelationLabel(asset: StockMediaAsset, role: DemoRole) {
   const custody = asset.masterCustodyPathStatus ? asset.masterCustodyPathStatus.replace(/-/g, " ") : "custody status not exported";
   if (canSeePrivateAssetRecordFields(role)) return `${source}; ${custody}. Source path stays read-only.`;
   if (canSeeOperationalAssetRecordFields(role)) return `${source}; source custody evidence visible without path disclosure.`;
-  return "Derived from governed source record; source internals hidden.";
+  return "Full-resolution file protected; approved copy shown when cleared.";
+}
+
+const reviewerAdminOnlySourceLabels = new Set([
+  "Source record ID",
+  "Last source check",
+  "Source album",
+  "Source path",
+  "Checksum"
+]);
+
+const redactedMissingSourceValues = new Set(["Missing bridge field", "Not provided"]);
+const adminOnlySourceValue = "Restricted to DAM admin";
+const adminOnlySourceDetail = "Admin-only source/custody evidence hidden for this role.";
+
+function assetSourceRecordRowsForRole(asset: StockMediaAsset, role: DemoRole): AssetSourceRecordTruthRow[] {
+  const rows = assetSourceRecordTruthRows(asset, { privateCustodyRestricted: role !== "DAM Admin" });
+  if (role === "DAM Admin") return rows;
+
+  return rows.map((row) => {
+    if (!reviewerAdminOnlySourceLabels.has(row.label)) return row;
+    if (row.value !== adminOnlySourceValue && !redactedMissingSourceValues.has(row.value)) return row;
+    return {
+      ...row,
+      value: adminOnlySourceValue,
+      detail: adminOnlySourceDetail
+    };
+  });
 }
 
 function buildRenditionWorkflowItems(
@@ -162,6 +190,7 @@ function buildRenditionWorkflowItems(
   primaryBlocker: string
 ): RenditionWorkflowItem[] {
   const mediaType = asset.mediaType;
+  const canInspectSource = assetCanInspectSourceRecord(role);
   const thumbnailReady = Boolean(asset.thumbnail || asset.imageUrls?.small || asset.imageUrls?.card);
   const approvedCopyReady = Boolean(asset.imageUrls?.download) && (
     asset.downloadPolicy === "approved-copy-allowed" ||
@@ -172,28 +201,28 @@ function buildRenditionWorkflowItems(
   const blockedDownloadReason = approved ? "Approved-copy gate still required." : `Blocked until review clears ${primaryBlocker}.`;
   const draftReviewAction: OperationalWorkflowAction = {
     id: "draft-rendition-review",
-    label: canSeeOperationalAssetRecordFields(role) ? "Draft audit note" : "Request review",
+    label: canSeeOperationalAssetRecordFields(role) ? "Open review queue" : "Request review",
     state: "local",
-    reason: "Session-only note. No ResourceSpace writeback."
+    reason: canInspectSource ? "Opens Review queue. No source-system writeback from this page." : "Review request only. No library records change."
   };
 
   const rows: RenditionWorkflowItem[] = [
     {
       id: "original-master",
-      label: "Original/master",
-      readiness: "Restricted source",
+      label: canInspectSource ? "Original/master" : "Full-resolution file",
+      readiness: canInspectSource ? "Restricted source" : "Restricted",
       tone: "restricted",
-      filename: canSeePrivateAssetRecordFields(role) ? asset.damFilenames?.original || asset.originalFilename : undefined,
-      allowedRole: "DAM Admin metadata view only",
+      filename: canInspectSource ? asset.damFilenames?.original || asset.originalFilename : undefined,
+      allowedRole: canInspectSource ? "Reviewer/DAM Admin metadata view only" : "Review request only",
       checksum,
       sourceRelation,
-      gate: "Request-only outside this prototype",
-      auditNote: "Original is never included in approved-copy delivery or local package output.",
+      gate: canInspectSource ? "Request-only from this portal" : "Not available from portal",
+      auditNote: canInspectSource ? "Original is never included in approved-copy delivery output." : "Full-resolution file is never included in approved-copy delivery.",
       action: {
         id: "blocked",
-        label: "Download original disabled",
+        label: canInspectSource ? "Download original disabled" : "Full file disabled",
         state: "blocked",
-        reason: "Source immutability: original/master delivery is not exposed here."
+        reason: canInspectSource ? "Source immutability: original/master delivery is not exposed here." : "Portal only offers approved copies after review."
       }
     },
     {
@@ -204,7 +233,7 @@ function buildRenditionWorkflowItems(
       filename: asset.damFilenames?.thumb,
       allowedRole: "All roles preview",
       checksum,
-      sourceRelation: "Browse derivative only; not proof of reuse permission.",
+      sourceRelation: "Preview only; not proof of reuse permission.",
       gate: thumbnailReady ? "Role-safe preview route" : "Reviewer/rendition work needed",
       auditNote: thumbnailReady ? "Preview availability recorded separately from rights approval." : "Missing thumbnail should stay review-visible.",
       action: thumbnailReady
@@ -212,7 +241,7 @@ function buildRenditionWorkflowItems(
             id: "open-activity",
             label: "View audit trail",
             state: "local",
-            reason: "Opens local activity history."
+            reason: "Opens activity history."
           }
         : draftReviewAction
     },
@@ -226,13 +255,15 @@ function buildRenditionWorkflowItems(
       checksum,
       sourceRelation: canSeePrivateAssetRecordFields(role)
         ? "Derivative must stay traceable to source record and checksum evidence."
-        : "Derivative must stay traceable to source record and file-check evidence.",
+        : canSeeOperationalAssetRecordFields(role)
+          ? "Derivative must stay traceable to source record and file-check evidence."
+          : "Approved copy must keep file-check evidence.",
       gate: approvedCopyReady ? blockedDownloadReason : "Approved derivative missing",
       auditNote: "Download action mints approved-copy ticket only when review gates pass.",
       action: approvedCopyReady && approved
         ? {
             id: "download-approved-copy",
-            label: "Run approved-copy gate",
+            label: "Request approved copy",
             state: "available",
             reason: "Creates audited ticket; no original included."
           }
@@ -240,7 +271,7 @@ function buildRenditionWorkflowItems(
             id: "blocked",
             label: approvedCopyReady ? "Download blocked" : "Generate copy disabled",
             state: "blocked",
-            reason: approvedCopyReady ? blockedDownloadReason : "Prototype does not generate derivatives or mutate source media."
+            reason: approvedCopyReady ? blockedDownloadReason : canInspectSource ? "Portal does not generate derivatives or mutate source media." : "Portal does not generate new copies from this screen."
           }
     },
     {
@@ -264,7 +295,7 @@ function buildRenditionWorkflowItems(
       filename: asset.damFilenames?.print,
       allowedRole: "Reviewer/DAM Admin decision",
       checksum,
-      sourceRelation: "Print derivative remains separate from master/original.",
+      sourceRelation: canInspectSource ? "Print derivative remains separate from master/original." : "Print copy remains separate from full-resolution file.",
       gate: asset.approvedChannels?.includes("print") ? "Print channel listed" : "Reviewer approval required",
       auditNote: "Print handoff stays blocked until scope and reviewer evidence match.",
       action: draftReviewAction
@@ -280,7 +311,7 @@ function buildRenditionWorkflowItems(
       allowedRole: "Reviewer/DAM Admin decision",
       checksum,
       sourceRelation,
-      gate: "No live transcode/writeback",
+      gate: canInspectSource ? "No transcode/writeback from portal" : "No transcode from portal",
       auditNote: "Preview, captions/waveform, and approved copy are modeled only.",
       action: draftReviewAction
     });
@@ -292,20 +323,22 @@ function buildRenditionWorkflowItems(
 function buildVersionWorkflowItems(asset: StockMediaAsset, role: DemoRole, source?: MediaSourceStatus | null): VersionWorkflowItem[] {
   const canSeePrivate = canSeePrivateAssetRecordFields(role);
   const canSeeOperational = canSeeOperationalAssetRecordFields(role);
-  const refLabel = recordIdLabel(source);
+  const refLabel = canSeeOperational ? recordIdLabel(source) : "Reference code";
   const sourceFile = canSeePrivate ? safeValue(asset.originalFilename) : "Restricted";
   const checksum = shortChecksum(asset, role);
   const versionLabel = safeValue(asset.versionOrEdition, "No edition recorded");
   const duplicateDetail = [asset.duplicateRole, asset.duplicateGroup, asset.duplicateSimilarityHint].filter(Boolean).join(" / ");
   const approvedCopyDisplay = asset.damFilenames?.web || (asset.imageUrls?.download ? "Available through approved-copy gate" : "");
   const pendingSync = asset.pendingReviewWrite
-    ? `${asset.pendingReviewWrite.syncState.replace(/_/g, " ")}${asset.pendingReviewWrite.id && canSeeOperational ? ` (${asset.pendingReviewWrite.id})` : ""}`
+    ? canSeeOperational
+      ? `${asset.pendingReviewWrite.syncState.replace(/_/g, " ")}${asset.pendingReviewWrite.id ? ` (${asset.pendingReviewWrite.id})` : ""}`
+      : "Reviewer follow-up queued"
     : "None";
   const localVersionAction: OperationalWorkflowAction = {
     id: "draft-version-note",
-    label: canSeeOperational ? "Draft version note" : "Request review",
+    label: canSeeOperational ? "Open review queue" : "Request review",
     state: "local",
-    reason: "Session-only note. No ResourceSpace writeback."
+    reason: canSeeOperational ? "Opens Review queue. No source-system writeback from this page." : "Review request only. No library records change."
   };
 
   return [
@@ -316,29 +349,29 @@ function buildVersionWorkflowItems(asset: StockMediaAsset, role: DemoRole, sourc
       comparison: `${refLabel}; generated filenames describe derivatives only.`,
       visibleTo: "All roles",
       sourceRelation: sourceRelationLabel(asset, role),
-      auditNote: "Record comparison is metadata-only in this local prototype.",
+      auditNote: "Record comparison is metadata-only in this portal.",
       tone: "info",
       action: {
         id: "open-activity",
         label: "View activity",
         state: "local",
-        reason: "Opens local lifecycle and gate events."
+        reason: "Opens lifecycle and gate events."
       }
     },
     {
       id: "source-vs-approved",
-      label: "Source vs approved copy",
-      current: `Source: ${sourceFile}`,
+      label: canSeeOperational ? "Source vs approved copy" : "Full file vs approved copy",
+      current: `${canSeeOperational ? "Source" : "Full file"}: ${sourceFile}`,
       comparison: `Approved copy: ${safeValue(approvedCopyDisplay, "Not generated")}`,
-      visibleTo: canSeePrivate ? "DAM Admin" : "Restricted",
+      visibleTo: canSeePrivate ? "Reviewer/DAM Admin" : "Restricted",
       sourceRelation: checksum,
-      auditNote: "Compare never exposes private path or original download to non-admin roles.",
+      auditNote: canSeeOperational ? "Compare never exposes private path or original download to non-admin roles." : "Full-resolution file stays unavailable from portal.",
       tone: asset.damFilenames?.web || asset.imageUrls?.download ? "ready" : "review",
       action: {
         id: "blocked",
-        label: "Replace source disabled",
+        label: canSeeOperational ? "Replace source disabled" : "Replace full file disabled",
         state: "blocked",
-        reason: "Source media mutation and replacement are outside local prototype scope."
+        reason: canSeeOperational ? "Source media mutation and replacement are outside portal scope." : "Full-file replacement is outside portal scope."
       }
     },
     {
@@ -346,20 +379,22 @@ function buildVersionWorkflowItems(asset: StockMediaAsset, role: DemoRole, sourc
       label: "Duplicate/canonical",
       current: canSeePrivate ? safeValue(duplicateDetail, "No duplicate role recorded") : asset.duplicateGroup || asset.duplicateRole ? "Duplicate evidence recorded" : "No duplicate role recorded",
       comparison: canSeePrivate ? "Admin can see cleanup metadata; album membership must be preserved." : "Cleanup metadata hidden from non-admin roles.",
-      visibleTo: canSeePrivate ? "DAM Admin" : "Restricted summary",
+      visibleTo: canSeePrivate ? "Reviewer/DAM Admin" : "Restricted summary",
       sourceRelation: canSeePrivate ? safeValue(asset.sourceAlbumMemberships, "Album membership not exported") : "Membership details hidden.",
-      auditNote: "Duplicate linking may preserve every source album membership; no source files moved.",
+      auditNote: canSeeOperational ? "Duplicate linking may preserve every source album membership; no source files moved." : "Duplicate cleanup needs reviewer action; no full-resolution files move from portal.",
       tone: duplicateDetail ? "pending" : "info",
       action: localVersionAction
     },
     {
       id: "pending-replacement",
-      label: "Pending replacement/sync",
+      label: canSeeOperational ? "Pending replacement/sync" : "Pending review request",
       current: pendingSync,
-      comparison: asset.pendingReviewWrite ? "Review queue item visible; live sync remains disabled." : "No replacement request is queued in this role-safe record.",
+      comparison: asset.pendingReviewWrite
+        ? canSeeOperational ? "Review queue item visible; source update remains disabled." : "Review queue item visible to reviewers."
+        : "No replacement request is queued in this role-safe record.",
       visibleTo: canSeeOperational ? "Reviewer/DAM Admin" : "Summary only",
-      sourceRelation: "ResourceSpace writeback not enabled from asset detail.",
-      auditNote: "Replacement, version upload, and live writeback actions fail closed here.",
+      sourceRelation: canSeeOperational ? "Source-system writeback is not enabled from asset detail." : "Record update request only.",
+      auditNote: canSeeOperational ? "Replacement, version upload, and record-write actions fail closed here." : "Record changes require reviewer/admin action.",
       tone: asset.pendingReviewWrite ? "pending" : "info",
       action: localVersionAction
     }
@@ -450,7 +485,7 @@ function VersionWorkflowPanel({
             <th>Current display</th>
             <th>Visible to</th>
             <th>Comparison/reason</th>
-            <th>Local action</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -557,6 +592,23 @@ function deliveryManifestRows(result: DownloadGateResponse | null): AssetRecordR
   }));
 }
 
+function assetDetailActivityRows(asset: StockMediaAsset, role: DemoRole, result: DownloadGateResponse | null, message: string): AssetRecordRow[] {
+  const canSeeOperational = canSeeOperationalAssetRecordFields(role);
+  const roleSafeRows = assetRecordActivityRows(asset, role).map((row) => {
+    if (canSeeOperational || row.id !== "sync") return row;
+    return {
+      ...row,
+      label: "Pending review",
+      value: asset.pendingReviewWrite ? "Reviewer follow-up queued" : "None",
+      detail: "Record updates are handled by reviewer/admin workflow."
+    };
+  });
+  return [
+    ...roleSafeRows,
+    ...downloadGateRows(result, message)
+  ];
+}
+
 function RelatedPanel({ assets, role }: { assets: StockMediaAsset[]; role: DemoRole }) {
   if (!assets.length) return <p className="ed-empty-copy">No related media records found.</p>;
   return (
@@ -580,6 +632,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   const [tab, setTab] = useState(assetDetailTabs[0]);
   const [downloadMessage, setDownloadMessage] = useState("");
   const [lastDownloadResult, setLastDownloadResult] = useState<DownloadGateResponse | null>(null);
+  const [downloadTermsAccepted, setDownloadTermsAccepted] = useState(false);
   const [assetActionMessage, setAssetActionMessage] = useState("");
   const [assetActionPending, setAssetActionPending] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -592,6 +645,8 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   const reusePacket = presentation.packet;
   const approved = presentation.approved;
   const canViewReviewerNotes = role === "Reviewer" || role === "DAM Admin";
+  const canViewSourceRecord = assetCanInspectSourceRecord(role);
+  const sourceRecordRows = canViewSourceRecord ? assetSourceRecordRowsForRole(asset, role) : [];
   const parsedDimensions = parseDimensions(asset.imageDimensions);
   const lowResolutionPreview = asset.mediaType === "photo" && isLowResolution(parsedDimensions);
   const limitedDerivative = assetHasRenditionGap(asset);
@@ -613,7 +668,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   const actionCopy = detailActionCopy(role, approved, reusePacket.viewerVerdict.reason, primaryBlocker);
   const safePreviewAsset = roleSafePreviewAsset(asset);
   const evidenceRows: AssetRecordRow[] = [
-    { id: "evidence-source", label: "Source", value: reusePacket.metadataConfidence.source, detail: "Custody/provenance evidence", tone: reusePacket.metadataConfidence.source === "verified" ? "ready" : "review" },
+    { id: "evidence-source", label: canViewSourceRecord ? "Source" : "Record", value: reusePacket.metadataConfidence.source, detail: canViewSourceRecord ? "Custody/provenance evidence" : "Record provenance evidence", tone: reusePacket.metadataConfidence.source === "verified" ? "ready" : "review" },
     { id: "evidence-rights", label: "Rights", value: reusePacket.metadataConfidence.rights, detail: "Rights, consent, and approved channel", tone: reusePacket.metadataConfidence.rights === "approved" ? "ready" : "review" },
     { id: "evidence-people", label: "People/minors", value: reusePacket.metadataConfidence.peopleMinors, detail: "Visibility and consent posture", tone: reusePacket.metadataConfidence.peopleMinors === "reviewed" ? "ready" : "review" },
     { id: "evidence-review", label: "Review", value: reusePacket.metadataConfidence.review, detail: "Reviewer/date evidence", tone: reusePacket.metadataConfidence.review === "complete" ? "ready" : "review" }
@@ -626,13 +681,14 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
     ...(asset.aiVisibleTagSuggestions || []),
     ...(asset.aiTjcTermSuggestions || [])
   ];
-  const activityRows = [
-    ...assetRecordActivityRows(asset, role),
-    ...downloadGateRows(lastDownloadResult, downloadMessage)
-  ];
+  const activityRows = assetDetailActivityRows(asset, role, lastDownloadResult, downloadMessage);
   const manifestRows = deliveryManifestRows(lastDownloadResult);
   const actionMessage = assetActionMessage || downloadMessage;
   const canOpenResourceSpace = reusePacket.access.viewResourceSpaceAdminLink.allowed;
+  const openReviewQueue = () => {
+    const params = new URLSearchParams({ asset: asset.id });
+    window.location.assign(routeWithRole(`/review?${params.toString()}`, role));
+  };
 
   const requestReview = async () => {
     if (assetActionPending) return;
@@ -652,11 +708,21 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   };
 
   const requestApprovedDownload = async () => {
-    const result = await downloadGate.requestDownload({ termsAccepted: true, usageChannel: "portal", reason: `Asset detail approved-copy request for ${displayTitle(asset)}` });
+    if (!downloadTermsAccepted) {
+      setDownloadMessage("Accept usage terms before requesting an approved copy.");
+      return;
+    }
+    const result = await downloadGate.requestDownload({ termsAccepted: downloadTermsAccepted, usageChannel: "portal", reason: `Asset detail approved-copy request for ${displayTitle(asset)}` });
     setLastDownloadResult(result);
-    setDownloadMessage(result.allowed
-      ? `Download gate allowed. Audit ${result.auditId || "recorded"}${result.ticketExpiresAt ? `. Ticket expires ${result.ticketExpiresAt}` : ""}.`
-      : `Approved-copy gate blocked delivery: ${result.reason || result.requiredAction || "Not allowed"}. Next step: ${result.requiredAction || "request DAM review"}.`);
+    if (result.allowed) {
+      const receipt = [
+        result.auditId ? `Audit ${result.auditId}` : "",
+        result.ticketExpiresAt ? `ticket expires ${result.ticketExpiresAt}` : result.ticketId ? `ticket ${result.ticketId}` : ""
+      ].filter(Boolean).join("; ");
+      setDownloadMessage(receipt ? `Download gate allowed. ${receipt}.` : "Download gate allowed. Receipt details were not returned.");
+    } else {
+      setDownloadMessage(`Approved-copy gate blocked delivery: ${result.reason || result.requiredAction || "Not allowed"}. Next step: ${result.requiredAction || "request DAM review"}.`);
+    }
     if (result.allowed && result.downloadUrl) window.location.href = result.downloadUrl;
   };
 
@@ -675,14 +741,18 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
     }
     if (action.id === "draft-rendition-review") {
       if (canSeeOperationalAssetRecordFields(role)) {
-        setAssetActionMessage(`Local audit note drafted: ${action.reason}`);
+        openReviewQueue();
         return;
       }
       void requestReview();
       return;
     }
     if (action.id === "draft-version-note") {
-      setAssetActionMessage(`Local version note drafted: ${action.reason} Version writes remain disabled.`);
+      if (!canSeeOperationalAssetRecordFields(role)) {
+        void requestReview();
+        return;
+      }
+      openReviewQueue();
     }
   };
 
@@ -711,14 +781,19 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
               <ActionButton tone="primary" icon={approved ? Download : FileText} onClick={approved ? requestApprovedDownload : requestReview} disabled={assetActionPending}>
                 {assetActionPending && !approved ? "Queueing review..." : actionCopy.primary}
               </ActionButton>
+              {approved ? (
+                <label className="ed-download-terms">
+                  <input type="checkbox" checked={downloadTermsAccepted} onChange={(event) => setDownloadTermsAccepted(event.target.checked)} />
+                  <span>Use within listed terms</span>
+                </label>
+              ) : null}
               <div className="ed-action-menu-wrap">
                 <ActionButton ariaLabel="Open asset record tools" onClick={() => setActionsOpen((open) => !open)}><ChevronDown size={14} />Tools</ActionButton>
                 {actionsOpen ? (
                   <div className="ed-more-actions-menu ed-detail-actions-menu" role="menu">
-                    {approved ? <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}><Download size={15} />Download approved copy<span>Runs approved-copy ticket gate and audit.</span></button> : null}
+                    {approved ? <button type="button" role="menuitem" onClick={() => { void requestApprovedDownload(); setActionsOpen(false); }}><Download size={15} />Request approved copy<span>Runs approved-copy gate and audit.</span></button> : null}
                     <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Favorite saved for this session."); setActionsOpen(false); }}><Star size={15} />Favorite<span>Save this record locally for this session.</span></button>
                     <button type="button" role="menuitem" onClick={() => { setTab("Activity"); setActionsOpen(false); }}><FileText size={15} />View activity<span>Open review, lifecycle, and gate events.</span></button>
-                    <button type="button" role="menuitem" onClick={() => { setAssetActionMessage("Use Distribution Sets to add governed references without copying source files."); setActionsOpen(false); }}><PackageCheck size={15} />Add to distribution set<span>Collect reference without moving source files.</span></button>
                   </div>
                 ) : null}
               </div>
@@ -753,7 +828,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                 <div className="ed-record-answer-grid" aria-label="Current asset use state">
                   <span><small>Use state</small><strong>{reuseAnswerLabel(reusePacket.reuse.state)}</strong></span>
                   <span><small>Visibility</small><strong>{betaVisibilityLabel(asset)}</strong></span>
-                  <span><small>Source/original</small><strong>{reusePacket.access.downloadOriginal.label || "Restricted"}</strong></span>
+                  <span><small>{canViewSourceRecord ? "Source/original" : "Full file"}</small><strong>{reusePacket.access.downloadOriginal.label || "Restricted"}</strong></span>
                   <span><small>Primary blocker</small><strong>{reusePacket.reuse.blockers[0]?.label || "None active"}</strong></span>
                 </div>
                 <MetadataRows rows={overviewRows} />
@@ -772,7 +847,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
                 <div className="ed-record-keywords">
                   <strong>Keywords</strong>
                   <div className="ed-chip-row">
-                    {assetKeywordText(asset) !== "Not provided" ? [...(asset.tags || []), ...(asset.tjcTerms || [])].map((keyword) => <span key={keyword}>{keyword}</span>) : <p>Not provided in current data source.</p>}
+                    {assetKeywordText(asset) !== "Not provided" ? [...(asset.tags || []), ...(asset.tjcTerms || [])].map((keyword) => <span key={keyword}>{keyword}</span>) : <p>Not provided in current record.</p>}
                   </div>
                   {suggestedTagValues.length ? <small>Suggested only: {suggestedTagValues.join(", ")}</small> : null}
                 </div>
@@ -797,8 +872,8 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
               <>
                 <header className="ed-record-panel-head">
                   <div>
-                    <h2>Renditions</h2>
-                    <p>Original restricted. Derivatives list readiness, role/action, reason, and safe request path only.</p>
+                    <h2>{canViewSourceRecord ? "Renditions" : "Approved copies"}</h2>
+                    <p>{canViewSourceRecord ? "Original restricted. Derivatives list readiness, role/action, reason, and safe request path only." : "Full-resolution file restricted. Approved copies list readiness, reason, and safe request path only."}</p>
                   </div>
                 </header>
                 <RenditionWorkflowPanel items={renditionWorkflowItems} onAction={handleWorkflowAction} />
@@ -815,8 +890,8 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
               <>
                 <header className="ed-record-panel-head">
                   <div>
-                    <h2>Versions</h2>
-                    <p>Generated filenames, duplicate metadata when allowed, and pending replacement/sync. Local display only; no live version writes.</p>
+                    <h2>{canViewSourceRecord ? "Versions" : "Record history"}</h2>
+                    <p>{canViewSourceRecord ? "Generated filenames, duplicate metadata when allowed, and pending replacement/sync. Display only; no version writes." : "Review requests and duplicate notes stay read-only here."}</p>
                   </div>
                 </header>
                 <VersionWorkflowPanel items={versionWorkflowItems} onAction={handleWorkflowAction} />
@@ -854,7 +929,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             ["State", reuseAnswerLabel(reusePacket.reuse.state)],
             ["Visibility", betaVisibilityLabel(asset)],
             ["Download gate", approved ? "Approved-copy gate available" : reusePacket.viewerVerdict.reason],
-            ["Source/original", reusePacket.access.downloadOriginal.label || "Restricted"]
+            [canViewSourceRecord ? "Source/original" : "Full file", reusePacket.access.downloadOriginal.label || "Restricted"]
           ]} />
           <MetadataGroup title="Rights" rows={[
             ["Usage scope", asset.usageScope],
@@ -866,7 +941,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
           <MetadataGroup title="Collections" rows={[
             ["Collection", asset.collection],
             ["Event", asset.eventName || asset.eventSeries],
-            ["Record source", sourceTruthLabel(detail.source)],
+            [canViewSourceRecord ? "Record source" : "Record basis", canViewSourceRecord ? sourceTruthLabel(detail.source) : "Media library"],
             ["Type", assetType(asset)]
           ]} />
           <MetadataGroup title="Reviewer/date" rows={[
@@ -879,8 +954,27 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
             ["Rights expiration", asset.rightsExpirationDate || "Not provided"],
             ["Consent expiration", asset.consentExpirationDate || "Not provided"],
             ["Withdrawal", asset.withdrawalStatus || "Active"],
-            ["Pending sync", formatSyncState(asset.pendingReviewWrite?.syncState)]
+            [canViewSourceRecord ? "Pending sync" : "Pending review", canViewSourceRecord ? formatSyncState(asset.pendingReviewWrite?.syncState) : asset.pendingReviewWrite ? "Reviewer follow-up queued" : "None"]
           ]} />
+          {canViewSourceRecord ? (
+            <section className="ed-card">
+              <header className="ed-card-head">
+                <div>
+                  <h3>Source record</h3>
+                  <p>Reviewer/admin evidence only. Read-only boundary; no source media mutation or writeback.</p>
+                </div>
+                <StatusBadge status="Read-only" />
+              </header>
+              <dl className="ed-metadata">
+                {sourceRecordRows.map((row) => (
+                  <div key={row.label}>
+                    <dt>{row.label}</dt>
+                    <dd>{row.value}{row.detail ? <small>{row.detail}</small> : null}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : null}
           <MetadataGroup title="Metadata completeness" rows={[
             ["State", metadataHealth.state],
             ["Score", `${metadataHealth.score}%`],
@@ -888,9 +982,9 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
           ]} />
           <AdminDiagnosticCard role={role} rows={[
             ["Source mode", detail.source?.label || "Not loaded"],
-            ["Live source", detail.live ? "Yes" : "No"],
+            ["API source", detail.live ? "Configured" : "Not active"],
             ["Record source", detail.source?.adapter || "unknown"],
-            ["ResourceSpace admin link", canOpenResourceSpace && detail.data?.resourceSpaceUrl ? "Available" : "Unavailable"],
+            ["Source admin link", canOpenResourceSpace && detail.data?.resourceSpaceUrl ? "Available" : "Unavailable"],
             ["Pending write", formatSyncState(asset.pendingReviewWrite?.syncState)]
           ]} />
         </aside>

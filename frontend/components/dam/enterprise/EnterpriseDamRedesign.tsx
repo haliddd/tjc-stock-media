@@ -94,6 +94,14 @@ function collectionDisplayStatus(collection: DamCollection): CanonicalStatus {
   return "Draft";
 }
 
+function collectionUseStatusLabel(status: CanonicalStatus) {
+  if (status === "Portal Ready") return "Use guidance";
+  if (status === "Approved Internal") return "Internal guidance";
+  if (status === "Needs Evidence") return "Needs item review";
+  if (status === "Blocked") return "Blocked";
+  return status;
+}
+
 function peopleMinorsLabel(asset: DamAsset) {
   if (asset.peopleVisible === "no" && asset.minorsVisible === "no") return "No people";
   if (asset.minorsVisible === "yes") return "People and minors visible";
@@ -140,6 +148,18 @@ export function StatusBadge({ status, compact = false }: { status: CanonicalStat
     <span className={cn("damx-status-badge", meta.className, compact && "is-compact")} title={meta.description}>
       <Icon size={13} aria-hidden="true" />
       {status}
+    </span>
+  );
+}
+
+function CollectionUseStatusBadge({ collection, compact = false }: { collection: DamCollection; compact?: boolean }) {
+  const status = collectionDisplayStatus(collection);
+  const meta = statusMeta[status];
+  const Icon = meta.icon;
+  return (
+    <span className={cn("damx-status-badge", meta.className, compact && "is-compact")} title="Collection status is based on item-level review and use guidance.">
+      <Icon size={13} aria-hidden="true" />
+      {collectionUseStatusLabel(status)}
     </span>
   );
 }
@@ -824,6 +844,7 @@ export function EnterpriseLibraryPage() {
 }
 
 const uploadDraftKey = "tjc-upload-intake-batch-draft-v1";
+const contributorUploadsKey = "tjc-upload-intake-my-uploads-v1";
 
 type UploadReceipt = {
   ok?: boolean;
@@ -840,9 +861,64 @@ type UploadReceipt = {
 
 type UploadFilePreview = {
   id: string;
+  index: number;
   name: string;
   meta: string;
   url?: string;
+};
+
+type UploadDraft = {
+  sourceLink: string;
+  batchName: string;
+  eventDate: string;
+  ministry: string;
+  locationName: string;
+  description: string;
+  source: string;
+  usageNote: string;
+  peopleVisible: string;
+  minorsVisible: string;
+  rightsNote: string;
+  reviewerNote: string;
+};
+
+type StoredContributorUpload = {
+  id: string;
+  batchName: string;
+  eventName: string;
+  eventDate: string;
+  locationName: string;
+  ministry: string;
+  source: string;
+  fileCount: number;
+  mediaType: "Photos" | "Videos" | "Photos and videos" | "Not sure";
+  peopleMinors: string;
+  notes: string;
+  submittedAt: string;
+  date: string;
+  status: "Submitted";
+  reviewStatus: "Waiting for review";
+  publishStatus: "Do not use yet";
+  reviewerNote: "Waiting for review.";
+  roleFit: DemoRole[];
+};
+
+const maxContributorUploadFiles = 80;
+const acceptedPhotoExtensions = [".jpg", ".jpeg", ".png", ".webp", ".heic"] as const;
+const acceptedPhotoTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"] as const;
+const defaultUploadDraft: UploadDraft = {
+  sourceLink: "",
+  batchName: "",
+  eventDate: "",
+  ministry: "",
+  locationName: "",
+  description: "",
+  source: "",
+  usageNote: "",
+  peopleVisible: "Not sure",
+  minorsVisible: "Not sure",
+  rightsNote: "",
+  reviewerNote: ""
 };
 
 function formatBytes(value: number) {
@@ -861,6 +937,58 @@ function safeHttpUrl(value: string) {
   }
 }
 
+function safeUrlHost(value: string) {
+  if (!value.trim()) return "";
+  if (!safeHttpUrl(value)) return "";
+  return new URL(value.trim()).host.replace(/^www\./, "");
+}
+
+function isAcceptedContributorPhoto(file: File) {
+  const lowerName = file.name.toLowerCase();
+  return acceptedPhotoTypes.includes(file.type as typeof acceptedPhotoTypes[number]) || acceptedPhotoExtensions.some((extension) => lowerName.endsWith(extension));
+}
+
+function formatUploadReceiptDate(submittedAt: string) {
+  return new Date(submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function mediaTypeForReceipt(inventory: ReturnType<typeof buildMediaInventory>, hasSourceLink: boolean): StoredContributorUpload["mediaType"] {
+  if (inventory.photoCount > 0 && inventory.videoCount > 0) return "Photos and videos";
+  if (inventory.videoCount > 0) return "Videos";
+  if (inventory.photoCount > 0 || inventory.fileCount > 0) return "Photos";
+  return hasSourceLink ? "Not sure" : "Photos";
+}
+
+function appendStoredContributorUpload(upload: StoredContributorUpload) {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(contributorUploadsKey) || "[]") as unknown[];
+    const rows = Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    window.localStorage.setItem(contributorUploadsKey, JSON.stringify([upload, ...rows.filter((row) => (row as { id?: unknown }).id !== upload.id)]));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function uploadDraftFromStorage(value: unknown): UploadDraft {
+  const raw = (value || {}) as Partial<UploadDraft>;
+  return {
+    ...defaultUploadDraft,
+    sourceLink: String(raw.sourceLink || ""),
+    batchName: String(raw.batchName || ""),
+    eventDate: String(raw.eventDate || ""),
+    ministry: String(raw.ministry || ""),
+    locationName: String(raw.locationName || ""),
+    description: String(raw.description || ""),
+    source: String(raw.source || ""),
+    usageNote: String(raw.usageNote || ""),
+    peopleVisible: String(raw.peopleVisible || defaultUploadDraft.peopleVisible),
+    minorsVisible: String(raw.minorsVisible || defaultUploadDraft.minorsVisible),
+    rightsNote: String(raw.rightsNote || ""),
+    reviewerNote: String(raw.reviewerNote || "")
+  };
+}
+
 function filesFromDrop(dataTransfer: DataTransfer | null) {
   const directFiles = Array.from(dataTransfer?.files || []);
   if (directFiles.length) return directFiles;
@@ -877,53 +1005,78 @@ export function EnterpriseUploadPage() {
   const [batchName, setBatchName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [ministry, setMinistry] = useState("");
-  const [source, setSource] = useState("");
   const [locationName, setLocationName] = useState("");
-  const [notes, setNotes] = useState("");
+  const [description, setDescription] = useState("");
+  const [source, setSource] = useState("");
+  const [usageNote, setUsageNote] = useState("");
+  const [peopleVisible, setPeopleVisible] = useState(defaultUploadDraft.peopleVisible);
+  const [minorsVisible, setMinorsVisible] = useState(defaultUploadDraft.minorsVisible);
+  const [rightsNote, setRightsNote] = useState("");
+  const [reviewerNote, setReviewerNote] = useState("");
   const [message, setMessage] = useState("");
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [formError, setFormError] = useState("");
   const [receipt, setReceipt] = useState<UploadReceipt | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const allowed = roleCanContribute(role);
   const inventory = useMemo(() => buildMediaInventory(files), [files]);
   const validSourceLink = safeHttpUrl(sourceLink);
-  const hasFileOrSource = files.length > 0 || Boolean(sourceLink.trim() && validSourceLink);
-  const hasStarted = files.length > 0 || Boolean(sourceLink.trim()) || Boolean(batchName.trim() || eventDate.trim() || ministry.trim() || source.trim() || locationName.trim() || notes.trim());
+  const hasSourceLink = Boolean(sourceLink.trim());
+  const hasMixedMedia = files.length > 0 && hasSourceLink;
+  const unsupportedFiles = files.filter((file) => !isAcceptedContributorPhoto(file));
+  const tooManyFiles = files.length > maxContributorUploadFiles;
+  const hasValidMediaInput = files.length > 0 || Boolean(sourceLink.trim() && validSourceLink);
+  const hasFileOrSource = hasValidMediaInput && !hasMixedMedia;
+  const draft: UploadDraft = { sourceLink, batchName, eventDate, ministry, locationName, description, source, usageNote, peopleVisible, minorsVisible, rightsNote, reviewerNote };
+  const hasStarted = files.length > 0 || Object.values(draft).some((value) => value.trim() && value !== "Not sure");
   const missingAddMedia = [
-    !hasFileOrSource && "Add photos or a Google Drive link",
-    sourceLink.trim() && !validSourceLink && "Use a full http or https Google Drive link"
-  ].filter(Boolean);
+    !files.length && !sourceLink.trim() && "Add photos or a source link before sending.",
+    hasMixedMedia && "Use photos or a source link, not both.",
+    sourceLink.trim() && !validSourceLink && "Use a full http or https source link.",
+    tooManyFiles && `Use ${maxContributorUploadFiles} or fewer files.`,
+    unsupportedFiles.length > 0 && `Unsupported type: ${unsupportedFiles.slice(0, 3).map((file) => file.name).join(", ")}. Use JPG, PNG, WebP, or HEIC.`
+  ].filter((item): item is string => Boolean(item));
   const missingDetails = [
-    !batchName.trim() && "Event name",
+    !batchName.trim() && "Event/album",
     !eventDate.trim() && "Date",
     !ministry.trim() && "Ministry/team",
-    !source.trim() && "Photographer/source"
-  ].filter(Boolean);
-  const readyToSubmit = hasFileOrSource && validSourceLink && missingDetails.length === 0;
-  const sourceLinkHost = sourceLink.trim() ? new URL(sourceLink.trim(), "https://drive.google.com").host.replace(/^www\./, "") : "";
+    !locationName.trim() && "Church/location",
+    !source.trim() && "Contributor/source",
+    !usageNote.trim() && "Usage note"
+  ].filter((item): item is string => Boolean(item));
+  const readyToSubmit = hasFileOrSource && missingAddMedia.length === 0 && missingDetails.length === 0;
+  const sourceLinkHost = safeUrlHost(sourceLink);
+  const peopleMinorsLabel = `People: ${peopleVisible}; minors: ${minorsVisible}`;
+  const submissionKind = sourceLink.trim() && !files.length ? "Source-link submission" : "Photo files";
   const selectedCountLabel = files.length
     ? `${files.length} photo${files.length === 1 ? "" : "s"} selected`
     : sourceLink.trim()
-      ? "1 Drive link"
+      ? "1 source link"
       : "Ready for photos";
   const readyStateLabel = readyToSubmit
     ? "Ready to send"
     : hasFileOrSource
-      ? `Need ${missingDetails.join(", ")}`
-      : sourceLink.trim() && !validSourceLink
-        ? "Check Drive link"
-        : "Add photos or Drive link";
+      ? "Missing details"
+    : sourceLink.trim() && !validSourceLink
+        ? "Check source link"
+        : "Add photos or source link";
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(window.localStorage.getItem(uploadDraftKey) || "{}") as Record<string, unknown>;
-      setSourceLink(String(saved.sourceLink || ""));
-      setBatchName(String(saved.batchName || ""));
-      setEventDate(String(saved.eventDate || ""));
-      setMinistry(String(saved.ministry || ""));
-      setSource(String(saved.source || ""));
-      setLocationName(String(saved.locationName || ""));
-      setNotes(String(saved.notes || ""));
+      const saved = uploadDraftFromStorage(JSON.parse(window.localStorage.getItem(uploadDraftKey) || "{}"));
+      setSourceLink(saved.sourceLink);
+      setBatchName(saved.batchName);
+      setEventDate(saved.eventDate);
+      setMinistry(saved.ministry);
+      setLocationName(saved.locationName);
+      setDescription(saved.description);
+      setSource(saved.source);
+      setUsageNote(saved.usageNote);
+      setPeopleVisible(saved.peopleVisible);
+      setMinorsVisible(saved.minorsVisible);
+      setRightsNote(saved.rightsNote);
+      setReviewerNote(saved.reviewerNote);
     } catch {
       // Local draft restore is best-effort only.
     } finally {
@@ -933,12 +1086,17 @@ export function EnterpriseUploadPage() {
 
   useEffect(() => {
     if (!draftLoaded) return;
-    window.localStorage.setItem(uploadDraftKey, JSON.stringify({ sourceLink, batchName, eventDate, ministry, source, locationName, notes }));
-  }, [batchName, draftLoaded, eventDate, locationName, ministry, notes, source, sourceLink]);
+    try {
+      window.localStorage.setItem(uploadDraftKey, JSON.stringify(draft));
+    } catch {
+      // The explicit Save for later action surfaces storage failures.
+    }
+  }, [batchName, description, draftLoaded, eventDate, locationName, ministry, minorsVisible, peopleVisible, reviewerNote, rightsNote, source, sourceLink, usageNote]);
 
   useEffect(() => {
-    const nextPreviews = files.slice(0, 8).map((file, index) => ({
+    const nextPreviews = files.map((file, index) => ({
       id: `${file.name}-${file.size}-${index}`,
+      index,
       name: file.name,
       meta: `${file.type || "Photo"} | ${formatBytes(file.size)}`,
       url: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined
@@ -956,18 +1114,21 @@ export function EnterpriseUploadPage() {
       <div className="damx-page">
         <EmptyState
           title="Sharing photos requires Contributor access"
-          body="Contributors can send photos to the media team. Media team reviews photos before anything becomes public."
+          body="Contributors can send photos to the media team for review."
           actions={<EnterpriseButton href={routeWithRole("/library", role)} icon={<Library size={16} aria-hidden="true" />}>Open Library</EnterpriseButton>}
         />
       </div>
     );
   }
 
-  function handleFiles(fileList: FileList | null) {
+  function handleFiles(fileList: FileList | null, mode: "replace" | "add" = "replace") {
     const nextFiles = Array.from(fileList || []);
-    setFiles(nextFiles);
+    const stagedFiles = mode === "add" ? [...files, ...nextFiles] : nextFiles;
+    setFiles(stagedFiles);
     setReceipt(null);
-    if (nextFiles.length) setMessage(`${nextFiles.length} photo${nextFiles.length === 1 ? "" : "s"} added.`);
+    setDraftSaved(false);
+    setFormError("");
+    if (nextFiles.length) setMessage(`${nextFiles.length} file${nextFiles.length === 1 ? "" : "s"} added.`);
   }
 
   function addDroppedFiles(dataTransfer: DataTransfer | null) {
@@ -975,12 +1136,35 @@ export function EnterpriseUploadPage() {
     const nextFiles = [...files, ...droppedFiles];
     setFiles(nextFiles);
     setReceipt(null);
-    if (nextFiles.length) setMessage(`${nextFiles.length} photo${nextFiles.length === 1 ? "" : "s"} added.`);
+    setDraftSaved(false);
+    setFormError("");
+    if (droppedFiles.length) setMessage(`${droppedFiles.length} file${droppedFiles.length === 1 ? "" : "s"} added.`);
+  }
+
+  function removeFile(indexToRemove: number) {
+    setFiles((current) => current.filter((_, index) => index !== indexToRemove));
+    setReceipt(null);
+    setDraftSaved(false);
+    setFormError("");
+  }
+
+  function clearSourceLink() {
+    setSourceLink("");
+    setReceipt(null);
+    setDraftSaved(false);
+    setFormError("");
   }
 
   function saveDraft() {
-    window.localStorage.setItem(uploadDraftKey, JSON.stringify({ sourceLink, batchName, eventDate, ministry, source, locationName, notes }));
-    setMessage("Saved for later in this browser.");
+    try {
+      window.localStorage.setItem(uploadDraftKey, JSON.stringify(draft));
+      setDraftSaved(true);
+      setFormError("");
+      setMessage("");
+    } catch {
+      setDraftSaved(false);
+      setFormError("Browser storage blocked. Draft could not be saved.");
+    }
   }
 
   function resetSubmission() {
@@ -991,19 +1175,36 @@ export function EnterpriseUploadPage() {
     setMinistry("");
     setSource("");
     setLocationName("");
-    setNotes("");
+    setDescription("");
+    setUsageNote("");
+    setPeopleVisible(defaultUploadDraft.peopleVisible);
+    setMinorsVisible(defaultUploadDraft.minorsVisible);
+    setRightsNote("");
+    setReviewerNote("");
     setReceipt(null);
     setMessage("");
-    window.localStorage.removeItem(uploadDraftKey);
+    setDraftSaved(false);
+    setFormError("");
+    try {
+      window.localStorage.removeItem(uploadDraftKey);
+    } catch {
+      // Clearing a browser draft is best-effort.
+    }
+  }
+
+  function markEdited() {
+    setDraftSaved(false);
+    setFormError("");
   }
 
   async function submitBatch() {
     if (!readyToSubmit) {
-      setMessage(`Need ${[...missingAddMedia, ...missingDetails].join(", ")}.`);
+      setFormError(missingAddMedia[0] || `Add required details before sending: ${missingDetails.join(", ")}.`);
       return;
     }
     setSubmitting(true);
     setMessage("Sending photos to the media team.");
+    setFormError("");
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
     form.set("role", role);
@@ -1015,38 +1216,90 @@ export function EnterpriseUploadPage() {
     form.set("location", locationName);
     form.set("collection", "");
     form.set("language", "");
-    form.set("intakeNotes", notes);
+    form.set("intakeNotes", [description.trim(), `Usage note: ${usageNote.trim()}`, reviewerNote.trim() ? `Reviewer note: ${reviewerNote.trim()}` : ""].filter(Boolean).join("\n"));
+    form.set("notes", rightsNote.trim());
+    form.set("peopleVisible", peopleVisible);
+    form.set("minorsVisible", minorsVisible);
+    form.set("usageRights", rightsNote.trim() || "Unknown - reviewer verifies");
     form.set("tags", "");
     form.set("sourceLink", sourceLink);
     form.set("folderName", inventory.folderName || "");
     form.append("requestedUse", "Website");
-    const response = await fetch("/api/upload", { method: "POST", body: form });
-    const body = await response.json().catch(() => ({}));
-    setSubmitting(false);
-    setReceipt(body);
-    if (response.ok) {
-      window.localStorage.removeItem(uploadDraftKey);
+    try {
+      const response = await fetch("/api/upload", { method: "POST", body: form });
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body?.ok !== false) {
+        setReceipt(body);
+        const submittedAt = new Date().toISOString();
+        const uploadId = String(body.batchId || `local-upload-${Date.now()}`);
+        const saved = appendStoredContributorUpload({
+          id: uploadId,
+          batchName: batchName.trim(),
+          eventName: batchName.trim(),
+          eventDate,
+          locationName: locationName.trim(),
+          ministry: ministry.trim(),
+          source: source.trim(),
+          fileCount: inventory.fileCount,
+          mediaType: mediaTypeForReceipt(inventory, Boolean(sourceLink.trim())),
+          peopleMinors: peopleMinorsLabel,
+          notes: usageNote.trim() || description.trim(),
+          submittedAt,
+          date: formatUploadReceiptDate(submittedAt),
+          status: "Submitted",
+          reviewStatus: "Waiting for review",
+          publishStatus: "Do not use yet",
+          reviewerNote: "Waiting for review.",
+          roleFit: ["Contributor", "Reviewer", "DAM Admin"]
+        });
+        try {
+          window.localStorage.removeItem(uploadDraftKey);
+        } catch {
+          // Receipt already saved or submission accepted; draft cleanup can fail quietly.
+        }
+        setMessage(saved ? "" : "Submitted for review. My Uploads could not save this receipt.");
+      } else {
+        setReceipt(null);
+        setFormError(body?.error === "This role can browse media but cannot upload."
+          ? "Submission failed. This account cannot send photos."
+          : "Submission failed. Try again or ask the media team for help.");
+        setMessage("");
+      }
+    } catch {
+      setReceipt(null);
+      setFormError("Submission failed. Try again or ask the media team for help.");
       setMessage("");
-    } else {
-      setMessage(body.message || body.error || "We could not send these photos. Nothing was published.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className="damx-page damx-upload-page damx-upload-v34">
+    <div className="damx-page damx-upload-page damx-upload-v36">
       {message ? <p className="damx-notice" role="status">{message}</p> : null}
+      {draftSaved ? <p className="damx-notice" role="status">Saved for later in this browser.</p> : null}
       <main className="damx-upload-shell" aria-labelledby="share-photos-title">
         {receipt ? (
           <section className="damx-upload-success" aria-label="Photo submission sent">
             <CheckCircle2 size={24} aria-hidden="true" />
             <div>
-              <h1>Thank you — your photos were sent to the media team.</h1>
-              <dl>
+              <h1>Photos sent</h1>
+              <p>Submitted for review. Waiting for review. Nothing is public.</p>
+              <ol className="damx-upload-status-timeline" aria-label="Submission status">
+                <li>Submitted</li>
+                <li>Waiting for review</li>
+                <li>Do not use yet</li>
+              </ol>
+              <dl className="damx-upload-success-summary">
                 <div><dt>Submission</dt><dd>{batchName}</dd></div>
-                <div><dt>Sent</dt><dd>{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"}` : "Google Drive link"}</dd></div>
+                <div><dt>Sent</dt><dd>{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"}` : "Source link"}</dd></div>
+                <div><dt>Event date</dt><dd>{eventDate}</dd></div>
+                <div><dt>Ministry/team</dt><dd>{ministry}</dd></div>
               </dl>
-              <p>We'll review rights, people/youth visibility, and usage before anything is published.</p>
-              <EnterpriseButton tone="primary" onClick={resetSubmission}>Share more photos</EnterpriseButton>
+              <div className="damx-upload-actions">
+                <EnterpriseButton tone="primary" href={routeWithRole("/recent-uploads", role)}>View My Uploads</EnterpriseButton>
+                <EnterpriseButton tone="secondary" onClick={resetSubmission}>Share more photos</EnterpriseButton>
+              </div>
             </div>
           </section>
         ) : (
@@ -1054,21 +1307,22 @@ export function EnterpriseUploadPage() {
             <section className="damx-upload-card" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); addDroppedFiles(event.dataTransfer); }}>
               <header className="damx-upload-card-header">
                 <div>
-                  <h1 id="share-photos-title">Share photos with the media team</h1>
+                  <h1 id="share-photos-title">Upload Photos</h1>
+                  <p>Send event photos to the media team for review.</p>
                 </div>
                 <span className={cn("damx-upload-ready", readyToSubmit && "is-ready")}>{readyStateLabel}</span>
               </header>
 
               <label className="damx-upload-dropzone">
                 <UploadCloud size={34} aria-hidden="true" />
-                <strong>Upload photos from computer</strong>
+                <strong id="damx-upload-file-label">Upload photos from computer</strong>
                 <em>Drag files here or choose files</em>
-                <input type="file" multiple accept="image/*,.jpg,.jpeg,.png,.webp,.heic" aria-label="Upload photos from computer" onChange={(event) => handleFiles(event.target.files)} />
+                <input id="damx-upload-file-input" type="file" multiple accept="image/*,.jpg,.jpeg,.png,.webp,.heic" aria-labelledby="damx-upload-file-label" onChange={(event) => handleFiles(event.target.files)} />
               </label>
 
               <div className="damx-drive-link">
                 <LinkIcon size={17} aria-hidden="true" />
-                <input value={sourceLink} onChange={(event) => { setSourceLink(event.target.value); setReceipt(null); }} placeholder="Paste Google Drive link" aria-label="Paste Google Drive link" />
+	                <input value={sourceLink} onChange={(event) => { setSourceLink(event.target.value); setReceipt(null); }} placeholder="Paste source link" aria-label="Paste source link" />
                 {sourceLink ? <button type="button" onClick={() => setSourceLink("")}>Remove</button> : null}
               </div>
 
@@ -1076,7 +1330,7 @@ export function EnterpriseUploadPage() {
                 <section className="damx-upload-preview" aria-label="Selected photos and links">
                   <header>
                     <strong>{selectedCountLabel}</strong>
-                    <span>{validSourceLink ? "Ready for details" : "Drive link needs http or https"}</span>
+	                    <span>{files.length || validSourceLink ? "Ready for details" : "Source link needs http or https"}</span>
                     {files.length ? <button type="button" onClick={() => setFiles([])}>Remove all</button> : null}
                   </header>
                   <div className="damx-preview-grid">
@@ -1094,7 +1348,7 @@ export function EnterpriseUploadPage() {
                       <article className="damx-preview-link">
                         <LinkIcon size={18} aria-hidden="true" />
                         <div>
-                          <strong>Google Drive link</strong>
+	                          <strong>Source link</strong>
                           <small>{validSourceLink ? sourceLinkHost : "Needs full http or https link"}</small>
                         </div>
                       </article>
@@ -1111,15 +1365,17 @@ export function EnterpriseUploadPage() {
                   <label className="damx-field"><span>Date *</span><input value={eventDate} onChange={(event) => setEventDate(event.target.value)} type="date" /></label>
                   <label className="damx-field"><span>Ministry / team *</span><input value={ministry} onChange={(event) => setMinistry(event.target.value)} placeholder="Youth / RE" /></label>
                   <label className="damx-field"><span>Photographer / source *</span><input value={source} onChange={(event) => setSource(event.target.value)} placeholder="Media team or photographer" /></label>
-                  <label className="damx-field"><span>Location</span><input value={locationName} onChange={(event) => setLocationName(event.target.value)} placeholder="Church, city, or room" /></label>
-                  <label className="damx-field is-wide"><span>Notes for reviewers</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Anything the media team should know." /></label>
+                  <label className="damx-field"><span>Location *</span><input value={locationName} onChange={(event) => setLocationName(event.target.value)} placeholder="Church, city, or room" /></label>
+                  <label className="damx-field is-wide"><span>Intended use / permission note *</span><textarea value={usageNote} onChange={(event) => setUsageNote(event.target.value)} placeholder="How might these photos be used? Note any permission or consent context." /></label>
+                  <label className="damx-field is-wide"><span>People / minors note</span><textarea value={rightsNote} onChange={(event) => setRightsNote(event.target.value)} placeholder="Tell us if children, visitors, sensitive settings, or consent questions may be involved." /></label>
+                  <label className="damx-field is-wide"><span>Notes for reviewers</span><textarea value={reviewerNote} onChange={(event) => setReviewerNote(event.target.value)} placeholder="Anything the media team should know." /></label>
                 </div>
               </section>
             ) : null}
 
             <footer className="damx-upload-footer">
               <div>
-                <p>Media team reviews photos before anything becomes public.</p>
+                <p>Media team reviews every submission before use.</p>
                 <details>
                   <summary>How review works</summary>
                   <span>We check rights, people/youth visibility, and usage before sharing photos.</span>
@@ -1295,12 +1551,12 @@ export function EnterpriseCollectionsPage() {
     { key: "ministry", header: "Ministry", sortValue: (row) => row.ministry, render: (row) => row.ministry },
     { key: "use", header: "Use case", render: (row) => row.useCase },
     { key: "count", header: "Asset count", sortValue: (row) => row.assetIds.length, render: (row) => row.assetIds.length },
-    { key: "ready", header: "Portal Ready assets", render: (row) => readinessForAssets(collectionAssets(row)).ready },
+    { key: "ready", header: "Assets with guidance", render: (row) => readinessForAssets(collectionAssets(row)).ready },
     { key: "needs", header: "Needs Evidence", render: (row) => readinessForAssets(collectionAssets(row)).needsEvidence },
     { key: "owner", header: "Owner", render: (row) => row.owner },
     { key: "updated", header: "Last updated", sortValue: (row) => row.lastUpdated, render: (row) => formatDate(row.lastUpdated) },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={collectionDisplayStatus(row)} compact /> },
-    { key: "actions", header: "Actions", render: (row) => <div className="damx-row-actions"><button type="button">Open collection</button><button type="button">Create distribution set</button></div> }
+    { key: "status", header: "Status", render: (row) => <CollectionUseStatusBadge collection={row} compact /> },
+    { key: "actions", header: "Actions", render: (row) => <div className="damx-row-actions"><button type="button">Open collection</button></div> }
   ];
 
   return (
@@ -1310,14 +1566,13 @@ export function EnterpriseCollectionsPage() {
         description="Organize ministry assets into curated sets. Asset-level approval still controls reuse and download."
         metadata={<><span>{collections.length} collections</span><span>{totalAssets} asset references</span></>}
         primaryAction={<EnterpriseButton tone="primary" icon={<Plus size={16} aria-hidden="true" />} onClick={() => setNotice("Create collection opened. This does not approve assets.")}>Create collection</EnterpriseButton>}
-        secondaryActions={<EnterpriseButton icon={<PackageCheck size={16} aria-hidden="true" />} href={routeWithRole("/distribution-sets", role)}>Create distribution set</EnterpriseButton>}
       />
       {notice ? <p className="damx-notice">{notice}</p> : null}
       <label className="damx-search"><Search size={16} aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search collections by name, ministry, event, use case..." /></label>
       <DamxPreviewStrip
         assets={selectedAssets.length ? selectedAssets : portalReadyAssets()}
         title="Collection preview samples"
-        detail={selected ? `${selected.name} records shown with local ResourceSpace thumbnail routes.` : "Preview-backed local records appear before package planning."}
+        detail={selected ? `${selected.name} records shown with local preview routes.` : "Preview-backed local records appear before package planning."}
       />
       <div className="damx-library-layout">
         <main className="damx-library-main">
@@ -1327,7 +1582,7 @@ export function EnterpriseCollectionsPage() {
               const ready = readinessForAssets(collectionAssets(collection));
               return (
                 <button className={selected?.id === collection.id ? "is-active" : undefined} type="button" key={collection.id} onClick={() => setSelectedId(collection.id)}>
-                  <span><strong>{collection.name}</strong><small>{collection.ministry} | {collection.assetIds.length} assets</small><span><StatusBadge status={collectionDisplayStatus(collection)} compact /> {ready.ready} ready | {ready.needsEvidence} needs evidence</span></span>
+                  <span><strong>{collection.name}</strong><small>{collection.ministry} | {collection.assetIds.length} assets</small><span><CollectionUseStatusBadge collection={collection} compact /> {ready.ready} with guidance | {ready.needsEvidence} need review</span></span>
                 </button>
               );
             })}
@@ -1336,12 +1591,11 @@ export function EnterpriseCollectionsPage() {
         <aside className="damx-inspector">
           {selected ? (
             <>
-              <div className="damx-inspector-title"><div><h2>{selected.name}</h2><span>{selected.useCase}</span></div><StatusBadge status={collectionDisplayStatus(selected)} /></div>
+              <div className="damx-inspector-title"><div><h2>{selected.name}</h2><span>{selected.useCase}</span></div><CollectionUseStatusBadge collection={selected} /></div>
               <p>{selected.description}</p>
               <ReadinessPanel score={selectedReadiness.score} ready={selectedReadiness.ready} total={selectedReadiness.total} blockers={selectedAssets.flatMap((asset) => asset.blockers).slice(0, 6)} title="Asset readiness" />
               <div className="damx-inspector-actions">
                 <EnterpriseButton tone="primary" icon={<FolderOpen size={15} aria-hidden="true" />} href={routeWithRole(`/library?collection=${selected.id}`, role)}>Open collection</EnterpriseButton>
-                <EnterpriseButton icon={<PackageCheck size={15} aria-hidden="true" />} href={routeWithRole(`/distribution-sets?collection=${selected.id}`, role)}>Create distribution set</EnterpriseButton>
               </div>
               <section><h3>Blocked or missing assets</h3>{selectedAssets.filter((asset) => asset.blockers.length).map((asset) => <p className="damx-blocker-line" key={asset.id}>{asset.title}: {asset.blockers[0]}</p>)}</section>
               <p>Collection approval does not override asset approval.</p>
@@ -1351,7 +1605,6 @@ export function EnterpriseCollectionsPage() {
       </div>
       <div className="damx-sticky-actions">
         <EnterpriseButton tone="primary" href={routeWithRole(`/library?collection=${selected?.id || ""}`, role)}>Open collection</EnterpriseButton>
-        <EnterpriseButton href={routeWithRole(`/distribution-sets?collection=${selected?.id || ""}`, role)}>Create distribution set</EnterpriseButton>
       </div>
     </div>
   );
@@ -1595,7 +1848,7 @@ export function EnterpriseAdminPage({ initialModule = "dashboard", adminOnly = f
         <>
           <section className="damx-governance-grid">
             {[
-              ["Approval health", `${portalReadyAssets().length}/${damAssets.length}`, "Portal Ready assets with approved derivatives."],
+              ["Approval health", `${portalReadyAssets().length}/${damAssets.length}`, "Assets with approved derivatives and use guidance."],
               ["Missing evidence", String(damAssets.filter((asset) => asset.displayStatus === "Needs Evidence").length), "Owner, consent, or derivative proof missing."],
               ["Expiring rights", String(damAssets.filter((asset) => asset.displayStatus === "Expiring Soon").length), "Rights/license recheck nearing deadline."],
               ["Blocked assets", String(damAssets.filter((asset) => asset.displayStatus === "Blocked").length), "Policy prevents reuse or export."],
@@ -1632,10 +1885,9 @@ export function EnterpriseHelpPage({ policyCenter = false }: { policyCenter?: bo
     "How to find approved photos",
     "How to request reuse",
     "Why source files are restricted",
-    "What photo-only beta means",
+    "What current photo support means",
     "Report a rights issue",
     "Review people/minors evidence",
-    "Build a distribution set",
     "Understand source custody model"
   ].filter((item) => item.toLowerCase().includes(query.toLowerCase()));
   return (
@@ -1654,7 +1906,6 @@ export function EnterpriseHelpPage({ policyCenter = false }: { policyCenter?: bo
             {[
               ["Upload assets for review", "/upload", UploadCloud],
               ["Open review queue", "/review", ShieldCheck],
-              ["Create distribution set", "/distribution-sets", PackageCheck],
               ["Open Library", "/library", Library]
             ].map(([label, href, Icon]) => (
               <Link href={routeWithRole(String(href), role)} key={String(label)}>
@@ -1669,7 +1920,7 @@ export function EnterpriseHelpPage({ policyCenter = false }: { policyCenter?: bo
             {articles.map((article) => (
               <article key={article}>
                 <FileText size={16} aria-hidden="true" />
-                <div><strong>{article}</strong><p>Policy-safe DAM guidance for approved photos, reuse requests, source restrictions, beta limits, evidence, approvals, and audit trails.</p></div>
+                <div><strong>{article}</strong><p>Policy-safe DAM guidance for approved photos, reuse requests, source restrictions, current limits, evidence, approvals, and audit trails.</p></div>
                 <ExternalLink size={14} aria-hidden="true" />
               </article>
             ))}

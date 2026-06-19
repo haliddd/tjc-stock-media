@@ -26,12 +26,12 @@ describe("publicBuildInfo", () => {
       commitShort: "63474a70e930",
       branch: "codex/merge-recommended-set-2026-06-17",
       routeSurface: {
-        homePage: "EnterpriseLibraryPage",
+        homePage: "EnterprisePortalHomePage",
         uploadPage: "EnterpriseUploadPage"
       }
     });
     expect(info.routeSurface.routeCount).toBeGreaterThanOrEqual(20);
-    expect(info.routeSurface.navItemCount).toBeGreaterThanOrEqual(15);
+    expect(info.routeSurface.navItemCount).toBeGreaterThanOrEqual(8);
     expect(serialized).not.toContain("secret-session-value");
     expect(serialized).not.toContain("real-code-do-not-leak");
   });

@@ -32,7 +32,7 @@ const intakeTypes = [
   { id: "youth", label: "Youth/children", detail: "Consent and visibility evidence required.", icon: Users },
   { id: "sermon", label: "Sermon/teaching photos", detail: "Speaker, context, and usage scope for review.", icon: FileText },
   { id: "graphics", label: "Graphics/flyers", detail: "Design rights, fonts, and channel fit.", icon: FileCheck2 },
-  { id: "music", label: "Hymn/music context", detail: "Future audio/video route; beta only flags related photos or graphics.", icon: ShieldCheck },
+  { id: "music", label: "Hymn/music context", detail: "Future audio/video route; this page only flags related photos or graphics.", icon: ShieldCheck },
   { id: "source-link", label: "Source link only", detail: "Media-team link or shared source for reviewer intake.", icon: LinkIcon }
 ] as const;
 
@@ -240,7 +240,7 @@ export function UploadPage() {
       toastUploadComplete();
       goToStep(4);
     } else {
-      toastUploadFailed(safeError || "No files were approved or published.");
+      toastUploadFailed(safeError || "No files moved forward.");
     }
   }
 
@@ -293,7 +293,7 @@ export function UploadPage() {
         signals={[
           { label: "Send behavior", value: "Never publishes", tone: "blocked" },
           { label: "Reviewer packet", value: "Source, people, rights", tone: "info" },
-          { label: "Hosted beta", value: "Photos only", tone: "info" },
+          { label: "Current intake", value: "Photos only", tone: "info" },
           { label: "Default state", value: uploadDefaultState.status, tone: "review" },
           { label: "Safe outcome", value: "Approval creates usable copy", tone: "approved" }
         ]}
@@ -323,9 +323,9 @@ export function UploadPage() {
             <strong className="text-tjc-evergreen">{selectedType.label}</strong>
           </div>
           <PacketRequirementPanel typeLabel={selectedType.label} items={packetRequirementItems} />
-          <section className="grid gap-3 rounded-[14px] border border-[#c8d7e6] bg-[#f2f7fb] p-4 text-sm font-semibold text-[#27435b]" aria-label="Beta upload boundaries">
+          <section className="grid gap-3 rounded-[14px] border border-[#c8d7e6] bg-[#f2f7fb] p-4 text-sm font-semibold text-[#27435b]" aria-label="Upload boundaries">
             <div>
-              <h2 className="text-base font-black text-tjc-ink">Beta intake boundaries</h2>
+              <h2 className="text-base font-black text-tjc-ink">Intake boundaries</h2>
               <p className="mt-1 leading-relaxed">Send creates reviewer work only. Browser upload is for photos/light graphics and links. Large media uses the admin intake path.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

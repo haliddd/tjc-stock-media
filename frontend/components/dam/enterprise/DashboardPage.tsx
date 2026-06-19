@@ -123,10 +123,10 @@ export function EnterpriseDashboardPage() {
             <button type="submit">Search Library</button>
           </form>
         </div>
-        <aside className="ed-dashboard-beta-card" aria-label="Beta scope">
+        <aside className="ed-dashboard-beta-card" aria-label="Current media scope">
           <SourcePill source={search.source} live={search.live} />
           <dl>
-            <div><dt>Beta scope</dt><dd>Photo-only beta</dd></div>
+            <div><dt>Media scope</dt><dd>Photos first</dd></div>
             <div><dt>Source files</dt><dd>Restricted</dd></div>
             <div><dt>Source truth</dt><dd>{sourceTruthLabel(search.source)}</dd></div>
           </dl>

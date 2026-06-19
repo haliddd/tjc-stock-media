@@ -124,8 +124,14 @@ export type StockMediaAsset = {
   usageTerms?: string[];
   duplicateGroup?: string;
   duplicateRole?: string;
+  checksum?: string;
+  checksum_sha256?: string;
   checksumSha256?: string;
   reviewer?: string;
+  reviewedBy?: string;
+  reviewed_by?: string;
+  reviewedAt?: string;
+  reviewed_at?: string;
   reviewedDate?: string;
   rightsNotes?: string;
   usageGuidance?: string;
@@ -134,8 +140,21 @@ export type StockMediaAsset = {
     | "internal-approved-copy-allowed"
     | "not-downloadable"
     | "admin-original-only";
+  resource_space_id?: string | number;
   resourceSpaceId?: string;
+  source_album?: string;
+  source_path?: string;
   sourcePath?: string;
+  review_status?: string;
+  rights_status?: string;
+  approvedForPublic?: boolean;
+  approved_for_public?: boolean;
+  approvedForInternal?: boolean;
+  approved_for_internal?: boolean;
+  lastSyncedAt?: string;
+  last_synced_at?: string;
+  syncSource?: string;
+  sync_source?: string;
   masterDrivePath?: string;
   masterCustodyPathStatus?: MasterCustodyPathStatus;
   originalFilename?: string;

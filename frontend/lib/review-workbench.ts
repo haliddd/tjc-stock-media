@@ -1,5 +1,5 @@
 import type { EnterpriseStatus } from "@/lib/enterprise-status";
-import { buildDuplicateGroupCounts } from "@/lib/asset-governance";
+import { assetHasSourceProvenance, assetReviewedDate, assetRightsStatusLabel, buildDuplicateGroupCounts } from "@/lib/asset-governance";
 import { buildReviewEvidenceDecision, reviewChecklistItems, reviewChecklistLabelByField, reviewDecisionMissingLabels, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
 import type { ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
 import { missingReviewEvidence } from "@/lib/review-evidence";
@@ -10,7 +10,7 @@ export type ReviewDecisionAction = {
   label: string;
   helper: string;
   status: EnterpriseStatus;
-  action: "Approve Public" | "Request More Info" | "Do Not Use";
+  action: ReviewActionBackend;
   tone?: "approve" | "restrict";
   icon: "check" | "file" | "alert";
 };
@@ -21,17 +21,16 @@ export const reviewEvidenceGroups: Array<{
   title: string;
   fields: Array<keyof ReviewEvidenceChecklist>;
 }> = [
-  { title: "Source", fields: ["sourceConfirmed", "proofLinkAttached"] },
-  { title: "Rights", fields: ["rightsConfirmed", "attributionConfirmed", "creditRequirementChecked"] },
+  { title: "Rights/consent", fields: ["rightsConfirmed", "attributionConfirmed", "creditRequirementChecked"] },
   { title: "People/minors", fields: ["peopleVisibilityConfirmed", "childrenYouthChecked"] },
-  { title: "Usage scope", fields: ["usageScopeSelected", "sensitiveContextChecked", "expirationRereviewSet"] },
-  { title: "Approval decision", fields: ["derivativeAvailable"] }
+  { title: "Event/context", fields: ["sourceConfirmed", "proofLinkAttached", "sensitiveContextChecked"] },
+  { title: "Usage scope", fields: ["usageScopeSelected", "derivativeAvailable", "expirationRereviewSet"] }
 ];
 
 export const reviewDecisionActions: ReviewDecisionAction[] = [
   {
-    id: "approve",
-    label: "Approve",
+    id: "approve-public",
+    label: "Approve public",
     helper: "Queues a pending ResourceSpace write.",
     status: "Approved",
     action: "Approve Public",
@@ -39,8 +38,17 @@ export const reviewDecisionActions: ReviewDecisionAction[] = [
     icon: "check"
   },
   {
-    id: "request-changes",
-    label: "Request Changes",
+    id: "approve-internal",
+    label: "Approve internal only",
+    helper: "Queues an internal-only pending ResourceSpace write.",
+    status: "Approved",
+    action: "Approve Internal",
+    tone: "approve",
+    icon: "check"
+  },
+  {
+    id: "needs-more-info",
+    label: "Needs more info",
     helper: "Send back to uploader for updates.",
     status: "Needs Review",
     action: "Request More Info",
@@ -56,7 +64,7 @@ export const reviewDecisionActions: ReviewDecisionAction[] = [
   },
   {
     id: "restrict",
-    label: "Restrict",
+    label: "Restrict / do not publish",
     helper: "Limit or block usage of this asset.",
     status: "Restricted",
     action: "Do Not Use",
@@ -106,7 +114,7 @@ export type ReviewQueueNextMove = {
 };
 
 function reviewDateValue(asset: StockMediaAsset) {
-  return Date.parse(asset.importDate || asset.capturedDate || asset.reviewedDate || "") || 0;
+  return Date.parse(asset.importDate || asset.capturedDate || assetReviewedDate(asset) || "") || 0;
 }
 
 export function reviewWaitingDays(asset?: StockMediaAsset, now = Date.now()) {
@@ -131,7 +139,7 @@ function rightsEvidenceMissing(asset: StockMediaAsset) {
 }
 
 export function buildReviewQueueMetrics(assets: StockMediaAsset[]): ReviewQueueMetric[] {
-  const rightsUnclear = assets.filter((asset) => /unknown|needs review|review required|missing|unclear/i.test(`${asset.rightsStatus || ""} ${asset.consentStatus || ""}`)).length;
+  const rightsUnclear = assets.filter((asset) => /unknown|needs review|review required|missing|unclear/i.test(`${assetRightsStatusLabel(asset)} ${asset.consentStatus || ""}`)).length;
   const missingEvidence = assets.filter((asset) => missingReviewFields(asset).length > 0).length;
   const likelyReady = assets.filter((asset) => reviewMetadataCompleteness(asset).percent >= 75 && missingReviewFields(asset).length <= 1).length;
   return [
@@ -324,8 +332,8 @@ export function buildReviewQueueNextMove(
 export function reviewMetadataCompleteness(asset?: StockMediaAsset) {
   if (!asset) return { completed: 0, total: 8, percent: 0, label: "No asset selected" };
   const rows = [
-    asset.sourceSystem || asset.sourcePlatform || asset.sourceAccount,
-    asset.rightsStatus,
+    assetHasSourceProvenance(asset) ? "source" : "",
+    assetRightsStatusLabel(asset),
     asset.consentStatus,
     asset.peopleRisk && asset.peopleRisk !== "Unknown" ? asset.peopleRisk : "",
     asset.usageScope && asset.usageScope !== "Do Not Publish" ? asset.usageScope : "",

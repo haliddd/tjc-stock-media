@@ -29,11 +29,10 @@ import { cn } from "@/lib/utils";
 import { routeWithRole } from "@/lib/role-routes";
 
 const sidebarGroupCopy: Record<string, { label: string; detail: string }> = {
-  Media: { label: "Media", detail: "" },
-  Workflow: { label: "Workflow", detail: "" },
-  Governance: { label: "Governance", detail: "" },
-  Admin: { label: "Admin", detail: "" },
-  Support: { label: "Support", detail: "" }
+  Photos: { label: "Media", detail: "" },
+  Actions: { label: "Actions", detail: "" },
+  Admin: { label: "Admin Zone", detail: "" },
+  Help: { label: "Help Center", detail: "" }
 };
 
 function useCurrentHash(pathname: string, currentSearch: string) {
@@ -54,9 +53,9 @@ function useCurrentHash(pathname: string, currentSearch: string) {
 }
 
 function SidebarLink({ item, compact = false }: { item: DamShellNavItem; compact?: boolean }) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
-  const currentSearch = searchParams.toString();
+  const currentSearch = searchParams?.toString() || "";
   const currentHash = useCurrentHash(pathname, currentSearch);
   const { role } = useDemoRole();
   const { setOpenMobile, isMobile } = useSidebar();
@@ -112,16 +111,16 @@ function BrandLockup() {
         <Menu className="size-4" aria-hidden="true" />
       </button>
       <Link
-        href={routeWithRole("/library", role)}
+        href={routeWithRole("/", role)}
         className="dam-sidebar-brand-link flex min-w-0 flex-1 items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-        aria-label="True Jesus Church Media Library home"
+        aria-label="True Jesus Church Media Portal home"
       >
         <span className="dam-sidebar-logo-mark grid size-7 shrink-0 place-items-center overflow-hidden">
           <img src="/brand/tjc-logo-english-color.png" alt="" aria-hidden="true" className="h-full w-full object-contain" />
         </span>
         <span className="min-w-0">
           <strong className="block truncate text-sm font-black leading-tight">True Jesus Church</strong>
-          <span className="block truncate text-xs font-semibold">Media Library</span>
+          <span className="block truncate text-xs font-semibold">Media Portal</span>
         </span>
       </Link>
       <button
@@ -153,11 +152,11 @@ function SidebarUserCard() {
     <div className="dam-sidebar-user">
       <div className="dam-sidebar-avatar" aria-hidden="true">LC</div>
       <div className="min-w-0">
-        <strong>{betaLocked ? "Internal beta access" : "admin"}</strong>
+        <strong>{betaLocked ? "Restricted access" : "Signed in"}</strong>
         <span>{role}</span>
       </div>
       {betaLocked ? (
-        <button className="dam-sidebar-logout" type="button" onClick={logout} disabled={loggingOut} aria-label="Log out of internal beta access" title="Log out">
+        <button className="dam-sidebar-logout" type="button" onClick={logout} disabled={loggingOut} aria-label="Log out of restricted media portal access" title="Log out">
           <LogOut className="size-4" aria-hidden="true" />
         </button>
       ) : null}

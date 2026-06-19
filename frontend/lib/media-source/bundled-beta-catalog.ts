@@ -3,8 +3,8 @@ import type { MediaSourceStatus, StockMediaAsset } from "@/lib/types";
 
 export const bundledBetaCatalogStatus: MediaSourceStatus = {
   adapter: "bundled-beta-catalog",
-  label: "Bundled ResourceSpace beta snapshot",
-  detail: "Reading a sanitized 181-record MVP 2024 LM Photos metadata snapshot for hosted beta. This is not live ResourceSpace writeback; source paths, checksums, and originals remain unavailable.",
+  label: "Bundled ResourceSpace-derived metadata snapshot",
+  detail: "Reading a sanitized 181-record MVP 2024 LM Photos metadata snapshot. This is not live ResourceSpace writeback; source paths, checksums, and originals remain unavailable.",
   readOnly: true,
   live: false,
   sourceKind: "resourcespace"

@@ -37,14 +37,32 @@ import {
 } from "@/lib/package-drafts";
 import { packageAssetRef } from "@/lib/package-refs";
 import { buildPortalReuseDecision } from "@/lib/portal-reuse-decision";
+import { canAccessRoute } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
 import { matchesCatalogFilter } from "@/lib/catalog-language";
 import { cn } from "@/lib/ui";
+import type { DemoRole } from "@/lib/types";
 import { ActionButton, AssetPreviewStrip, AssetThumb, ErrorCard, LoadingCard } from "./EnterpriseShared";
 
 export function EnterprisePackageBuilderPage() {
-  const router = useRouter();
   const { role } = useDemoRole();
+  if (!canAccessRoute(role, "/packages")) {
+    return (
+      <div className="enterprise-page">
+        <section className="ed-card ed-access-block">
+          <Lock size={28} aria-hidden="true" />
+          <h1>Package Builder requires DAM Admin role</h1>
+          <p>Package drafts, delivery readiness, and support checks are restricted to DAM Admins.</p>
+          <a href={routeWithRole("/library", role)}>Return to Media Library</a>
+        </section>
+      </div>
+    );
+  }
+  return <EnterprisePackageBuilderContent role={role} />;
+}
+
+function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
+  const router = useRouter();
   const opsView = role === "Reviewer" || role === "DAM Admin";
   const sourceRecordLabel = opsView ? "ResourceSpace" : "media library";
   const refLabel = opsView ? "ResourceSpace refs" : "media references";
@@ -130,7 +148,7 @@ export function EnterprisePackageBuilderPage() {
     ? governance.reason
     : "Readiness review becomes available after each required section has at least one approved reference.";
   const previewDisabledReason = governance.canPreview ? undefined : "Available after approved references are selected.";
-  const shareDisabledReason = governance.canShare ? undefined : "Disabled in local prototype until identity and internal access policy are configured.";
+  const shareDisabledReason = governance.canShare ? undefined : "Draft-only. Disabled until identity, durable share storage, and internal access policy are configured.";
   const publishDisabledReason = governance.totalRefs ? undefined : "Available after approved references are selected.";
   const saveDisabledReason = canSaveDraft ? undefined : "Save draft requires Contributor, Reviewer, or DAM Admin role.";
   const availableAssetsForTargetSection = (sectionId: string) => availableAssetsForSection({ draft, sectionId, assets: sourceAssets, approvedOnly, statusOf: packageAssetStatus });
@@ -154,7 +172,7 @@ export function EnterprisePackageBuilderPage() {
     }
     setSaving(true);
     try {
-      const response = await fetch("/api/packages", {
+      const response = await fetch(`/api/packages?role=${encodeURIComponent(role)}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ draft })
@@ -162,7 +180,7 @@ export function EnterprisePackageBuilderPage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Package draft save failed.");
       if (payload.package?.id) setDraft((current) => ({ ...current, id: payload.package.id, updatedAt: payload.package.updatedAt }));
-      setPackageMessage(`Package draft saved to ${payload.storageMode || "local-json"} with ${payload.package?.governance?.totalRefs ?? governance.totalRefs} ${refLabel}. Local prototype only.`);
+      setPackageMessage(`Package draft saved to ${payload.storageMode || "local-json"} with ${payload.package?.governance?.totalRefs ?? governance.totalRefs} ${refLabel}. Draft-only mode.`);
     } catch (error) {
       setPackageMessage(error instanceof Error ? error.message : "Package draft save failed.");
     } finally {
@@ -175,7 +193,7 @@ export function EnterprisePackageBuilderPage() {
   };
 
   const prepareShare = () => {
-    setPackageMessage("Share Link Draft checked locally. No external email, public link, ZIP, or download was created.");
+    setPackageMessage("Handoff draft checked locally. No external email, public link, ZIP, or download was created.");
   };
 
   const queuePublish = () => {
@@ -260,15 +278,15 @@ export function EnterprisePackageBuilderPage() {
     },
     {
       label: "Delivery gates",
-      value: governance.canDownloadPackage ? "Review handoff eligible" : "Fail-closed",
+      value: governance.canDownloadPackage ? "Manifest review eligible" : "Fail-closed",
       detail: "No ZIP, public link, approved-copy download, source copy, or ResourceSpace writeback from this draft."
     }
   ];
   const actionLabels: Record<(typeof governance.actions)[number]["action"], string> = {
     "save-draft": "Save draft record",
     "request-review": "Request reviewer check",
-    "export-approved-copy-package": "Export manifest",
-    "prepare-share-decision": "Share Link Draft"
+    "export-approved-copy-package": "Manifest preview",
+    "prepare-share-decision": "Handoff draft"
   };
   const sectionRequirements = [
     ["Required", "Yes"],
@@ -283,14 +301,14 @@ export function EnterprisePackageBuilderPage() {
       detail: governance.canPreview ? "All selected references can render role-safe previews." : "Add approved, resolvable references before preview review."
     },
     {
-      label: "Share Link Draft",
+      label: "Handoff draft",
       status: governance.canShare ? "ready" : "blocked",
-      detail: governance.canShare ? "Internal access scope passes as draft only; no public link is created." : "Access scope remains locked until approved references and internal policy pass."
+      detail: governance.canShare ? "Internal access scope passes as draft only; no public link is created." : "Access scope remains locked until approved references, durable share storage, and internal policy pass."
     },
     {
-      label: "Export Manifest",
+      label: "Manifest preview",
       status: governance.canPublish ? "ready" : governance.totalRefs ? "review" : "blocked",
-      detail: governance.canPublish ? "Manifest can list approved derivatives while source files stay protected." : readinessReason
+      detail: governance.canPublish ? "Manifest preview can list approved derivatives while source files stay protected. No ZIP or delivery job is created." : readinessReason
     }
   ];
   const draftFlowRows = [
@@ -307,10 +325,10 @@ export function EnterprisePackageBuilderPage() {
         : "Add approved references before asking for readiness review."
     },
     {
-      label: "Handoff candidate",
+      label: "Reviewer handoff candidate",
       status: governance.canPublish ? "ready" : "blocked",
       detail: governance.canPublish
-        ? "Eligible to ask a reviewer for delivery handoff; local prototype still creates no ZIP or external share."
+        ? "Eligible to ask a reviewer for delivery handoff; draft-only mode creates no ZIP or external share."
         : "Blocked until every selected reference is Portal Ready for chosen use."
     }
   ];
@@ -326,17 +344,17 @@ export function EnterprisePackageBuilderPage() {
       detail: "Preview-only internal portal shape. No invite or hosted page."
     },
     {
-      label: "Public Portal Draft",
+      label: "Public Portal Candidate",
       status: governance.canPublish ? "review" : "blocked",
       detail: "Public-use candidate only after rights, derivative, and expiry checks pass."
     },
     {
-      label: "Share Link Draft",
+      label: "Handoff Draft",
       status: governance.canShare ? "review" : "blocked",
       detail: "Access placeholder only. No URL, email, or public mutation."
     },
     {
-      label: "Export Manifest",
+      label: "Manifest Preview",
       status: governance.totalRefs ? "review" : "blocked",
       detail: "Row preview for approved renditions. No ZIP or download job."
     }
@@ -348,7 +366,7 @@ export function EnterprisePackageBuilderPage() {
     { label: "Password required", value: "On - draft placeholder", icon: KeyRound },
     { label: "Terms required", value: "On - draft placeholder", icon: ClipboardList },
     { label: "Comments allowed", value: "Off - not wired", icon: FileText },
-    { label: "Downloads allowed", value: "Off - blocked in prototype", icon: Lock },
+    { label: "Downloads allowed", value: "Off - draft only", icon: Lock },
     { label: "Watermark / preview only", value: "On", icon: Eye },
     { label: "Recipient / access", value: "Placeholder only", icon: ShieldCheck },
     { label: "Analytics", value: "Placeholder only", icon: ClipboardList }
@@ -364,14 +382,14 @@ export function EnterprisePackageBuilderPage() {
             <span>{draft.status === "draft" ? "Draft" : draft.status}</span>
             <span>{ownerLabel}</span>
             <span>{lastSavedLabel}</span>
-            <span>Reference-only local prototype</span>
+            <span>Reference-only draft</span>
             {opsView ? <span>DAM source references</span> : null}
           </p>
         </div>
         <div className="ed-package-builder-actions" aria-label="Package builder actions">
           <ActionButton tone="primary" icon={Plus} ariaLabel="Add approved references to package draft" onClick={handlePrimaryPackageAction}>Add approved references</ActionButton>
           <ActionButton icon={UploadCloud} ariaLabel="Save package draft" disabled={saving || !canSaveDraft} disabledReason={saving ? "Saving draft now." : saveDisabledReason} onClick={saveDraft}>{saving ? "Saving..." : "Save draft"}</ActionButton>
-          <ActionButton icon={MoreHorizontal} ariaLabel="Additional package actions" disabled disabledReason="Reference-only local prototype: no ZIP, public link, source-file access, external share, or writeback will be created.">More actions</ActionButton>
+          <ActionButton icon={MoreHorizontal} ariaLabel="Additional package actions" disabled disabledReason="Reference-only draft: no ZIP, public link, source-file access, external share, or writeback will be created.">More actions</ActionButton>
         </div>
       </header>
 
@@ -657,8 +675,8 @@ export function EnterprisePackageBuilderPage() {
             <section className="ed-card ed-portal-readiness-inspector">
               <header className="ed-card-head">
                 <div>
-                  <h3>Portal/share readiness inspector</h3>
-                  <p>{governance.canPublish ? "Selected refs pass draft checks. Reviewer still controls any delivery handoff." : "Local prototype checks blockers without creating public delivery."}</p>
+                  <h3>Handoff readiness inspector</h3>
+                  <p>{governance.canPublish ? "Selected refs pass draft checks. Reviewer still controls any delivery handoff." : "Draft checks blockers without creating public delivery."}</p>
                 </div>
               </header>
               <div className="ed-summary-grid">
@@ -669,7 +687,7 @@ export function EnterprisePackageBuilderPage() {
                 <span><strong>{inspector.expirationIssues.toLocaleString()}</strong><small>expiration issues</small></span>
               </div>
               {governance.blockerSummary.length ? <div className="ed-decision-reasons">{governance.blockerSummary.slice(0, 4).map((item) => <span key={item.category}>{item.label}: {item.count}</span>)}</div> : null}
-              <p className="ed-action-helper">One blocked item blocks Share Link Draft, Public Portal Draft, and Export Manifest handoff.</p>
+              <p className="ed-action-helper">One blocked item blocks Handoff Draft, Public Portal Candidate, and Manifest Preview handoff.</p>
             </section>
             <details open>
               <summary>Draft objects</summary>
@@ -684,7 +702,7 @@ export function EnterprisePackageBuilderPage() {
             </details>
             <details open>
               <summary>Readiness</summary>
-              <p className="ed-action-helper">Chosen use: {governance.chosenUse.replace("-", " ")}. Portal draft, share draft, and export manifest stay blocked unless every item is Portal Ready for this use.</p>
+              <p className="ed-action-helper">Chosen use: {governance.chosenUse.replace("-", " ")}. Portal draft, handoff draft, and manifest preview stay blocked unless every item is Portal Ready for this use.</p>
               <div className="ed-command-readiness">
                 {readinessRows.map((item) => (
                   <p className={`ed-readiness-row is-${item.status}`} key={item.label}>
@@ -711,7 +729,7 @@ export function EnterprisePackageBuilderPage() {
               <div className="ed-draft-control-grid">
                 <label>
                   <span>Expiry date</span>
-                  <input type="text" value="Not set - local prototype" readOnly disabled />
+                  <input type="text" value="Not set - draft only" readOnly disabled />
                 </label>
                 <label>
                   <span>Recipient / access placeholder</span>
@@ -740,7 +758,7 @@ export function EnterprisePackageBuilderPage() {
             <details open>
               <summary>Manifest preview</summary>
               {manifestRows.length ? (
-                <div className="ed-manifest-preview-table" role="table" aria-label="Export Manifest preview rows">
+                <div className="ed-manifest-preview-table" role="table" aria-label="Manifest preview rows">
                   <div role="row">
                     <strong role="columnheader">Asset ref</strong>
                     <strong role="columnheader">Allowed rendition</strong>
@@ -756,7 +774,7 @@ export function EnterprisePackageBuilderPage() {
                     </div>
                   ))}
                 </div>
-              ) : <p className="ed-action-helper">Add references to preview Export Manifest rows for thumbnail, preview, approved web copy, approved print copy, and original restriction readiness.</p>}
+              ) : <p className="ed-action-helper">Add references to preview manifest rows for thumbnail, preview, approved web copy, approved print copy, and original restriction readiness.</p>}
             </details>
             <details open>
               <summary>Safe actions</summary>
@@ -764,14 +782,14 @@ export function EnterprisePackageBuilderPage() {
                 {governance.actions.map((item) => (
                   <p className={`is-${item.status}`} key={item.action}>
                     <strong>{actionLabels[item.action]}</strong>
-                    <span>{item.allowed ? "Allowed locally" : "Blocked"}</span>
+                    <span>{item.allowed ? "Draft check passes" : "Blocked"}</span>
                     <small>{item.reason}</small>
                   </p>
                 ))}
               </div>
               <div className="ed-package-rail-actions">
                 <ActionButton icon={Eye} ariaLabel="Preview package draft" disabled={!governance.canPreview} disabledReason={previewDisabledReason} onClick={previewPackage}>Preview draft</ActionButton>
-                <ActionButton icon={ShieldCheck} ariaLabel="Check share link draft" disabled={!governance.canShare} disabledReason={shareDisabledReason} onClick={prepareShare}>Share link draft</ActionButton>
+                <ActionButton icon={ShieldCheck} ariaLabel="Check handoff draft" disabled={!governance.canShare} disabledReason={shareDisabledReason} onClick={prepareShare}>Handoff draft</ActionButton>
                 <ActionButton tone="primary" icon={Lock} ariaLabel="Request package readiness review" disabled={reviewRequestBlocked} disabledReason={publishDisabledReason} onClick={queuePublish}>Request review</ActionButton>
               </div>
               <p className="ed-action-helper">{readinessUnlockCopy}</p>
@@ -779,7 +797,7 @@ export function EnterprisePackageBuilderPage() {
             </details>
             <details>
               <summary>Access scope</summary>
-              <p className="ed-action-helper">Internal Portal Draft only. No public link, ZIP package, source-file copying, or external share is created in local prototype.</p>
+              <p className="ed-action-helper">Internal Portal Draft only. No public link, ZIP package, source-file copying, or external share is created.</p>
               <label className="ed-toggle">Portal Ready only <input type="checkbox" checked={approvedOnly} onChange={(event) => setApprovedOnly(event.target.checked)} /></label>
             </details>
             <details open>

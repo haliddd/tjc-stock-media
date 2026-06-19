@@ -66,11 +66,11 @@ export function buildBrandKitGovernance({
     ...(!configured ? ["Brand kit collection is not configured."] : []),
     ...(configured && !assets.length ? ["Brand kit collection has no role-visible mapped assets."] : []),
     ...(internalOnlyAssets ? [`${internalOnlyAssets} assets are internal-only.`] : []),
-    ...(reviewRequiredAssets ? [`${reviewRequiredAssets} assets need review before kit download.`] : []),
-    ...(deliveryReady ? ["Brand kit packet is role-ready, but ZIP/share delivery is disabled in beta until durable storage, expiry, audit, and revocation are connected."] : [])
+    ...(reviewRequiredAssets ? [`${reviewRequiredAssets} assets need review before delivery handoff.`] : []),
+    ...(deliveryReady ? ["Brand kit packet is ready, but ZIP, public link, invite, and file delivery stay off until durable storage, expiry, audit, and revocation are connected."] : [])
   ];
   const summary = deliveryReady
-    ? `${portalReadyAssets} of ${assets.length} assets are Portal Ready; ZIP/share delivery remains disabled in beta.`
+    ? `${portalReadyAssets} of ${assets.length} assets are Portal Ready; delivery remains gated.`
     : `${portalReadyAssets} of ${assets.length} assets are Portal Ready; ${blockers.length} blockers remain.`;
 
   return {
@@ -97,8 +97,8 @@ export function buildBrandKitGovernance({
     },
     commands: [
       command("Preview", canPreview, canPreview ? "Mapped assets can render role-safe previews." : "Preview waits for configured collection and visible assets.", configured && assets.length > 0),
-      command("Share", canShare, deliveryReady ? "Share is disabled in beta; no public link or invite delivery is created." : "Share waits until every mapped asset is Portal Ready.", configured && assets.length > 0),
-      command("Download kit", canDownloadKit, deliveryReady ? "ZIP export is disabled in beta; approved copies remain behind per-asset download gates." : "ZIP export stays disabled until every mapped asset is Portal Ready.", configured)
+      command("Handoff draft", canShare, deliveryReady ? "Handoff stays local; no public link or invite delivery is created." : "Handoff waits until every mapped asset is Portal Ready.", configured && assets.length > 0),
+      command("Delivery check", canDownloadKit, deliveryReady ? "Delivery is gated; no ZIP, public link, or approved-copy file is created." : "Delivery check stays disabled until every mapped asset is Portal Ready.", configured)
     ]
   };
 }

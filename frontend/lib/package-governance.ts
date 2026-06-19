@@ -217,7 +217,7 @@ export function buildPackageActionDecisions(input: {
       action: "export-approved-copy-package",
       allowed: input.canPublish,
       status: input.canPublish ? "allowed" : "blocked",
-      reason: input.canPublish ? "Every item is Portal Ready; export manifest may list approved-copy derivatives only." : input.reason,
+      reason: input.canPublish ? "Every item is Portal Ready; manifest preview may list approved-copy derivatives only. No ZIP or delivery job is created." : input.reason,
       originalMasterIncluded: false,
       requiresApprovedCopyGate: true,
       durableShareStorage: false
@@ -423,7 +423,7 @@ export function buildPackageGovernance(
   const packageScore = readinessScore(totalRefs, portalReadyRefs);
   const packageStatus = readinessStatus({ totalRefs, missingRefs, blockedRefs });
   const reason = !hasRefs
-    ? `Package needs media ${refNoun} before preview, share-link draft, or export manifest review.`
+    ? `Package needs media ${refNoun} before preview, handoff draft, or manifest review.`
     : missingRefs
       ? `Package has media ${refNoun} that no longer resolve.`
       : internalOnlyRefs
@@ -432,7 +432,7 @@ export function buildPackageGovernance(
           ? "Readiness blocked until every ref is Portal Ready."
           : chosenUseBlockedRefs
             ? `Readiness blocked until every ref has an approved derivative for ${chosenUse.replace("-", " ")}.`
-          : "Every ref is Portal Ready for export manifest review.";
+          : "Every ref is Portal Ready for manifest review.";
   const blockerSummary = packageBlockerSummary(sections);
   const actions = buildPackageActionDecisions({ hasRefs, canPreview, canShare, canPublish, missingRefs, blockedRefs, reason });
 
@@ -459,7 +459,7 @@ export function buildPackageGovernance(
     actions,
     commandCenter: [
       command("Preview package draft", canPreview, canPreview ? `All ${refNoun} can render a role-safe preview.` : `Preview waits for resolvable ${refNoun} and role-safe previews.`, !canPreview && hasRefs),
-      command("Prepare Internal Portal Draft", canShare, canShare ? "Access stays policy-scoped; no public link is created here." : `Access waits until every selected ${refNoun} is Portal Ready for ${chosenUse.replace("-", " ")}.`, !canShare && hasRefs),
+      command("Prepare handoff draft", canShare, canShare ? "Access stays policy-scoped; no public link is created here." : `Access waits until every selected ${refNoun} is Portal Ready for ${chosenUse.replace("-", " ")} and durable share storage is configured.`, !canShare && hasRefs),
       command("Queue readiness review", canPublish, canPublish ? (canSeeOpsCopy ? "All refs are Portal Ready; DAM source files stay canonical." : "All references are Portal Ready; source files stay protected.") : reason, !canPublish && hasRefs)
     ],
     sections

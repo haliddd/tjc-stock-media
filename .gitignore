@@ -9,6 +9,9 @@ imports/
 exports/
 backups/
 .superpowers/
+.hermes/
+.vite/
+docs/runs/evidence/**/dev-server.pid
 credentials/
 secrets/
 *.pem

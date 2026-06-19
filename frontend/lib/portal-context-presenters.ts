@@ -52,10 +52,10 @@ function safeCollection(asset: StockMediaAsset) {
 }
 
 export function betaVisibilityLabel(assetOrAllowed?: StockMediaAsset | boolean | null) {
-  if (typeof assetOrAllowed === "boolean") return assetOrAllowed ? "Visible in beta" : "Hidden from beta";
+  if (typeof assetOrAllowed === "boolean") return assetOrAllowed ? "Visible in portal" : "Hidden from portal";
   if (!assetOrAllowed) return "Visibility unknown";
-  if (assetOrAllowed.visibilityTier === "archive" || assetOrAllowed.status === "Do Not Use") return "Hidden from beta";
-  return "Visible in beta";
+  if (assetOrAllowed.visibilityTier === "archive" || assetOrAllowed.status === "Do Not Use") return "Hidden from portal";
+  return "Visible in portal";
 }
 
 export function reuseAnswerLabel(state: ReuseState) {
@@ -123,7 +123,7 @@ export function presentAssetDetailContext(asset: StockMediaAsset, role: DemoRole
     canUseTitle: reuseAnswerLabel(packet.reuse.state),
     canUseSummary: useSummary(packet),
     canUseReason: useReason(packet),
-    primaryActionLabel: approved ? "Download approved copy" : packet.viewerVerdict.primaryAction,
+    primaryActionLabel: approved ? "Request approved copy" : packet.viewerVerdict.primaryAction,
     requestReviewLabel: approved ? "Review usage notes" : "Request DAM review",
     summaryFacts: unique([
       betaVisibilityLabel(asset),
@@ -188,7 +188,7 @@ export function presentReviewContext({
       ["File type", assetType(asset).toUpperCase()],
       ["File size", formatBytes(asset.fileSizeBytes)],
       ["Dimensions", metadataValue(asset.imageDimensions)],
-      ["Beta visibility", betaVisibilityLabel(asset)],
+      ["Portal visibility", betaVisibilityLabel(asset)],
       ["Reuse answer", reuseAnswerLabel(packet.reuse.state)]
     ],
     evidenceTableRows: [
@@ -214,8 +214,8 @@ export function presentPackageBuilderContext(governance: PackageGovernancePacket
 export function presentBrandKitContext(governance?: BrandKitGovernance, role: DemoRole = "Viewer", configured = false) {
   if (!governance) {
     return {
-      nextTitle: configured ? "Readiness loading" : "Connect DAM collection first",
-      nextDetail: configured ? "Checking mapped assets." : "No downloadable kit is shown until this Brand Hub maps to real DAM records.",
+      nextTitle: configured ? "Readiness loading" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect approved media first",
+      nextDetail: configured ? "Checking mapped assets." : role === "DAM Admin" ? "No kit download is shown until this Brand Hub maps to real DAM records." : "No kit download is shown until approved media is connected.",
       nextAction: role === "DAM Admin" ? "View setup details" : "Ask DAM Admin",
       tone: configured ? "review" : "blocked"
     } as const;
@@ -224,14 +224,14 @@ export function presentBrandKitContext(governance?: BrandKitGovernance, role: De
   if (governance.deliveryReady) {
     return {
       nextTitle: "Kit readiness packet ready",
-      nextDetail: "Every mapped asset is Portal Ready. Live ZIP/share delivery remains disabled in beta.",
+      nextDetail: "Every mapped asset is Portal Ready. ZIP/share delivery is still off.",
       nextAction: "View packet",
       tone: "review"
     } as const;
   }
 
   return {
-    nextTitle: governance.configured ? "Resolve kit restrictions" : "Connect DAM collection first",
+    nextTitle: governance.configured ? "Resolve kit restrictions" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect approved media first",
     nextDetail: governance.blockers[0] || governance.summary,
     nextAction: governance.configured ? "View blockers" : role === "DAM Admin" ? "View setup details" : "Ask DAM Admin",
     tone: governance.configured ? "review" : "blocked"

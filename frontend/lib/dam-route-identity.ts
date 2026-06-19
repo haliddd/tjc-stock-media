@@ -36,17 +36,8 @@ function normalizedHash(hash = "") {
   return hash.replace(/^#/, "");
 }
 
-function currentQueryBelongsToSiblingNav(pathname: string, params: URLSearchParams, hash: string) {
-  if ((pathname === "/help" || pathname === "/guide") && params.get("section") === "policies" && (!hash || hash === "policies")) {
-    return true;
-  }
+function currentQueryBelongsToSiblingNav(pathname: string, params: URLSearchParams) {
   if (pathname === "/library" && params.get("view") === "recent-uploads") {
-    return true;
-  }
-  if (pathname === "/requests" && params.get("view") === "my-tasks") {
-    return true;
-  }
-  if (pathname === "/review" && params.get("queue") === "rights-review") {
     return true;
   }
   return false;
@@ -72,7 +63,7 @@ function routeCandidateIsActive(pathname: string, currentSearch: string, current
     for (const [key, value] of targetParams) {
       if (currentParams.get(key) !== value) return false;
     }
-  } else if (hasParams(currentParams) && currentQueryBelongsToSiblingNav(targetPathname, currentParams, normalizedHash(currentHash))) {
+  } else if (hasParams(currentParams) && currentQueryBelongsToSiblingNav(targetPathname, currentParams)) {
     return false;
   }
 

@@ -76,7 +76,7 @@ describe("library bulk selection helpers", () => {
     const viewerLabels = buildLibraryBulkActions([asset()], "Viewer").map((action) => action.label);
     const contributorLabels = buildLibraryBulkActions([asset()], "Contributor").map((action) => action.label);
 
-    expect(viewerLabels).not.toContain("Send to review");
+    expect(viewerLabels).not.toContain("Request review");
     expect(viewerLabels).not.toContain("Mark internal-only");
     expect(viewerLabels).not.toContain("Approve");
     expect(viewerLabels).not.toContain("Reject");
@@ -84,7 +84,7 @@ describe("library bulk selection helpers", () => {
     expect(contributorLabels).not.toContain("Approve");
     expect(contributorLabels).not.toContain("Reject");
     expect(contributorLabels).not.toContain("Archive");
-    expect(contributorLabels).toContain("Send to review");
+    expect(contributorLabels).toContain("Request review");
   });
 
   it("disables unimplemented bulk workflows with helper copy", () => {
@@ -138,8 +138,8 @@ describe("library bulk selection helpers", () => {
       totalCount: 2,
       statusLabel: "1 of 2 eligible"
     });
-    expect(download?.warning).toContain("excluded by approved-copy gate");
-    expect(download?.disabledReason).toContain("Source/original files remain restricted");
+    expect(download?.warning).toContain("need permission before copy requests");
+    expect(download?.disabledReason).toContain("Private archive files stay protected");
   });
 
   it("summarizes multi-selection status, type, rights, tags, refs, and warnings", () => {
@@ -162,8 +162,13 @@ describe("library bulk selection helpers", () => {
     expect(summary.rightsBreakdown[0]?.[0]).toBe("Rights/consent unclear");
     expect(summary.sharedTags).toEqual(["shared"]);
     expect(summary.resourceSpaceIds).toEqual(["1001", "1002"]);
-    expect(summary.warnings.join(" ")).toContain("Source/original files are excluded");
+    expect(summary.warnings.join(" ")).toContain("Private archive files are excluded");
     expect(summary.actions.some((action) => action.id === "approve")).toBe(true);
+
+    const viewerSummary = buildLibrarySelectionSummary([
+      asset({ id: "ready", resourceSpaceId: "1001" })
+    ], "Viewer");
+    expect(viewerSummary.resourceSpaceIds).toEqual([]);
   });
 
   it("exports only role-safe selected metadata fields", () => {
@@ -180,9 +185,10 @@ describe("library bulk selection helpers", () => {
       })
     ]);
 
-    expect(csv.split("\n")[0]).toBe("\"id\",\"title\",\"status\",\"type\",\"collection\",\"rights\",\"usage-scope\",\"reference\"");
+    expect(csv.split("\n")[0]).toBe("\"id\",\"title\",\"status\",\"type\",\"album\",\"rights\",\"allowed-use\",\"reference\"");
     expect(csv).toContain("\"Comma, quote \"\"test\"\"\"");
     expect(csv).toContain("\"Approved Public\"");
+    expect(csv).not.toContain("1001");
     expect(csv).not.toContain("Private Album");
     expect(csv).not.toContain("/Shared Drive/Originals");
     expect(csv).not.toContain("/Master Archive");

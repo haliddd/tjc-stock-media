@@ -43,8 +43,8 @@ if (library) {
   if (library.includes("Quick lookSelected") || library.includes("Quick look{") || library.includes("Quick look</button><button")) {
     failures.push("Enterprise Library must not concatenate Quick look and Selected controls");
   }
-  if (!library.includes('className="ed-row-open"') || !library.includes(">Open</button>")) {
-    failures.push("Enterprise Library row action must keep Open as a separate action");
+  if (!library.includes('className="ed-row-open"') || (!library.includes(">Open</button>") && !library.includes(">Details</button>"))) {
+    failures.push("Enterprise Library row action must keep Details/Open as a separate action");
   }
   if (!library.includes('className={cn("ed-row-select"') || !library.includes("<CheckCircle2 size={13}") || !library.includes("Selected</>") || !library.includes(': "Select"')) {
     failures.push("Enterprise Library row selection must render a separate Selected state");
@@ -54,8 +54,8 @@ if (library) {
   }
   for (const text of [
     'className="ed-library-v3-topbar"',
-    'aria-label="DAM asset browser controls"',
-    "Save view",
+    'aria-label="Browse Photos controls"',
+    'aria-label="Save current search"',
     "No selection",
     'className={cn("ed-grid ed-marquee-grid"',
     'density === "compact"'
@@ -78,10 +78,10 @@ if (shared) {
   if (!shared.includes('title = "Download locked"') || !shared.includes("ed-lock-notice") || !shared.includes("data-disabled-reason")) {
     failures.push("Enterprise shared actions must keep explicit disabled download lock reasons");
   }
-  if (!shared.includes("Open the full record to run the approved-copy gate") || !shared.includes("Source files remain restricted")) {
+  if (!shared.includes("Open the full record to run the approved-copy gate") || !shared.includes("Full-resolution files remain restricted")) {
     failures.push("Enterprise inspector must explain why distribution/download actions are locked");
   }
-  if (!shared.includes("Quick look is read-only") || !shared.includes("no distribution copy, ZIP, or public link")) {
+  if (!shared.includes("Quick look is read-only") || !shared.includes("no ZIP or public link")) {
     failures.push("Quick look drawer must state read-only/no-distribution behavior");
   }
 }
@@ -89,18 +89,23 @@ if (shared) {
 const review = read("frontend/components/dam/enterprise/ReviewPage.tsx");
 if (review) {
   for (const text of [
-    'className="ed-preview-redaction-note"',
-    'aria-label="Preview redaction notice"',
-    "Role-safe derivative only. Source/original hidden.",
-    'className="ed-review-queue-tabs"',
-    'aria-label="Review queues"',
-    'className="ed-review-proof-notes"',
-    'aria-label="Proofing comments"',
-    "Evidence and next action"
+    "Review Uploads",
+    "Review submitted event media before use guidance changes.",
+    'className="review-batch-queue"',
+    'aria-label="Upload batches"',
+    'className="review-decision-panel"',
+    'aria-label="Decision panel"',
+    "Advanced details",
+    "Hidden in portal",
+    "Add a note for the contributor or future reviewers..."
   ]) {
     if (!review.includes(text)) failures.push(`Enterprise Review missing ${text}`);
   }
   for (const text of [
+    "Review Queue",
+    "Missing copyright evidence",
+    "Derivative gap",
+    "Active records",
     'className="ed-review-triage"',
     "Review preview samples",
     'className="ed-review-taxonomy"',
@@ -115,7 +120,9 @@ if (review) {
 const css = read("frontend/app/dam-enterprise.css");
 if (css) {
   for (const selector of [
-    ".enterprise-review .ed-preview-redaction-note",
+    ".review-uploads-page",
+    ".review-batch-queue",
+    ".review-decision-panel",
     ".ed-lock-notice",
     ".ed-row-open",
     ".ed-row-select"
@@ -129,8 +136,7 @@ if (seniorCss) {
   for (const selector of [
     ".enterprise-library .ed-library-v3-topbar",
     ".enterprise-library .ed-inspector-renditions",
-    ".enterprise-review .ed-review-queue-tabs",
-    ".enterprise-review .ed-review-proof-notes"
+    ".ed-library-v3-topbar"
   ]) {
     if (!seniorCss.includes(selector)) failures.push(`Senior staff CSS missing V3 selector ${selector}`);
   }
@@ -183,18 +189,18 @@ const routeIdentitySpecs = [
     navHref: 'href: "/requests"',
     h1: 'title="Requests"',
     forbiddenH1: 'title="Help Center"',
-    primarySection: 'data-primary-section="requests-table"',
-    inspector: "Request summary"
+    primarySection: 'data-primary-section="request-workflow"',
+    inspector: "What do you need?"
   },
   {
-    label: "My Tasks",
+    label: "My Work",
     routeFile: "frontend/app/my-tasks/page.tsx",
     componentFile: "frontend/components/dam/enterprise/MyTasksPage.tsx",
     navHref: 'href: "/my-tasks"',
-    h1: 'title="My Tasks"',
+    h1: "My Work",
     forbiddenH1: 'title="Help Center"',
-    primarySection: 'data-primary-section="task-work-queue"',
-    inspector: "Task context"
+    primarySection: 'data-primary-section="my-work-dashboard"',
+    inspector: "Open work"
   },
   {
     label: "Help Center",
@@ -204,17 +210,17 @@ const routeIdentitySpecs = [
     h1: 'Help Center',
     forbiddenH1: 'title="Requests"',
     primarySection: 'data-primary-section="help-articles"',
-    inspector: "Documentation scope"
+    inspector: "What do you need help with?"
   },
   {
-    label: "Recent Uploads",
+    label: "My Uploads",
     routeFile: "frontend/app/recent-uploads/page.tsx",
     componentFile: "frontend/components/dam/enterprise/RecentUploadsPage.tsx",
     navHref: 'href: "/recent-uploads"',
-    h1: 'title="Recent Uploads"',
+    h1: 'title={role === "Contributor" ? "My Uploads" : "Recent Uploads"}',
     forbiddenH1: 'title="Library"',
-    primarySection: 'data-primary-section="recent-uploads-ledger"',
-    inspector: "Intake context"
+    primarySection: 'data-primary-section="my-uploads-ledger"',
+    inspector: "Uploads saved from this browser"
   }
 ];
 

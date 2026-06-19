@@ -2,25 +2,67 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderOpen, Package, Search, ShieldCheck } from "lucide-react";
+import { FolderOpen, Grid3X3, Images, Search, ShieldAlert } from "lucide-react";
 import { useDemoRole } from "@/components/RoleProvider";
 import { useAssetsSearch } from "@/components/dam/useDamApi";
-import { collectionDefinitionForId, collectionGroupOrder } from "@/lib/catalog-language";
-import { sourceLabel, sourceNoun } from "@/lib/enterprise-display";
+import { collectionDefinitionForId } from "@/lib/catalog-language";
 import { canReview } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
 import type { CatalogCollection, SavedViewSummary } from "@/lib/types";
-import { ActionButton, AssetPreviewStrip, ErrorCard, LoadingCard, PageHeader, SourcePill, StatusBadge } from "./EnterpriseShared";
+import { ActionButton, ErrorCard, LoadingCard, PageHeader } from "./EnterpriseShared";
+import type { EnterpriseStatus } from "@/lib/enterprise-status";
 
-const savedSearchOrder = [
-  "approved-church-wide",
-  "needs-review",
-  "rights-basis-review",
-  "children-youth-review",
-  "rendition-gaps",
-  "duplicate-candidates",
-  "stale-approvals"
-];
+type CollectionSectionId = "featured" | "ministry" | "channel" | "review";
+type CollectionFilterId =
+  | "all"
+  | "ready"
+  | "review"
+  | "guidance"
+  | "internal"
+  | "rights"
+  | "ministry"
+  | "year"
+  | "media";
+
+type CollectionReadiness = {
+  readyCount: number;
+  reviewNeeded: number;
+  status: EnterpriseStatus;
+  useGuidance: string;
+  nextAction: string;
+  blockers: string[];
+};
+
+type CollectionCardModel = {
+  collection: CatalogCollection;
+  section: CollectionSectionId;
+  readiness: CollectionReadiness;
+};
+
+const reviewSavedViewIds = new Set(["needs-review", "rights-basis-review", "children-youth-review", "rendition-gaps", "duplicate-candidates", "stale-approvals"]);
+
+const sectionCopy: Record<CollectionSectionId, { title: string; description: string }> = {
+  featured: {
+    title: "Featured albums / events",
+    description: "Common starting points with item-level use guidance."
+  },
+  ministry: {
+    title: "Ministry albums / events",
+    description: "Church life, worship, teaching, and teams."
+  },
+  channel: {
+    title: "Channel albums / events",
+    description: "Website, slide, print, and social groupings."
+  },
+  review: {
+    title: "Review worklists",
+    description: "Reviewer queues kept out of normal browsing."
+  }
+};
+
+function normalizeText(value = "") {
+  return value.toLowerCase();
+}
 
 function matchesCollection(collection: CatalogCollection, query: string) {
   if (!query.trim()) return true;
@@ -40,60 +82,286 @@ function matchesCollection(collection: CatalogCollection, query: string) {
   return query.toLowerCase().split(/\s+/).filter(Boolean).every((term) => haystack.includes(term));
 }
 
-function packageReadiness(collection: CatalogCollection) {
+function collectionReadiness(collection: CatalogCollection): CollectionReadiness {
   const readyMatch = collection.approvalSummary.match(/\d+/);
   const readyCount = readyMatch ? Number(readyMatch[0]) : collection.count;
   const reviewNeeded = Math.max(0, collection.count - readyCount);
-  const score = collection.count ? Math.round((readyCount / collection.count) * 100) : 0;
+  const definition = collectionDefinitionForId(collection.id);
+  const isReviewList = definition?.group === "Governance collections" || collection.id === "review-intake" || collection.id === "archive-reference";
+  const isInternal = /internal/i.test(collection.name) || /internal/i.test(collection.description);
+  const blockers = [
+    reviewNeeded ? `${reviewNeeded.toLocaleString()} asset${reviewNeeded === 1 ? "" : "s"} need review` : "",
+    collection.peopleWarning || "",
+    /rights/i.test(collection.id) || /rights/i.test(collection.description) ? "Rights evidence needs reviewer attention" : "",
+    collection.id === "archive-reference" ? "Archive/reference records are not promoted for reuse" : ""
+  ].filter(Boolean);
   return {
     readyCount,
     reviewNeeded,
-    score,
-    label: reviewNeeded ? `${score}% package-ready` : "Ready set",
-    bestUse: collection.searchQuery || `${collection.ministry} media`
+    status: blockers.length || isReviewList ? "Needs Review" : isInternal ? "Read-only" : "Active",
+    useGuidance: blockers.length || isReviewList
+      ? "Restricted until reviewed"
+      : isInternal
+        ? "Internal ministry"
+        : "Item-level use guidance",
+    nextAction: blockers.length || isReviewList ? "Review issues" : "Open album",
+    blockers
   };
 }
 
-function groupedCollections(collections: CatalogCollection[]) {
-  return collectionGroupOrder.map((group) => ({
-    group,
-    collections: collections.filter((collection) => collectionDefinitionForId(collection.id)?.group === group)
-  })).filter((item) => item.collections.length);
+function sectionForCollection(collection: CatalogCollection): CollectionSectionId {
+  const group = collectionDefinitionForId(collection.id)?.group;
+  if (group === "Ministry collections") return "ministry";
+  if (group === "Channel collections") return "channel";
+  if (group === "Governance collections" || collection.id === "review-intake" || collection.id === "archive-reference") return "review";
+  return "featured";
 }
 
-function savedSearchesForPage(savedViews: SavedViewSummary[] = []) {
-  return savedSearchOrder
-    .map((id) => savedViews.find((view) => view.id === id))
-    .filter((view): view is SavedViewSummary => Boolean(view));
+function filterMatches(model: CollectionCardModel, activeFilter: CollectionFilterId) {
+  const { collection, section, readiness } = model;
+  const name = normalizeText(collection.name);
+  const description = normalizeText(collection.description);
+  if (activeFilter === "all") return true;
+  if (activeFilter === "ready") return readiness.status === "Active" || readiness.status === "Read-only";
+  if (activeFilter === "review") return readiness.status === "Needs Review" || section === "review";
+  if (activeFilter === "guidance") return name.includes("public") || readiness.useGuidance === "Item-level use guidance";
+  if (activeFilter === "internal") return name.includes("internal") || description.includes("internal") || readiness.useGuidance === "Internal ministry";
+  if (activeFilter === "rights") return collection.id.includes("rights") || description.includes("rights");
+  if (activeFilter === "ministry") return section === "ministry";
+  if (activeFilter === "year") return collection.dateRange !== "Date not available";
+  if (activeFilter === "media") return section === "channel";
+  return true;
+}
+
+function sectionedCollections(models: CollectionCardModel[]) {
+  const sectionOrder: CollectionSectionId[] = ["featured", "ministry", "channel", "review"];
+  return sectionOrder
+    .map((section) => ({ section, collections: models.filter((model) => model.section === section) }))
+    .filter((group) => group.collections.length);
+}
+
+function filterLabel(filter: CollectionFilterId) {
+  const labels: Record<CollectionFilterId, string> = {
+    all: "All albums",
+    ready: "Openable",
+    review: "Needs review",
+    guidance: "Use guidance",
+    internal: "Internal ministry",
+    rights: "Missing rights",
+    ministry: "By ministry",
+    year: "By year",
+    media: "By media type"
+  };
+  return labels[filter];
+}
+
+function collectionGuidanceBadge(readiness: CollectionReadiness, canSeeReviewTools: boolean) {
+  if (readiness.status === "Needs Review") {
+    return { label: canSeeReviewTools ? "Needs review" : "Restricted", className: "is-warning" };
+  }
+  if (readiness.status === "Read-only") return { label: "Internal ministry", className: "is-warning" };
+  return { label: "Use guidance", className: "is-success" };
+}
+
+function CollectionGuidanceBadge({ readiness, canSeeReviewTools }: { readiness: CollectionReadiness; canSeeReviewTools: boolean }) {
+  const badge = collectionGuidanceBadge(readiness, canSeeReviewTools);
+  return <span className={`ed-badge ${badge.className}`}>{badge.label}</span>;
+}
+
+function audienceForSection(section: CollectionSectionId, collection: CatalogCollection) {
+  if (section === "channel") return "Communications teams";
+  if (section === "review") return "Reviewers and admins";
+  return collection.ministry || "Church teams";
+}
+
+function usageSentence(readiness: CollectionReadiness, canSeeReviewTools: boolean) {
+  if (readiness.status === "Needs Review") {
+    return canSeeReviewTools
+      ? "This album has items that need reviewer attention before broader use."
+      : "Some items in this album are restricted until a reviewer confirms usage guidance.";
+  }
+  if (readiness.status === "Read-only") return "Use inside ministry contexts unless item guidance says otherwise.";
+  return "Open the album and follow each item usage note before sharing.";
+}
+
+function reviewViews(savedViews: SavedViewSummary[] = []) {
+  return savedViews.filter((view) => reviewSavedViewIds.has(view.id));
+}
+
+function CollectionPreviewStrip({ images }: { images: CatalogCollection["images"] }) {
+  const previews = images.slice(0, 5);
+  return (
+    <div className="ed-collection-preview-strip" aria-hidden="true">
+      {previews.length ? previews.map((image, index) => (
+        <span key={`${image.src}-${index}`}>
+          <img src={image.src} alt="" />
+        </span>
+      )) : (
+        <>
+          <span className="is-empty"><Images size={15} /></span>
+          <span className="is-empty"><Images size={15} /></span>
+          <span className="is-empty"><Images size={15} /></span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function CollectionCard({
+  model,
+  active,
+  onSelectDetails,
+  onOpen,
+  canSeeReviewTools
+}: {
+  model: CollectionCardModel;
+  active: boolean;
+  onSelectDetails: () => void;
+  onOpen: () => void;
+  canSeeReviewTools: boolean;
+}) {
+  const { collection, readiness, section } = model;
+  return (
+    <article className={`ed-collection-card${active ? " is-selected" : ""}${section === "review" ? " is-worklist" : ""}`}>
+      <button
+        type="button"
+        className="ed-collection-card-select"
+        onClick={onSelectDetails}
+        aria-label={`Show details for ${collection.name}`}
+        aria-pressed={active}
+      >
+        <CollectionPreviewStrip images={collection.images} />
+        <span className="ed-collection-card-copy">
+          <strong>{collection.name}</strong>
+          <span>{collection.description}</span>
+        </span>
+      </button>
+      <div className="ed-collection-card-meta">
+        <span>{collection.countLabel}</span>
+        <span>{collection.dateRange}</span>
+        <CollectionGuidanceBadge readiness={readiness} canSeeReviewTools={canSeeReviewTools} />
+      </div>
+      <div className="ed-collection-card-actions">
+        <button type="button" onClick={onOpen}>Open album</button>
+        {canSeeReviewTools ? <button type="button" onClick={onSelectDetails}>{active ? "Selected" : "Details"}</button> : null}
+      </div>
+    </article>
+  );
+}
+
+function AlbumDetails({
+  model,
+  canSeeReviewTools,
+  onOpen,
+  onReview
+}: {
+  model?: CollectionCardModel;
+  canSeeReviewTools: boolean;
+  onOpen: (collection: CatalogCollection) => void;
+  onReview: () => void;
+}) {
+  if (!model) {
+    return (
+      <aside className="ed-panel ed-collection-inspector">
+        <section className="ed-empty-state is-quiet">
+          <FolderOpen size={24} />
+          <h2>Select an album or event</h2>
+          <p>Choose a group to see use guidance and next action.</p>
+        </section>
+      </aside>
+    );
+  }
+
+  const { collection, readiness, section } = model;
+  const audience = audienceForSection(section, collection);
+  const usage = usageSentence(readiness, canSeeReviewTools);
+  return (
+    <aside className="ed-panel ed-collection-inspector" aria-label={`${collection.name} album or event details`}>
+      <div className="ed-panel-title">
+        <h3>{collection.name}</h3>
+        <CollectionGuidanceBadge readiness={readiness} canSeeReviewTools={canSeeReviewTools} />
+      </div>
+      <p className="ed-collection-inspector-summary">{collection.description}</p>
+      <CollectionPreviewStrip images={collection.images} />
+      <dl className="ed-collection-inspector-metadata">
+        <div>
+          <dt>Items</dt>
+          <dd>{collection.countLabel}</dd>
+        </div>
+        <div>
+          <dt>Date</dt>
+          <dd>{collection.dateRange}</dd>
+        </div>
+        <div>
+          <dt>Ministry</dt>
+          <dd>{collection.ministry}</dd>
+        </div>
+        <div>
+          <dt>Audience</dt>
+          <dd>{audience}</dd>
+        </div>
+        <div>
+          <dt>Usage</dt>
+          <dd>{readiness.useGuidance}</dd>
+        </div>
+      </dl>
+      <section className="ed-collection-usage-note" aria-label="Use guidance">
+        <CollectionGuidanceBadge readiness={readiness} canSeeReviewTools={canSeeReviewTools} />
+        <p>{usage}</p>
+      </section>
+      {canSeeReviewTools && readiness.status === "Needs Review" ? (
+        <section className="ed-collection-review-summary" aria-label="Review issues">
+          <strong>Review issues</strong>
+          <ul>
+            {readiness.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+          </ul>
+        </section>
+      ) : null}
+      <div className="ed-collection-inspector-actions">
+        <ActionButton tone="primary" icon={FolderOpen} onClick={() => onOpen(collection)}>Open album</ActionButton>
+        {readiness.status === "Needs Review" ? (
+          <ActionButton onClick={() => onOpen(collection)}>Request permission</ActionButton>
+        ) : null}
+        {canSeeReviewTools && readiness.status === "Needs Review" ? (
+          <ActionButton icon={ShieldAlert} onClick={onReview}>Review issues</ActionButton>
+        ) : null}
+      </div>
+    </aside>
+  );
 }
 
 export function EnterpriseCollectionsPage() {
   const router = useRouter();
   const { role } = useDemoRole();
-  const canSeeSourceDiagnostics = canReview(role);
-  const search = useAssetsSearch({ role, sort: "Approved first", limit: 36 });
+  const canSeeReviewTools = canReview(role);
+  const search = useAssetsSearch({ role, sort: "Approved first", limit: 48 });
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<CollectionFilterId>("all");
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
-  const collections = useMemo(
-    () => (search.data?.collections || []).filter((collection) => matchesCollection(collection, submittedQuery)),
-    [search.data?.collections, submittedQuery]
-  );
-  const selectedCollection = collections.find((collection) => collection.id === selectedCollectionId) || collections[0];
-  const collectionGroups = groupedCollections(collections);
-  const savedSearches = savedSearchesForPage(search.data?.savedViews);
-  const totals = collections.reduce(
-    (sum, collection) => {
-      const readiness = packageReadiness(collection);
-      return {
-        ready: sum.ready + readiness.readyCount,
-        review: sum.review + readiness.reviewNeeded,
-        total: sum.total + collection.count
-      };
-    },
-    { ready: 0, review: 0, total: 0 }
-  );
 
+  const allModels = useMemo(() => {
+    return (search.data?.collections || [])
+      .filter((collection) => matchesCollection(collection, submittedQuery))
+      .map((collection) => ({
+        collection,
+        section: sectionForCollection(collection),
+        readiness: collectionReadiness(collection)
+      }))
+      .filter((model) => canSeeReviewTools || model.section !== "review");
+  }, [canSeeReviewTools, search.data?.collections, submittedQuery]);
+
+  const filteredModels = useMemo(
+    () => allModels.filter((model) => filterMatches(model, activeFilter)),
+    [activeFilter, allModels]
+  );
+  const selectedModel = filteredModels.find((model) => model.collection.id === selectedCollectionId) || filteredModels[0];
+  const collectionGroups = sectionedCollections(filteredModels);
+  const reviewerWorklists = canSeeReviewTools ? reviewViews(search.data?.savedViews) : [];
+  const filteredReviewerWorklists = activeFilter === "all" || activeFilter === "review" || activeFilter === "rights" ? reviewerWorklists : [];
+  const filters: CollectionFilterId[] = canSeeReviewTools
+    ? ["all", "ready", "review", "guidance", "internal", "rights", "ministry", "year", "media"]
+    : ["all", "ready", "guidance", "internal", "ministry", "year", "media"];
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmittedQuery(query.trim());
@@ -103,150 +371,127 @@ export function EnterpriseCollectionsPage() {
   function openCollection(collection: CatalogCollection) {
     const routeFilter = collectionDefinitionForId(collection.id)?.routeFilter;
     const path = routeFilter
-      ? `/?filter=${encodeURIComponent(routeFilter)}`
-      : `/?collection=${encodeURIComponent(collection.id)}`;
+      ? `/library?filter=${encodeURIComponent(routeFilter)}`
+      : `/library?collection=${encodeURIComponent(collection.id)}`;
     router.push(routeWithRole(path, role));
   }
 
-  function startToolkit(collection: CatalogCollection) {
-    router.push(routeWithRole(`/packages?collection=${encodeURIComponent(collection.id)}`, role));
+  function viewAllMedia() {
+    router.push(routeWithRole("/library", role));
   }
 
-  function openItemChecks() {
+  function openReviewIssues() {
     router.push(routeWithRole("/review?queue=pending", role));
   }
 
-  function openSavedSearch(view: SavedViewSummary) {
-    router.push(routeWithRole(`/?view=${encodeURIComponent(view.id)}`, role));
+  function openSavedReviewView(view: SavedViewSummary) {
+    router.push(routeWithRole(`/library?view=${encodeURIComponent(view.id)}`, role));
   }
 
   return (
     <div className="enterprise-page enterprise-collections">
       <PageHeader
-        title="Collections"
-        subtitle="Package cabinet for ministry kits. Collections organize assets; each record keeps its own reuse decision."
-        count={`${collections.length.toLocaleString()} packages`}
-        actions={<><ActionButton icon={FolderOpen} onClick={() => selectedCollection && openCollection(selectedCollection)}>Open selected</ActionButton><ActionButton icon={Package} onClick={() => selectedCollection && startToolkit(selectedCollection)}>Start toolkit draft</ActionButton><ActionButton icon={ShieldCheck} onClick={openItemChecks} disabled={!canSeeSourceDiagnostics} disabledReason="Reviewer access required for item-level checks">Item-level checks</ActionButton></>}
+        title="Albums / Events"
+        subtitle="Browse albums and event groups. Some albums include restricted items. Open an album to see usage guidance."
+        count={`${filteredModels.length.toLocaleString()} albums`}
+        actions={(
+          <>
+            <ActionButton icon={FolderOpen} onClick={() => selectedModel && openCollection(selectedModel.collection)} disabled={!selectedModel} disabledReason="Select an album or event first.">Open selected</ActionButton>
+            <ActionButton icon={Grid3X3} onClick={viewAllMedia}>View all media</ActionButton>
+          </>
+        )}
       />
-      <section className="ed-approved-banner">
-        <Package size={22} />
-        <div>
-          <strong>{canSeeSourceDiagnostics ? sourceLabel(search.source) : "Catalog snapshot"}</strong>
-          <span>{canSeeSourceDiagnostics ? search.source?.detail || `${sourceNoun(search.source)} source unavailable.` : "Collections show approved-copy navigation and review worklists only."}</span>
-        </div>
-        <span>Package approval never overrides asset approval</span>
-      </section>
-      <form className="ed-search-shell" onSubmit={submit}>
+
+      <form className="ed-search-shell ed-collection-search" onSubmit={submit}>
         <Search size={18} />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search ministry kits, events, channels, safety notes..." />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search albums, events, ministries..." />
         {submittedQuery ? <button type="button" onClick={() => { setQuery(""); setSubmittedQuery(""); setSelectedCollectionId(""); }}>Clear</button> : null}
       </form>
-      {search.loading ? <LoadingCard label="Loading collection cabinet..." /> : search.error ? <ErrorCard message={search.error} source={search.source} /> : (
-        <>
-        <AssetPreviewStrip
-          assets={search.data?.assets || []}
-          title="Collection preview samples"
-          detail={selectedCollection ? `${selectedCollection.name} opens with preview-backed records where local derivatives exist.` : "Preview-backed records appear first for local beta review."}
-        />
-        <div className="ed-library-grid">
-          <aside className="ed-panel ed-facet-panel">
-            <section>
-              <div className="ed-panel-title"><h3>Cabinet summary</h3>{canSeeSourceDiagnostics ? <SourcePill source={search.source} live={search.live} /> : null}</div>
-              <div className="ed-summary-grid">
-                <span><strong>{totals.ready.toLocaleString()}</strong><small>Ready items</small></span>
-                <span><strong>{totals.review.toLocaleString()}</strong><small>Need review</small></span>
-                <span><strong>{totals.total.toLocaleString()}</strong><small>Total refs</small></span>
-                <span><strong>{collections.length.toLocaleString()}</strong><small>Packages</small></span>
-              </div>
+
+      {search.loading ? <LoadingCard label="Loading albums / events..." /> : search.error ? <ErrorCard message={search.error} source={search.source} /> : (
+        <div className="ed-collection-browser-grid">
+          <aside className="ed-panel ed-collection-filter-rail" aria-label="Album and event filters">
+            <section className="ed-collection-filter-summary">
+              <strong>{allModels.length.toLocaleString()}</strong>
+              <span>albums and events ready to browse</span>
             </section>
-            <section>
-              <div className="ed-panel-title"><h3>Saved filters</h3></div>
-              <div className="ed-saved-filter-stack">
-                {savedSearches.map((view) => (
-                  <button type="button" key={view.id} onClick={() => openSavedSearch(view)}>
-                    <span>{view.label}</span>
-                    <strong>{view.count.toLocaleString()}</strong>
+            <nav>
+              {filters.map((filter) => {
+                const count = allModels.filter((model) => filterMatches(model, filter)).length;
+                return (
+                  <button
+                    type="button"
+                    key={filter}
+                    className={activeFilter === filter ? "is-active" : ""}
+                    aria-pressed={activeFilter === filter}
+                    onClick={() => { setActiveFilter(filter); setSelectedCollectionId(""); }}
+                  >
+                    <span>{filterLabel(filter)}</span>
+                    <em>{count.toLocaleString()}</em>
                   </button>
-                ))}
-              </div>
-              <p className="ed-setup-note">Saved filters are local catalog views. They do not edit taxonomy or create durable custom fields.</p>
-            </section>
-            <section>
-              <div className="ed-panel-title"><h3>Collection groups</h3></div>
-              <div className="ed-collection-group-nav">
-                {collectionGroups.map((group) => (
-                  <button type="button" key={group.group} onClick={() => { setQuery(group.group); setSubmittedQuery(group.group); }}>
-                    <span>{group.group}</span>
-                    <strong>{group.collections.reduce((sum, collection) => sum + collection.count, 0).toLocaleString()}</strong>
-                  </button>
-                ))}
-              </div>
-            </section>
+                );
+              })}
+            </nav>
           </aside>
-          <main className="ed-asset-workspace">
-            {collections.length ? (
-              <div className="ed-collection-group-stack">
+
+          <main className="ed-collection-browser-main" aria-label="Albums and events browser">
+            {collectionGroups.length || filteredReviewerWorklists.length ? (
+              <>
                 {collectionGroups.map((group) => (
-                  <section className="ed-collection-group" key={group.group}>
+                  <section className={`ed-collection-section is-${group.section}`} key={group.section}>
                     <header>
-                      <h2>{group.group}</h2>
-                      <span>{group.collections.length.toLocaleString()} set{group.collections.length === 1 ? "" : "s"}</span>
+                      <div>
+                        <h2>{sectionCopy[group.section].title}</h2>
+                        <p>{sectionCopy[group.section].description}</p>
+                      </div>
+                      <span>{group.collections.length.toLocaleString()} album{group.collections.length === 1 ? "" : "s"}</span>
                     </header>
-                    <div className="ed-table-mini">
-                      {group.collections.map((collection) => {
-                        const definition = collectionDefinitionForId(collection.id);
-                        const readiness = packageReadiness(collection);
-                        const active = selectedCollection?.id === collection.id;
-                        const isGovernance = definition?.group === "Governance collections";
-                        return (
-                          <p className={`ed-collection-package-row${active ? " is-selected" : ""}`} key={collection.id}>
-                            <span className="ed-collection-package-copy">
-                              <strong>{collection.name}</strong>
-                              <span>{collection.description} · {collection.countLabel} · {isGovernance ? definition?.routeFilter || "review filter" : readiness.label}</span>
-                            </span>
-                            <StatusBadge status={readiness.reviewNeeded || isGovernance ? "Needs Review" : "Approved"} />
-                            <span className="ed-collection-package-actions">
-                              <button type="button" onClick={() => setSelectedCollectionId(collection.id)}>{active ? "Selected" : "Inspect"}</button>
-                              <button type="button" onClick={() => openCollection(collection)}>Open filtered set</button>
-                              <button type="button" onClick={() => startToolkit(collection)} disabled={isGovernance}>Build toolkit</button>
-                            </span>
-                          </p>
-                        );
-                      })}
+                    <div className="ed-collection-card-grid">
+                      {group.collections.map((model) => (
+                        <CollectionCard
+                          key={model.collection.id}
+                          model={model}
+                          active={selectedModel?.collection.id === model.collection.id}
+                          onSelectDetails={() => setSelectedCollectionId(model.collection.id)}
+                          onOpen={() => openCollection(model.collection)}
+                          canSeeReviewTools={canSeeReviewTools}
+                        />
+                      ))}
                     </div>
                   </section>
                 ))}
-              </div>
-            ) : (
-              <section className="ed-empty-state"><Search size={24} /><h2>No collections match this search</h2><p>Try a ministry, event, or channel term.</p><ActionButton onClick={() => { setQuery(""); setSubmittedQuery(""); }}>Clear search</ActionButton></section>
-            )}
-          </main>
-          <aside className="ed-panel">
-            {selectedCollection ? (
-              <>
-                <div className="ed-panel-title"><h3>{selectedCollection.name}</h3><StatusBadge status={packageReadiness(selectedCollection).reviewNeeded ? "Needs Review" : "Approved"} /></div>
-                <p>{selectedCollection.description}</p>
-                <section className="ed-collection-toolkit-callout">
-                  <strong>{packageReadiness(selectedCollection).score}% ready for package planning</strong>
-                  <span>Toolkit builder will add visible Portal Ready refs only. It will not create a ZIP, copy originals, or bypass item-level approval.</span>
-                </section>
-                <dl className="ed-metadata">
-                  <div><dt>Ministry</dt><dd>{selectedCollection.ministry}</dd></div>
-                  <div><dt>Best use</dt><dd>{packageReadiness(selectedCollection).bestUse}</dd></div>
-                  <div><dt>Date range</dt><dd>{selectedCollection.dateRange}</dd></div>
-                  <div><dt>Approval summary</dt><dd>{selectedCollection.approvalSummary}</dd></div>
-                  <div><dt>Reuse rule</dt><dd>Asset-level approval required</dd></div>
-                </dl>
-                {selectedCollection.peopleWarning ? <p className="ed-setup-note">{selectedCollection.peopleWarning}</p> : null}
-                <ActionButton tone="primary" icon={FolderOpen} onClick={() => openCollection(selectedCollection)}>Open collection media</ActionButton>
-                <ActionButton icon={Package} onClick={() => startToolkit(selectedCollection)}>Start governed toolkit</ActionButton>
+                {filteredReviewerWorklists.length ? (
+                  <section className="ed-collection-section is-review-worklists">
+                    <header>
+                      <div>
+                        <h2>Review worklists</h2>
+                        <p>Reviewer-only queues for rights, consent, and metadata.</p>
+                      </div>
+                      <span>{filteredReviewerWorklists.length.toLocaleString()} worklist{filteredReviewerWorklists.length === 1 ? "" : "s"}</span>
+                    </header>
+                    <div className="ed-collection-worklist-grid">
+                      {filteredReviewerWorklists.map((view) => (
+                        <button type="button" key={view.id} onClick={() => openSavedReviewView(view)}>
+                          <span>{view.label}</span>
+                          <strong>{view.count.toLocaleString()}</strong>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
               </>
             ) : (
-              <section className="ed-empty-state"><Package size={24} /><h2>Select a collection</h2><p>Pick a package to inspect readiness and reuse rules.</p></section>
+              <section className="ed-empty-state">
+                <Search size={24} />
+                <h2>No albums or events match</h2>
+                <p>Try a ministry, event, channel, or reset filters.</p>
+                <ActionButton onClick={() => { setQuery(""); setSubmittedQuery(""); setActiveFilter("all"); }}>Clear filters</ActionButton>
+              </section>
             )}
-          </aside>
+          </main>
+
+          <AlbumDetails model={selectedModel} canSeeReviewTools={canSeeReviewTools} onOpen={openCollection} onReview={openReviewIssues} />
         </div>
-        </>
       )}
     </div>
   );

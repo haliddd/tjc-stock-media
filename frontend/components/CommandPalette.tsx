@@ -3,12 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Archive,
-  BarChart3,
   Clock3,
-  ClipboardList,
   FileSearch,
-  FolderOpen,
   Grid3X3,
   HelpCircle,
   KeyRound,
@@ -18,10 +14,7 @@ import {
   Search,
   Settings2,
   ShieldAlert,
-  ShieldCheck,
-  Tags,
   UploadCloud,
-  UserRoundSearch,
   type LucideIcon
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +34,7 @@ import { routeWithRole } from "@/lib/role-routes";
 import { cn } from "@/lib/utils";
 import type { DemoRole, SearchResult, StockMediaAsset } from "@/lib/types";
 
-type CommandGroupName = "Navigate" | "Actions" | "Governance";
+type CommandGroupName = "Navigate" | "Actions";
 
 type DamCommand = {
   id: string;
@@ -68,73 +61,64 @@ type AssetSearchPayload = Pick<SearchResult, "assets" | "source" | "total">;
 
 type CommandPaletteVariant = "compact" | "bar" | "shortcut" | "headless";
 
-const commandGroups: CommandGroupName[] = ["Navigate", "Actions", "Governance"];
+const commandGroups: CommandGroupName[] = ["Navigate", "Actions"];
 
 const damCommands: DamCommand[] = [
   {
     id: "nav-library",
-    label: "Library",
-    description: "Browse source-tracked media",
-    href: "/",
+    label: "Media Library",
+    description: "Browse approved media with use guidance",
+    href: "/library",
     icon: Library,
     group: "Navigate",
-    keywords: ["assets", "find", "search", "media", "library"],
+    keywords: ["photos", "find", "search", "media", "library", "browse"],
     shortcut: "G L",
     suggestion: true
   },
   {
+    id: "nav-collections",
+    label: "Albums & Events",
+    description: "Open media grouped by ministry, event, or gathering",
+    href: "/collections",
+    icon: Grid3X3,
+    group: "Navigate",
+    keywords: ["collections", "ministries", "events", "channels", "review"],
+    shortcut: "G C",
+    suggestion: true
+  },
+  {
     id: "nav-review",
-    label: "Review Queue",
-    description: "Validate pending assets before broad use",
+    label: "Review Uploads",
+    description: "Review submitted photos before approval",
     href: "/review?queue=pending",
     icon: ShieldAlert,
     group: "Navigate",
-    keywords: ["review", "rights", "approval", "queue", "pending"],
+    keywords: ["review", "approval", "queue", "pending", "uploads"],
     shortcut: "G R",
     roles: ["Reviewer", "DAM Admin"],
     badge: "Reviewer",
     suggestion: true
   },
   {
-    id: "nav-packages",
-    label: "Package Builder",
-    description: "Draft governed ministry media packages",
-    href: "/packages",
-    icon: Archive,
-    group: "Navigate",
-    keywords: ["package", "collection", "bundle", "delivery"],
-    shortcut: "G P",
-    suggestion: true
-  },
-  {
     id: "nav-upload",
-    label: "Upload",
-    description: "Submit new media for DAM review",
+    label: "Upload Photos",
+    description: "Send event photos to the media team",
     href: "/upload",
     icon: UploadCloud,
     group: "Navigate",
-    keywords: ["upload", "send", "intake", "contributor"],
+    keywords: ["upload", "send", "submit", "event photos", "contributor"],
     shortcut: "G U",
+    roles: ["Contributor", "Reviewer", "DAM Admin"],
     suggestion: true
   },
   {
-    id: "nav-insights",
-    label: "Insights",
-    description: "Review DAM usage and readiness signals",
-    href: "/insights",
-    icon: BarChart3,
-    group: "Navigate",
-    keywords: ["insights", "metrics", "readiness", "analytics"],
-    shortcut: "G I"
-  },
-  {
     id: "nav-admin",
-    label: "Admin / Governance",
-    description: "Monitor source health and audit workflows",
+    label: "Admin Zone",
+    description: "Manage portal settings, review safety, and support follow-up",
     href: "/admin",
     icon: Settings2,
     group: "Navigate",
-    keywords: ["admin", "governance", "source", "audit", "health"],
+    keywords: ["admin", "settings", "roles", "safety"],
     shortcut: "G A",
     roles: ["DAM Admin"],
     badge: "Admin",
@@ -143,162 +127,109 @@ const damCommands: DamCommand[] = [
   {
     id: "nav-requests",
     label: "Requests",
-    description: "Track source access, rights issues, download unlocks, and review requests",
+    description: "Ask for help, respond to media requests, or report an issue",
     href: "/requests",
     icon: MessageSquareText,
     group: "Navigate",
-    keywords: ["requests", "ticket", "source access", "rights issue", "download unlock"],
+    keywords: ["requests", "ticket", "help", "rights issue", "media request"],
     shortcut: "G Q",
     suggestion: true
   },
   {
-    id: "nav-my-tasks",
-    label: "My Tasks",
-    description: "Open assigned evidence checks and review actions",
+    id: "nav-my-uploads",
+    label: "My Work",
+    description: "Follow up on assigned uploads, reviews, and requests",
     href: "/my-tasks",
-    icon: ClipboardList,
-    group: "Navigate",
-    keywords: ["tasks", "assigned", "work queue", "evidence", "policy"],
-    shortcut: "G T",
-    suggestion: true
-  },
-  {
-    id: "nav-recent-uploads",
-    label: "Recent Uploads",
-    description: "Inspect recent intake without treating uploads as approved media",
-    href: "/recent-uploads",
     icon: Clock3,
     group: "Navigate",
-    keywords: ["recent", "uploads", "intake", "submitted"],
+    keywords: ["my work", "my uploads", "inbox", "tasks", "uploads", "submitted"],
     shortcut: "G N",
-    roles: ["Contributor", "Reviewer", "DAM Admin"]
+    roles: ["Contributor", "Reviewer", "DAM Admin"],
+    suggestion: true
   },
   {
     id: "nav-help",
     label: "Help Center",
-    description: "Open policy-safe DAM guidance",
+    description: "Find media-use guidance and review help",
     href: "/help",
     icon: HelpCircle,
     group: "Navigate",
-    keywords: ["help", "guide", "policy", "usage"],
+    keywords: ["help", "guide", "usage"],
     shortcut: "G ?"
   },
   {
     id: "action-search",
-    label: "Search media library",
-    description: "Find records by title, source, rights, or ministry use",
-    href: "/",
+    label: "Search media",
+    description: "Find church media by title, event, tag, or use guidance",
+    href: "/library",
     icon: Search,
     group: "Actions",
-    keywords: ["search", "find", "records", "source", "rights"],
+    keywords: ["search", "find", "photos", "event", "tag"],
     shortcut: "/",
     suggestion: true
   },
   {
     id: "action-upload",
-    label: "Upload assets",
-    description: "Start contributor intake",
+    label: "Upload Photos",
+    description: "Start a photo submission",
     href: "/upload",
     icon: UploadCloud,
     group: "Actions",
-    keywords: ["upload", "send", "new media", "intake"],
+    keywords: ["upload", "send", "new photos", "submission"],
     shortcut: "U",
-    suggestion: true
-  },
-  {
-    id: "action-package",
-    label: "Create package",
-    description: "Build a governed ministry package",
-    href: "/packages",
-    icon: FolderOpen,
-    group: "Actions",
-    keywords: ["package", "build", "share", "collection"],
-    shortcut: "P",
+    roles: ["Contributor", "Reviewer", "DAM Admin"],
     suggestion: true
   },
   {
     id: "action-review",
-    label: "Open review queue",
-    description: "Inspect assets needing reviewer evidence",
+    label: "Review Uploads",
+    description: "Open photos waiting for review",
     href: "/review?queue=pending",
     icon: ListFilter,
     group: "Actions",
-    keywords: ["review", "pending", "evidence", "rights"],
+    keywords: ["review", "pending", "uploads", "approval"],
     shortcut: "R",
     roles: ["Reviewer", "DAM Admin"],
     badge: "Reviewer",
     suggestion: true
   },
   {
-    id: "action-source-health",
-    label: "Open source health",
-    description: "Check ResourceSpace and launch gate status",
-    href: "/admin#launch-gate",
+    id: "action-admin",
+    label: "Admin Zone",
+    description: "Open portal administration",
+    href: "/admin",
     icon: Settings2,
     group: "Actions",
-    keywords: ["source", "health", "resourcespace", "launch", "gate"],
+    keywords: ["admin", "settings", "roles"],
     shortcut: "S",
     roles: ["DAM Admin"],
     badge: "Admin",
     suggestion: true
-  },
-  {
-    id: "gov-needs-review",
-    label: "Show assets needing review",
-    description: "Open records missing evidence, rights, or approved copy",
-    href: "/?view=needs-review",
-    icon: ShieldAlert,
-    group: "Governance",
-    keywords: ["needs review", "pending", "blocked", "rights"],
-    shortcut: "1",
-    suggestion: true
-  },
-  {
-    id: "gov-restricted",
-    label: "Show restricted assets",
-    description: "Open assets blocked from normal download",
-    href: "/?view=needs-review",
-    icon: ShieldCheck,
-    group: "Governance",
-    keywords: ["restricted", "blocked", "download", "do not publish"]
-  },
-  {
-    id: "gov-missing-metadata",
-    label: "Show missing metadata",
-    description: "Use reviewer search to surface source, rights, and people gaps",
-    href: "/?view=needs-review",
-    icon: FileSearch,
-    group: "Governance",
-    keywords: ["missing metadata", "source", "people", "rights"],
-    roles: ["Reviewer", "DAM Admin"],
-    badge: "Reviewer"
-  },
-  {
-    id: "gov-fallback-source",
-    label: "Check source status",
-    description: "Open governance console for source mode and pending writes",
-    href: "/admin#launch-gate",
-    icon: Settings2,
-    group: "Governance",
-    keywords: ["fallback", "source", "export", "api", "pending writes"],
-    roles: ["DAM Admin"],
-    badge: "Admin",
-    suggestion: true
-  },
-  {
-    id: "gov-recent",
-    label: "Show recently approved assets",
-    description: "Open newest reviewed records",
-    href: "/?view=recently-approved",
-    icon: Grid3X3,
-    group: "Governance",
-    keywords: ["recent", "updated", "approved", "reviewed"],
-    shortcut: "5"
   }
 ];
 
 function canUseCommand(command: DamCommand, role: DemoRole) {
   return !command.roles || command.roles.includes(role);
+}
+
+function roleAwareCommand(command: DamCommand, role: DemoRole): DamCommand {
+  if (command.id !== "nav-my-uploads") return command;
+
+  if (role === "Contributor") {
+    return {
+      ...command,
+      label: "My Uploads",
+      description: "Follow up on photos you submitted for review",
+      href: "/recent-uploads"
+    };
+  }
+
+  return {
+    ...command,
+    label: "My Work",
+    description: "Follow up on assigned uploads, reviews, and requests",
+    href: "/my-tasks"
+  };
 }
 
 function commandMatches(command: DamCommand, terms: string[]) {
@@ -349,7 +280,7 @@ function TriggerButton({
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#edf7f3] text-tjc-evergreen transition group-hover:bg-[#dff3ed]">
           <Search size={16} strokeWidth={1.9} aria-hidden="true" />
         </span>
-        <span className="min-w-0 truncate text-sm font-black text-[#2f3b34]">Search assets, records, packages, collections...</span>
+        <span className="min-w-0 truncate text-sm font-black text-[#2f3b34]">Search media, albums, requests...</span>
         <span className="hidden shrink-0 items-center gap-1 sm:inline-flex">
           <kbd className="rounded-md border border-[#c7d2ca] bg-[#f4f7f4] px-1.5 py-0.5 text-[11px] font-black text-tjc-muted">⌘K</kbd>
           <kbd className="rounded-md border border-[#c7d2ca] bg-[#f4f7f4] px-1.5 py-0.5 text-[11px] font-black text-tjc-muted">Ctrl K</kbd>
@@ -390,7 +321,7 @@ function TriggerButton({
       <span className="grid size-8 shrink-0 place-items-center rounded-md bg-[#edf7f3] text-tjc-evergreen transition group-hover:bg-[#dff3ed]">
         <Search size={16} strokeWidth={1.9} aria-hidden="true" />
       </span>
-      <span className="hidden text-sm font-black text-tjc-ink 2xl:inline">Command</span>
+      <span className="hidden text-sm font-black text-tjc-ink 2xl:inline">Search</span>
       <kbd className="hidden shrink-0 rounded-md border border-[#c7d2ca] bg-[#f4f7f4] px-1.5 py-0.5 text-[11px] font-black text-tjc-muted 2xl:inline">⌘K</kbd>
     </button>
   );
@@ -423,29 +354,34 @@ function CommandRow({
         </span>
         <span className="mt-0.5 block truncate text-xs font-semibold text-tjc-muted">{command.description}</span>
       </span>
-      {command.shortcut ? <CommandShortcut className="rounded-md border border-[#d7e0da] bg-white px-2 py-1 text-[11px] font-black tracking-[0] text-tjc-muted">{command.shortcut}</CommandShortcut> : null}
+      {command.shortcut === "Enter" ? <CommandShortcut className="rounded-md border border-[#d7e0da] bg-white px-2 py-1 text-[11px] font-black tracking-[0] text-tjc-muted">{command.shortcut}</CommandShortcut> : null}
     </CommandItem>
   );
 }
 
 function AssetRow({
   asset,
+  showOpsMetadata,
   onRun
 }: {
   asset: StockMediaAsset;
+  showOpsMetadata: boolean;
   onRun: (href: string) => void;
 }) {
   const trustLabel = asset.reuseDecision?.label || asset.status;
   const metadata = [
     asset.mediaType,
-    asset.resourceSpaceId ? `RS ${asset.resourceSpaceId}` : null,
-    asset.sourceSystem || asset.collection,
+    showOpsMetadata && asset.resourceSpaceId ? `Reference ${asset.resourceSpaceId}` : null,
+    showOpsMetadata ? asset.sourceSystem || asset.collection : asset.collection,
     asset.fileSizeBytes ? `${Math.max(1, Math.round(asset.fileSizeBytes / 1024))} KB` : null
   ].filter(Boolean).join(" · ");
+  const commandValue = showOpsMetadata
+    ? `asset ${asset.id} ${asset.title} ${asset.resourceSpaceId || ""} ${asset.collection} ${asset.status} ${asset.rightsStatus || ""}`
+    : `asset ${asset.id} ${asset.title} ${asset.collection} ${asset.status}`;
 
   return (
     <CommandItem
-      value={`asset ${asset.id} ${asset.title} ${asset.resourceSpaceId || ""} ${asset.collection} ${asset.status} ${asset.rightsStatus || ""}`}
+      value={commandValue}
       onSelect={() => onRun(`/assets/${encodeURIComponent(asset.id)}`)}
       className="min-h-[5.5rem] gap-3 rounded-lg border border-transparent px-3 py-2 data-selected:border-[#9bc6b5] data-selected:bg-[#edf7f1] data-selected:text-tjc-ink"
     >
@@ -490,7 +426,7 @@ export function CommandPalette({
   className?: string;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const { role } = useDemoRole();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -548,12 +484,14 @@ export function CommandPalette({
       })
       .then((payload) => {
         if (!payload.assets?.length) {
-          setAssetState({ status: "empty", assets: [], message: `No assets found for "${debouncedQuery}".` });
+          setAssetState({ status: "empty", assets: [], message: `No media found for "${debouncedQuery}".` });
           return;
         }
         const filtered = terms.length
           ? payload.assets.filter((asset) => {
-              const haystack = `${asset.title} ${asset.resourceSpaceId || ""} ${asset.collection} ${asset.status} ${asset.rightsStatus || ""}`.toLowerCase();
+              const haystack = reviewer
+                ? `${asset.title} ${asset.resourceSpaceId || ""} ${asset.collection} ${asset.status} ${asset.rightsStatus || ""}`.toLowerCase()
+                : `${asset.title} ${asset.collection} ${asset.status}`.toLowerCase();
               return terms.some((term) => haystack.includes(term)) || payload.assets.length <= 6;
             })
           : payload.assets;
@@ -561,7 +499,7 @@ export function CommandPalette({
       })
       .catch((error: Error) => {
         if (error.name === "AbortError") return;
-        setAssetState({ status: "error", assets: [], message: "Asset search is unavailable. Navigation commands still work." });
+        setAssetState({ status: "error", assets: [], message: "Media search is unavailable. Navigation commands still work." });
       });
 
     return () => controller.abort();
@@ -569,16 +507,18 @@ export function CommandPalette({
 
   const visibleCommands = useMemo(() => {
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    const base = damCommands.filter((command) => canUseCommand(command, role) && commandMatches(command, terms));
+    const base = damCommands
+      .map((command) => roleAwareCommand(command, role))
+      .filter((command) => canUseCommand(command, role) && commandMatches(command, terms));
     const resourceId = query.trim().match(/^(?:rs\s*)?(\d{2,})$/i)?.[1];
     if (resourceId) {
       base.unshift({
         id: `asset-${resourceId}`,
         group: "Actions",
-        label: role === "DAM Admin" ? `Open ResourceSpace ID ${resourceId}` : `Open reference code ${resourceId}`,
-        description: reviewer ? "Open asset detail by library reference" : "Open media by reference code",
+        label: `Open reference code ${resourceId}`,
+        description: reviewer ? "Open media detail by reference code" : "Open media by reference code",
         href: `/assets/${resourceId}`,
-        keywords: [resourceId, "resource", "reference", "asset"],
+        keywords: [resourceId, "reference", "photo"],
         icon: KeyRound,
         shortcut: "Enter"
       });
@@ -587,9 +527,9 @@ export function CommandPalette({
       base.push({
         id: `library-search-${query.trim()}`,
         group: "Actions",
-        label: `Search library for "${query.trim()}"`,
-        description: "Open the Library with this query",
-        href: `/?q=${encodeURIComponent(query.trim())}`,
+        label: `Search media for "${query.trim()}"`,
+        description: "Open Media Library with this query",
+        href: `/library?q=${encodeURIComponent(query.trim())}`,
         keywords: [query],
         icon: Search,
         shortcut: "Enter"
@@ -626,16 +566,16 @@ export function CommandPalette({
             closePalette();
           }
         }}
-        title="DAM command center"
-        description="Search assets, navigate routes, and open role-aware DAM workflows."
+        title="Media portal command center"
+        description="Search media, navigate routes, and open role-aware workflows."
         className="top-4 max-h-[calc(100dvh-2rem)] w-[min(100%-1rem,64rem)] translate-y-0 border border-[#9fb4a8] bg-[#fbfdfb] p-0 text-tjc-ink shadow-[0_30px_80px_rgba(7,16,13,.26)] sm:top-10 sm:max-w-5xl"
       >
         <Command shouldFilter={false} className="rounded-xl bg-[#fbfdfb]">
           <div className="border-b border-[#c7d3cb] bg-white px-3 pb-3 pt-3 sm:px-5">
             <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <h2 className="text-sm font-black text-tjc-ink">DAM command center</h2>
-                <p className="mt-0.5 text-xs font-semibold text-tjc-muted">Find assets, open workflows, and keep review actions role-aware.</p>
+                <h2 className="text-sm font-black text-tjc-ink">Media portal command center</h2>
+                <p className="mt-0.5 text-xs font-semibold text-tjc-muted">Find media, open uploads, and keep review actions role-aware.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <Badge className="border-[#c9d6ce] bg-[#f6faf7] text-tjc-evergreen" variant="outline">Role: {role}</Badge>
@@ -645,8 +585,8 @@ export function CommandPalette({
             <CommandInput
               value={query}
               onValueChange={setQuery}
-              placeholder={role === "DAM Admin" ? "Search assets, ResourceSpace ID, governance command..." : "Search media, reference code, package, review command..."}
-              aria-label="Search DAM commands and assets"
+              placeholder={role === "DAM Admin" ? "Search media, reference code, admin command..." : "Search media, reference code, upload or review command..."}
+              aria-label="Search media portal commands and media"
               className="min-h-12 text-base font-semibold text-tjc-ink placeholder:text-[#7d877f] sm:text-lg"
             />
           </div>
@@ -669,43 +609,43 @@ export function CommandPalette({
 
             <CommandSeparator className="my-2 bg-[#d7e0da]" />
 
-            <CommandGroup heading="Assets" className="command-center-group">
+            <CommandGroup heading="Media" className="command-center-group">
               <div className="grid gap-1">
                 {assetState.status === "idle" ? (
                   <StateRow
                     icon={<Search size={18} strokeWidth={1.8} aria-hidden="true" />}
-                    title={query.trim().length ? "Keep typing to search assets" : "Search media library"}
-                    detail={query.trim().length ? "Asset search starts at two letters. Commands are already filtered." : "Try Bible, Sabbath, Plant, Fountain, website hero, or a ResourceSpace ID."}
+                    title={query.trim().length ? "Keep typing to search media" : "Search church media"}
+                    detail={query.trim().length ? "Media search starts at two letters. Commands are already filtered." : "Try Bible, Sabbath, Plant, Fountain, website hero, or a reference code."}
                   />
                 ) : null}
                 {assetState.status === "loading" ? (
                   <StateRow
                     icon={<Search size={18} strokeWidth={1.8} aria-hidden="true" />}
-                    title="Searching assets"
-                    detail="Reading the current role-safe ResourceSpace-backed catalog."
+                    title="Searching media"
+                    detail="Reading the current role-safe photo catalog."
                   />
                 ) : null}
                 {assetState.status === "error" || assetState.status === "empty" ? (
                   <StateRow
                     icon={<ShieldAlert size={18} strokeWidth={1.8} aria-hidden="true" />}
-                    title={assetState.status === "error" ? "Asset search unavailable" : "No assets found"}
+                    title={assetState.status === "error" ? "Media search unavailable" : "No media found"}
                     detail={assetState.message}
                   />
                 ) : null}
                 {assetState.status === "results" ? assetState.assets.map((asset) => (
-                  <AssetRow key={asset.id} asset={asset} onRun={runHref} />
+                  <AssetRow key={asset.id} asset={asset} showOpsMetadata={reviewer} onRun={runHref} />
                 )) : null}
               </div>
             </CommandGroup>
 
             <CommandEmpty className="py-8 text-sm font-semibold text-tjc-muted">
-              No matching commands or assets. Try a source, ministry term, saved view, or ResourceSpace ID.
+              No matching commands or media. Try a ministry term, event, tag, or reference code.
             </CommandEmpty>
           </CommandList>
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#c7d3cb] bg-[#f5f8f5] px-4 py-3 text-xs font-semibold text-tjc-muted sm:px-5">
             <span>↑↓ move. Enter opens selected item. Esc closes.</span>
-            <span>{reviewer ? "Reviewer actions stay evidence-aware." : "Downloads and source-file access stay governed by review."}</span>
+            <span>{reviewer ? "Reviewer actions stay evidence-aware." : "Use stays limited to approved media."}</span>
           </div>
         </Command>
       </CommandDialog>

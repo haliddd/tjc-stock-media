@@ -1,106 +1,560 @@
 {
   "routes": [
-    { "id": "libraryHome", "path": "/", "routeFile": "frontend/app/page.tsx", "pageExport": "EnterpriseLibraryPage", "access": "public" },
-    { "id": "library", "path": "/library", "routeFile": "frontend/app/library/page.tsx", "pageExport": "EnterpriseLibraryPage", "access": "public" },
-    { "id": "collections", "path": "/collections", "routeFile": "frontend/app/collections/page.tsx", "pageExport": "EnterpriseCollectionsPage", "access": "public" },
-    { "id": "collectionDetail", "path": "/collections/[collectionId]", "routeFile": "frontend/app/collections/[collectionId]/page.tsx", "pageExport": "EnterpriseCollectionsPage", "access": "public" },
-    { "id": "packages", "path": "/packages", "routeFile": "frontend/app/packages/page.tsx", "pageExport": "EnterprisePackageBuilderPage", "access": "public" },
-    { "id": "distributionSets", "path": "/distribution-sets", "routeFile": "frontend/app/distribution-sets/page.tsx", "pageExport": "EnterprisePackageBuilderPage", "access": "public" },
-    { "id": "distributionSetDetail", "path": "/distribution-sets/[distributionSetId]", "routeFile": "frontend/app/distribution-sets/[distributionSetId]/page.tsx", "pageExport": "EnterprisePackageBuilderPage", "access": "public" },
-    { "id": "brandHub", "path": "/brand-hub", "routeFile": "frontend/app/brand-hub/page.tsx", "pageExport": "EnterpriseBrandHubPage", "access": "public" },
-    { "id": "insights", "path": "/insights", "routeFile": "frontend/app/insights/page.tsx", "pageExport": "EnterpriseInsightsPage", "access": "public" },
-    { "id": "admin", "path": "/admin", "routeFile": "frontend/app/admin/page.tsx", "pageExport": "EnterpriseAdminPage", "access": "admin" },
-    { "id": "governance", "path": "/governance", "routeFile": "frontend/app/governance/page.tsx", "pageExport": "EnterpriseAdminPage", "access": "admin" },
-    { "id": "review", "path": "/review", "routeFile": "frontend/app/review/page.tsx", "pageExport": "EnterpriseReviewPage", "access": "review" },
-    { "id": "assetDetail", "path": "/assets/[id]", "routeFile": "frontend/app/assets/[id]/page.tsx", "pageExport": "EnterpriseAssetDetailPage", "access": "public", "pathParam": "id" },
-    { "id": "libraryAssetDetail", "path": "/library/[assetId]", "routeFile": "frontend/app/library/[assetId]/page.tsx", "pageExport": "EnterpriseAssetDetailPage", "access": "public", "pathParam": "assetId" },
-    { "id": "upload", "path": "/upload", "routeFile": "frontend/app/upload/page.tsx", "pageExport": "EnterpriseUploadPage", "access": "upload" },
-    { "id": "requests", "path": "/requests", "routeFile": "frontend/app/requests/page.tsx", "pageExport": "RequestsPage", "access": "public" },
-    { "id": "requestDetail", "path": "/requests/[requestId]", "routeFile": "frontend/app/requests/[requestId]/page.tsx", "pageExport": "RequestsPage", "access": "public" },
-    { "id": "myTasks", "path": "/my-tasks", "routeFile": "frontend/app/my-tasks/page.tsx", "pageExport": "MyTasksPage", "access": "public" },
-    { "id": "tasks", "path": "/tasks", "routeFile": "frontend/app/tasks/page.tsx", "pageExport": "MyTasksPage", "access": "public" },
-    { "id": "recentUploads", "path": "/recent-uploads", "routeFile": "frontend/app/recent-uploads/page.tsx", "pageExport": "RecentUploadsPage", "access": "upload" }
+    {
+      "id": "libraryHome",
+      "path": "/",
+      "routeFile": "frontend/app/page.tsx",
+      "pageExport": "EnterprisePortalHomePage",
+      "access": "public"
+    },
+    {
+      "id": "library",
+      "path": "/library",
+      "routeFile": "frontend/app/library/page.tsx",
+      "pageExport": "EnterpriseLibraryPage",
+      "access": "public"
+    },
+    {
+      "id": "collections",
+      "path": "/collections",
+      "routeFile": "frontend/app/collections/page.tsx",
+      "pageExport": "EnterpriseCollectionsPage",
+      "access": "public"
+    },
+    {
+      "id": "collectionDetail",
+      "path": "/collections/[collectionId]",
+      "routeFile": "frontend/app/collections/[collectionId]/page.tsx",
+      "pageExport": "EnterpriseCollectionsPage",
+      "access": "public"
+    },
+    {
+      "id": "packages",
+      "path": "/packages",
+      "routeFile": "frontend/app/packages/page.tsx",
+      "pageExport": "EnterprisePackageBuilderPage",
+      "access": "admin"
+    },
+    {
+      "id": "distributionSets",
+      "path": "/distribution-sets",
+      "routeFile": "frontend/app/distribution-sets/page.tsx",
+      "pageExport": "EnterprisePackageBuilderPage",
+      "access": "admin"
+    },
+    {
+      "id": "distributionSetDetail",
+      "path": "/distribution-sets/[distributionSetId]",
+      "routeFile": "frontend/app/distribution-sets/[distributionSetId]/page.tsx",
+      "pageExport": "EnterprisePackageBuilderPage",
+      "access": "admin"
+    },
+    {
+      "id": "brandHub",
+      "path": "/brand-hub",
+      "routeFile": "frontend/app/brand-hub/page.tsx",
+      "pageExport": "EnterpriseBrandHubPage",
+      "access": "public"
+    },
+    {
+      "id": "insights",
+      "path": "/insights",
+      "routeFile": "frontend/app/insights/page.tsx",
+      "pageExport": "EnterpriseInsightsPage",
+      "access": "public"
+    },
+    {
+      "id": "admin",
+      "path": "/admin",
+      "routeFile": "frontend/app/admin/page.tsx",
+      "pageExport": "EnterpriseAdminPage",
+      "access": "admin"
+    },
+    {
+      "id": "governance",
+      "path": "/governance",
+      "routeFile": "frontend/app/governance/page.tsx",
+      "pageExport": "EnterpriseAdminPage",
+      "access": "admin"
+    },
+    {
+      "id": "review",
+      "path": "/review",
+      "routeFile": "frontend/app/review/page.tsx",
+      "pageExport": "EnterpriseReviewPage",
+      "access": "review"
+    },
+    {
+      "id": "assetDetail",
+      "path": "/assets/[id]",
+      "routeFile": "frontend/app/assets/[id]/page.tsx",
+      "pageExport": "EnterpriseAssetDetailPage",
+      "access": "public",
+      "pathParam": "id"
+    },
+    {
+      "id": "libraryAssetDetail",
+      "path": "/library/[assetId]",
+      "routeFile": "frontend/app/library/[assetId]/page.tsx",
+      "pageExport": "EnterpriseAssetDetailPage",
+      "access": "public",
+      "pathParam": "assetId"
+    },
+    {
+      "id": "upload",
+      "path": "/upload",
+      "routeFile": "frontend/app/upload/page.tsx",
+      "pageExport": "EnterpriseUploadPage",
+      "access": "upload"
+    },
+    {
+      "id": "requests",
+      "path": "/requests",
+      "routeFile": "frontend/app/requests/page.tsx",
+      "pageExport": "RequestsPage",
+      "access": "public"
+    },
+    {
+      "id": "requestDetail",
+      "path": "/requests/[requestId]",
+      "routeFile": "frontend/app/requests/[requestId]/page.tsx",
+      "pageExport": "RequestsPage",
+      "access": "public"
+    },
+    {
+      "id": "myTasks",
+      "path": "/my-tasks",
+      "routeFile": "frontend/app/my-tasks/page.tsx",
+      "pageExport": "MyTasksPage",
+      "access": "review"
+    },
+    {
+      "id": "tasks",
+      "path": "/tasks",
+      "routeFile": "frontend/app/tasks/page.tsx",
+      "pageExport": "MyTasksPage",
+      "access": "review"
+    },
+    {
+      "id": "recentUploads",
+      "path": "/recent-uploads",
+      "routeFile": "frontend/app/recent-uploads/page.tsx",
+      "pageExport": "RecentUploadsPage",
+      "access": "upload"
+    }
   ],
   "accessRules": [
-    { "path": "/admin", "prefix": true, "access": "admin" },
-    { "path": "/governance", "prefix": true, "access": "admin" },
-    { "path": "/review", "prefix": true, "access": "review" },
-    { "path": "/upload", "prefix": true, "access": "upload" },
-    { "path": "/recent-uploads", "prefix": true, "access": "upload" }
+    {
+      "path": "/admin",
+      "prefix": true,
+      "access": "admin"
+    },
+    {
+      "path": "/governance",
+      "prefix": true,
+      "access": "admin"
+    },
+    {
+      "path": "/review",
+      "prefix": true,
+      "access": "review"
+    },
+    {
+      "path": "/my-tasks",
+      "prefix": true,
+      "access": "review"
+    },
+    {
+      "path": "/tasks",
+      "prefix": true,
+      "access": "review"
+    },
+    {
+      "path": "/packages",
+      "prefix": true,
+      "access": "admin"
+    },
+    {
+      "path": "/distribution-sets",
+      "prefix": true,
+      "access": "admin"
+    },
+    {
+      "path": "/upload",
+      "prefix": true,
+      "access": "upload"
+    },
+    {
+      "path": "/recent-uploads",
+      "prefix": true,
+      "access": "upload"
+    }
   ],
-  "navGroups": ["Media", "Workflow", "Governance", "Admin", "Support"],
+  "navGroups": [
+    "Photos",
+    "Actions",
+    "Admin",
+    "Help"
+  ],
   "navItems": [
-    { "id": "library", "label": "Library", "href": "/library", "icon": "Library", "group": "Media", "description": "Search assets, rights, approved derivatives, and source access state." },
-    { "id": "collections", "label": "Collections", "href": "/collections", "icon": "Grid3X3", "group": "Media", "description": "Curated ministry asset groups. Collections do not approve assets." },
-    { "id": "distributionSets", "label": "Distribution Sets", "href": "/distribution-sets", "activeHrefs": ["/packages"], "icon": "PackageCheck", "group": "Media", "description": "Build governed packages from approved references." },
-    { "id": "upload", "label": "Share Photos", "mobileLabel": "Share", "href": "/upload", "icon": "UploadCloud", "roles": ["Contributor", "Reviewer", "DAM Admin"], "group": "Workflow", "badge": "5", "description": "Send photos or a Google Drive link to the media team." },
-    { "id": "recentUploads", "label": "Recent Uploads", "href": "/recent-uploads", "activeHrefs": ["/library?view=recent-uploads"], "icon": "Clock3", "roles": ["Contributor", "Reviewer", "DAM Admin"], "group": "Workflow", "description": "See recent photo submissions without treating uploads as approved media." },
-    { "id": "review", "label": "Review Queue", "mobileLabel": "Review", "href": "/review", "activeHrefs": ["/review?queue=pending"], "icon": "ShieldAlert", "roles": ["Reviewer", "DAM Admin"], "group": "Workflow", "badge": "7", "description": "Evaluate evidence, derivatives, access, restrictions, and approvals." },
-    { "id": "requests", "label": "Requests", "href": "/requests", "icon": "MessageSquareText", "group": "Workflow", "badge": "6", "description": "Review, source access, rights issue, and policy decision requests." },
-    { "id": "myTasks", "label": "My Tasks", "href": "/my-tasks", "activeHrefs": ["/tasks", "/requests?view=my-tasks"], "icon": "Bell", "group": "Workflow", "badge": "4", "description": "Role-scoped tasks needing your action." },
-    { "id": "rightsConsent", "label": "Rights & Consent", "href": "/governance/rights-consent", "activeHrefs": ["/review?queue=rights-review"], "icon": "ShieldCheck", "roles": ["DAM Admin"], "group": "Governance", "badge": "3", "description": "Evidence, consent, owner/license, minors, and public-use approvals." },
-    { "id": "metadataHealth", "label": "Metadata Health", "href": "/governance/metadata-health", "activeHrefs": ["/insights?panel=metadata"], "icon": "ListChecks", "roles": ["DAM Admin"], "group": "Governance", "badge": "7", "description": "Required fields, duplicate candidates, taxonomy drift, and orphaned records." },
-    { "id": "policyCenter", "label": "Policy Center", "href": "/governance/policy-center", "activeHrefs": ["/help?section=policies#policies", "/guide?section=policies#policies"], "icon": "ScrollText", "roles": ["DAM Admin"], "group": "Governance", "description": "Download gates, source restrictions, roles, approval, consent, and expiration rules." },
-    { "id": "auditLog", "label": "Audit Log", "href": "/governance/audit-log", "activeHrefs": ["/admin#audit-logs"], "icon": "FileCheck2", "roles": ["DAM Admin"], "group": "Governance", "description": "Immutable upload, edit, approval, download, export, and policy events." },
-    { "id": "controlCenter", "label": "Control Center", "href": "/admin", "icon": "LayoutDashboard", "roles": ["DAM Admin"], "group": "Admin", "description": "Admin launch gate, readiness, policy summaries, and system health." },
-    { "id": "usersRoles", "label": "Users & Roles", "href": "/admin/users", "activeHrefs": ["/admin/roles"], "icon": "UserCog", "roles": ["DAM Admin"], "group": "Admin", "description": "Role-safe permissions and user assignments." },
-    { "id": "taxonomy", "label": "Taxonomy", "href": "/admin/taxonomy", "icon": "Tags", "roles": ["DAM Admin"], "group": "Admin", "description": "Ministry, event, collection, tag, and metadata vocabularies." },
-    { "id": "integrations", "label": "Integrations", "href": "/governance/integrations", "icon": "Database", "roles": ["DAM Admin"], "group": "Admin", "description": "ResourceSpace, Google Shared Drive, portal, storage, and identity health." },
-    { "id": "settings", "label": "Settings", "href": "/admin/settings", "icon": "SlidersHorizontal", "roles": ["DAM Admin"], "group": "Admin", "description": "DAM workspace settings and operational controls." },
-    { "id": "help", "label": "Help Center", "mobileLabel": "Help", "href": "/help", "activeHrefs": ["/guide"], "icon": "HelpCircle", "group": "Support", "description": "Help articles, quick tasks, requests, and policy shortcuts." }
+    {
+      "id": "library",
+      "label": "Browse Photos",
+      "mobileLabel": "Browse",
+      "href": "/library",
+      "activeHrefs": [
+        "/"
+      ],
+      "icon": "Library",
+      "group": "Photos",
+      "description": "Find approved church photos for ministry use."
+    },
+    {
+      "id": "collections",
+      "label": "Albums / Events",
+      "mobileLabel": "Albums",
+      "href": "/collections",
+      "icon": "Grid3X3",
+      "group": "Photos",
+      "description": "Browse photos by album, event, and ministry gathering."
+    },
+    {
+      "id": "upload",
+      "label": "Upload Photos",
+      "mobileLabel": "Upload",
+      "href": "/upload",
+      "icon": "UploadCloud",
+      "roles": [
+        "Contributor",
+        "Reviewer",
+        "DAM Admin"
+      ],
+      "group": "Actions",
+      "description": "Send event photos to the media team for review."
+    },
+    {
+      "id": "review",
+      "label": "Review Uploads",
+      "mobileLabel": "Review",
+      "href": "/review",
+      "activeHrefs": [
+        "/review?queue=pending",
+        "/review?queue=rights-review"
+      ],
+      "icon": "ShieldAlert",
+      "roles": [
+        "Reviewer",
+        "DAM Admin"
+      ],
+      "group": "Actions",
+      "description": "Review submitted photos before approval."
+    },
+    {
+      "id": "myUploads",
+      "label": "My Uploads",
+      "mobileLabel": "Uploads",
+      "href": "/recent-uploads",
+      "activeHrefs": [
+        "/library?view=recent-uploads"
+      ],
+      "icon": "Clock3",
+      "roles": [
+        "Contributor"
+      ],
+      "group": "Actions",
+      "description": "Track photos you submitted for review."
+    },
+    {
+      "id": "myTasks",
+      "label": "My Work",
+      "mobileLabel": "Work",
+      "href": "/my-tasks",
+      "activeHrefs": [
+        "/tasks"
+      ],
+      "icon": "Clock3",
+      "roles": [
+        "Reviewer",
+        "DAM Admin"
+      ],
+      "group": "Actions",
+      "description": "Follow up on assigned uploads, reviews, and requests."
+    },
+    {
+      "id": "requests",
+      "label": "Requests",
+      "href": "/requests",
+      "icon": "MessageSquareText",
+      "group": "Actions",
+      "description": "Ask for help with photo use, review, or corrections."
+    },
+    {
+      "id": "controlCenter",
+      "label": "Admin",
+      "href": "/admin",
+      "activeHrefs": [
+        "/admin/users",
+        "/admin/roles",
+        "/admin/taxonomy",
+        "/admin/settings",
+        "/governance",
+        "/governance/rights-consent",
+        "/governance/metadata-health",
+        "/governance/policy-center",
+        "/governance/audit-log",
+        "/governance/integrations"
+      ],
+      "icon": "LayoutDashboard",
+      "roles": [
+        "DAM Admin"
+      ],
+      "group": "Admin",
+      "description": "Manage portal settings and review safety."
+    },
+    {
+      "id": "help",
+      "label": "Help",
+      "href": "/help",
+      "activeHrefs": [
+        "/guide"
+      ],
+      "icon": "HelpCircle",
+      "group": "Help",
+      "description": "Find help articles and media-use guidance."
+    }
   ],
   "quickActions": [
-    { "id": "uploadQuick", "label": "Share Photos", "href": "/upload", "icon": "UploadCloud", "roles": ["Contributor", "Reviewer", "DAM Admin"], "group": "Workflow", "description": "Send photos" },
-    { "id": "distributionSetsQuick", "label": "New distribution set", "href": "/distribution-sets", "activeHrefs": ["/packages"], "icon": "Boxes", "group": "Workflow", "description": "Build set" },
-    { "id": "reviewQuick", "label": "Review queue", "href": "/review", "activeHrefs": ["/review?queue=pending"], "icon": "ShieldAlert", "roles": ["Reviewer", "DAM Admin"], "group": "Workflow", "description": "Pending review" }
+    {
+      "id": "uploadQuick",
+      "label": "Upload Photos",
+      "href": "/upload",
+      "icon": "UploadCloud",
+      "roles": [
+        "Contributor",
+        "Reviewer",
+        "DAM Admin"
+      ],
+      "group": "Actions",
+      "description": "Send photos"
+    },
+    {
+      "id": "reviewQuick",
+      "label": "Review Uploads",
+      "href": "/review",
+      "activeHrefs": [
+        "/review?queue=pending",
+        "/review?queue=rights-review"
+      ],
+      "icon": "ShieldAlert",
+      "roles": [
+        "Reviewer",
+        "DAM Admin"
+      ],
+      "group": "Actions",
+      "description": "Review submissions"
+    }
   ],
   "mobileNavPriorityByRole": {
-    "Viewer": ["/library", "/collections", "/requests", "/my-tasks", "/help"],
-    "Contributor": ["/library", "/upload", "/collections", "/recent-uploads", "/help"],
-    "Reviewer": ["/library", "/upload", "/review", "/collections", "/help"],
-    "DAM Admin": ["/library", "/upload", "/review", "/collections", "/help"]
+    "Viewer": [
+      "/library",
+      "/collections",
+      "/requests",
+      "/help"
+    ],
+    "Contributor": [
+      "/library",
+      "/collections",
+      "/upload",
+      "/recent-uploads",
+      "/requests"
+    ],
+    "Reviewer": [
+      "/library",
+      "/collections",
+      "/upload",
+      "/review",
+      "/my-tasks"
+    ],
+    "DAM Admin": [
+      "/library",
+      "/collections",
+      "/upload",
+      "/review",
+      "/my-tasks"
+    ]
   },
   "workspaceCopyByPath": {
-    "/": { "title": "Library", "subtitle": "Browse approved and reviewable media. Source files remain restricted." },
-    "/library": { "title": "Library", "subtitle": "Browse approved and reviewable media. Source files remain restricted." },
-    "/collections": { "title": "Collections", "subtitle": "Open curated sets with reuse decisions intact." },
-    "/review": { "title": "Review Queue", "subtitle": "Validate assets before they become broadly available." },
-    "/packages": { "title": "Distribution Sets", "subtitle": "Build governed media sets without moving source files." },
-    "/distribution-sets": { "title": "Distribution Sets", "subtitle": "Build governed packages from approved references only." },
-    "/upload": { "title": "Share Photos", "subtitle": "Send photos or a Google Drive link to the media team in a few minutes." },
-    "/recent-uploads": { "title": "Recent Uploads", "subtitle": "Review recent photo submissions without approving or moving source files." },
-    "/requests": { "title": "Requests", "subtitle": "Track review, source access, rights issue, and policy decision requests." },
-    "/my-tasks": { "title": "My Tasks", "subtitle": "Open assigned DAM work, evidence checks, and review actions." },
-    "/tasks": { "title": "My Tasks", "subtitle": "Open assigned DAM work, evidence checks, and review actions." },
-    "/insights": { "title": "Insights", "subtitle": "Monitor usage, readiness, and governance signals." },
-    "/admin": { "title": "Control Center", "subtitle": "Monitor source health, audit activity, and policy-sensitive workflows." },
-    "/admin/users": { "title": "Users & Roles", "subtitle": "Manage role-safe access and assignments." },
-    "/admin/roles": { "title": "Users & Roles", "subtitle": "Manage role-safe access and assignments." },
-    "/admin/taxonomy": { "title": "Taxonomy", "subtitle": "Govern metadata vocabularies and drift." },
-    "/admin/settings": { "title": "Settings", "subtitle": "Configure DAM operational controls." },
-    "/governance": { "title": "Governance Dashboard", "subtitle": "Operational health across approvals, rights, metadata, policy, audit, and integrations." },
-    "/governance/rights-consent": { "title": "Rights & Consent", "subtitle": "Search evidence records, missing consent, licenses, minors review, and owner verification." },
-    "/governance/metadata-health": { "title": "Metadata Health", "subtitle": "Measure required field completion, duplicates, taxonomy drift, and orphaned records." },
-    "/governance/policy-center": { "title": "Policy Center", "subtitle": "Rules for downloads, public use, source access, roles, expiration, and consent." },
-    "/governance/audit-log": { "title": "Audit Log", "subtitle": "Immutable upload, edit, approval, access, download, export, and policy events." },
-    "/governance/integrations": { "title": "Integrations", "subtitle": "ResourceSpace, Google Shared Drive, portal, storage, and identity provider health." },
-    "/guide": { "title": "Help Center", "subtitle": "Search policy-safe media use and review guidance." },
-    "/help": { "title": "Help Center", "subtitle": "Find help articles, quick tasks, open requests, and policy shortcuts." }
+    "/": {
+      "title": "True Jesus Church Media Portal",
+      "subtitle": "Upload event media, review submissions, browse approved church photos."
+    },
+    "/library": {
+      "title": "Browse Photos",
+      "subtitle": "Find approved church photos for ministry use."
+    },
+    "/collections": {
+      "title": "Albums / Events",
+      "subtitle": "Browse photos by album, event, and ministry gathering."
+    },
+    "/review": {
+      "title": "Review Uploads",
+      "subtitle": "Review submitted photos before approval."
+    },
+    "/packages": {
+      "title": "Distribution Sets",
+      "subtitle": "Deferred MVP draft area; collections remain the primary organization surface."
+    },
+    "/distribution-sets": {
+      "title": "Distribution Sets",
+      "subtitle": "Deferred MVP draft area; collections remain the primary organization surface."
+    },
+    "/upload": {
+      "title": "Upload Photos",
+      "subtitle": "Send event photos to the media team for review."
+    },
+    "/recent-uploads": {
+      "title": "My Uploads",
+      "subtitle": "Track photos you submitted for review."
+    },
+    "/requests": {
+      "title": "Requests",
+      "subtitle": "Ask for help with photo use, review, or corrections."
+    },
+    "/my-tasks": {
+      "title": "My Work",
+      "subtitle": "Follow up on assigned uploads, reviews, and requests."
+    },
+    "/tasks": {
+      "title": "My Work",
+      "subtitle": "Follow up on assigned uploads, reviews, and requests."
+    },
+    "/insights": {
+      "title": "Insights",
+      "subtitle": "Monitor usage, readiness, and review signals."
+    },
+    "/admin": {
+      "title": "Admin",
+      "subtitle": "Manage portal settings and review safety."
+    },
+    "/admin/users": {
+      "title": "Users & Roles",
+      "subtitle": "Manage role-safe access and assignments."
+    },
+    "/admin/roles": {
+      "title": "Users & Roles",
+      "subtitle": "Manage role-safe access and assignments."
+    },
+    "/admin/taxonomy": {
+      "title": "Taxonomy",
+      "subtitle": "Manage ministry, event, album, tag, and metadata vocabularies."
+    },
+    "/admin/settings": {
+      "title": "Settings",
+      "subtitle": "Configure media portal controls."
+    },
+    "/governance": {
+      "title": "Admin Review Rules",
+      "subtitle": "Operational health across approvals, rights, metadata, policy, audit, and integrations."
+    },
+    "/governance/rights-consent": {
+      "title": "Rights & Consent",
+      "subtitle": "Search evidence records, missing consent, licenses, minors review, and owner verification."
+    },
+    "/governance/metadata-health": {
+      "title": "Metadata Health",
+      "subtitle": "Measure required field completion, duplicates, taxonomy drift, and orphaned records."
+    },
+    "/governance/policy-center": {
+      "title": "Policy Guidance",
+      "subtitle": "Rules for downloads, public use, source access, roles, expiration, and consent."
+    },
+    "/governance/audit-log": {
+      "title": "Audit Log",
+      "subtitle": "Immutable upload, edit, approval, access, download, and policy events."
+    },
+    "/governance/integrations": {
+      "title": "Integrations",
+      "subtitle": "Shared Drive, portal, storage, and identity provider health."
+    },
+    "/guide": {
+      "title": "Help",
+      "subtitle": "Find media-use guidance and review help."
+    },
+    "/help": {
+      "title": "Help",
+      "subtitle": "Find media-use guidance and review help."
+    }
   },
   "workspaceQueryOverrides": [
-    { "pathname": "/review", "param": "queue", "value": "rights-review", "title": "Rights & Consent", "subtitle": "Review rights evidence, use scope, consent, and gated-copy decisions." },
-    { "pathname": "/insights", "param": "panel", "value": "metadata", "title": "Metadata Health", "subtitle": "Track field coverage, missing metadata, and reviewer-ready record quality." },
-    { "pathname": "/help", "param": "section", "value": "policies", "title": "Policy Center", "subtitle": "Policy-safe DAM guidance for reuse, rights, consent, and metadata standards." },
-    { "pathname": "/guide", "param": "section", "value": "policies", "title": "Policy Center", "subtitle": "Policy-safe DAM guidance for reuse, rights, consent, and metadata standards." }
+    {
+      "pathname": "/review",
+      "param": "queue",
+      "value": "rights-review",
+      "title": "Rights & Consent",
+      "subtitle": "Review rights evidence, use scope, consent, and gated-copy decisions."
+    },
+    {
+      "pathname": "/insights",
+      "param": "panel",
+      "value": "metadata",
+      "title": "Metadata Health",
+      "subtitle": "Track field coverage, missing metadata, and reviewer-ready record quality."
+    },
+    {
+      "pathname": "/help",
+      "param": "section",
+      "value": "policies",
+      "title": "Help",
+      "subtitle": "Media-use guidance for reuse, rights, consent, and tags."
+    },
+    {
+      "pathname": "/guide",
+      "param": "section",
+      "value": "policies",
+      "title": "Help",
+      "subtitle": "Media-use guidance for reuse, rights, consent, and tags."
+    }
   ],
   "workspacePrefixCopy": [
-    { "prefix": "/assets/", "title": "Asset Detail", "subtitle": "Inspect source, rights, usage, and download decisions." },
-    { "prefix": "/library/", "title": "Asset Detail", "subtitle": "Inspect source, rights, usage, and download decisions." },
-    { "prefix": "/collections/", "title": "Collection Detail", "subtitle": "Review curated asset readiness without overriding item-level approval." },
-    { "prefix": "/distribution-sets/", "title": "Distribution Set Draft", "subtitle": "Build governed packages from approved references only." },
-    { "prefix": "/review/", "title": "Review Queue", "subtitle": "Validate evidence and decisions before reuse." },
-    { "prefix": "/requests/", "title": "Requests", "subtitle": "Track review, source access, rights issue, and policy decisions." },
-    { "prefix": "/upload/drafts/", "title": "Upload Draft", "subtitle": "Resume intake without publishing assets." },
-    { "prefix": "/help/articles/", "title": "Help Article", "subtitle": "Policy-safe DAM guidance for current task." }
+    {
+      "prefix": "/assets/",
+      "title": "Photo Detail",
+      "subtitle": "View photo details and use guidance."
+    },
+    {
+      "prefix": "/library/",
+      "title": "Photo Detail",
+      "subtitle": "View photo details and use guidance."
+    },
+    {
+      "prefix": "/collections/",
+      "title": "Album / Event",
+      "subtitle": "Browse event photos and album details."
+    },
+    {
+      "prefix": "/distribution-sets/",
+      "title": "Distribution Set",
+      "subtitle": "Deferred MVP draft area; collections remain the primary organization surface."
+    },
+    {
+      "prefix": "/review/",
+      "title": "Review Uploads",
+      "subtitle": "Review submitted photos before approval."
+    },
+    {
+      "prefix": "/requests/",
+      "title": "Requests",
+      "subtitle": "Track photo help and review requests."
+    },
+    {
+      "prefix": "/upload/drafts/",
+      "title": "Upload Draft",
+      "subtitle": "Resume photo upload without publishing anything."
+    },
+    {
+      "prefix": "/help/articles/",
+      "title": "Help Article",
+      "subtitle": "Media-use guidance for current task."
+    }
   ]
 }

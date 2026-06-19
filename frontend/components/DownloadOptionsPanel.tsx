@@ -37,7 +37,7 @@ export function DownloadOptionsPanel({ asset, role }: { asset: StockMediaAsset; 
   ];
 
   return (
-    <section className="min-w-0 rounded-md border border-[#d4ded7] bg-white p-4" aria-label="Download approved copy">
+    <section className="min-w-0 rounded-md border border-[#d4ded7] bg-white p-4" aria-label="Download and requests">
       <div className="mb-3">
         <h2 className="text-lg font-black">Download and requests</h2>
         <p className="mt-1 text-sm font-semibold leading-snug text-tjc-muted">{state.panelLabel}</p>

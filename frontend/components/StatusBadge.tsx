@@ -224,8 +224,8 @@ export function DownloadBadge({ asset, state, size = "sm" }: { asset?: StockMedi
       status={allowed ? "allowed" : "blocked"}
       tone={allowed ? "success" : "danger"}
       icon={allowed ? Download : FileX2}
-      label={allowed ? "Download approved copy" : "Download unavailable"}
-      tooltip={allowed ? "Approved copy can be downloaded by allowed roles." : decision?.summary || "Download unavailable until reuse checks pass."}
+      label={allowed ? "Approved-copy request" : "Download unavailable"}
+      tooltip={allowed ? "Approved-copy request must pass the allowed-role gate." : decision?.summary || "Download unavailable until reuse checks pass."}
       size={size}
     />
   );

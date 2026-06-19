@@ -12,12 +12,14 @@ const logDir = path.join(root, ".runtime", "browser-qa-server");
 const stamp = new Date().toISOString().replace(/[:.]/g, "").replace("T", "T").replace("Z", "Z");
 const logPath = path.join(logDir, `${stamp}.log`);
 const latestLogPath = path.join(logDir, "latest.log");
-const nextBin = path.join(frontendDir, "node_modules", "next", "dist", "bin", "next");
 const hasProductionBuild = fs.existsSync(path.join(frontendDir, ".next", "BUILD_ID"));
-const serverArgs = hasProductionBuild
-  ? [nextBin, "start", "--port", String(port)]
-  : [nextBin, "dev", "--port", String(port)];
+const serverMode = process.env.PORTAL_BROWSER_QA_SERVER_MODE || "dev";
+const useProductionServer = serverMode === "production" || (serverMode === "auto" && hasProductionBuild);
+const serverCommand = "npm";
+const serverArgs = useProductionServer ? ["run", "start", "--", "--port", String(port)] : ["run", "dev", "--", "--port", String(port)];
 let server;
+let terminatingServer = false;
+let serverExitedUnexpectedly = false;
 
 if (!Number.isInteger(port) || port <= 0 || port > 65535) {
   console.error(`Invalid PORTAL_BROWSER_QA_PORT: ${process.env.PORTAL_BROWSER_QA_PORT || ""}`);
@@ -71,6 +73,7 @@ async function waitForServer() {
 
 function terminateServer() {
   if (!server || server.exitCode !== null) return;
+  terminatingServer = true;
   try {
     process.kill(-server.pid, "SIGTERM");
   } catch {
@@ -80,6 +83,37 @@ function terminateServer() {
       // Best effort cleanup; final port check below catches leftovers.
     }
   }
+}
+
+function startServer(log) {
+  terminatingServer = false;
+  serverExitedUnexpectedly = false;
+  server = spawn(serverCommand, serverArgs, {
+    cwd: frontendDir,
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      SSO_PROVIDER: "cloudflare-access",
+      SSO_TRUSTED_HEADERS: "1",
+      PORTAL_ALLOW_BETA_ROLE_OVERRIDE: "0",
+      NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH: "0",
+      DOWNLOAD_GATE_ALLOW_DEMO_ROLES: "0",
+      TJC_STOCK_MEDIA_ROOT: root
+    }
+  });
+
+  log.write(`\n[browser-qa-server] start ${new Date().toISOString()} ${serverCommand} ${serverArgs.join(" ")}\n`);
+  server.stdout.pipe(log, { end: false });
+  server.stderr.pipe(log, { end: false });
+  server.on("exit", (code, signal) => {
+    if (!terminatingServer) {
+      serverExitedUnexpectedly = true;
+      const message = `[browser-qa-server] exited unexpectedly code=${code ?? "null"} signal=${signal ?? "null"}`;
+      console.error(message);
+      log.write(`${message}\n`);
+    }
+  });
 }
 
 function runQa() {
@@ -123,30 +157,28 @@ try {
 }
 
 const log = fs.createWriteStream(logPath, { flags: "a" });
-server = spawn(process.execPath, serverArgs, {
-  cwd: frontendDir,
-  detached: true,
-  stdio: ["ignore", "pipe", "pipe"],
-  env: {
-    ...process.env,
-    SSO_PROVIDER: "cloudflare-access",
-    SSO_TRUSTED_HEADERS: "1",
-    PORTAL_ALLOW_BETA_ROLE_OVERRIDE: "0",
-    NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH: "0",
-    DOWNLOAD_GATE_ALLOW_DEMO_ROLES: "0",
-    TJC_STOCK_MEDIA_ROOT: root
-  }
-});
-
-server.stdout.pipe(log);
-server.stderr.pipe(log);
-
 let exitCode = 1;
 try {
-  await waitForServer();
-  console.log(`Browser QA server ready at ${baseUrl}; log ${logPath}`);
-  const result = await runQa();
-  exitCode = result.code;
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (await portOpen()) {
+      throw new Error(`Refusing to run browser QA: ${baseUrl} is already listening before attempt ${attempt + 1}.`);
+    }
+    startServer(log);
+    await waitForServer();
+    console.log(`Browser QA server ready at ${baseUrl}; log ${logPath}`);
+    const result = await runQa();
+    exitCode = result.code;
+    if (exitCode === 0) break;
+    if (!serverExitedUnexpectedly || attempt === maxAttempts - 1) break;
+    console.error(`Browser QA server exited during run; retrying ${attempt + 2}/${maxAttempts}.`);
+    terminateServer();
+    for (let cleanupAttempt = 0; cleanupAttempt < 20; cleanupAttempt += 1) {
+      if (!(await portOpen())) break;
+      await sleep(250);
+    }
+    server = undefined;
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
 } finally {

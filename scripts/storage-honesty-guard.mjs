@@ -623,19 +623,19 @@ if (!runtimeFileStore.includes("function runtimeStateTruthMatrix") || !runtimeFi
   failures.push("runtime file store must expose storage truth matrix for audit logs, tickets, review writes, packages, intake, searches, feedback, and usage events");
 }
 for (const phrase of [
-  "Local prototype only. Not beta-ready.",
+  "Operational HOLD",
   "Durable state missing.",
   "Identity not production-proven.",
-  "Hosted proof missing.",
-  "Local rehearsal HOLD"
+  "Hosted durability, identity proof, catalog proof, and owner signoff are still required.",
+  "Read-only readiness"
 ]) {
   if (!enterpriseAdmin.includes(phrase)) failures.push(`admin storage/identity honesty copy missing: ${phrase}`);
 }
 if (/Release ready|Release readiness blocked|Release hold|Go\/no-go evidence|No-go until blockers clear|Team Beta GO|teammate GO/.test(enterpriseAdmin)) {
-  failures.push("admin surface must use local rehearsal/pass/hold wording, not release/go labels");
+  failures.push("admin surface must use operational pass/hold wording, not release/go labels");
 }
 if (/Human signoff record says GO|Team Beta stays HOLD until owner evidence changes to GO|Team Beta GO|teammate GO/.test(betaReadinessFacts)) {
-  failures.push("beta readiness facts must not surface teammate GO labels; use local rehearsal/pass/hold wording");
+  failures.push("beta readiness facts must not surface teammate GO labels; use operational pass/hold wording");
 }
 
 if (!publicTextSafety.includes("function containsOperationalText") || !publicTextSafety.includes("function containsScaffoldText") || !publicTextSafety.includes("function safePublicList")) {

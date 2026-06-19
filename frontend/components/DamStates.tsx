@@ -123,7 +123,7 @@ export function UploadEmptyState(props: Partial<Omit<DamStateProps, "variant" | 
 }
 
 export function ReviewQueueEmptyState(props: Partial<Omit<DamStateProps, "variant" | "tone" | "title">>) {
-  return <StateCard {...props} variant="empty" tone="neutral" title="No assets in this review queue" />;
+  return <StateCard {...props} variant="empty" tone="neutral" title="No uploads need review" />;
 }
 
 export function AdminConfigMissingState(props: Omit<DamStateProps, "variant" | "tone">) {
@@ -137,7 +137,7 @@ function restrictedPreviewCopy(title?: string, detail?: string) {
       icon: <Users size={22} strokeWidth={1.8} aria-hidden="true" />,
       title: title || "People/minors review required",
       reason: "People visibility needs reviewer confirmation before preview or download.",
-      action: "Open review queue",
+      action: "Open Review Uploads",
       tone: "bg-[#fff8e8] text-[#725216]",
       ring: "bg-[#f3d994]/55"
     };

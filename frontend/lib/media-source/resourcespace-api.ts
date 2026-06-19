@@ -266,7 +266,7 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     && valuesMatch(confirmedDate, expectedDate)
     && valuesMatch(confirmedNotes, record.note);
   if (!confirmed) {
-    const message = "ResourceSpace writeback completed but confirmation fields did not match the requested evidence packet.";
+    const message = "ResourceSpace writeback response returned, but confirmation fields did not match the requested evidence packet.";
     const failed = markPendingReviewWriteSyncFailed(record.id, message);
     return {
       ok: false,

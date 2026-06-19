@@ -29,13 +29,13 @@ export function toastUploadComplete(action?: ToastAction) {
   toast.dismiss("upload-intake-started");
   return toast.success("Intake received", {
     id: "upload-intake-complete",
-    description: "Media remains submitted, unpublished, and gated until reviewer approval.",
+    description: "Media stays submitted and gated until reviewer approval.",
     action: actionConfig(action),
     icon: <CheckCircle2 size={16} strokeWidth={1.8} aria-hidden="true" />
   });
 }
 
-export function toastUploadFailed(detail = "No files were approved or published.", action?: ToastAction) {
+export function toastUploadFailed(detail = "No files moved forward.", action?: ToastAction) {
   toast.dismiss("upload-intake-started");
   return toast.error("Intake failed", {
     id: "upload-intake-failed",

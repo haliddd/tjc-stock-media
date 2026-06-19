@@ -10,7 +10,7 @@ import { cn } from "@/lib/ui";
 export function BetaLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = useMemo(() => safeBetaReturnTo(searchParams.get("returnTo")), [searchParams]);
+  const returnTo = useMemo(() => safeBetaReturnTo(searchParams?.get("returnTo")), [searchParams]);
   const [role, setRole] = useState<DemoRole>("Viewer");
   const [password, setPassword] = useState("");
   const [invitationCode, setInvitationCode] = useState("");
@@ -32,13 +32,13 @@ export function BetaLoginPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setMessage(payload.error || "Internal beta access failed.");
+        setMessage(payload.error || "Restricted access failed.");
         return;
       }
       router.replace(payload.returnTo || "/");
       router.refresh();
     } catch {
-      setMessage("Internal beta access failed. Check connection and try again.");
+      setMessage("Restricted access failed. Check connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -48,9 +48,9 @@ export function BetaLoginPage() {
     <main className="beta-login-page">
       <section className="beta-login-panel" aria-labelledby="beta-login-title">
         <div className="beta-login-copy">
-          <span className="beta-login-eyebrow"><ShieldCheck size={16} aria-hidden="true" /> Internal beta access</span>
+          <span className="beta-login-eyebrow"><ShieldCheck size={16} aria-hidden="true" /> Restricted media portal access</span>
           <h1 id="beta-login-title">True Jesus Church Media Library</h1>
-          <p>Role personas are for QA testing only. Not production SSO. Not real church member auth. Do not upload sensitive production media yet.</p>
+          <p>Role views are for testing only. Identity setup is still being verified. Keep sensitive media out until access is confirmed.</p>
           <ul>
             <li>Vercel protection remains first gate.</li>
             <li>Original/source files remain restricted.</li>
@@ -67,7 +67,7 @@ export function BetaLoginPage() {
             </div>
           </div>
 
-          <div className="beta-persona-grid" role="radiogroup" aria-label="Beta tester persona">
+          <div className="beta-persona-grid" role="radiogroup" aria-label="Restricted access persona">
             {betaPersonas.map((persona) => (
               <button
                 className={cn("beta-persona-card", role === persona.role && "is-active")}

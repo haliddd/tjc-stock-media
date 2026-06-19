@@ -28,6 +28,26 @@ describe("upload intake batch validation", () => {
     ]));
   });
 
+  it("accepts uploader alias when contributor UI hides source language", () => {
+    const intake = normalizeUploadIntake(form([
+      ["files", photo()],
+      ["eventName", "Family Day"],
+      ["eventDate", "2026-06-18"],
+      ["ministry", "Family Ministry"],
+      ["uploader", "Contributor upload"],
+      ["peopleVisible", "Unknown"],
+      ["minorsVisible", "Unknown"],
+      ["usageRights", "Unknown - reviewer verifies"],
+      ["approvalSuggestion", "Reviewer decides"]
+    ]));
+    const response = buildUploadIntakeResponse(intake);
+    expect(uploadIntakeValidationError(intake)).toBeNull();
+    expect(intake.source).toBe("Contributor upload");
+    expect(response.defaultReviewState).toBe("Needs Review");
+    expect(response.defaultUsageScope).toBe("Do Not Publish");
+    expect(response.intakeState.publishable).toBe(false);
+  });
+
   it("allows source-link-only batch with required identity", () => {
     const intake = normalizeUploadIntake(form([
       ["sourceLink", "https://drive.google.com/example"],
@@ -46,7 +66,7 @@ describe("upload intake batch validation", () => {
       publishable: false
     });
     expect(response.resourceSpaceWritten).toBe(false);
-    expect(response.betaBoundaries.forbidden).toContain("Public approval, download enablement, or ResourceSpace approval writeback from upload");
+    expect(response.betaBoundaries.forbidden).toContain("Public approval, download enablement, or final approval writeback from upload");
   });
 
   it("blocks no files/link and missing batch identity only", () => {

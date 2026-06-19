@@ -100,9 +100,13 @@ if (!data.package.governance || typeof data.package.governance.totalRefs !== "nu
 }
 const governanceText = JSON.stringify(data.governance || {});
 const forbiddenGovernanceKeys = [
+  "checksum",
+  "checksum_sha256",
   "sourcePath",
+  "source_path",
   "masterDrivePath",
   "sourceAlbum",
+  "source_album",
   "sourceAlbumPath",
   "sourceAlbumMemberships",
   "originalFilename",
@@ -135,14 +139,30 @@ const forbiddenGovernanceKeys = [
   "publishDate",
   "region",
   "religiousEducationLevel",
+  "resource_space_id",
+  "review_status",
+  "reviewedBy",
+  "reviewed_by",
+  "reviewedAt",
+  "reviewed_at",
+  "rights_status",
   "rightsExpirationDate",
   "sermonTitle",
+  "source_album",
+  "syncSource",
+  "sync_source",
+  "approvedForPublic",
+  "approved_for_public",
+  "approvedForInternal",
+  "approved_for_internal",
+  "lastSyncedAt",
+  "last_synced_at",
   "suggestedTags",
   "testimonyTheme",
   "versionOrEdition",
   "withdrawalStatus"
 ];
-if (!data.governance?.sections?.length || forbiddenGovernanceKeys.some((key) => governanceText.includes(`"${key}"`)) || /"sourcePath"|"masterDrivePath"|"sourceAlbum"|"sourceAlbumPath"|"sourceAlbumMemberships"|"originalFilename"|"checksumSha256"|"duplicateGroup"|"duplicateRole"|"fileSizeBytes"|"pendingReviewWrite"|"resourceSpaceId"|"reuseDecision"|"reviewer"|"sourceAccount"|"sourcePlatform"|"sourceSystem"|"workflowState"/.test(governanceText) || /source path|master drive|checksum|original filename|ResourceSpace ID|\bRS\s+\d+\b|[a-f0-9]{32,}/i.test(governanceText)) {
+if (!data.governance?.sections?.length || forbiddenGovernanceKeys.some((key) => governanceText.includes(`"${key}"`)) || /"sourcePath"|"masterDrivePath"|"sourceAlbum"|"source_album"|"source_path"|"sourceAlbumPath"|"sourceAlbumMemberships"|"originalFilename"|"checksum"|"checksum_sha256"|"checksumSha256"|"duplicateGroup"|"duplicateRole"|"fileSizeBytes"|"pendingReviewWrite"|"resourceSpaceId"|"resource_space_id"|"review_status"|"reviewedBy"|"reviewed_by"|"reviewedAt"|"reviewed_at"|"reuseDecision"|"reviewer"|"rights_status"|"sourceAccount"|"sourcePlatform"|"sourceSystem"|"syncSource"|"sync_source"|"approvedForPublic"|"approved_for_public"|"approvedForInternal"|"approved_for_internal"|"lastSyncedAt"|"last_synced_at"|"workflowState"/.test(governanceText) || /source path|master drive|checksum|original filename|ResourceSpace ID|\bRS\s+\d+\b|[a-f0-9]{32,}/i.test(governanceText)) {
   console.error(`FAIL: package governance payload leaked private source metadata: ${governanceText.slice(0, 700)}`);
   process.exit(1);
 }

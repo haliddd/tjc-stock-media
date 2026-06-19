@@ -22,7 +22,7 @@ type CollectionAlbumCardProps = {
 
 function AlbumPlaceholder({ name, title, className, label = "Album cover" }: { name: string; title: string; className?: string; label?: string }) {
   return (
-    <span className={cn("relative grid h-full min-h-20 w-full place-items-center overflow-hidden rounded-md border border-[#cfd9d2] bg-[#eef3ef] p-3 text-center text-[#174d37]", className)} aria-label={`${name} package cover`}>
+    <span className={cn("relative grid h-full min-h-20 w-full place-items-center overflow-hidden rounded-md border border-[#cfd9d2] bg-[#eef3ef] p-3 text-center text-[#174d37]", className)} aria-label={`${name} album cover`}>
       <span className="absolute inset-2 rounded-md border border-[#d8e2dc]" aria-hidden="true" />
       <span className="relative z-[1] grid justify-items-center gap-1.5">
         <span className="grid h-10 w-10 place-items-center rounded-md border border-[#cfd9d2] bg-white">
@@ -52,7 +52,7 @@ export function CollectionAlbumCard({
   const hasPeopleWarning = Boolean(peopleWarning);
   const hasAssets = !countLabel.startsWith("0 ");
   const statusTone = hasPeopleWarning ? "warning" : hasAssets ? "success" : "neutral";
-  const statusLabel = hasPeopleWarning ? "People review" : hasAssets ? "Package ready" : "No assets yet";
+  const statusLabel = hasPeopleWarning ? "People review" : hasAssets ? "Ready to use" : "No assets yet";
   const bestUse = /slide|sermon|teaching|bible/i.test(`${name} ${description}`)
     ? "Best for slides and teaching visuals"
     : /website|hero|banner/i.test(`${name} ${description}`)
@@ -61,9 +61,9 @@ export function CollectionAlbumCard({
         ? "Best for newsletters and announcements"
         : "Best as a ministry starting point";
   const safetySummary = hasPeopleWarning
-    ? "Open item guidance before any public sharing."
+    ? "Reviewer should clear people/minors notes before public use."
     : hasAssets
-      ? "Start here, then confirm each item before reuse."
+      ? "Open album and follow each asset's usage guidance."
       : "Reviewer-approved media will appear here later.";
 
   return (
@@ -72,10 +72,15 @@ export function CollectionAlbumCard({
         "group relative grid min-w-0 gap-4 overflow-hidden rounded-md border bg-white p-3 text-left transition hover:border-[#8aa99a] hover:bg-[#fbfdfb] md:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]",
         isActive ? "border-[#0b4b42] bg-[#f6fbf7] ring-1 ring-inset ring-[#8fb2a5]" : "border-[#d4ded7]"
       )}
-      aria-label={`${name} package card`}
+      aria-label={`${name} album card`}
       onPointerEnter={onInspect}
     >
-      <button className="absolute inset-0 z-[1] hidden rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f4f45] md:block" type="button" onClick={onInspect} aria-label={`Select ${name}`} />
+      <button
+        className="absolute inset-0 z-[1] hidden rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f4f45] md:block"
+        type="button"
+        onClick={onInspect || onOpen}
+        aria-label={onInspect ? `Select ${name}` : `Open ${name} album`}
+      />
       <div className="pointer-events-none relative z-[2] grid max-w-full grid-cols-[1.45fr_.88fr] gap-2 overflow-hidden rounded-md bg-[#edf3ef] p-1.5" aria-hidden="true">
         {images.length ? (
           <>
@@ -90,9 +95,9 @@ export function CollectionAlbumCard({
           </>
         ) : (
           <>
-            <AlbumPlaceholder name={name} className="row-span-2 aspect-[4/3]" title={name} label="Package cover" />
-            <AlbumPlaceholder name={`${name}-shelf`} className="aspect-[4/3]" title="Package" label="Preview" />
-            <AlbumPlaceholder name={`${name}-stable`} className="aspect-[4/3]" title="Media kit" label="Preview" />
+            <AlbumPlaceholder name={name} className="row-span-2 aspect-[4/3]" title={name} label="Album cover" />
+            <AlbumPlaceholder name={`${name}-shelf`} className="aspect-[4/3]" title="Album" label="Preview" />
+            <AlbumPlaceholder name={`${name}-stable`} className="aspect-[4/3]" title="Media" label="Preview" />
           </>
         )}
       </div>
@@ -133,7 +138,7 @@ export function CollectionAlbumCard({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e6eee8] pt-3">
           <span className="text-xs font-black text-tjc-muted">
-            {hasAssets ? "Open Find results to confirm each asset before reuse." : "No assets yet."}
+            {hasAssets ? "Open album to review media before reuse." : "No assets yet."}
           </span>
           <div className="flex flex-wrap gap-2">
             {onInspect ? (
@@ -142,7 +147,7 @@ export function CollectionAlbumCard({
               </button>
             ) : null}
             {hasAssets ? <button className="pointer-events-auto inline-flex min-h-9 items-center gap-2 rounded-md border border-[#c9d8cf] bg-white px-3 text-sm font-black text-tjc-evergreen transition hover:bg-[#eef7f1] active:translate-y-px" type="button" onClick={onOpen}>
-              Open Find results
+              Open album
               <ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" />
             </button> : null}
           </div>

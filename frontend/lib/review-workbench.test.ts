@@ -21,9 +21,10 @@ import {
   buildReviewQueueMetrics,
   buildReviewSignals,
   missingReviewActionEvidence,
+  reviewDecisionActions,
   reviewNextCheckLabel
 } from "@/lib/review-workbench";
-import { assetMatchesReviewQueue, reviewGovernanceGroupsForAsset } from "@/lib/workflow-policy";
+import { assetMatchesReviewQueue, isReviewActionBackend, reviewActions, reviewGovernanceGroupsForAsset } from "@/lib/workflow-policy";
 import { assetForRolePayload, sourceForRole } from "@/lib/source-redaction";
 import type { DamPackage, IntegrationReadinessItem, StockMediaAsset } from "@/lib/types";
 
@@ -103,6 +104,19 @@ describe("review workbench model", () => {
     expect(missing).toContain("reviewNote");
   });
 
+  it("keeps workbench decision backends aligned with workflow policy", () => {
+    const workflowBackends = reviewActions.map((action) => action.backend);
+
+    expect(reviewDecisionActions.every((action) => isReviewActionBackend(action.action))).toBe(true);
+    expect(reviewDecisionActions.map((action) => action.action)).toEqual(expect.arrayContaining([
+      "Approve Public",
+      "Approve Internal",
+      "Request More Info",
+      "Do Not Use"
+    ]));
+    expect(reviewDecisionActions.map((action) => action.action).every((action) => workflowBackends.includes(action))).toBe(true);
+  });
+
   it("groups review records by enterprise governance work lanes", () => {
     const risky = asset({
       status: "Needs Review",
@@ -174,7 +188,26 @@ describe("trust and redaction decisions", () => {
       versionOrEdition: "v1",
       duplicateSimilarityHint: "near duplicate",
       suggestedTags: ["worship-ready"],
-      controlledVocabularySource: "review-suggestion"
+      controlledVocabularySource: "review-suggestion",
+      resource_space_id: "1001",
+      source_path: "/Shared Drives/private/source-alias.jpg",
+      source_album: "Private album",
+      checksum: "secret-checksum-alias",
+      checksum_sha256: "secret-checksum-sha",
+      review_status: "Approved Public",
+      rights_status: "Rights approved",
+      reviewedBy: "Reviewer One",
+      reviewed_by: "Reviewer One",
+      reviewedAt: "2026-06-01",
+      reviewed_at: "2026-06-01",
+      approvedForPublic: true,
+      approved_for_public: true,
+      approvedForInternal: false,
+      approved_for_internal: false,
+      lastSyncedAt: "2026-06-01T00:00:00.000Z",
+      last_synced_at: "2026-06-01T00:00:00.000Z",
+      syncSource: "ResourceSpace",
+      sync_source: "ResourceSpace"
     });
     const viewer = assetForRolePayload("Viewer", matureAsset);
     const reviewer = assetForRolePayload("Reviewer", matureAsset);
@@ -186,8 +219,13 @@ describe("trust and redaction decisions", () => {
     });
 
     expect(viewer.resourceSpaceId).toBeUndefined();
+    expect(viewer.resource_space_id).toBeUndefined();
     expect(viewer.sourcePath).toBeUndefined();
+    expect(viewer.source_path).toBeUndefined();
+    expect(viewer.source_album).toBeUndefined();
     expect(viewer.checksumSha256).toBeUndefined();
+    expect(viewer.checksum).toBeUndefined();
+    expect(viewer.checksum_sha256).toBeUndefined();
     expect(viewer.imageUrls?.download).toBeUndefined();
     expect(viewer.masterCustodyPathStatus).toBeUndefined();
     expect(viewer.publishDate).toBeUndefined();
@@ -212,9 +250,26 @@ describe("trust and redaction decisions", () => {
     expect(viewer.importBatch).toBeUndefined();
     expect(viewer.suggestedTags).toBeUndefined();
     expect(viewer.controlledVocabularySource).toBeUndefined();
+    expect(viewer.review_status).toBeUndefined();
+    expect(viewer.rights_status).toBeUndefined();
+    expect(viewer.approvedForPublic).toBeUndefined();
+    expect(viewer.approved_for_public).toBeUndefined();
+    expect(viewer.approvedForInternal).toBeUndefined();
+    expect(viewer.approved_for_internal).toBeUndefined();
+    expect(viewer.lastSyncedAt).toBeUndefined();
+    expect(viewer.last_synced_at).toBeUndefined();
+    expect(viewer.syncSource).toBeUndefined();
+    expect(viewer.sync_source).toBeUndefined();
     expect(viewerSource.label).toBe("Media library");
     expect(reviewer.resourceSpaceId).toBe("1001");
+    expect(reviewer.resource_space_id).toBe("1001");
     expect(reviewer.sourcePath).toBeUndefined();
+    expect(reviewer.source_path).toBeUndefined();
+    expect(reviewer.source_album).toBeUndefined();
+    expect(reviewer.masterDrivePath).toBeUndefined();
+    expect(reviewer.checksumSha256).toBeUndefined();
+    expect(reviewer.checksum).toBeUndefined();
+    expect(reviewer.checksum_sha256).toBeUndefined();
     expect(reviewer.masterCustodyPathStatus).toBe("verified");
     expect(reviewer.doctrineSacramentTheme).toBe("Holy Communion");
     expect(reviewer.duplicateSimilarityHint).toBe("near duplicate");
