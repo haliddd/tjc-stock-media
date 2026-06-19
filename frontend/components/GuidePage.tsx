@@ -308,7 +308,7 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
 
   return (
     <div className="dam-help-center" data-route-identity="help">
-      <main className="help-center-main">
+      <section className="help-center-main">
         <section className="help-center-hero" aria-labelledby="help-center-title">
           <div>
             <h1 id="help-center-title">Help Center</h1>
@@ -500,7 +500,7 @@ export function GuidePage({ policyCenter = false }: { policyCenter?: boolean }) 
             ))}
           </div>
         </section>
-      </main>
+      </section>
 
       <aside className="help-center-rail" aria-label="Media help actions">
         <section className="help-review-card">

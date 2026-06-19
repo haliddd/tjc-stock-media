@@ -334,7 +334,7 @@ export function EnterpriseDashboardPage() {
       </section>
 
       <div className="ed-dashboard-workspace">
-        <main className="ed-dashboard-library-preview" aria-label="Media preview">
+        <section className="ed-dashboard-library-preview" aria-label="Media preview">
           <header>
             <div>
               <span className="ed-section-eyebrow">{copy.libraryEyebrow}</span>
@@ -348,7 +348,7 @@ export function EnterpriseDashboardPage() {
               <AssetCard asset={asset} key={asset.id} />
             ))}
           </div>
-        </main>
+        </section>
 
         <aside className="ed-dashboard-trust-panel" aria-label="Selected asset trust panel">
           <header>

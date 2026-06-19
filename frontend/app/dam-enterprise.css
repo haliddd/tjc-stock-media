@@ -17462,6 +17462,22 @@ button:disabled,
   gap: .25rem;
 }
 
+.ed-filter-section-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ed-filter-section-toolbar button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f6b4f;
+  padding: 0 .35rem;
+  font-size: .72rem;
+  font-weight: 900;
+}
+
 .enterprise-library .ed-saved-view-list button,
 .enterprise-library .ed-filter-option {
   display: grid;
@@ -21281,8 +21297,8 @@ body {
 .dam-sidebar-collapsed-menu,
 .dam-sidebar-logout {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid var(--damx-line);
   border-radius: 8px;
@@ -21303,8 +21319,8 @@ body {
 }
 
 .dam-sidebar-search {
-  min-height: 38px !important;
-  height: 38px !important;
+  min-height: 44px !important;
+  height: 44px !important;
   border-color: var(--damx-line) !important;
   border-radius: 8px !important;
   background: #ffffff !important;
@@ -21356,7 +21372,7 @@ body {
 }
 
 .dam-sidebar-menu-button {
-  min-height: 38px !important;
+  min-height: 44px !important;
   border: 1px solid transparent !important;
   border-radius: 8px !important;
   color: #27322e !important;
@@ -21471,17 +21487,17 @@ body {
 }
 
 .dam-command-shell [data-collapsible="icon"] .dam-sidebar-search {
-  width: 34px !important;
-  min-width: 34px !important;
-  height: 34px !important;
-  min-height: 34px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
   grid-template-columns: 1fr !important;
   justify-items: center;
   padding: 0 !important;
 }
 
 .dam-command-shell [data-collapsible="icon"] .dam-sidebar-user {
-  grid-template-columns: 32px;
+  grid-template-columns: 44px;
   justify-content: center;
   padding-inline: 0;
 }

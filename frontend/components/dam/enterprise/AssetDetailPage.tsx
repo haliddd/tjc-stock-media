@@ -689,7 +689,7 @@ function RoleSafeAssetDetailPage({
   return (
     <div className="enterprise-page enterprise-detail">
       <div className="ed-detail-layout">
-        <main>
+        <section>
           <header className="ed-detail-header ed-record-header">
             <div className="ed-detail-title-block">
               <nav className="ed-breadcrumb" aria-label="Breadcrumb">
@@ -746,7 +746,7 @@ function RoleSafeAssetDetailPage({
               <Link className="ed-action" href={reportIssueHref}><AlertTriangle size={16} aria-hidden="true" />Report issue</Link>
             </div>
           </section>
-        </main>
+        </section>
 
         <aside className="ed-detail-rail ed-record-rail">
           <MetadataGroup title="Media" rows={[
@@ -915,7 +915,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
   return (
     <div className="enterprise-page enterprise-detail">
       <div className="ed-detail-layout">
-        <main>
+        <section>
           <header className="ed-detail-header ed-record-header">
             <div className="ed-detail-title-block">
               <nav className="ed-breadcrumb" aria-label="Breadcrumb">
@@ -1083,7 +1083,7 @@ export function EnterpriseAssetDetailPage({ id }: { id: string }) {
               </>
             ) : null}
           </section>
-        </main>
+        </section>
 
         <aside className="ed-detail-rail ed-record-rail">
           <MetadataGroup title="Use state" rows={[

@@ -391,7 +391,7 @@ function RequestsPageContent() {
       {notice ? <p className="ed-inline-success" role="status">{notice}</p> : null}
       {error ? <p className="ed-route-safety-note" role="alert"><AlertTriangle size={14} aria-hidden="true" />{error}</p> : null}
 
-      <main className="request-launch-grid" data-primary-section="request-workflow">
+      <section className="request-launch-grid" data-primary-section="request-workflow">
         <section className="request-workflow" aria-labelledby="request-workflow-title">
           <header>
             <span>Guided request workflow</span>
@@ -520,7 +520,7 @@ function RequestsPageContent() {
             </div>
           </section>
         </aside>
-      </main>
+      </section>
 
       {canSeeWorkbench ? (
         <section className="request-workbench" aria-labelledby="request-workbench-title">

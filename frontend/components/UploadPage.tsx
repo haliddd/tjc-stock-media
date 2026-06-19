@@ -144,7 +144,10 @@ export function UploadPage() {
   const hasFileOrSource = selectedFiles.length > 0 || hasValidSourceLink;
   const tagCount = parseUploadTags(suggestedTags).length;
   const submitReady = hasFileOrSource && intakeNotes.trim().length > 0;
-  const submitDisabled = !submitReady || isSubmitting;
+  const submitDisabled = !submitReady || isSubmitting || Boolean(receipt);
+  const receiptIsLinkOnly = Boolean(receipt?.sourceLinkCaptured && !receipt.fileCount);
+  const receiptTitle = receiptIsLinkOnly ? "Link sent for review" : "Photos sent";
+  const receiptResetLabel = receiptIsLinkOnly ? "Share another link or photos" : "Share more photos";
   const packetItems = [
     { id: "type", label: `Media type selected: ${selectedType.label}`, complete: Boolean(intakeType) },
     { id: "file", label: hasFileOrSource ? "File or source link included" : "File or source link needed", complete: hasFileOrSource },
@@ -338,10 +341,8 @@ export function UploadPage() {
       setMessage("Upload intake was not recorded. Ask the media team for help.");
       toastUploadFailed("No files moved forward.");
     } finally {
-      if (!accepted) {
-        submittingRef.current = false;
-        setIsSubmitting(false);
-      }
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   }
 
@@ -639,7 +640,7 @@ export function UploadPage() {
             {step < steps.length - 1 ? (
               <PrimaryAction type="button" onClick={nextStep}>Next</PrimaryAction>
             ) : (
-              <PrimaryAction type="submit" icon={UploadCloud} disabled={submitDisabled}>{isSubmitting ? "Submitting" : "Submit for review"}</PrimaryAction>
+              <PrimaryAction type="submit" icon={UploadCloud} disabled={submitDisabled}>{receipt ? "Submitted" : isSubmitting ? "Submitting" : "Submit for review"}</PrimaryAction>
             )}
           </div>
           <p className="text-xs font-semibold leading-relaxed text-tjc-muted">
@@ -652,7 +653,7 @@ export function UploadPage() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={23} strokeWidth={1.9} aria-hidden="true" />
               <div>
-                <h2 className="text-2xl font-black">Photos sent</h2>
+                <h2 className="text-2xl font-black">{receiptTitle}</h2>
                 <p className="mt-1 text-sm font-semibold">Submitted for review. Waiting for review. Nothing is public.</p>
               </div>
             </div>
@@ -670,7 +671,7 @@ export function UploadPage() {
             </dl>
             <div className="flex flex-wrap gap-2">
               <PrimaryAction href="/recent-uploads" icon={Clock3}>View My Uploads</PrimaryAction>
-              <PrimaryAction type="button" tone="secondary" onClick={resetSendDetails} icon={UploadCloud}>Share more photos</PrimaryAction>
+              <PrimaryAction type="button" tone="secondary" onClick={resetSendDetails} icon={UploadCloud}>{receiptResetLabel}</PrimaryAction>
             </div>
             {receipt.reviewWarnings?.length ? (
               <div className="flex flex-wrap gap-2">

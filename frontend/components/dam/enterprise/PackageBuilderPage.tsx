@@ -535,7 +535,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
             </section>
           </aside>
 
-          <main className={cn("ed-package-canvas", allSectionsEmpty && "is-empty-package")}>
+          <section className={cn("ed-package-canvas", allSectionsEmpty && "is-empty-package")}>
             {activeResolvedSection ? (
               <section className="ed-card ed-builder-section is-active" aria-labelledby="active-package-section-title">
                 <section className="ed-draft-queue" aria-labelledby="draft-queue-title">
@@ -669,7 +669,7 @@ function EnterprisePackageBuilderContent({ role }: { role: DemoRole }) {
                 </section>
               </section>
             ) : null}
-          </main>
+          </section>
 
           <aside className="ed-panel ed-package-details" aria-label="Readiness and governance inspector">
             <section className="ed-card ed-portal-readiness-inspector">

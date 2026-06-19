@@ -214,8 +214,8 @@ export function presentPackageBuilderContext(governance: PackageGovernancePacket
 export function presentBrandKitContext(governance?: BrandKitGovernance, role: DemoRole = "Viewer", configured = false) {
   if (!governance) {
     return {
-      nextTitle: configured ? "Readiness loading" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect approved media first",
-      nextDetail: configured ? "Checking mapped assets." : role === "DAM Admin" ? "No kit download is shown until this Brand Hub maps to real DAM records." : "No kit download is shown until approved media is connected.",
+      nextTitle: configured ? "Readiness loading" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect reviewed media first",
+      nextDetail: configured ? "Checking mapped assets." : role === "DAM Admin" ? "No file package is shown until this Brand Hub maps to real DAM records." : "No file package is shown until reviewed media is connected.",
       nextAction: role === "DAM Admin" ? "View setup details" : "Ask DAM Admin",
       tone: configured ? "review" : "blocked"
     } as const;
@@ -224,14 +224,14 @@ export function presentBrandKitContext(governance?: BrandKitGovernance, role: De
   if (governance.deliveryReady) {
     return {
       nextTitle: "Kit readiness packet ready",
-      nextDetail: "Every mapped asset is Portal Ready. ZIP/share delivery is still off.",
+      nextDetail: "Mapped assets passed kit gates. ZIP/share delivery is still off.",
       nextAction: "View packet",
       tone: "review"
     } as const;
   }
 
   return {
-    nextTitle: governance.configured ? "Resolve kit restrictions" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect approved media first",
+    nextTitle: governance.configured ? "Resolve kit restrictions" : role === "DAM Admin" ? "Connect DAM collection first" : "Connect reviewed media first",
     nextDetail: governance.blockers[0] || governance.summary,
     nextAction: governance.configured ? "View blockers" : role === "DAM Admin" ? "View setup details" : "Ask DAM Admin",
     tone: governance.configured ? "review" : "blocked"

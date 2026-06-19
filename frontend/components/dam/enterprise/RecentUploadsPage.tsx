@@ -258,7 +258,7 @@ export function RecentUploadsPage() {
       </section>
 
       <div className="ed-route-workspace">
-        <main className="ed-route-main" data-primary-section="my-uploads-ledger">
+        <section className="ed-route-main" data-primary-section="my-uploads-ledger">
           <header className="ed-section-heading">
             <div>
               <h2>{role === "Contributor" ? "My upload batches" : "Upload batches"}</h2>
@@ -292,7 +292,7 @@ export function RecentUploadsPage() {
               <p>This browser shows your recent submissions.</p>
             </section>
           )}
-        </main>
+        </section>
 
         <aside className="ed-route-inspector" aria-label="Upload batch details">
           {selected ? (

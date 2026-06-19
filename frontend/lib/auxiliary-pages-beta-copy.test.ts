@@ -11,6 +11,9 @@ describe("auxiliary DAM beta page copy", () => {
   it("keeps Brand Hub and Package Builder in review-note and gate-check language", () => {
     expect(brandHubPage).toContain(">Review note<");
     expect(brandHubPage).toContain(">Check gates<");
+    expect(brandHubPage).toContain("mapped media");
+    expect(brandHubPage).toContain("file access stays gated");
+    expect(brandHubPage).not.toMatch(/approved media|approved copies|Approved downloads|Portal Ready|publishing/i);
     expect(packageBuilderPage).toContain("Beta limits");
     expect(packageBuilderPage).toContain("Review gate inspector");
     expect(packageBuilderPage).toContain("No generated files, source copies, hosted URLs, external sends, or ResourceSpace writeback");

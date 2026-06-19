@@ -739,19 +739,11 @@ export function AssetCard({
     if ((event.target as HTMLElement).closest("button,a,input,select,textarea,[role='button']")) return;
     onSelect?.(event);
   };
-  const handleKeySelect = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== " " && event.key !== "Enter") return;
-    event.preventDefault();
-    onSelect?.(event);
-  };
   return (
     <article
       className={cn("ed-asset-card", selected && "is-selected")}
       data-asset-id={asset.id}
-      aria-selected={selected}
-      tabIndex={0}
       onClick={handleCardSelect}
-      onKeyDown={handleKeySelect}
     >
       <div className="ed-card-media">
         <button className="ed-card-preview-button" type="button" onClick={onQuickLook || onSelect} aria-label={`Open quick look for ${title}`}>
@@ -923,7 +915,10 @@ export function PremiumTaxonomyRail({
         </div>
       </details>
       <details open className="ed-filter-section">
-        <summary><span>Saved searches</span><button type="button" onClick={(event) => { event.preventDefault(); onSavedViewsExpand?.(); }} aria-label="Create or manage saved searches"><Plus size={14} /></button></summary>
+        <summary><span>Saved searches</span><ChevronDown size={14} /></summary>
+        <div className="ed-filter-section-toolbar">
+          <button type="button" onClick={onSavedViewsExpand} aria-label="Create or manage saved searches"><Plus size={14} /></button>
+        </div>
         <div className="ed-saved-view-list">
           {firstViews.map((view) => <button className={cn(activeView === view.id && "is-active")} type="button" key={view.id} aria-current={activeView === view.id ? "true" : undefined} onClick={() => onViewSelect?.(view.id)}><span>{view.label}</span><em>{view.count.toLocaleString()}</em></button>)}
           {!firstViews.length ? <p>No saved searches mapped yet.</p> : <button className="ed-link-button" type="button" onClick={onSavedViewsExpand}>Show more</button>}

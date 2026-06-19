@@ -545,7 +545,7 @@ export function EnterpriseCollectionsPage() {
             </nav>
           </aside>
 
-          <main className="ed-collection-browser-main" aria-label="Albums and events browser">
+          <section className="ed-collection-browser-main" aria-label="Albums and events browser">
             {collectionGroups.length || secondaryWorklistCount ? (
               <>
                 {collectionGroups.map((group) => (
@@ -615,7 +615,7 @@ export function EnterpriseCollectionsPage() {
                 <ActionButton onClick={() => { setQuery(""); setSubmittedQuery(""); setActiveFilter("all"); }}>Clear filters</ActionButton>
               </section>
             )}
-          </main>
+          </section>
 
           <AlbumDetails model={selectedModel} canSeeReviewTools={canSeeReviewTools} onOpen={openCollection} onReview={openReviewIssues} />
         </div>

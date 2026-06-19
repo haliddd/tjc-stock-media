@@ -1021,12 +1021,12 @@ function AdvancedReviewDetailsDrawer({
 
 function EmptyReviewUploads({ actions }: { actions: ReviewShellAction[] }) {
   return (
-    <main className="review-uploads-empty">
+    <section className="review-uploads-empty">
       <FileText size={32} aria-hidden="true" />
       <h2>No uploads waiting for review</h2>
       <p>New submitted photos and videos will appear here when source records are available for reviewer triage.</p>
       <ReviewShellActions actions={actions} />
-    </main>
+    </section>
   );
 }
 
@@ -1158,7 +1158,7 @@ export function EnterpriseReviewPage() {
   }
   if (!canAccessReview) {
     return (
-      <main className="enterprise-page review-uploads-page">
+      <section className="enterprise-page review-uploads-page">
         <ReviewUploadsHeader cards={statusCards} subtitle="Review decisions are restricted to assigned reviewers and DAM Admins." />
         <ReviewQueueOverview activeQueueId={queueId} sourceUnavailable />
         <ReviewRecoveryPanel
@@ -1168,7 +1168,7 @@ export function EnterpriseReviewPage() {
           actions={nextActions({ includeUploads: role !== "Viewer" })}
         />
         <BrowserReceiptsPanel receipts={browserReceipts} role={role} />
-      </main>
+      </section>
     );
   }
   if (review.loading) {
@@ -1356,11 +1356,11 @@ export function EnterpriseReviewPage() {
             setSelectedMediaId(batch?.items[0]?.id || null);
           }}
         />
-        <main className="review-upload-detail">
+        <section className="review-upload-detail">
           <NextActionBanner message={nextAction.message} button={nextAction.button} onAction={runNextAction} />
           <ReviewBatchSummary batch={selectedBatch!} selectedMedia={selectedMedia} />
           <MediaReviewCanvas batch={selectedBatch!} selectedMedia={selectedMedia} selectedMediaId={selectedMedia?.id} onSelectMedia={setSelectedMediaId} />
-        </main>
+        </section>
         <ReviewDecisionPanel
           selectedMedia={selectedMedia}
           checks={simpleChecks}

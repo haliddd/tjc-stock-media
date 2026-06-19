@@ -55,15 +55,15 @@ export const brandKitConfigs = {
     owner: "Brand Team",
     reviewDate: "2025-03-01",
     collectionEnvKey: "BRAND_KIT_MVP_2024_COLLECTION_ID",
-    navItems: ["How to use these assets", "Key messages", "Logo usage", "Color & typography", "Photography style", "Example applications", "Downloads", "Allowed channels", "FAQs"],
+    navItems: ["How to use these assets", "Key messages", "Logo usage", "Color & typography", "Photography style", "Example applications", "File access", "Channel guidance", "FAQs"],
     principles: [
       { title: "Worship God", description: "Keep communication reverent, accurate, and centered on faith." },
-      { title: "Follow Christ", description: "Use approved words and visuals with humility and clarity." },
+      { title: "Follow Christ", description: "Use reviewed words and visuals with humility and clarity." },
       { title: "Love People", description: "Protect consent, privacy, and dignity in every media choice." },
       { title: "Bring Hope", description: "Choose images and messages that feel welcoming and truthful." }
     ],
     keyMessages: [
-      "Use approved media first.",
+      "Use reviewed media when scope is clear.",
       "Keep guidance clear and faithful.",
       "Protect people, privacy, and consent.",
       "Route unclear reuse through DAM review."
@@ -77,7 +77,7 @@ export const brandKitConfigs = {
     sections: [
       { id: "logos", title: "Logo usage", envKey: "BRAND_KIT_LOGO_COLLECTION_ID" },
       { id: "social", title: "Social templates", envKey: "BRAND_KIT_SOCIAL_TEMPLATES_COLLECTION_ID" },
-      { id: "downloads", title: "Approved downloads", envKey: "BRAND_KIT_MVP_2024_COLLECTION_ID" }
+      { id: "downloads", title: "File access guidance", envKey: "BRAND_KIT_MVP_2024_COLLECTION_ID" }
     ]
   }
 } satisfies Record<string, BrandKitConfig>;
@@ -141,7 +141,7 @@ function publicSectionMappings(sectionMappings: BrandKitSectionMapping[]) {
 }
 
 function publicWarnings(warnings: string[]) {
-  return warnings.length ? ["Brand kit downloads are limited until media-team mappings and review status are complete."] : [];
+  return warnings.length ? ["Brand kit file access is limited until media-team mappings and review status are complete."] : [];
 }
 
 export async function buildBrandKitResponse(config: BrandKitConfig, role: DemoRole) {

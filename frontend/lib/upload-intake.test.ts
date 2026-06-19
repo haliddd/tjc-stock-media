@@ -283,12 +283,15 @@ describe("upload intake batch validation", () => {
     expect(uploadPage).toContain("Describe them");
     expect(uploadPage).toContain("Review and send");
     expect(uploadPage).toContain("Photos sent");
+    expect(uploadPage).toContain("Link sent for review");
     expect(uploadPage).toContain("Submitted for review. Waiting for review. Nothing is public.");
     expect(uploadPage).toContain("Submitted</li>");
     expect(uploadPage).toContain("Waiting for review</li>");
     expect(uploadPage).toContain("Do not use yet</li>");
     expect(uploadPage).toContain("View My Uploads");
     expect(uploadPage).toContain("Share more photos");
+    expect(uploadPage).toContain("Share another link or photos");
+    expect(uploadPage).toContain("receipt?.sourceLinkCaptured && !receipt.fileCount");
     expect(uploadPage).not.toMatch(/public download|download remains/i);
   });
 });

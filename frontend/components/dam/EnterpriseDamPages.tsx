@@ -170,7 +170,7 @@ export function EnterprisePortalHomePage() {
   const roleLabel = `${role} access`;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-4 py-8 md:px-8 md:py-10" data-primary-section="media-portal-home">
+    <section className="mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-4 py-8 md:px-8 md:py-10" data-primary-section="media-portal-home">
       <section className="grid gap-6 border-b border-[#d8e1da] bg-white pb-7 md:grid-cols-[1fr_auto] md:items-end">
         <div className="max-w-3xl">
           <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-tjc-muted">
@@ -238,6 +238,6 @@ export function EnterprisePortalHomePage() {
         <p><strong className="font-black text-tjc-ink">Submit context.</strong> Event name, date, ministry, and consent notes help reviewers make decisions.</p>
         <p><strong className="font-black text-tjc-ink">Ask when unsure.</strong> Requests route media questions and correction needs to the team.</p>
       </section>
-    </main>
+    </section>
   );
 }

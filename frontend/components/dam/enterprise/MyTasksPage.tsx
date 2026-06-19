@@ -606,7 +606,7 @@ export function MyTasksPage() {
     <div className="enterprise-page enterprise-my-tasks enterprise-my-work-launch route-identity-page" data-route-identity="my-tasks">
       <PageHeader title={copy.title} subtitle={copy.subtitle} />
 
-      <main className="mw-launch" data-primary-section="my-work-dashboard">
+      <section className="mw-launch" data-primary-section="my-work-dashboard">
         <section className="mw-launch-toolbar" aria-label="My Work filters and actions">
           <div className="mw-filter-row" aria-label="Filter work by type">
             <span><Filter size={15} aria-hidden="true" />Filter</span>
@@ -751,7 +751,7 @@ export function MyTasksPage() {
             </section>
           </aside>
         </div>
-      </main>
+      </section>
     </div>
   );
 }

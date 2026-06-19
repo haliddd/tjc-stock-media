@@ -721,7 +721,10 @@ function BrowseFilterPanel({
         </div>
       </details>
       <details open className="ed-filter-section">
-        <summary><span>Saved searches</span><button type="button" onClick={(event) => { event.preventDefault(); onSavedViewsExpand?.(); }} aria-label="Save current search">Save</button></summary>
+        <summary><span>Saved searches</span><ChevronRight size={14} /></summary>
+        <div className="ed-filter-section-toolbar">
+          <button type="button" onClick={onSavedViewsExpand} aria-label="Save current search">Save</button>
+        </div>
         <div className="ed-saved-view-list">
           {savedViews.slice(0, 8).map((view) => (
             <button className={cn(activeView === view.id && "is-active")} type="button" key={view.id} aria-current={activeView === view.id ? "true" : undefined} onClick={() => onViewSelect?.(view.id)}>
@@ -1036,21 +1039,11 @@ function BrowseAssetCard({
     if (canBulkSelect) onSelect?.(event);
     else onQuickLook?.();
   };
-  const handleKeySelect = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== " " && event.key !== "Enter") return;
-    event.preventDefault();
-    if (canBulkSelect) onSelect?.(event);
-    else onQuickLook?.();
-  };
-
   return (
     <article
       className={cn("ed-asset-card", selected && "is-selected")}
       data-asset-id={asset.id}
-      aria-selected={selected}
-      tabIndex={0}
       onClick={handleCardSelect}
-      onKeyDown={handleKeySelect}
     >
       <div className="ed-card-media">
         <button className="ed-card-preview-button" type="button" onClick={onQuickLook || onSelect} aria-label={`View details for ${title}`}>
@@ -1108,16 +1101,8 @@ function LibraryResultList({
               key={asset.id}
               className={cn(selected && "is-selected")}
               data-asset-id={asset.id}
-              aria-selected={selected}
-              tabIndex={0}
               onClick={(event) => {
                 if (shouldIgnoreRowClick(event.target)) return;
-                if (canBulkSelect) onSelect(asset, event);
-                else onQuickLook(asset);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== " " && event.key !== "Enter") return;
-                event.preventDefault();
                 if (canBulkSelect) onSelect(asset, event);
                 else onQuickLook(asset);
               }}
@@ -1166,17 +1151,9 @@ function LibraryResultList({
               <tr
                 key={asset.id}
                 className={selected ? "is-active" : undefined}
-                aria-selected={selected}
                 data-asset-id={asset.id}
-                tabIndex={0}
                 onClick={(event) => {
                   if (shouldIgnoreRowClick(event.target)) return;
-                  if (canBulkSelect) onSelect(asset, event);
-                  else onQuickLook(asset);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== " " && event.key !== "Enter") return;
-                  event.preventDefault();
                   if (canBulkSelect) onSelect(asset, event);
                   else onQuickLook(asset);
                 }}
@@ -1497,7 +1474,7 @@ export function EnterpriseLibraryPage() {
       {libraryMessage ? <p className="ed-inline-success">{libraryMessage}</p> : null}
       {search.loading ? <LoadingCard label="Loading church media..." /> : search.error ? <BrowseErrorCard message={search.error} /> : (
         <div className={cn("ed-library-grid", inspectorOpen ? "is-inspector-open" : "is-inspector-collapsed")} aria-label="Browse Media browser">
-          <main className="ed-asset-workspace" aria-label="Media results pane">
+          <section className="ed-asset-workspace" aria-label="Media results pane">
             <AppliedFilterBar
               query={query}
               savedViews={search.data?.savedViews}
@@ -1622,7 +1599,7 @@ export function EnterpriseLibraryPage() {
                 }}
               />
             ) : null}
-          </main>
+          </section>
           <aside className={cn("ed-library-inspector-rail", !inspectorOpen && "is-collapsed")} aria-label="Media details">
             <button className="ed-inspector-rail-toggle" type="button" onClick={() => setInspectorOpen((current) => !current)} aria-expanded={inspectorOpen}>
               {inspectorOpen ? <ChevronRight size={15} aria-hidden="true" /> : <ChevronLeft size={15} aria-hidden="true" />}

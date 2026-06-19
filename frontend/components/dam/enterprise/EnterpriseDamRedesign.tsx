@@ -810,7 +810,7 @@ export function EnterpriseLibraryPage() {
         </section>
       ) : null}
       <div className="damx-library-layout">
-        <main className="damx-library-main">
+        <section className="damx-library-main">
           {viewMode === "table" ? (
             <DataTable
               label="Library asset table"
@@ -836,7 +836,7 @@ export function EnterpriseLibraryPage() {
             </div>
           )}
           <MobileAssetCards assets={filteredAssets} selectedId={selected?.id} onSelect={(asset) => setSelectedId(asset.id)} />
-        </main>
+        </section>
         <AssetInspector asset={selected} />
       </div>
     </div>
@@ -1054,6 +1054,9 @@ export function EnterpriseUploadPage() {
     : sourceLink.trim()
       ? "1 source link"
       : "Ready for photos";
+  const receiptIsLinkOnly = Boolean(receipt?.sourceLinkCaptured && !receipt.fileCount);
+  const receiptTitle = receiptIsLinkOnly ? "Link sent for review" : "Photos sent";
+  const receiptResetLabel = receiptIsLinkOnly ? "Share another link or photos" : "Share more photos";
   const readyStateLabel = readyToSubmit
     ? "Ready to send"
     : hasFileOrSource
@@ -1278,12 +1281,12 @@ export function EnterpriseUploadPage() {
     <div className="damx-page damx-upload-page damx-upload-v36">
       {message ? <p className="damx-notice" role="status">{message}</p> : null}
       {draftSaved ? <p className="damx-notice" role="status">Saved for later in this browser.</p> : null}
-      <main className="damx-upload-shell" aria-labelledby="share-photos-title">
+      <section className="damx-upload-shell" aria-labelledby="share-photos-title">
         {receipt ? (
-          <section className="damx-upload-success" aria-label="Photo submission sent">
+          <section className="damx-upload-success" aria-label={receiptIsLinkOnly ? "Source link submission sent" : "Photo submission sent"}>
             <CheckCircle2 size={24} aria-hidden="true" />
             <div>
-              <h1>Photos sent</h1>
+              <h1>{receiptTitle}</h1>
               <p>Submitted for review. Waiting for review. Nothing is public.</p>
               <ol className="damx-upload-status-timeline" aria-label="Submission status">
                 <li>Submitted</li>
@@ -1298,7 +1301,7 @@ export function EnterpriseUploadPage() {
               </dl>
               <div className="damx-upload-actions">
                 <EnterpriseButton tone="primary" href={routeWithRole("/recent-uploads", role)}>View My Uploads</EnterpriseButton>
-                <EnterpriseButton tone="secondary" onClick={resetSubmission}>Share more photos</EnterpriseButton>
+                <EnterpriseButton tone="secondary" onClick={resetSubmission}>{receiptResetLabel}</EnterpriseButton>
               </div>
             </div>
           </section>
@@ -1388,7 +1391,7 @@ export function EnterpriseUploadPage() {
             </footer>
           </>
         )}
-      </main>
+      </section>
     </div>
   );
 }
@@ -1452,7 +1455,7 @@ export function EnterpriseReviewPage() {
             ))}
           </div>
         </aside>
-        <main className="damx-review-workspace">
+        <section className="damx-review-workspace">
           <div className="damx-breadcrumb">Review Queue / {selected?.id}</div>
           <header className="damx-review-header">
             <div>
@@ -1498,7 +1501,7 @@ export function EnterpriseReviewPage() {
               </section>
             </>
           ) : null}
-        </main>
+        </section>
         <aside className="damx-decision-panel">
           <h2>Decision panel</h2>
           {selected ? (
@@ -1575,7 +1578,7 @@ export function EnterpriseCollectionsPage() {
         detail={selected ? `${selected.name} records shown with local preview routes.` : "Preview-backed local records appear before package planning."}
       />
       <div className="damx-library-layout">
-        <main className="damx-library-main">
+        <section className="damx-library-main">
           <DataTable label="Collections table" rows={collections} columns={columns} selectedId={selected?.id} onSelect={(row) => setSelectedId(row.id)} emptyState={<EmptyState title="No collections match this search" body="Try a ministry, owner, status, use case, or readiness term." />} pageSize={8} />
           <div className="damx-mobile-card-list">
             {collections.map((collection) => {
@@ -1587,7 +1590,7 @@ export function EnterpriseCollectionsPage() {
               );
             })}
           </div>
-        </main>
+        </section>
         <aside className="damx-inspector">
           {selected ? (
             <>
@@ -1683,7 +1686,7 @@ export function EnterprisePackageBuilderPage() {
             );
           })}
         </aside>
-        <main className="damx-builder-main">
+        <section className="damx-builder-main">
           <header className="damx-section-header"><div><h2>{activeSection.name}</h2><p>Only assets with approved derivatives can be included.</p></div><EnterpriseButton tone="primary" icon={<Plus size={15} aria-hidden="true" />} onClick={addApprovedAsset}>Add approved assets</EnterpriseButton></header>
           {activeAssets.length ? (
             <DataTable label={`${activeSection.name} asset references`} rows={activeAssets} columns={refColumns} pageSize={6} />
@@ -1694,7 +1697,7 @@ export function EnterprisePackageBuilderPage() {
               actions={<EnterpriseButton tone="primary" icon={<Plus size={16} aria-hidden="true" />} onClick={addApprovedAsset}>Add approved assets</EnterpriseButton>}
             />
           )}
-        </main>
+        </section>
         <ReadinessPanel
           title="Readiness inspector"
           description="Distribution readiness, missing references, blocked items, policy warnings, and export availability."
