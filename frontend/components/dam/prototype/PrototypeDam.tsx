@@ -738,6 +738,7 @@ export function PrototypeAssetDetailPage({ id }: { id: string }) {
               <StatusPill asset={asset} />
             </header>
             <div className="proto-detail-preview"><AssetImage asset={asset} variant="detail" /></div>
+            <p className="proto-detail-safety-note">Source/original files remain restricted. Downloads use the approved-copy gate and review policy.</p>
           </section>
           <PrototypeAssetInspector asset={asset} index={0} total={1} />
           <div className="proto-related">
