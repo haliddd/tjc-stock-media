@@ -1,1 +1,1 @@
-export { DamShell } from "@/components/dam/shell/DamShell";
+export { PrototypeDamShell as DamShell } from "@/components/dam/prototype/PrototypeDam";
