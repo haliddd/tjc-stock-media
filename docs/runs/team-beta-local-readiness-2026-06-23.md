@@ -71,7 +71,7 @@ Report: `docs/screenshots/team-beta-ui-ux-final-2026-06-23/browser-qa-report.jso
 
 ## Known Limitations
 
-- Cloud team beta remains NO-GO until ResourceSpace staging, durable beta storage, private upload storage, and Vercel Preview env are configured and proven.
+- Cloud full workflow remains NO-GO until ResourceSpace API, durable beta storage, and private upload storage are configured and proven. One-hour hosted read-only preview is LIMITED GO at `https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app`.
 - Old Vercel URL is a stable front-door candidate only after current branch/cloud env are redeployed and re-proved.
 - Local pending writes are local runtime records and do not claim ResourceSpace sync.
 - Local upload intake is beta review intake, not public publishing.

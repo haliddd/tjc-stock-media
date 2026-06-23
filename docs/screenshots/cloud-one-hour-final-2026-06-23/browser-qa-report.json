@@ -1,0 +1,201 @@
+{
+  "checkedAt": "2026-06-23T15:23:34.337Z",
+  "host": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app",
+  "commit": "5afd01753915b7d69b508a4289071bd2899e801c",
+  "viewports": [
+    {
+      "label": "1440",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "label": "390",
+      "width": 390,
+      "height": 900
+    }
+  ],
+  "pages": [
+    "/library",
+    "/upload",
+    "/review",
+    "/collections",
+    "/requests",
+    "/admin"
+  ],
+  "screenshots": [
+    {
+      "path": "library-viewer-1440.png",
+      "route": "/library",
+      "role": "Viewer",
+      "width": 1440,
+      "height": 1000,
+      "bodyChars": 2346,
+      "overflow": 0
+    },
+    {
+      "path": "upload-contributor-1440.png",
+      "route": "/upload",
+      "role": "Contributor",
+      "width": 1440,
+      "height": 1000,
+      "bodyChars": 1697,
+      "overflow": 0
+    },
+    {
+      "path": "review-reviewer-1440.png",
+      "route": "/review",
+      "role": "Reviewer",
+      "width": 1440,
+      "height": 1000,
+      "bodyChars": 1595,
+      "overflow": 0
+    },
+    {
+      "path": "collections-viewer-1440.png",
+      "route": "/collections",
+      "role": "Viewer",
+      "width": 1440,
+      "height": 1000,
+      "bodyChars": 1915,
+      "overflow": 0
+    },
+    {
+      "path": "requests-reviewer-1440.png",
+      "route": "/requests",
+      "role": "Reviewer",
+      "width": 1440,
+      "height": 1000,
+      "bodyChars": 1704,
+      "overflow": 0
+    },
+    {
+      "path": "admin-dam-admin-1440.png",
+      "route": "/admin",
+      "role": "DAM Admin",
+      "width": 1440,
+      "height": 1000,
+      "bodyChars": 2747,
+      "overflow": 0
+    },
+    {
+      "path": "library-viewer-390.png",
+      "route": "/library",
+      "role": "Viewer",
+      "width": 390,
+      "height": 900,
+      "bodyChars": 1739,
+      "overflow": 0
+    },
+    {
+      "path": "upload-contributor-390.png",
+      "route": "/upload",
+      "role": "Contributor",
+      "width": 390,
+      "height": 900,
+      "bodyChars": 1639,
+      "overflow": 0
+    },
+    {
+      "path": "review-reviewer-390.png",
+      "route": "/review",
+      "role": "Reviewer",
+      "width": 390,
+      "height": 900,
+      "bodyChars": 1500,
+      "overflow": 0
+    },
+    {
+      "path": "collections-viewer-390.png",
+      "route": "/collections",
+      "role": "Viewer",
+      "width": 390,
+      "height": 900,
+      "bodyChars": 1835,
+      "overflow": 0
+    },
+    {
+      "path": "requests-reviewer-390.png",
+      "route": "/requests",
+      "role": "Reviewer",
+      "width": 390,
+      "height": 900,
+      "bodyChars": 1614,
+      "overflow": 0
+    },
+    {
+      "path": "admin-dam-admin-390.png",
+      "route": "/admin",
+      "role": "DAM Admin",
+      "width": 390,
+      "height": 900,
+      "bodyChars": 2604,
+      "overflow": 0
+    }
+  ],
+  "failures": [],
+  "warnings": [],
+  "consoleErrors": [],
+  "networkFailures": [],
+  "ignoredNetworkFailures": [
+    {
+      "route": "/library",
+      "role": "Viewer",
+      "width": 390,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/api/assets/thumbnail/533?variant=card&v=533&role=Viewer",
+      "errorText": "net::ERR_ABORTED"
+    },
+    {
+      "route": "/library",
+      "role": "Viewer",
+      "width": 390,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/api/assets/thumbnail/509?variant=card&v=509&role=Viewer",
+      "errorText": "net::ERR_ABORTED"
+    },
+    {
+      "route": "/library",
+      "role": "Viewer",
+      "width": 390,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/api/assets/thumbnail/512?variant=card&v=512&role=Viewer",
+      "errorText": "net::ERR_ABORTED"
+    },
+    {
+      "route": "/review",
+      "role": "Reviewer",
+      "width": 390,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/api/assets/thumbnail/510?variant=card&v=510&role=Reviewer",
+      "errorText": "net::ERR_ABORTED"
+    },
+    {
+      "route": "/review",
+      "role": "Reviewer",
+      "width": 390,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/api/assets/thumbnail/460?variant=card&v=460&role=Reviewer",
+      "errorText": "net::ERR_ABORTED"
+    },
+    {
+      "route": "/admin",
+      "role": "DAM Admin",
+      "width": 1440,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/requests?role=DAM+Admin&_rsc=f6buO9EWxguZ60wc",
+      "errorText": "net::ERR_ABORTED",
+      "ignoredReason": "aborted prefetch/static/thumbnail during QA context teardown"
+    },
+    {
+      "route": "/admin",
+      "role": "DAM Admin",
+      "width": 1440,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/admin/settings?role=DAM+Admin&_rsc=f6buO9EWxguZ60wc",
+      "errorText": "net::ERR_ABORTED",
+      "ignoredReason": "aborted prefetch/static/thumbnail during QA context teardown"
+    },
+    {
+      "route": "/admin",
+      "role": "DAM Admin",
+      "width": 1440,
+      "url": "https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app/insights?role=DAM+Admin&_rsc=f6buO9EWxguZ60wc",
+      "errorText": "net::ERR_ABORTED",
+      "ignoredReason": "aborted prefetch/static/thumbnail during QA context teardown"
+    }
+  ],
+  "normalizedAt": "2026-06-23T15:24:02.668Z"
+}

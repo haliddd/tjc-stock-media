@@ -1,99 +1,94 @@
 # Cloud Beta Evidence
 
-CLOUD TEAM BETA STATUS: NO-GO
+CLOUD TEAM BETA STATUS: NO-GO for full cloud workflow
 
-ONE-HOUR CLOUD STATUS: NO-GO
+ONE-HOUR CLOUD STATUS: LIMITED GO
 
-Local final QA passed, but cloud beta evidence is still incomplete.
+Current branch is hosted and proven for read-only/UI preview. Cloud upload, review writeback, feedback durability, and private upload storage are not proven.
 
-## Local Evidence Snapshot
+## Preview Proof
 
-- Local browser QA passed at `2026-06-23T08:33:52.265Z`.
-- Local command gate passed on 2026-06-23:
-  - `make smoke`
-  - `BASE_URL=http://localhost:4885 make portal-api-smoke`
-  - `cd frontend && npm run typecheck`
-  - `cd frontend && npm run build`
-  - `cd frontend && npm run test`
-- Local portal URL: `http://localhost:4885`
-- Local ResourceSpace URL: `http://localhost:8088`
-- Local data source: ResourceSpace metadata export.
-- Local counts: 2,290 admin / 2,061 search-visible / 19 collections.
+| Item | Result |
+| --- | --- |
+| Branch | `beta/local-team-workflow-ready-overnight` |
+| Commit | `5afd01753915b7d69b508a4289071bd2899e801c` |
+| Deployment | `dpl_F7wVZpuqPud5CdcZUqWAke4Bvvuw` |
+| Hosted URL | `https://tjc-stock-media-p379ubz30-hali-s-projects1.vercel.app` |
+| ResourceSpace Cloud URL | `https://tjcstockmedia.free.resourcespace.com` |
+| Data source | Bundled ResourceSpace beta snapshot |
+| Asset count | 181 admin readiness / 163 search-visible |
+| Collection count | 19 |
+| Screenshot folder | `docs/screenshots/cloud-one-hour-final-2026-06-23/` |
+| Browser QA report | `docs/screenshots/cloud-one-hour-final-2026-06-23/browser-qa-report.json` |
 
-Local evidence does not prove cloud beta.
+## Commands / Checks
 
-## ResourceSpace Staging Status
+| Check | Result |
+| --- | --- |
+| Local focused tests | PASS: `npm run test -- production-hardening upload-intake` |
+| Typecheck | PASS after build regenerated `.next/types`: `npm run typecheck` |
+| Build | PASS: `npm run build` |
+| Vercel preview build | PASS / READY |
+| Temporary Vercel share access | PASS |
+| `/api/beta-auth/session` | PASS; beta auth enabled, current commit marker `5afd01753915...` |
+| Beta login | PASS for Viewer, Contributor, Reviewer, DAM Admin |
+| `/api/admin/readiness` | PASS; bundled snapshot, honest blockers |
+| `/api/assets/search?limit=12` | PASS; 163 search-visible assets, 19 collections |
+| `/beta-login` | PASS |
+| `/library` | PASS |
+| `/upload` | PASS page load; API upload fails closed |
+| `/review` | PASS page load; mutation workflow not cloud GO |
+| `/collections` | PASS |
+| `/requests` | PASS |
+| `/admin` | PASS |
+| Upload source-link API | PASS fail-closed: HTTP 503, `blocked-no-durable-store`, ResourceSpace cloud pending |
+| Download gate | PASS fail-closed: HTTP 503 `audit-required`; no original/source exposed |
+| Leak scan | PASS; no source/original/private/API-key pattern in fetched API bodies |
 
-- ResourceSpace free cloud signup was attempted in Safari on 2026-06-23 10:48 EDT.
-- Form data entered: full name, email, how-heard selection, empty-system template, required terms, and installation slug.
-- Requested slug `tjc-stock-media` was normalized by the form to `tjcstockmedia`.
-- Candidate URL `https://tjcstockmedia.free.resourcespace.com` was not launched or proven.
-- Direct HEAD check for the candidate URL redirects to `https://www.resourcespace.com/terminated`.
-- CAPTCHA challenge was verified in Safari, but `Launch ResourceSpace` was not clicked pending explicit action-time confirmation for account creation.
-- No HTTPS ResourceSpace cloud/staging URL is configured or proven.
-- No restricted cloud API user/API key is available.
-- No field map or staging collection IDs are available.
-- No ResourceSpace cloud API read was run.
-- No cloud thumbnails/previews were proven.
+## Browser QA
 
-## Vercel Preview Status
+Report: `docs/screenshots/cloud-one-hour-final-2026-06-23/browser-qa-report.json`
 
-- Old hosted beta URL: `https://tjc-stock-media.vercel.app`.
-- Old URL is a stable front-door candidate only after current branch/cloud env are redeployed and re-proved.
-- Old URL build marker remains `small-team-beta-readiness-2026-06-17`; do not claim current cloud readiness from it.
-- Current preview URL: `https://tjc-stock-media-hwizx2tgj-hali-s-projects1.vercel.app`.
-- Current branch alias: `https://tjc-stock-media-git-beta-local-team-wor-24b29a-hali-s-projects1.vercel.app`.
-- Current preview deployment: `dpl_Au6gMcETEmAoMorVjxkzXUR7MfWz`.
-- Current preview commit: `94852e170e6194cf51a446c21d3c583c09831f9e`.
-- Current preview app session route reports branch `beta/local-team-workflow-ready-overnight`, routeCount `20`, navItemCount `18`, and app contract `small-team-beta-readiness-2026-06-17`.
-- Current preview app beta auth is `enabled:false`.
-- Public read-only probes against current preview and branch alias returned Vercel Authentication 401 for all tested routes.
-- Stable URL `/` redirects to `/beta-login`; stable `/api/beta-auth/session` returns 401 JSON with beta auth enabled, but commit fields are null.
-- Stable asset/readiness routes redirect to beta login.
-- Leak scan across fetched hosted bodies found no `sourcePath`, `original`, `privateUrl`, `drive.google`, `photos.google`, or API key patterns.
-- Production deploy was not run.
+| Metric | Result |
+| --- | --- |
+| Checked at | `2026-06-23T15:23:34.337Z` |
+| Viewports | 1440, 390 |
+| Pages | `/library`, `/upload`, `/review`, `/collections`, `/requests`, `/admin` |
+| Screenshots | 12 |
+| Failures | 0 |
+| Warnings | 0 |
+| Console errors | 0 |
+| Blocking network failures | 0 |
+| Ignored network failures | 8 aborted RSC/static/thumbnail requests during QA context teardown |
+
+## ResourceSpace Evidence
+
+- ResourceSpace cloud URL assigned: `https://tjcstockmedia.free.resourcespace.com`.
+- Safari computer-use inspection showed ResourceSpace admin UI on the upload page.
+- No API credentials were created or stored.
+- No ResourceSpace API read was run.
+- No field map or collection IDs are proven.
+- Writeback remains disabled.
 
 ## Storage Durability Status
 
 | Surface | Current evidence |
 | --- | --- |
-| Pending review writes | Local runtime records; KV adapter exists if cloud env is configured |
-| Upload intake | Local runtime intake only; cloud durable upload intake not proven |
-| Feedback | Local JSON/KV path exists; cloud durable feedback not proven |
-| Private upload files | No S3/R2/Blob/ResourceSpace intake proof |
-| Source/original storage | Must remain restricted; no cloud proof yet |
+| Pending review writes | Not durable/proven on cloud |
+| Upload intake | Hosted API fails closed without durable store |
+| Feedback | Not durable/proven on cloud |
+| Private upload files | No Blob/S3/R2/ResourceSpace intake proof |
+| Source/original storage | No source/original exposure found in hosted API smoke |
 
-## Cloud Tests Not Yet Passed
+## Required Next Cloud Proof
 
-- ResourceSpace cloud reachability.
-- ResourceSpace restricted API read.
-- Vercel Preview env verification.
-- Portal API smoke against cloud preview.
-- App beta auth on current preview.
-- Asset search/readiness counts on current preview.
-- Upload persistence after serverless restart.
-- Review pending-write persistence after serverless restart.
-- Feedback persistence after serverless restart.
-- Download gate against cloud preview.
-- Role gates against cloud preview.
-- No source/original exposure check against cloud preview.
-- Browser QA against cloud preview.
+Before full cloud GO:
 
-## Required Cloud Proof Commands
+1. Create restricted ResourceSpace API user/key.
+2. Export/prove field map.
+3. Create/prove default/library, upload intake, and review queue collections.
+4. Configure durable pending writes and feedback storage.
+5. Configure private upload storage or ResourceSpace intake upload.
+6. Rerun hosted API smoke and browser QA on the exact preview URL.
 
-Run only after ResourceSpace staging and Vercel Preview env exist:
-
-```bash
-BASE_URL=<vercel-preview-url> make portal-api-smoke
-curl -s "$BASE_URL/api/assets/search?limit=12" > /tmp/cloud-search.json
-curl -s "$BASE_URL/api/admin/readiness" > /tmp/cloud-readiness.json
-curl -I "$BASE_URL/api/assets/thumbnail/<real-id>"
-```
-
-Any source/original URL in JSON/browser network payloads is CLOUD TEAM BETA NO-GO.
-
-## Screenshot Folder
-
-No cloud screenshot folder exists.
-
-Local final QA screenshots: `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
+Do not deploy production. Do not merge. Do not invite team until Hali confirms.
