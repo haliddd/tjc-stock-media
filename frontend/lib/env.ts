@@ -140,6 +140,60 @@ export function hasVercelBlobConfig() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+export function hasBetaDatabaseConfig() {
+  return Boolean(process.env.BETA_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL);
+}
+
+export function pendingWritesStoreMode() {
+  return process.env.PENDING_WRITES_STORE || "local-filesystem";
+}
+
+export function uploadIntakeStoreMode() {
+  return process.env.UPLOAD_INTAKE_STORE || "local-filesystem";
+}
+
+export function uploadStorageProvider() {
+  return process.env.UPLOAD_STORAGE_PROVIDER || "";
+}
+
+export function hasCloudUploadStorageConfig() {
+  const provider = uploadStorageProvider().toLowerCase();
+  if (provider === "vercel-blob") return hasVercelBlobConfig();
+  if (provider === "s3" || provider === "r2") {
+    return Boolean(
+      process.env.UPLOAD_STORAGE_BUCKET
+      && process.env.UPLOAD_STORAGE_REGION
+      && (process.env.UPLOAD_STORAGE_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID)
+      && (process.env.UPLOAD_STORAGE_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY)
+    );
+  }
+  return false;
+}
+
+export function cloudPreviewBetaStorageDiagnostics() {
+  const databaseConfigured = hasBetaDatabaseConfig();
+  const pendingWritesMode = pendingWritesStoreMode();
+  const uploadIntakeMode = uploadIntakeStoreMode();
+  const uploadStorage = hasCloudUploadStorageConfig();
+  const provider = uploadStorageProvider() || "not configured";
+  const requestedDurableQueues = pendingWritesMode !== "local-filesystem" || uploadIntakeMode !== "local-filesystem";
+  const adapterImplemented = false;
+  return {
+    databaseConfigured,
+    pendingWritesMode,
+    uploadIntakeMode,
+    uploadStorageProvider: provider,
+    uploadStorageConfigured: uploadStorage,
+    requestedDurableQueues,
+    adapterImplemented,
+    ready: false,
+    state: databaseConfigured || requestedDurableQueues || uploadStorage ? "Degraded" as const : "Pending setup" as const,
+    detail: databaseConfigured || requestedDurableQueues || uploadStorage
+      ? `Cloud beta storage env is partially configured, but pending writes/upload intake still use local runtime adapters until a durable adapter is implemented. DB: ${databaseConfigured ? "configured" : "missing"}; pending writes: ${pendingWritesMode}; upload intake: ${uploadIntakeMode}; upload storage ${provider}: ${uploadStorage ? "configured" : "missing"}.`
+      : "Cloud beta durable DB, pending write store, upload intake store, and private upload storage are not configured. Vercel Preview must not rely on local filesystem writes for team beta."
+  };
+}
+
 export function betaFeedbackAttachmentsEnabled() {
   return process.env.BETA_FEEDBACK_ATTACHMENTS_ENABLED === "1";
 }

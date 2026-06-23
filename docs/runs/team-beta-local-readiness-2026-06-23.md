@@ -90,6 +90,7 @@ Visual parity is acceptable for local team beta rehearsal. Final screenshots are
 ## Known Limitations
 
 - Cloud storage is not connected yet by request.
+- Cloud team beta remains NO-GO until ResourceSpace staging and durable beta stores are configured; see `docs/runs/cloud-beta-readiness-2026-06-23.md`.
 - Admin readiness endpoint reports broader beta readiness false because pending-write/cloud/production blockers remain.
 - Review approval for public use remains strict; if domain evidence is missing, approval stays blocked. The safe demo path uses request changes/restrict to queue pending writes truthfully.
 - Local share links are for local beta only; no public sharing/invite delivery.

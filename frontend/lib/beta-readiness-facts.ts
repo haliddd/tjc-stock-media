@@ -275,6 +275,7 @@ export function buildBetaReadiness({
     integrationFact(integrations, "auth", { label: "SSO / role identity", warnWhenReady: true }),
     integrationFact(integrations, "review-writes", { label: "ResourceSpace review writeback" }),
     integrationFact(integrations, "approved-copy-delivery", { label: "Approved copy derivatives" }),
+    integrationFact(integrations, "cloud-preview-beta-storage", { label: "Cloud preview durable beta storage" }),
     privateUrlFact(),
     seedDataFact(assetCount, portalReady),
     envFact(),

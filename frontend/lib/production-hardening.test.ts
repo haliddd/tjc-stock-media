@@ -7,7 +7,7 @@ import { scopedCatalogAssetsForRole } from "@/lib/catalog-scope";
 import { buildCollections } from "@/lib/catalog-summaries";
 import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
-import { durableRuntimeStoreConfigured } from "@/lib/env";
+import { cloudPreviewBetaStorageDiagnostics, durableRuntimeStoreConfigured } from "@/lib/env";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
@@ -248,6 +248,36 @@ describe("production runtime write guard", () => {
       state: "Blocked"
     });
     expect(runtimeStoreDiagnostics().detail).toContain("Vercel KV is implemented for beta feedback only");
+  });
+
+  it("reports cloud preview storage env without pretending runtime adapters are durable", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.BETA_DATABASE_URL = "postgres://beta.example.invalid/tjc";
+    process.env.PENDING_WRITES_STORE = "postgres";
+    process.env.UPLOAD_INTAKE_STORE = "postgres";
+    process.env.UPLOAD_STORAGE_PROVIDER = "r2";
+    process.env.UPLOAD_STORAGE_BUCKET = "tjc-beta-intake";
+    process.env.UPLOAD_STORAGE_REGION = "auto";
+    process.env.UPLOAD_STORAGE_ACCESS_KEY_ID = "key";
+    process.env.UPLOAD_STORAGE_SECRET_ACCESS_KEY = "secret";
+
+    expect(cloudPreviewBetaStorageDiagnostics()).toMatchObject({
+      databaseConfigured: true,
+      pendingWritesMode: "postgres",
+      uploadIntakeMode: "postgres",
+      uploadStorageProvider: "r2",
+      uploadStorageConfigured: true,
+      requestedDurableQueues: true,
+      adapterImplemented: false,
+      ready: false,
+      state: "Degraded"
+    });
+    expect(durableRuntimeStoreConfigured()).toBe(false);
+    expect(runtimeStoreDiagnostics()).toMatchObject({
+      adapter: "local-filesystem",
+      durable: false,
+      statefulWritesAllowed: false
+    });
   });
 
   it("turns blocked runtime writes into explicit 503 route errors", () => {

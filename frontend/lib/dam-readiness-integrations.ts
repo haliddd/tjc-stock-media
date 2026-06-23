@@ -3,6 +3,7 @@ import { betaAuthEnabled, betaChurchInviteCodeDiagnostics } from "@/lib/beta-aut
 import { betaFeedbackDiagnostics } from "@/lib/beta-feedback";
 import {
   brandKitCollectionId,
+  cloudPreviewBetaStorageDiagnostics,
   hasGoogleSharedDriveConfig,
   hasResourceSpaceApiConfig,
   hasS3DeliveryConfig,
@@ -44,6 +45,7 @@ export function buildIntegrationReadiness({
   const inviteCodes = betaChurchInviteCodeDiagnostics();
   const writebackFieldMap = resourceSpaceWritebackFieldMapDiagnostics();
   const runtimeStore = runtimeStoreDiagnostics();
+  const cloudPreviewStorage = cloudPreviewBetaStorageDiagnostics();
   const derivativeIndex = derivativeIndexDiagnostics();
   const liveWritebackReady = apiConfigured && resourceSpaceWritebackEnabled() && writebackFieldMap.valid;
   const brandHubConfigured = Boolean(brandKitCollectionId("BRAND_KIT_MVP_2024_COLLECTION_ID"));
@@ -112,6 +114,14 @@ export function buildIntegrationReadiness({
       owner: "Portal",
       state: runtimeStore.state === "Blocked" ? "Blocked" : runtimeStore.durable ? "Operational" : "Degraded",
       detail: `${runtimeStore.detail} Mode: ${runtimeStore.mode}; adapter: ${runtimeStore.adapter}.`
+    },
+    {
+      id: "cloud-preview-beta-storage",
+      label: "Cloud preview beta storage",
+      ready: cloudPreviewStorage.ready,
+      owner: "Portal",
+      state: cloudPreviewStorage.state,
+      detail: cloudPreviewStorage.detail
     },
     {
       id: "pending-review-writes",
