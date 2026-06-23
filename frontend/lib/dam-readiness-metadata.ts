@@ -67,7 +67,7 @@ function fieldPresent(asset: StockMediaAsset, key: string) {
     case "sourceAlbumMemberships":
       return Boolean(asset.sourceAlbumMemberships?.length);
     case "sourceTraceability":
-      return Boolean(asset.sourceSystem || asset.sourceAccount || asset.sourceAlbumMemberships?.length || asset.collection);
+      return Boolean(asset.sourcePath);
     case "integrityFingerprint":
       return Boolean(asset.checksumSha256);
     case "duplicateGroup":

@@ -8,6 +8,7 @@ import { buildCollections } from "@/lib/catalog-summaries";
 import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
 import { cloudPreviewBetaStorageDiagnostics, durableRuntimeStoreConfigured } from "@/lib/env";
+import { buildFieldMappings } from "@/lib/dam-readiness-metadata";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
 import { createPendingReviewWriteAsync, isPendingReviewWriteDurableStorageError, listPendingReviewWritesAsync } from "@/lib/pending-review-writes";
@@ -467,6 +468,23 @@ describe("metadata schema contract", () => {
     expect(text).not.toContain("sourcePath");
     expect(text).not.toContain("masterDrivePath");
     expect(text).not.toContain("checksumSha256");
+  });
+
+  it("keeps readiness mapping identifiers safe without weakening source evidence coverage", () => {
+    const mappings = buildFieldMappings([
+      approvedAsset({ id: "with-source-path" }),
+      approvedAsset({ id: "missing-source-path", sourcePath: undefined })
+    ]);
+    const text = JSON.stringify(mappings);
+    const sourceTraceability = mappings.find((row) => row.key === "sourceTraceability");
+    const integrityFingerprint = mappings.find((row) => row.key === "integrityFingerprint");
+
+    expect(sourceTraceability).toMatchObject({ present: 1, missing: 1, coverage: 50 });
+    expect(integrityFingerprint).toMatchObject({ present: 2, missing: 0, coverage: 100 });
+    expect(text).not.toContain("sourcePath");
+    expect(text).not.toContain("checksumSha256");
+    expect(text).not.toContain("source_path");
+    expect(text).not.toContain("checksum_sha256");
   });
 });
 
