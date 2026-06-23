@@ -102,6 +102,8 @@ The new cloud preview preflight is fail-closed and secret-redacted. It blocks te
 - Beta auth is enabled and local role override is disabled.
 - Download gate requires approved copies and source/original downloads are disabled.
 
+Durable schema starter was added at `docs/runs/cloud-beta-durable-schema-2026-06-23.sql`. It covers feedback, pending review writes, upload intake metadata, and audit events for a staging DB. It does not store source/original media.
+
 ## Pending Write State
 
 Pending writes existed before final QA and increased during authenticated review queue proof. They remain local runtime records and do not claim ResourceSpace sync unless the live API returns success.

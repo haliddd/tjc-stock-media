@@ -185,6 +185,14 @@ Approved options:
 
 Current code state: diagnostics exist, but generic pending-write/upload-intake durable adapters are not implemented. Cloud beta remains NO-GO until adapter proof exists.
 
+Schema starter artifact:
+
+```text
+docs/runs/cloud-beta-durable-schema-2026-06-23.sql
+```
+
+It creates staging tables for `beta_feedback`, `pending_review_writes`, `upload_intake`, and `beta_audit_events`. It stores portal workflow state only; it does not store ResourceSpace source/original media.
+
 ### 6. Private upload storage
 
 For first cloud beta, choose one:
