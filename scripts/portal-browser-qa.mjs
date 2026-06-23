@@ -22,43 +22,61 @@ const fullBrowserQa = process.env.PORTAL_BROWSER_QA_FULL === "1";
 fs.mkdirSync(path.join(outDir, "qa"), { recursive: true });
 fs.mkdirSync(path.join(outDir, "primitive-proof"), { recursive: true });
 
-const coreRequiredShots = [
-  { name: "library-desktop.png", path: "/", role: "Viewer", width: 1440, height: 1000 },
-  { name: "library-mobile-320.png", path: "/", role: "Viewer", width: 320, height: 900 },
-  { name: "library-mobile-390.png", path: "/", role: "Viewer", width: 390, height: 900 },
-  { name: "upload-desktop.png", path: "/upload", role: "Contributor", width: 1440, height: 1000 },
-  { name: "upload-mobile-320.png", path: "/upload", role: "Contributor", width: 320, height: 900 },
-  { name: "upload-mobile-390.png", path: "/upload", role: "Contributor", width: 390, height: 900 },
-  { name: "review-desktop.png", path: "/review?queue=pending", role: "Reviewer", width: 1440, height: 1000 },
-  { name: "review-mobile-320.png", path: "/review?queue=pending", role: "Reviewer", width: 320, height: 900 },
-  { name: "review-mobile-390.png", path: "/review?queue=pending", role: "Reviewer", width: 390, height: 900 },
-  { name: "asset-detail-desktop.png", path: "/assets/368", role: "Viewer", width: 1440, height: 1000 },
-  { name: "detail-mobile-320.png", path: "/assets/368", role: "Viewer", width: 320, height: 900 },
-  { name: "detail-mobile-390.png", path: "/assets/368", role: "Viewer", width: 390, height: 900 },
-  { name: "admin-desktop.png", path: "/admin", role: "DAM Admin", width: 1440, height: 1000 },
-  { name: "admin-mobile-320.png", path: "/admin", role: "DAM Admin", width: 320, height: 900 },
-  { name: "admin-mobile-390.png", path: "/admin", role: "DAM Admin", width: 390, height: 900 }
+const proofViewports = fullBrowserQa
+  ? [
+      { label: "1440", width: 1440, height: 1000 },
+      { label: "1280", width: 1280, height: 1000 },
+      { label: "1024", width: 1024, height: 1000 },
+      { label: "768", width: 768, height: 1000 },
+      { label: "390", width: 390, height: 900 },
+      { label: "320", width: 320, height: 900 }
+    ]
+  : [
+      { label: "1440", width: 1440, height: 1000 },
+      { label: "390", width: 390, height: 900 },
+      { label: "320", width: 320, height: 900 }
+    ];
+
+function proofShots(slug, pathName, role) {
+  return proofViewports.map((viewport) => ({
+    name: `${slug}-${viewport.label}.png`,
+    path: pathName,
+    role,
+    width: viewport.width,
+    height: viewport.height
+  }));
+}
+
+const coreRequiredShots = fullBrowserQa ? [
+  ...proofShots("library-viewer", "/library?role=Viewer", "Viewer"),
+  ...proofShots("library-contributor", "/library?role=Contributor", "Contributor"),
+  ...proofShots("library-reviewer", "/library?role=Reviewer", "Reviewer"),
+  ...proofShots("library-admin", "/library?role=DAM%20Admin", "DAM Admin"),
+  ...proofShots("asset-detail-viewer", "/assets/368?role=Viewer", "Viewer"),
+  ...proofShots("upload-contributor", "/upload?role=Contributor", "Contributor"),
+  ...proofShots("review-reviewer", "/review?role=Reviewer", "Reviewer"),
+  ...proofShots("review-detail-reviewer", "/review/644?role=Reviewer", "Reviewer"),
+  ...proofShots("requests-reviewer", "/requests?role=Reviewer", "Reviewer"),
+  ...proofShots("collections-viewer", "/collections?role=Viewer", "Viewer"),
+  ...proofShots("collection-detail-viewer", "/collections/album%3Amvp-2024-first-batch?role=Viewer", "Viewer"),
+  ...proofShots("distribution-sets-viewer", "/distribution-sets?role=Viewer", "Viewer"),
+  ...proofShots("admin-users", "/admin/users?role=DAM%20Admin", "DAM Admin"),
+  ...proofShots("admin-taxonomy", "/admin/taxonomy?role=DAM%20Admin", "DAM Admin"),
+  ...proofShots("brand-hub-admin", "/brand-hub?role=DAM%20Admin", "DAM Admin"),
+  ...proofShots("insights-admin", "/insights?role=DAM%20Admin", "DAM Admin"),
+  ...proofShots("admin-settings", "/admin/settings?role=DAM%20Admin", "DAM Admin")
+] : [
+  ...proofShots("library-viewer", "/library?role=Viewer", "Viewer"),
+  ...proofShots("upload-contributor", "/upload?role=Contributor", "Contributor"),
+  ...proofShots("review-reviewer", "/review?role=Reviewer", "Reviewer"),
+  ...proofShots("asset-detail-viewer", "/assets/368?role=Viewer", "Viewer"),
+  ...proofShots("admin", "/admin?role=DAM%20Admin", "DAM Admin")
 ];
 
 const extendedRequiredShots = [
-  { name: "collections-desktop.png", path: "/collections", role: "Viewer", width: 1440, height: 1000 },
-  { name: "collections-mobile-320.png", path: "/collections", role: "Viewer", width: 320, height: 900 },
-  { name: "collections-mobile-390.png", path: "/collections", role: "Viewer", width: 390, height: 900 },
-  { name: "packages-desktop.png", path: "/distribution-sets", role: "Reviewer", width: 1440, height: 1000 },
-  { name: "packages-mobile-320.png", path: "/distribution-sets", role: "Reviewer", width: 320, height: 900 },
-  { name: "packages-mobile-390.png", path: "/distribution-sets", role: "Reviewer", width: 390, height: 900 },
-  { name: "requests-desktop.png", path: "/requests", role: "Viewer", width: 1440, height: 1000 },
-  { name: "requests-mobile-320.png", path: "/requests", role: "Viewer", width: 320, height: 900 },
-  { name: "requests-mobile-390.png", path: "/requests", role: "Viewer", width: 390, height: 900 },
-  { name: "my-tasks-desktop.png", path: "/my-tasks", role: "Viewer", width: 1440, height: 1000 },
-  { name: "my-tasks-mobile-320.png", path: "/my-tasks", role: "Viewer", width: 320, height: 900 },
-  { name: "my-tasks-mobile-390.png", path: "/my-tasks", role: "Viewer", width: 390, height: 900 },
-  { name: "help-desktop.png", path: "/help", role: "Viewer", width: 1440, height: 1000 },
-  { name: "help-mobile-320.png", path: "/help", role: "Viewer", width: 320, height: 900 },
-  { name: "help-mobile-390.png", path: "/help", role: "Viewer", width: 390, height: 900 },
-  { name: "recent-uploads-desktop.png", path: "/recent-uploads", role: "Contributor", width: 1440, height: 1000 },
-  { name: "recent-uploads-mobile-320.png", path: "/recent-uploads", role: "Contributor", width: 320, height: 900 },
-  { name: "recent-uploads-mobile-390.png", path: "/recent-uploads", role: "Contributor", width: 390, height: 900 }
+  ...proofShots("my-tasks-viewer", "/my-tasks?role=Viewer", "Viewer"),
+  ...proofShots("help-viewer", "/help?role=Viewer", "Viewer"),
+  ...proofShots("recent-uploads-contributor", "/recent-uploads?role=Contributor", "Contributor")
 ];
 
 const requiredShots = fullBrowserQa ? [...coreRequiredShots, ...extendedRequiredShots] : coreRequiredShots;
@@ -84,7 +102,13 @@ const coreQaPaths = [
 
 const extendedQaPaths = [
   { path: "/collections", role: "Viewer", label: "collections-viewer" },
-  { path: "/requests", role: "Viewer", label: "requests-viewer" },
+  { path: "/collections/album%3Amvp-2024-first-batch", role: "Viewer", label: "collection-detail-viewer" },
+  { path: "/requests", role: "Reviewer", label: "requests-reviewer" },
+  { path: "/admin/users", role: "DAM Admin", label: "admin-users" },
+  { path: "/admin/taxonomy", role: "DAM Admin", label: "admin-taxonomy" },
+  { path: "/brand-hub", role: "DAM Admin", label: "brand-hub-admin" },
+  { path: "/insights", role: "DAM Admin", label: "insights-admin" },
+  { path: "/admin/settings", role: "DAM Admin", label: "admin-settings" },
   { path: "/my-tasks", role: "Viewer", label: "my-tasks-viewer" },
   { path: "/help", role: "Viewer", label: "help-viewer" },
   { path: "/recent-uploads", role: "Contributor", label: "recent-uploads-contributor" }
@@ -745,9 +769,10 @@ async function resolveQaAssetFixtures() {
   qaAsset.unsafe = await resolveUnsafeAssetFixture(qaAsset.detail.id);
 
   for (const shot of requiredShots) {
-    if (["asset-detail-desktop.png", "detail-mobile-320.png", "detail-mobile-390.png"].includes(shot.name)) {
+    if (shot.name.startsWith("asset-detail-viewer-")) {
       shot.path = qaAsset.detail.path;
     }
+    if (shot.name.startsWith("review-detail-reviewer-")) shot.path = `/review/${encodeURIComponent(qaAsset.unsafe.id)}?role=Reviewer`;
   }
 
   for (const item of qaPaths) {
@@ -757,7 +782,7 @@ async function resolveQaAssetFixtures() {
 
   if (!hasViewerDetailAsset()) {
     for (let index = requiredShots.length - 1; index >= 0; index -= 1) {
-      if (["asset-detail-desktop.png", "detail-mobile-320.png", "detail-mobile-390.png"].includes(requiredShots[index].name)) {
+      if (requiredShots[index].name.startsWith("asset-detail-viewer-")) {
         requiredShots.splice(index, 1);
       }
     }
