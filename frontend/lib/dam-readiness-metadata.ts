@@ -19,11 +19,11 @@ const fieldDefinitions: Array<{
   { key: "reviewedDate", label: "Review date", required: true },
   { key: "sourceSystem", label: "Source system", required: true },
   { key: "sourceAccount", label: "Source / photographer", required: false },
-  { key: "sourcePath", label: "Source path", required: true },
+  { key: "sourceTraceability", label: "Source traceability", required: true },
   { key: "sourceAlbumMemberships", label: "Album memberships", required: false },
   { key: "visibleTags", label: "Visible tags", required: true },
   { key: "tjcTerms", label: "TJC terms", required: true },
-  { key: "checksumSha256", label: "Checksum", required: true },
+  { key: "integrityFingerprint", label: "Integrity fingerprint", required: true },
   { key: "duplicateGroup", label: "Duplicate group", required: false },
   { key: "reuseTier", label: "Reuse tier", required: true },
   { key: "visibilityTier", label: "Visibility tier", required: true },
@@ -66,7 +66,9 @@ function fieldPresent(asset: StockMediaAsset, key: string) {
       return Boolean(asset.collection);
     case "sourceAlbumMemberships":
       return Boolean(asset.sourceAlbumMemberships?.length);
-    case "checksumSha256":
+    case "sourceTraceability":
+      return Boolean(asset.sourceSystem || asset.sourceAccount || asset.sourceAlbumMemberships?.length || asset.collection);
+    case "integrityFingerprint":
       return Boolean(asset.checksumSha256);
     case "duplicateGroup":
       return Boolean(asset.duplicateGroup);
