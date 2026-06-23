@@ -27,6 +27,7 @@ Do not deploy production. Do not merge. Do not invite testers. Do not enable liv
 | Feedback | Local JSON or Vercel KV path exists for feedback only |
 | Generic runtime writes | Local filesystem adapter only; durable DB adapter is not implemented |
 | Cloud preview diagnostics | Admin readiness now reports `cloud-preview-beta-storage` truthfully |
+| Cloud preview env preflight | `make cloud-beta-preview-preflight` fails closed unless ResourceSpace staging, durable DB/queues, private upload storage, beta auth, queued writeback, and download gates are configured |
 
 ## Required Preview Environment
 
@@ -222,12 +223,21 @@ UPLOAD_STORAGE_PUBLIC_READ=0
 
 After env changes, redeploy the Preview branch. Do not promote to production.
 
+Before inviting testers, run:
+
+```bash
+make cloud-beta-preview-preflight
+```
+
+The preflight prints only redacted `set` / `missing` state and env names. It must return `GO` before any Preview team invite. In the current local shell it correctly returns `NO-GO` because cloud ResourceSpace, durable DB/queues, upload storage, auth, and download-gate env are not configured.
+
 ### 8. Preview validation
 
 Run against Vercel Preview:
 
 ```bash
 export BASE_URL=https://<vercel-preview-url>
+make cloud-beta-preview-preflight
 make portal-api-smoke
 PORTAL_BROWSER_QA_FULL=1 PORTAL_BROWSER_QA_SCREENSHOT_DIR=docs/screenshots/cloud-beta-2026-06-23 make portal-browser-qa
 ```
@@ -248,6 +258,7 @@ Required proof:
 
 CLOUD TEAM BETA GO only when:
 
+- `make cloud-beta-preview-preflight` returns GO against Vercel Preview env.
 - Vercel Preview reads ResourceSpace staging or honestly labeled cloud export snapshot.
 - Upload intake persists durably or fails closed with a clear message.
 - Review decisions queue durably or sync truthfully.

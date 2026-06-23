@@ -23,6 +23,8 @@ Continuation note: latest local inspection found the active portal on `http://lo
 | Browser screenshot/API QA | PASS, 33 page-only screenshots across 6 viewports and 20 route/role checks; 0 failures, 0 warnings, 0 console errors, 0 network failures |
 | `node --check scripts/portal-browser-qa.mjs` | PASS after screenshot wait/page-only capture updates |
 | `node --check scripts/portal-browser-qa.mjs` | PASS after final proof route matrix expansion |
+| `make cloud-beta-preview-preflight-test` | PASS |
+| `make cloud-beta-preview-preflight` | EXPECTED NO-GO in current local shell because ResourceSpace cloud, durable DB/queues, private upload storage, beta auth, and download-gate env are not configured |
 
 ## API Smoke Summary
 
@@ -88,6 +90,17 @@ Download gate returned approved-copy access for the sample asset and confirmed p
 ## Admin Readiness Result
 
 Admin page is usable as the morning command center. It shows data source, asset counts, thumbnail health, pending writes, upload intake storage, role matrix, download gates, source/original restrictions, and local-only blockers.
+
+## Cloud Preview Preflight Result
+
+The new cloud preview preflight is fail-closed and secret-redacted. It blocks team invites until Preview env proves:
+
+- ResourceSpace staging HTTPS URL and restricted API user/key are configured.
+- ResourceSpace writeback is queued, not live.
+- Pending writes and upload intake are set to durable `postgres` stores.
+- Private upload storage is configured with `UPLOAD_STORAGE_PUBLIC_READ=0`.
+- Beta auth is enabled and local role override is disabled.
+- Download gate requires approved copies and source/original downloads are disabled.
 
 ## Pending Write State
 
