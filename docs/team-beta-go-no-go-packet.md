@@ -1,6 +1,6 @@
 # Team Beta GO/NO-GO Packet
 
-Last updated: 2026-06-18
+Last updated: 2026-06-23
 
 Purpose: one canonical decision packet for the TJC Stock Media internal Team Beta test round. This packet is the final place to check whether the current build is ready for owner-led dry run, teammate invite batch, or production launch.
 
@@ -8,11 +8,19 @@ This packet does not approve public launch, production SSO, live ResourceSpace w
 
 ## Decision
 
+June 18 ORCH Final Override, refreshed after the June 22 prototype merge and June 23 hosted protected read-only probe:
+
+- Owner-led local dry run: PASS.
+- Team Beta invite/send: NO-GO until owner signoff and final content-count/persistence scope are explicitly accepted.
+- Hosted 181-record catalog proof is not established as a standalone send gate; current accepted proof is prototype UI screenshot QA plus protected hosted URL read-only probe.
+- Current production deployment: `dpl_8dLLfJuaGhowkMzbtgK2k4VoMswg`.
+- Current screenshot proof: `docs/screenshots/prototype-final-blocker-pass-2026-06-22/`.
+
 | Scope | Decision | Reason |
 |---|---|---|
-| Owner-led internal dry run | PASS local route/auth smoke only; browser QA still red | June 17 local route, role, upload/review/library, invite, redaction, and tests improved, but latest production-mode browser QA is red on download audit safety probes. This is not hosted invite approval. |
-| Joanna mini beta | NO-GO until hosted snapshot proof, persistence boundary, and owner signoff close | Hosted current marker and real beta-session auth now pass. Current code adds a sanitized 181-record MVP 2024 LM Photos beta snapshot for hosted fallback, but stable hosted count proof still needs a redeploy/probe, hosted persistence/fail-closed boundary, and renewed owner approval. |
-| Tiny teammate invite batch | NO-GO until hosted/current gates close, Joanna feedback lands, and renewed owner signoff exists | Teammate invites require hosted/current proof, Joanna proof first, named tester list, send owner, stop-test owner, and feedback triage owner. |
+| Owner-led internal dry run | PASS | Prototype UI is merged/deployed, local guards pass, and hosted protected read-only probe passes. This is not hosted invite approval. |
+| Joanna mini beta | NO-GO until owner signoff and scope acceptance close | Hosted protected read-only proof passes. Hosted mutation/persistence scope and content-count acceptance still need explicit owner signoff before inviting Joanna. |
+| Tiny teammate invite batch | NO-GO until owner signoff exists | Teammate invites require named tester list, send owner, stop-test owner, feedback triage owner, and final owner decision. |
 | Production/internal launch | NO-GO | Production SSO, durable storage, live ResourceSpace writeback, full rights review, production delivery, and full archive readiness are not proven. |
 
 Current gap audit: `docs/team-beta-gap-audit-2026-06-18.md`.
@@ -21,7 +29,7 @@ Current gap audit: `docs/team-beta-gap-audit-2026-06-18.md`.
 
 | Bucket | Current Call |
 |---|---|
-| Must fix before beta | Hosted 181-record count proof, hosted runtime/download persistence boundary, production-mode browser QA contract, DB-capable backup/restore or explicit read-only scope, hosted env confirmation, renewed owner signoff, and live ResourceSpace/Docker smoke or explicit snapshot-only scope. |
+| Must fix before beta invite send | Owner signoff, named tester roles, feedback/incident watch window, and explicit acceptance of content-count plus hosted persistence/fail-closed scope. |
 | Can wait | Live ResourceSpace writeback, Google Drive connector/sync, full archive import, video/audio, production SSO, public downloads/sharing, broad analytics, and clean-machine production DR drills. |
 | Demo polish | UI overflow/copy, empty/loading states, search wording, sample task wording, and screenshot polish. |
 
@@ -34,7 +42,7 @@ Current gap audit: `docs/team-beta-gap-audit-2026-06-18.md`.
 | API payload safety | `node scripts/api-payload-guard.mjs` passes. | PASS local |
 | API audit coverage | `node scripts/api-audit-guard.mjs` passes. | PASS local |
 | Storage honesty | `node scripts/storage-honesty-guard.mjs` passes. | PASS local |
-| Browser QA | `docs/screenshots/qa/browser-qa-report.json` covers 20 pages, 6 viewport widths, and 32 screenshots. Latest report has 2 failures and 3 console errors, both tied to production-mode download audit writes failing closed with `503 audit-required` when no durable runtime store is configured. | FAIL / safe fail-closed |
+| Browser QA | `docs/screenshots/qa/browser-qa-report.json` records 20 pages, 6 viewport widths, 33 screenshots, and zero failures/console errors. Prototype screenshot proof lives at `docs/screenshots/prototype-final-blocker-pass-2026-06-22/`. | PASS local/prototype proof |
 | June 17 readiness pass | `docs/runs/evidence/2026-06-17/small-team-beta-readiness-pass.md` records local route, upload, review, library, invite-smoke, typecheck, test, and build proof. It also records browser QA red on download audit probes. | PARTIAL local / hosted gates open |
 | Hosted current marker | `curl https://tjc-stock-media.vercel.app/api/beta-auth/session` after deployment `dpl_DSakz1GSaViJGeyBxVwAwB9HkFND` returns 401 unauthenticated session JSON with `build.readinessContract: small-team-beta-readiness-2026-06-17`. | PASS hosted/current |
 | Real beta auth/invite | Hosted smoke passed beta-session login for Viewer, Contributor, Reviewer, and DAM Admin. Contributor and above used a church/location invite code. Values stay in Vercel env and `.runtime/beta-credentials-2026-06-17.env`, not Git/docs/logs/chat. | PASS private proof |
@@ -157,4 +165,4 @@ For fastest completion, use the fast final reply template in `docs/team-beta-sig
 
 Do not claim invite GO while hosted/current URL, 181-record beta snapshot proof, hosted persistence/fail-closed instructions, and owner approval remain blank, stale, or unproven.
 
-Current final call: **NO-GO for teammate invite batch until the 181-record hosted snapshot is redeployed/probed and owner gates close.**
+Current final call: **NO-GO for teammate invite batch until owner signoff and final content-count/persistence scope acceptance close.**

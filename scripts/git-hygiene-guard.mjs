@@ -23,6 +23,8 @@ const expectedPrimitiveProofSet = new Set(expectedPrimitiveProofScreenshots);
 const allowedMediaPatterns = [
   /^frontend\/public\/brand\/[^/]+\.png$/i,
   /^docs\/screenshots\/free-internal-beta-2026-06-12\/[^/]+\.png$/i,
+  /^docs\/screenshots\/prototype-final-blocker-pass-2026-06-22\/[^/]+\.png$/i,
+  /^docs\/runs\/evidence\/2026-06-18\/final-premerge-ui-review\/[^/]+\.png$/i,
 ];
 const modelArtifactPattern = /\.(safetensors|ckpt|pt|pth|onnx)$/i;
 const credentialArtifactPattern = /(^|\/)(credentials|secrets)\/|(^|\/)(service-account|google-credentials|credentials|secret)[^/]*\.(json|env|pem|key|p12|pfx)$|\.(pem|key|p12|pfx)$/i;

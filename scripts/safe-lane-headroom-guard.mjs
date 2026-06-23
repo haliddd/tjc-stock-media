@@ -3,11 +3,10 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const defaultCheckout = "/Users/halim4pro/Desktop/MVP/tjc-stock-media";
-const expectedWorktreeInput = process.env.SAFE_LANE_EXPECTED_WORKTREE
-  || defaultCheckout;
-const expectedSourceCheckoutInput = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
-  || defaultCheckout;
+function run(command, args) {
+  return execFileSync(command, args, { encoding: "utf8" }).trim();
+}
+
 const defaultMinFreeGiB = 10;
 const minFreeGiBRaw = process.env.SAFE_LANE_MIN_FREE_GIB || String(defaultMinFreeGiB);
 const minFreeGiB = /^[0-9]+$/.test(minFreeGiBRaw) ? Number(minFreeGiBRaw) : Number.NaN;
@@ -20,11 +19,12 @@ if (process.env.VERCEL === "1") {
   process.exit(0);
 }
 
-function run(command, args) {
-  return execFileSync(command, args, { encoding: "utf8" }).trim();
-}
-
 const cwdRoot = run("git", ["rev-parse", "--show-toplevel"]);
+const defaultCheckout = cwdRoot;
+const expectedWorktreeInput = process.env.SAFE_LANE_EXPECTED_WORKTREE
+  || defaultCheckout;
+const expectedSourceCheckoutInput = process.env.SAFE_LANE_EXPECTED_SOURCE_CHECKOUT
+  || defaultCheckout;
 const cwdRealRoot = fs.realpathSync(cwdRoot);
 const expectedWorktree = fs.existsSync(expectedWorktreeInput)
   ? fs.realpathSync(expectedWorktreeInput)

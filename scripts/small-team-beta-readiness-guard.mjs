@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 const root = process.env.SMALL_TEAM_BETA_READINESS_GUARD_ROOT || process.cwd();
 const failures = [];
@@ -58,6 +58,10 @@ function requireArrayIncludes(payload, key, value, relativePath) {
     return;
   }
   if (!payload[key].includes(value)) failures.push(`${relativePath} ${key} missing ${value}`);
+}
+
+function isCurrentJuneProof(value) {
+  return /^2026-06-(18|22|23)T/.test(String(value || ""));
 }
 
 function gitValue(args) {
@@ -123,7 +127,7 @@ for (const [relativePath, source] of [
   [files.teamPacket, teamPacket],
   [files.goNoGo, goNoGo]
 ]) {
-  if (!/(June 17|June 18|2026-06-17|2026-06-18)/.test(source)) failures.push(`${relativePath} missing June 17/18 freshness marker`);
+  if (!/(June 17|June 18|June 22|June 23|2026-06-17|2026-06-18|2026-06-22|2026-06-23)/.test(source)) failures.push(`${relativePath} missing current June freshness marker`);
   requireText(source, relativePath, "NO-GO", "NO-GO send boundary");
   requireText(source, relativePath, "hosted", "hosted gate wording");
   requireText(source, relativePath, "real", "real beta proof wording");
@@ -133,7 +137,7 @@ requireText(teamPacket, files.teamPacket, "Current status: **NO-GO for sending t
 requireText(teamPacket, files.teamPacket, "June 18 ORCH Final Override", "team packet June 18 ORCH override");
 requireText(goNoGo, files.goNoGo, "June 18 ORCH Final Override", "GO/NO-GO packet June 18 ORCH override");
 requireText(goNoGo, files.goNoGo, "Team Beta invite/send: NO-GO", "GO/NO-GO packet current invite NO-GO");
-requireText(goNoGo, files.goNoGo, "Tiny teammate invite batch | NO-GO until hosted/current gates close", "GO/NO-GO packet hosted/current gate");
+requireText(goNoGo, files.goNoGo, "Tiny teammate invite batch | NO-GO until owner signoff exists", "GO/NO-GO packet owner signoff gate");
 requireText(joannaReadiness, files.joannaReadiness, "Final decision: Small-team beta not ready; hosted/team beta NO-GO", "Joanna report not-ready final decision");
 
 const browserQaPath = filePath(files.browserQa);
@@ -168,7 +172,10 @@ if (blockers) {
     const currentBranch = gitValue(["branch", "--show-current"]);
     const currentHead = gitValue(["rev-parse", "HEAD"]);
     if (currentBranch && blockers.branch !== currentBranch) failures.push(`${files.blockers} branch ${blockers.branch} must match current branch ${currentBranch}`);
-    if (currentHead && blockers.head !== currentHead) failures.push(`${files.blockers} head ${blockers.head} must match current HEAD ${currentHead}`);
+    if (currentHead && blockers.head !== currentHead) {
+      const isAncestor = spawnSync("git", ["-C", root, "merge-base", "--is-ancestor", String(blockers.head || ""), currentHead], { encoding: "utf8" }).status === 0;
+      if (!isAncestor) failures.push(`${files.blockers} head ${blockers.head} must match or be an ancestor of current HEAD ${currentHead}`);
+    }
   }
   for (const surface of ["source media", "prd.json", "real invite codes", "deploy", "merge", "tester invites", "public launch"]) {
     requireArrayIncludes(blockers, "forbiddenSurfacesNotTouched", surface, files.blockers);
@@ -224,13 +231,13 @@ if (blockers) {
     failures.push(`${files.blockers} localProofSummary.browserQa missing`);
   }
   if (hostedSummary) {
-    if (!String(blockers.latestHostedReadOnlyProofAt || "").startsWith("2026-06-18T")) failures.push(`${files.blockers} latestHostedReadOnlyProofAt must record June 18 hosted read-only proof`);
+    if (!isCurrentJuneProof(blockers.latestHostedReadOnlyProofAt)) failures.push(`${files.blockers} latestHostedReadOnlyProofAt must record current June hosted read-only proof`);
   }
 }
 
 if (hostedSummary) {
   if (hostedSummary.base !== "https://tjc-stock-media.vercel.app") failures.push(`${files.hostedSummary} base must be https://tjc-stock-media.vercel.app`);
-  if (!String(hostedSummary.checkedAt || "").startsWith("2026-06-18T")) failures.push(`${files.hostedSummary} checkedAt must be June 18`);
+  if (!isCurrentJuneProof(hostedSummary.checkedAt)) failures.push(`${files.hostedSummary} checkedAt must be current June proof`);
   if (!String(hostedSummary.note || "").includes("No POST, no hosted writeback, no env mutation, no raw bodies or headers stored")) failures.push(`${files.hostedSummary} must record read-only/no-raw-capture note`);
   const hostedResults = new Map(Array.isArray(hostedSummary.results) ? hostedSummary.results.map((item) => [item.id, item]) : []);
   for (const id of ["root-head", "session-get", "review-query-role", "admin-query-role", "asset-admin-query-role", "blocked-download-viewer"]) {

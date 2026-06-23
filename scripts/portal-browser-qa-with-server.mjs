@@ -24,13 +24,6 @@ if (!Number.isInteger(port) || port <= 0 || port > 65535) {
   process.exit(1);
 }
 
-execFileSync(process.execPath, ["scripts/safe-lane-headroom-guard.mjs"], {
-  stdio: "inherit",
-  env: { ...process.env, SAFE_LANE_HEADROOM_CONTEXT: "browser-qa-owned-server" }
-});
-
-fs.mkdirSync(logDir, { recursive: true });
-
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -114,6 +107,13 @@ if (await portOpen()) {
   console.error(`Refusing to run browser QA: ${baseUrl} is already listening. Stop port ${port} first so this harness owns the isolated server lifecycle.`);
   process.exit(1);
 }
+
+execFileSync(process.execPath, ["scripts/safe-lane-headroom-guard.mjs"], {
+  stdio: "inherit",
+  env: { ...process.env, SAFE_LANE_HEADROOM_CONTEXT: "browser-qa-owned-server" }
+});
+
+fs.mkdirSync(logDir, { recursive: true });
 
 try {
   fs.rmSync(latestLogPath, { force: true });

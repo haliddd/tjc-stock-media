@@ -1,6 +1,10 @@
 # Team Beta Internal Tester Packet
 
-Last updated: 2026-06-17
+Last updated: 2026-06-23
+
+## June 18 ORCH Final Override
+
+Current status: **NO-GO for sending teammate invites.** Prototype UI is merged and deployed, protected hosted read-only probe passes on the canonical URL, and current screenshot proof lives at `docs/screenshots/prototype-final-blocker-pass-2026-06-22/`. Invite/send still waits for explicit owner final signoff and final content-count/persistence scope acceptance.
 
 ## June 17 Safety Override
 
