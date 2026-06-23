@@ -424,7 +424,12 @@ if (/BETA_|SECRET|TOKEN|PASSWORD|INVITE|real-code|private-code/i.test(serialized
       exit 1
     fi
     local payload="$TMP_DIR/api-login-${role// /-}.json"
-    ROLE="$role" PASSWORD="$password" node -e 'process.stdout.write(JSON.stringify({role:process.env.ROLE,password:process.env.PASSWORD,returnTo:"/"}))' > "$payload"
+    local invitation_code="${PORTAL_API_SMOKE_INVITE_CODE:-}"
+    ROLE="$role" PASSWORD="$password" INVITATION_CODE="$invitation_code" node -e '
+const body = { role: process.env.ROLE, password: process.env.PASSWORD, returnTo: "/" };
+if (process.env.ROLE !== "Viewer" && process.env.INVITATION_CODE) body.invitationCode = process.env.INVITATION_CODE;
+process.stdout.write(JSON.stringify(body));
+' > "$payload"
     local output="$TMP_DIR/api-login-${role// /-}-response.json"
     local login_code
     login_code="$(curl -sS -o "$output" -w '%{http_code}' -c "$(beta_cookie_jar_for_role "$role")" -X POST -H 'Content-Type: application/json' --data-binary "@$payload" "$BASE_URL/api/beta-auth/login")"
@@ -624,8 +629,13 @@ if (process.env.STATUS_CODE === \"503\" && data.reasonCode !== \"audit-required\
 expect_query_role_not_trusted review-query-role-not-trusted "$BASE_URL/api/review?role=Reviewer&queue=pending"
 expect_query_role_not_trusted admin-query-role-not-trusted "$BASE_URL/api/admin/readiness?role=DAM%20Admin"
 expect_query_role_not_trusted plain-admin-query-role-not-trusted "$BASE_URL/api/admin/readiness?role=Admin"
+if [ "$BETA_AUTH_MODE" = "beta-session" ]; then
+expect_code_without_trusted_headers 307 admin-query-role-payload-redirects-to-beta-login "$BASE_URL/api/assets/367?role=DAM%20Admin"
+expect_code_without_trusted_headers 307 plain-admin-query-role-payload-redirects-to-beta-login "$BASE_URL/api/assets/367?role=Admin"
+else
 expect_json_status_without_trusted_headers 200 admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=DAM%20Admin"
 expect_json_status_without_trusted_headers 200 plain-admin-query-role-payload-redacted "$normal_user_payload_guard" "$BASE_URL/api/assets/367?role=Admin"
+fi
 expect_code 400 malformed-asset-detail "$BASE_URL/api/assets/%2E%2E380?role=Reviewer"
 expect_code 400 malformed-thumbnail "$BASE_URL/api/assets/thumbnail/%2E%2E380?variant=detail&role=Reviewer"
 expect_code 400 malformed-download "$BASE_URL/api/download/%2E%2E368?role=Viewer"

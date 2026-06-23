@@ -24,6 +24,7 @@ import {
   buildSavedViews,
   buildZeroResultInsights
 } from "@/lib/catalog-summaries";
+import { assetMatchesAlbumCollection, isAlbumCollectionId } from "@/lib/catalog-albums";
 import { assetResourceRef } from "@/lib/asset-refs";
 import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery, resolveDiscoveryQuery } from "@/lib/catalog-discovery";
 import { findFilestoreDerivative, getActiveMediaSource } from "@/lib/media-source";
@@ -44,7 +45,7 @@ export function isKnownSavedViewId(view?: string) {
 }
 
 export function isKnownCollectionId(collection?: string) {
-  return Boolean(collection && collectionDefinitions.some((item) => item.id === collection));
+  return Boolean(collection && (isAlbumCollectionId(collection) || collectionDefinitions.some((item) => item.id === collection)));
 }
 
 function matchSearchIntent(query: string) {
@@ -91,7 +92,10 @@ function sortCatalogAssets(assets: StockMediaAsset[], sort?: string) {
     );
   }
   if (normalized === "Newest") {
-    return sorted.sort((a, b) => (b.capturedDate || b.importDate || b.id || "").localeCompare(a.capturedDate || a.importDate || a.id || "", undefined, { numeric: true }));
+    return sorted.sort((a, b) =>
+      previewFirstCompare(a, b)
+      || (b.capturedDate || b.importDate || b.id || "").localeCompare(a.capturedDate || a.importDate || a.id || "", undefined, { numeric: true })
+    );
   }
   if (normalized === "Recently approved") {
     return sorted.sort((a, b) => (b.reviewedDate || "").localeCompare(a.reviewedDate || ""));
@@ -151,6 +155,7 @@ function diversifyAssets(assets: StockMediaAsset[]) {
 
 function collectionMatches(asset: StockMediaAsset, collectionId?: string) {
   if (!collectionId) return true;
+  if (isAlbumCollectionId(collectionId)) return assetMatchesAlbumCollection(asset, collectionId);
   const definition = collectionDefinitions.find((item) => item.id === collectionId);
   if (!definition) return false;
   return assetIsApproved(asset) && includesAny(asset, definition.terms);

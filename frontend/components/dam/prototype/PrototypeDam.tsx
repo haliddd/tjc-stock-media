@@ -13,6 +13,7 @@ import {
   Eye,
   FileUp,
   Folder,
+  GalleryHorizontalEnd,
   Grid2X2,
   Inbox,
   LayoutGrid,
@@ -38,6 +39,7 @@ import { canAdmin, canReview, canUpload } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
 import { assetRecordRef, assetType, displayTitle, formatBytes, sourceLabel } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus } from "@/lib/enterprise-status";
+import { buildLibraryMetadataCsv, buildLibrarySelectionSummary } from "@/lib/library-bulk-selection";
 import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems } from "@/lib/review-decision-presenter";
 import type { DemoRole, ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
 
@@ -102,8 +104,8 @@ function Button({
   );
 }
 
-function LinkButton({ children, href, tone = "secondary" }: { children: ReactNode; href: string; tone?: "primary" | "secondary" }) {
-  return <Link className={`proto-button is-${tone}`} href={href}>{children}</Link>;
+function LinkButton({ children, href, tone = "secondary", className = "" }: { children: ReactNode; href: string; tone?: "primary" | "secondary"; className?: string }) {
+  return <Link className={`proto-button is-${tone} ${className}`} href={href}>{children}</Link>;
 }
 
 function IconButton({ label, children, onClick }: { label: string; children: ReactNode; onClick?: () => void }) {
@@ -226,7 +228,7 @@ function assetMeta(asset: StockMediaAsset) {
   return [assetType(asset), asset.imageDimensions, formatBytes(asset.fileSizeBytes)].filter((item) => item && item !== "Not provided").join("  ·  ");
 }
 
-function PrototypeSidebar() {
+function PrototypeSidebar({ collapsed, onToggleCollapsed }: { collapsed: boolean; onToggleCollapsed: () => void }) {
   const pathname = usePathname();
   const { role } = useDemoRole();
   return (
@@ -235,7 +237,7 @@ function PrototypeSidebar() {
         <Link href={routeWithRole("/library", role)} className="proto-mark" aria-label="Library home">
           <span />
         </Link>
-        <button type="button" className="proto-collapse" aria-label="Collapse sidebar"><PanelLeftClose size={15} /></button>
+        <button type="button" className="proto-collapse" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={onToggleCollapsed}><PanelLeftClose size={15} /></button>
       </div>
       <nav className="proto-sidebar-nav">
         {navGroups.map((group) => {
@@ -302,11 +304,12 @@ function PrototypeMobileBars() {
 }
 
 export function PrototypeDamShell({ children }: { children: ReactNode }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   return (
-    <div className="proto-root">
+    <div className={`proto-root ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>
       <div className="proto-app-shell">
-        <PrototypeSidebar />
+        <PrototypeSidebar collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} />
         <main id="main-content" className="proto-main">{children}</main>
       </div>
       <PrototypeMobileBars />
@@ -324,6 +327,18 @@ function ToolbarSearch({ value, onChange }: { value: string; onChange: (value: s
       <kbd>⌘K</kbd>
     </label>
   );
+}
+
+function downloadTextFile(filename: string, content: string, type = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 function PrototypeAssetCard({
@@ -446,12 +461,22 @@ export function PrototypeLibraryPage() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [sort, setSort] = useState("Newest");
+  const [view, setView] = useState(searchParams.get("view") || "");
+  const [filters, setFilters] = useState<string[]>(searchParams.getAll("filter"));
+  const [savedOpen, setSavedOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
-  const results = useAssetsSearch({ role, query, sort, limit: 24 });
+  const results = useAssetsSearch({ role, query, view, filters, sort, limit: 24 });
   const assets = results.data?.assets || [];
   const activeAsset = assets.find((asset) => asset.id === activeId) || assets[1] || assets[0];
   const total = results.data?.total || results.data?.counts?.visibleToRole || assets.length;
+  const selectedAssets = useMemo(() => assets.filter((asset) => selected.has(asset.id)), [assets, selected]);
+  const selectionSummary = useMemo(() => buildLibrarySelectionSummary(selectedAssets, role), [selectedAssets, role]);
+  const suggestedFilters = (results.data?.discovery.suggestedFilters || []).slice(0, 8);
+  const savedViews = (results.data?.savedViews || []).filter((item) => item.count > 0).slice(0, 8);
+  const downloadGate = useDownloadGate(selectedAssets[0]?.id || activeAsset?.id || "", role);
 
   useEffect(() => {
     if (!activeId && assets.length) setActiveId(assets[1]?.id || assets[0].id);
@@ -466,6 +491,46 @@ export function PrototypeLibraryPage() {
     });
   }, []);
 
+  async function runDownload() {
+    const target = selectedAssets[0] || activeAsset;
+    if (!target) {
+      toast.message("Select an asset before downloading.");
+      return;
+    }
+    if (selectedAssets.length > 1) {
+      const download = selectionSummary.actions.find((action) => action.id === "download-approved");
+      toast.message(download?.statusLabel || "Download gate checked.", {
+        description: download?.warning || download?.disabledReason || "Bulk source/original download stays blocked."
+      });
+      return;
+    }
+    const payload = await downloadGate.requestDownload({ reason: `Approved-copy request for ${displayTitle(target)}` });
+    if (payload.allowed && payload.downloadUrl) {
+      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+      toast.success("Approved copy opened.");
+    } else {
+      toast.message(payload.message || payload.reason || "Download blocked by policy gate.");
+    }
+  }
+
+  function exportSelectedMetadata() {
+    const exportAssets = selectedAssets.length ? selectedAssets : assets;
+    downloadTextFile(`tjc-library-selection-${new Date().toISOString().slice(0, 10)}.csv`, buildLibraryMetadataCsv(exportAssets), "text/csv;charset=utf-8");
+    toast.success(`Exported ${exportAssets.length.toLocaleString()} role-safe metadata rows.`);
+  }
+
+  function toggleFilter(filter: string) {
+    setFilters((current) => current.includes(filter) ? current.filter((item) => item !== filter) : [...current, filter]);
+    setSelected(new Set());
+  }
+
+  function applySavedView(id: string) {
+    setView(id);
+    setQuery("");
+    setSelected(new Set());
+    setSavedOpen(false);
+  }
+
   return (
     <div className="proto-library-page">
       <section className="proto-library-workspace">
@@ -476,23 +541,59 @@ export function PrototypeLibraryPage() {
           </div>
           <ToolbarSearch value={query} onChange={setQuery} />
           <div className="proto-header-actions">
-            <Button onClick={() => toast.message("Saved view stays local to current query.")}>Saved views <ChevronDown size={14} /></Button>
-            <Button onClick={() => toast.message("Filters use current ResourceSpace search facets.")}><SlidersHorizontal size={15} />Filters</Button>
-            <LinkButton href={routeWithRole("/upload", role)} tone="primary">Upload <ChevronDown size={14} /></LinkButton>
+            <div className="proto-menu-wrap">
+              <Button className="proto-saved-button" onClick={() => setSavedOpen((value) => !value)}>{view ? savedViews.find((item) => item.id === view)?.label || "Saved view" : "Saved views"} <ChevronDown size={14} /></Button>
+              {savedOpen ? (
+                <div className="proto-popover">
+                  {savedViews.map((item) => <button key={item.id} type="button" onClick={() => applySavedView(item.id)}><strong>{item.label}</strong><span>{item.count.toLocaleString()} assets</span></button>)}
+                  <button type="button" onClick={() => applySavedView("")}>All assets<span>Clear saved view</span></button>
+                </div>
+              ) : null}
+            </div>
+            <div className="proto-menu-wrap">
+              <Button className={`proto-filter-button ${filters.length ? "is-active" : ""}`} aria-label="Filters" title="Filters" onClick={() => setFiltersOpen((value) => !value)}>
+                <SlidersHorizontal size={16} />
+                <span>Filters</span>
+              </Button>
+              {filtersOpen ? (
+                <div className="proto-popover is-filter">
+                  {suggestedFilters.length ? suggestedFilters.map((item) => (
+                    <button key={item.filter} type="button" onClick={() => toggleFilter(item.filter)} className={filters.includes(item.filter) ? "is-active" : ""}>
+                      <strong>{item.label}</strong><span>{item.count.toLocaleString()} matches</span>
+                    </button>
+                  )) : <span className="proto-popover-empty">No filters for this result set.</span>}
+                </div>
+              ) : null}
+            </div>
+            <LinkButton className="proto-upload-button" href={routeWithRole("/upload", role)} tone="primary">Upload <ChevronDown size={14} /></LinkButton>
           </div>
         </header>
         <div className="proto-toolbar">
           <label className="proto-checkbox-label"><input type="checkbox" checked={selected.size > 0 && selected.size === assets.length} onChange={() => setSelected(selected.size === assets.length ? new Set() : new Set(assets.map((asset) => asset.id)))} /> <span>{selected.size} selected</span></label>
-          <Button onClick={() => toast.message("Download checks each selected asset gate.")}>Download</Button>
-          <Button onClick={() => toast.message("Share links require item approval.")}>Share</Button>
-          <Button onClick={() => toast.message("Collection add queued for selected assets.")}>Add to collection</Button>
-          <Button>More <ChevronDown size={14} /></Button>
+          <Button onClick={() => void runDownload()}>Download</Button>
+          <Button onClick={() => toast.message("Share preview", { description: selectedAssets.length ? "Share links remain gated by each asset approval and role." : "Select assets before sharing." })}>Share</Button>
+          <Button onClick={() => toast.message("Collection draft", { description: selectedAssets.length ? "Collection draft is staged locally; ResourceSpace writeback remains disabled in beta." : "Select assets to stage a collection draft." })}>Add to collection</Button>
+          <div className="proto-menu-wrap">
+            <Button onClick={() => setMoreOpen((value) => !value)}>More <ChevronDown size={14} /></Button>
+            {moreOpen ? (
+              <div className="proto-popover is-more">
+                <button type="button" onClick={exportSelectedMetadata}><strong>Export metadata CSV</strong><span>{(selectedAssets.length || assets.length).toLocaleString()} role-safe rows</span></button>
+                {selectionSummary.actions.slice(0, 6).map((action) => (
+                  <button key={action.id} type="button" disabled={!action.enabled} onClick={() => toast.message(action.label, { description: action.disabledReason || action.warning || action.statusLabel })}>
+                    <strong>{action.label}</strong><span>{action.statusLabel}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <div className="proto-toolbar-spacer" />
           <button type="button" className="proto-sort" onClick={() => setSort(sort === "Newest" ? "Approved first" : "Newest")}>Sort by: {sort} <ChevronDown size={14} /></button>
           <IconButton label="Grid view"><LayoutGrid size={16} /></IconButton>
           <IconButton label="List view"><List size={16} /></IconButton>
         </div>
         {results.loading ? <div className="proto-loading">Loading library...</div> : results.error ? <div className="proto-error">{results.error}</div> : (
+          <>
+          {filters.length || view ? <div className="proto-active-filters">{view ? <button type="button" onClick={() => setView("")}>Saved view: {savedViews.find((item) => item.id === view)?.label || view} ×</button> : null}{filters.map((filter) => <button type="button" key={filter} onClick={() => toggleFilter(filter)}>{filter} ×</button>)}</div> : null}
           <div className="proto-asset-grid">
             {assets.map((asset) => (
               <PrototypeAssetCard
@@ -505,6 +606,7 @@ export function PrototypeLibraryPage() {
               />
             ))}
           </div>
+          </>
         )}
       </section>
       <PrototypeAssetInspector asset={activeAsset} index={Math.max(0, assets.findIndex((asset) => asset.id === activeAsset?.id))} total={total} onClose={() => setActiveId(null)} />
@@ -719,10 +821,17 @@ export function PrototypeReviewApprove() {
 
 export function PrototypeCollectionsDistribute({ distribution = false }: { distribution?: boolean }) {
   const { role } = useDemoRole();
-  const search = useAssetsSearch({ role, sort: "Approved first", limit: 12 });
+  const search = useAssetsSearch({ role, sort: "Approved first", limit: 24 });
   const collections = search.data?.collections || [];
-  const assets = search.data?.assets || [];
-  const selected = collections[0];
+  const albumCollections = collections.filter((collection) => collection.id.startsWith("album:"));
+  const collectionChoices = albumCollections.length ? albumCollections : collections;
+  const [selectedId, setSelectedId] = useState("");
+  const selected = collectionChoices.find((collection) => collection.id === selectedId) || collectionChoices[0];
+  const collectionAssets = useAssetsSearch({ role, collection: selected?.id, sort: "Approved first", limit: 18 });
+  const assets = collectionAssets.data?.assets || search.data?.assets || [];
+  useEffect(() => {
+    if (!selectedId && collectionChoices[0]) setSelectedId(collectionChoices[0].id);
+  }, [collectionChoices, selectedId]);
   return (
     <section className="proto-flow-page proto-collections-page">
       <div className="proto-flow-card proto-collection-card">
@@ -736,6 +845,15 @@ export function PrototypeCollectionsDistribute({ distribution = false }: { distr
               <p>{selected?.description || "Campaign assets for web, social, and print."}</p>
             </div>
           </header>
+          <div className="proto-album-strip" aria-label="Imported album collections">
+            {collectionChoices.slice(0, 10).map((collection) => (
+              <button key={collection.id} type="button" className={collection.id === selected?.id ? "is-active" : ""} onClick={() => setSelectedId(collection.id)}>
+                <span>{collection.images[0]?.src ? <img src={collection.images[0].src} alt="" /> : <GalleryHorizontalEnd size={16} />}</span>
+                <strong>{collection.name}</strong>
+                <small>{collection.countLabel}</small>
+              </button>
+            ))}
+          </div>
           <div className="proto-tabs"><button className="is-active">Assets</button><button>Details</button><button>Activity</button><button>Distribution</button></div>
           <div className="proto-collection-assets">
             {assets.slice(0, 7).map((asset) => <div key={asset.id}><AssetImage asset={asset} /></div>)}
@@ -751,6 +869,30 @@ export function PrototypeCollectionsDistribute({ distribution = false }: { distr
           <Button onClick={() => toast.message("Download all checks each item approval before packaging.")}>Download all</Button>
           <p className="proto-muted">Source/original files stay restricted. Per-asset approval is never bypassed.</p>
         </aside>
+      </div>
+    </section>
+  );
+}
+
+export function PrototypeBrandKitsPage() {
+  const { role } = useDemoRole();
+  const search = useAssetsSearch({ role, query: "brand kit graphics slide logo", sort: "Approved first", limit: 12 });
+  const assets = search.data?.assets || [];
+  return (
+    <section className="proto-flow-page">
+      <div className="proto-flow-card proto-brand-card">
+        <header className="proto-review-head">
+          <div>
+            <h1>Brand Kits</h1>
+            <p>Approved visual identity assets and reusable ministry graphics.</p>
+          </div>
+          <LinkButton href={routeWithRole("/collections", role)} tone="secondary">Open collections</LinkButton>
+        </header>
+        <div className="proto-collection-assets">
+          {assets.slice(0, 8).map((asset) => <div key={asset.id}><AssetImage asset={asset} /></div>)}
+          <button type="button" onClick={() => toast.message("Brand kit source remains ResourceSpace; collection writeback disabled in beta.")}>Manage kit</button>
+        </div>
+        <p className="proto-muted">Brand kit memberships follow ResourceSpace/exported collection truth. Source/original files stay restricted.</p>
       </div>
     </section>
   );
