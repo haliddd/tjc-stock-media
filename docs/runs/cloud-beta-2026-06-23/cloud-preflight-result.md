@@ -18,6 +18,9 @@ Checked at: 2026-06-23T13:39:22Z
 | Vercel CLI | Not installed: `vercel not found` |
 | Vercel auth | Not available because CLI is missing |
 | `.vercel` project link | Not present |
+| Old hosted beta URL | `https://tjc-stock-media.vercel.app` reachable; anonymous root redirects to beta login |
+| Old hosted build marker | `/api/beta-auth/session` reports `small-team-beta-readiness-2026-06-17`; not current branch proof |
+| Hosted read-only probe | PASS at `2026-06-23T14:24:48.988Z`; no privileged JSON leak |
 | Docker | Present |
 | Local ResourceSpace containers | `tjc-resourcespace` and `tjc-resourcespace-db` running |
 | SSH | Present |

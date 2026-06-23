@@ -5,7 +5,7 @@ CLOUD TEAM BETA STATUS: NO-GO
 | Field | Value |
 | --- | --- |
 | ResourceSpace Cloud URL | Missing |
-| Vercel Preview URL | Missing |
+| Vercel Preview URL | Candidate old hosted beta URL: `https://tjc-stock-media.vercel.app` |
 | Data source | Local ResourceSpace/export baseline only |
 | Asset count | 2,290 admin / 2,061 search-visible |
 | Collection count | 19 |
@@ -25,7 +25,7 @@ CLOUD TEAM BETA STATUS: NO-GO
 - No restricted ResourceSpace API credentials.
 - No ResourceSpace field map or staging collection IDs.
 - Vercel CLI not installed and no `.vercel` project link present.
-- No Vercel Preview URL provided or created.
+- Old Vercel URL is reachable and beta-auth protected, but current build marker is old (`small-team-beta-readiness-2026-06-17`) and not proven against this branch/cloud env.
 - No durable beta DB configured.
 - No private upload storage configured.
 - Current branch has KV adapters for pending writes and feedback, but no Postgres adapter for either.
@@ -41,5 +41,5 @@ Safe next work:
 
 1. Provision ResourceSpace staging with HTTPS, persistent DB, persistent filestore, thumbnails, backups, restricted API user, source/original denial, and collection/field map IDs.
 2. Implement or prove durable upload intake storage before any team upload workflow.
-3. Configure Vercel Preview env only after staging credentials and durable storage are ready.
+3. Reuse `https://tjc-stock-media.vercel.app` as the stable beta front door after it is redeployed/configured with ResourceSpace staging env.
 4. Redeploy Preview and run preflight, API smoke, upload/review/feedback persistence proof, role gates, download gate, and no-source-original payload checks.

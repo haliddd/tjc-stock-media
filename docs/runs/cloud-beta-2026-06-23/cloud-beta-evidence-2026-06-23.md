@@ -24,7 +24,11 @@
 
 - Vercel CLI is not installed.
 - No `.vercel` project link exists in this checkout.
-- No Vercel Preview URL was provided or created.
+- Old hosted beta URL selected by Hali: `https://tjc-stock-media.vercel.app`.
+- `curl -I -L https://tjc-stock-media.vercel.app` reached Vercel and redirected anonymous root to `/beta-login`.
+- `curl https://tjc-stock-media.vercel.app/api/beta-auth/session` returned beta auth enabled with build marker `small-team-beta-readiness-2026-06-17`.
+- `BASE_URL=https://tjc-stock-media.vercel.app make portal-hosted-readonly-probe` passed at `2026-06-23T14:24:48.988Z`; no POST/writeback/env mutation, no privileged JSON shape, and query-role admin/review/asset/download probes redirected to beta login.
+- That hosted URL is usable as the stable beta front door only after current branch/cloud env are redeployed and re-proved.
 - Production deploy was not run.
 
 ## Storage Durability Status
@@ -39,11 +43,11 @@
 
 ## Upload/Review/Download/Feedback Tests
 
-- Preview upload persistence: NOT RUN, no preview/durable adapter.
-- Preview review pending-write persistence: NOT RUN, no preview/KV env.
-- Preview feedback persistence: NOT RUN, no preview/KV env.
-- Preview download gate: NOT RUN, no preview.
-- Role gates against preview: NOT RUN, no preview.
+- Hosted upload persistence: NOT RUN, no ResourceSpace cloud/durable upload adapter.
+- Hosted review pending-write persistence: NOT RUN, no cloud KV/env proof.
+- Hosted feedback persistence: NOT RUN, no cloud KV/env proof.
+- Hosted download gate: NOT RUN for current branch/cloud env.
+- Role gates against hosted URL: anonymous root redirect/session checked only; full role QA not run.
 
 Previous local package docs record local safety behavior, but those do not prove cloud beta readiness.
 

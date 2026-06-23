@@ -68,13 +68,22 @@ Schema starter:
 
 ## Phase 4: Configure Vercel Preview
 
+Use the old hosted beta URL as the stable front door:
+
+```text
+https://tjc-stock-media.vercel.app
+```
+
+Current proof: it is reachable, hosted by Vercel, and anonymous root redirects to `/beta-login`. The session endpoint still reports build marker `small-team-beta-readiness-2026-06-17`, so it is not proof that the latest branch/cloud env are live.
+
 Use Vercel dashboard because CLI is unavailable in this workspace.
 
 1. Add Preview env only from `vercel-preview-env-checklist.md`.
 2. Keep Production env untouched.
 3. Enable Deployment Protection.
 4. Redeploy beta branch preview.
-5. Do not promote.
+5. Redeploy the current beta branch to this Vercel project when ResourceSpace staging env is ready.
+6. Do not promote or invite until the hosted URL proves current build, ResourceSpace staging, and durable storage.
 
 ## Phase 5: Validate Preview
 
@@ -82,7 +91,8 @@ Run:
 
 ```bash
 make cloud-beta-preview-preflight
-BASE_URL=<vercel-preview-url> make portal-api-smoke
+export BASE_URL=https://tjc-stock-media.vercel.app
+make portal-api-smoke
 curl -s "$BASE_URL/api/admin/readiness" > /tmp/cloud-readiness.json
 curl -s "$BASE_URL/api/assets/search?limit=12" > /tmp/cloud-search.json
 curl -I "$BASE_URL/api/assets/thumbnail/367"
