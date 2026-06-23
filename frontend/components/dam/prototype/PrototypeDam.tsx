@@ -1347,8 +1347,9 @@ export function PrototypeAssetDetailPage({ id }: { id: string }) {
   );
 }
 
-export function PrototypeUsersGroupsPage() {
+export function PrototypeUsersGroupsPage({ publicPreviewAdmin = false }: { publicPreviewAdmin?: boolean } = {}) {
   const { role } = useDemoRole();
+  const effectiveRole: DemoRole = publicPreviewAdmin ? "DAM Admin" : role;
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("Users");
   const [panelTab, setPanelTab] = useState("Permissions");
@@ -1358,13 +1359,13 @@ export function PrototypeUsersGroupsPage() {
   const rows = userRows
     .filter((row) => row.name.toLowerCase().includes(query.toLowerCase()) || row.email.toLowerCase().includes(query.toLowerCase()))
     .filter((row) => roleFilter === "All roles" || row.role === roleFilter);
-  if (!canAdmin(role)) return <section className="proto-page proto-access-block"><div className="proto-panel"><h1>Users & Groups</h1><p>Governance requires DAM Admin role.</p><p>Identity, role, and access changes are disabled for non-admin roles.</p></div></section>;
+  if (!canAdmin(effectiveRole)) return <section className="proto-page proto-access-block"><div className="proto-panel"><h1>Users & Groups</h1><p>Governance requires DAM Admin role.</p><p>Identity, role, and access changes are disabled for non-admin roles.</p></div></section>;
 
   return (
     <section className="proto-page proto-users-page">
       <div className="proto-users-grid">
         <main>
-          <PageHeader title="Users & Groups" subtitle="Manage users, groups, roles, and access." search={query} onSearch={setQuery}>
+          <PageHeader title="Users & Groups" subtitle={publicPreviewAdmin ? "Read-only admin observer view. Identity changes remain disabled." : "Manage users, groups, roles, and access."} search={query} onSearch={setQuery}>
             <PillButton onClick={() => setRoleFilter(roleFilter === "All roles" ? "DAM Admin" : roleFilter === "DAM Admin" ? "Reviewer" : roleFilter === "Reviewer" ? "Contributor" : "All roles")}><SlidersHorizontal size={16} />{roleFilter}</PillButton>
             <PillButton tone="secondary" onClick={() => setMessage("Invites are disabled for local beta until identity provider is configured.")}><UserPlus size={16} />Invite user</PillButton>
           </PageHeader>
@@ -1382,38 +1383,41 @@ export function PrototypeUsersGroupsPage() {
   );
 }
 
-export function PrototypeAdminPage({ initialModule, adminOnly: _adminOnly }: { initialModule?: string; adminOnly?: boolean } = {}) {
-  if (initialModule === "users") return <PrototypeUsersGroupsPage />;
-  return <PrototypeAdminMetadataBrand initialModule={initialModule} />;
+export function PrototypeAdminPage({ initialModule, adminOnly: _adminOnly, publicPreviewAdmin = false }: { initialModule?: string; adminOnly?: boolean; publicPreviewAdmin?: boolean } = {}) {
+  if (initialModule === "users") return <PrototypeUsersGroupsPage publicPreviewAdmin={publicPreviewAdmin} />;
+  return <PrototypeAdminMetadataBrand initialModule={initialModule} publicPreviewAdmin={publicPreviewAdmin} />;
 }
 
-function PrototypeAdminMetadataBrand({ initialModule }: { initialModule?: string }) {
+function PrototypeAdminMetadataBrand({ initialModule, publicPreviewAdmin = false }: { initialModule?: string; publicPreviewAdmin?: boolean }) {
   const { role } = useDemoRole();
-  const readiness = useAdminReadiness(role);
-  const brandAssets = useAssetsSearch({ role, query: "brand", limit: 5 });
+  const effectiveRole: DemoRole = publicPreviewAdmin ? "DAM Admin" : role;
+  const readiness = useAdminReadiness(publicPreviewAdmin ? role : effectiveRole);
+  const brandAssets = useAssetsSearch({ role: effectiveRole, query: "brand", limit: 5 });
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState(initialModule === "settings" ? "Settings" : initialModule === "reports" ? "Reports" : initialModule === "brand" ? "Brand Kits" : "Metadata");
-  if (!canAdmin(role)) return <section className="proto-page proto-access-block"><div className="proto-panel"><h1>Admin / Metadata & Brand</h1><p>Governance requires DAM Admin role.</p><p>Metadata, readiness, and settings remain admin-only.</p></div></section>;
-  const source = readiness.data?.source;
+  if (!canAdmin(effectiveRole)) return <section className="proto-page proto-access-block"><div className="proto-panel"><h1>Admin / Metadata & Brand</h1><p>Governance requires DAM Admin role.</p><p>Metadata, readiness, and settings remain admin-only.</p></div></section>;
+  const source = readiness.data?.source || (publicPreviewAdmin ? { adapter: "media-library", label: "Public ResourceSpace snapshot", detail: "181-record read-only preview. Live ResourceSpace API and writeback remain pending.", readOnly: true } : null);
   const integrations = readiness.data?.integrationReadiness || [];
   const pendingWrites = integrations.find((item) => item.id === "pending-review-writes");
   const runtimeStore = integrations.find((item) => item.id === "runtime-state-store");
-  const blockers = readiness.data?.betaReadiness?.facts
+  const blockers = publicPreviewAdmin
+    ? ["ResourceSpace API disabled: hosted portal uses read-only snapshot.", "Durable upload/review storage not proven: workflow remains fail-closed."]
+    : readiness.data?.betaReadiness?.facts
     ?.filter((fact) => !fact.ready)
     .map((fact) => `${fact.label}: ${fact.detail}`)
     || readiness.data?.actionBacklog?.map((item) => `${item.label}: ${item.action}`).slice(0, 5)
     || [];
-  const betaReady = readiness.data?.betaReadiness?.ready;
+  const betaReady = publicPreviewAdmin ? false : readiness.data?.betaReadiness?.ready;
   const visibleMetadataRows = metadataRows.filter((row) => [row.field, row.key, row.type, row.source].join(" ").toLowerCase().includes(query.toLowerCase()));
 
   return (
     <section className="proto-page proto-admin-meta-page">
-      <PageHeader title="Admin / Metadata & Brand" subtitle="Manage metadata schema, taxonomies, brand assets, reports and platform settings." search={query} onSearch={setQuery}>
+      <PageHeader title="Admin / Metadata & Brand" subtitle={publicPreviewAdmin ? "Read-only admin observer view for cloud preview. ResourceSpace API and durable stores remain pending." : "Manage metadata schema, taxonomies, brand assets, reports and platform settings."} search={query} onSearch={setQuery}>
         <PillButton onClick={() => toast.message("Admin saved views are route tabs in this beta.")}>Saved views <ChevronDown size={14} /></PillButton><PillButton onClick={() => toast.message("Search filters metadata schema rows and admin panels locally.")}><SlidersHorizontal size={16} />Filters</PillButton><LinkButton href={routeWithRole("/upload", role)} tone="primary">Upload <ChevronDown size={14} /></LinkButton>
       </PageHeader>
       <SegmentedTabs tabs={["Metadata", "Taxonomy", "Brand Kits", "Reports", "Settings"]} active={activeTab} onChange={setActiveTab} />
       <div className="proto-admin-meta-grid">
-        <section className="proto-panel proto-beta-status-card"><header className="proto-panel-head"><div><h2>Local beta status</h2><p>{betaReady ? "Local rehearsal signals green. Still not production." : "NO-GO until blockers are cleared or accepted for local-only demo."}</p></div><StatusChip label={betaReady ? "GO" : "NO-GO"} tone={betaReady ? "approved" : "review"} /></header><dl className="proto-dl"><div><dt>Data source</dt><dd>{source?.label || source?.adapter || "Unknown"}</dd></div><div><dt>Assets</dt><dd>{(readiness.data?.assetCount || 0).toLocaleString()}</dd></div><div><dt>Pending writes</dt><dd>{pendingWrites?.state || "Unknown"}</dd></div><div><dt>Runtime storage</dt><dd>{runtimeStore?.state || "Unknown"}</dd></div></dl><h3>Blockers {blockers.length ? <span>{blockers.length}</span> : null}</h3>{blockers.length ? blockers.slice(0, 1).map((item) => <p className="proto-settings-row" key={item}><ShieldAlert size={14} /><strong>{item}<small>No source/original media mutation.</small></strong></p>) : <p className="proto-settings-row"><ShieldCheck size={14} /><strong>No active blockers from readiness endpoint<small>Still local beta only.</small></strong></p>}</section>
+        <section className="proto-panel proto-beta-status-card"><header className="proto-panel-head"><div><h2>{publicPreviewAdmin ? "Cloud preview status" : "Local beta status"}</h2><p>{betaReady ? "Local rehearsal signals green. Still not production." : publicPreviewAdmin ? "LIMITED GO for browsing/admin observer only. Mutations remain blocked." : "NO-GO until blockers are cleared or accepted for local-only demo."}</p></div><StatusChip label={betaReady ? "GO" : publicPreviewAdmin ? "LIMITED" : "NO-GO"} tone={betaReady ? "approved" : "review"} /></header><dl className="proto-dl"><div><dt>Data source</dt><dd>{source?.label || source?.adapter || "Unknown"}</dd></div><div><dt>Assets</dt><dd>{(readiness.data?.assetCount || (publicPreviewAdmin ? 181 : 0)).toLocaleString()}</dd></div><div><dt>Pending writes</dt><dd>{pendingWrites?.state || (publicPreviewAdmin ? "Blocked" : "Unknown")}</dd></div><div><dt>Runtime storage</dt><dd>{runtimeStore?.state || (publicPreviewAdmin ? "Not proven" : "Unknown")}</dd></div></dl><h3>Blockers {blockers.length ? <span>{blockers.length}</span> : null}</h3>{blockers.length ? blockers.slice(0, 1).map((item) => <p className="proto-settings-row" key={item}><ShieldAlert size={14} /><strong>{item}<small>No source/original media mutation.</small></strong></p>) : <p className="proto-settings-row"><ShieldCheck size={14} /><strong>No active blockers from readiness endpoint<small>Still local beta only.</small></strong></p>}</section>
         <section className="proto-panel proto-schema-card"><header className="proto-panel-head"><div><h2>Metadata Schema</h2><p>Define, organize, and govern the structure of your asset metadata.</p></div><PillButton onClick={() => toast.message("Schema edits are disabled in local beta.", { description: "ResourceSpace field mapping stays source of truth." })}><Plus size={14} />Add field</PillButton><IconButton label="More" onClick={() => toast.message("Schema actions disabled until ResourceSpace admin workflow is connected.")}><MoreHorizontal size={15} /></IconButton></header><div className="proto-data-table"><div className="proto-table-head"><span>Field name</span><span>Type</span><span>Required</span><span>Multi-value</span><span>Source</span><span>Actions</span></div>{visibleMetadataRows.map((row) => <div className="proto-table-row" key={row.key}><span><MoreHorizontal size={12} /><strong>{row.field}<small>{row.key}</small></strong></span><span>{row.type}</span><span>{row.required ? <Check size={15} /> : "—"}</span><span>{row.multi ? <Check size={15} /> : "—"}</span><span>{row.source}</span><span><MoreHorizontal size={15} /></span></div>)}</div></section>
         <section className="proto-panel"><header className="proto-panel-head"><div><h2>Taxonomies</h2><p>Manage controlled vocabularies and hierarchical taxonomies.</p></div><PillButton onClick={() => toast.message("Taxonomy management is read-only in local beta.")}>Manage all</PillButton></header>{[["Asset Type", "12 terms · 2 levels"], ["Usage Rights", "8 terms"], ["Location", "245 terms · 3 levels"], ["Audience", "6 terms"], ["Campaign", "14 terms · 2 levels"]].map(([label, detail], index) => <p className="proto-tax-row" key={label}><span className={`is-${index}`}><Tag size={14} /></span><strong>{label}<small>{detail}</small></strong><MoreHorizontal size={15} /></p>)}</section>
         <aside className="proto-brand-kit-panel"><section className="proto-panel"><header className="proto-panel-head"><div><h2>Brand Kit</h2><p>Manage logos, colors, typography and brand assets.</p></div></header><label className="proto-field"><span>Brand</span><select defaultValue="tjc"><option value="tjc">TJC Media</option></select></label><h3>Logos</h3><div className="proto-logo-grid"><span>TJC</span><span>TJC</span><span>◎</span></div><PillButton onClick={() => toast.message("Brand logo upload is disabled until ResourceSpace brand-kit collection is configured.")}><Plus size={14} />Add logo</PillButton><h3>Colors</h3><div className="proto-color-swatches">{["#000", "#242424", "#e2cbb6", "#ece8df", "#f7f6f4"].map((color) => <span key={color} style={{ background: color }} />)}<small>+8</small></div><h3>Typography</h3><p className="proto-type-row"><strong>Ag</strong><span>Source Sans<br />Regular · Medium · Semibold</span><PillButton onClick={() => toast.message("Font management is read-only in local beta.")}>Manage fonts</PillButton></p><h3>Brand assets</h3><ThumbnailStrip assets={brandAssets.data?.assets || []} limit={4} /><PillButton onClick={() => toast.message("Brand assets are shown from safe DAM search results.")}>View all assets</PillButton></section><section className="proto-panel"><h2>Inheritance</h2>{["Default metadata", "Brand inheritance", "Collection overrides"].map((item) => <p className="proto-settings-row" key={item}><Lock size={14} /><strong>{item}<small>Inherited from Global</small></strong><ChevronRight size={14} /></p>)}</section></aside>
