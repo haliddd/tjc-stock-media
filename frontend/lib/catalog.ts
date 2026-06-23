@@ -28,7 +28,7 @@ import { assetMatchesAlbumCollection, isAlbumCollectionId } from "@/lib/catalog-
 import { assetResourceRef } from "@/lib/asset-refs";
 import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery, resolveDiscoveryQuery } from "@/lib/catalog-discovery";
 import { findFilestoreDerivative, getActiveMediaSource } from "@/lib/media-source";
-import { listPendingReviewWrites } from "@/lib/pending-review-writes";
+import { listPendingReviewWritesAsync } from "@/lib/pending-review-writes";
 import { safeBoundedInt } from "@/lib/persisted-record-safety";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
 import { assetMatchesReviewQueue, missingReviewFields, reviewQueues, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
@@ -287,8 +287,9 @@ export async function getReviewQueue(role: DemoRole, queueId: ReviewQueueId = "p
   const { assets, status } = await getActiveMediaSource();
   const canReview = decideAccess(role, "viewReviewQueue").allowed;
   const duplicateGroupCounts = buildDuplicateGroupCounts(assets);
+  const pendingWrites = await listPendingReviewWritesAsync();
   const pendingWriteResourceIds = new Set(
-    listPendingReviewWrites()
+    pendingWrites
       .filter((record) => !["cancelled", "superseded", "synced_to_resourcespace"].includes(record.syncState))
       .map((record) => record.resourceId)
   );

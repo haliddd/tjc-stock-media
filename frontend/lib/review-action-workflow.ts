@@ -7,7 +7,7 @@ import { canReview } from "@/lib/permissions";
 import { normalizeAssetId, readJsonObject } from "@/lib/request-validation";
 import {
   buildReviewEvidencePacket,
-  queueReviewEvidencePacketDecision,
+  queueReviewEvidencePacketDecisionAsync,
   reviewEvidencePacketAuditRecord,
   reviewEvidencePacketBlockedAuditEvent,
   reviewEvidencePacketBlockedBody,
@@ -94,9 +94,9 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
     };
   }
 
-  let pending: ReturnType<typeof queueReviewEvidencePacketDecision>;
+  let pending: Awaited<ReturnType<typeof queueReviewEvidencePacketDecisionAsync>>;
   try {
-    pending = queueReviewEvidencePacketDecision({
+    pending = await queueReviewEvidencePacketDecisionAsync({
       packet,
       role,
       reviewerName: body.reviewerName,

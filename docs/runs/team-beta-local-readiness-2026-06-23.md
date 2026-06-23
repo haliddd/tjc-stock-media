@@ -6,6 +6,21 @@ Status: LOCAL TEAM BETA GO for local rehearsal only.
 
 Do not deploy. Do not merge. Do not invite team until Hali confirms.
 
+## 2026-06-23 UI/UX Continuation Note
+
+A later UI/UX acceptance-blocker pass updated the active prototype surfaces after the previous GO evidence:
+
+- moved remaining feedback/task controls to non-obstructing inline placement
+- polished Upload / Intake queue, receipt copy, and progress meters
+- improved Review Queue density, status buckets, tag column, and review-detail comparison copy
+- fixed collection-detail inert selection checkbox with a beta-safe message
+- improved Requests right panel tabs and real role-safe requested-file thumbnails
+- tightened Users & Groups permission row alignment and sticky right panel
+- compacted Admin readiness card so Metadata & Brand controls remain primary
+- changed browser QA default screenshot folder to `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
+
+Final full QA has not been rerun after these latest edits. Treat the older GO as the previous baseline only; this continuation remains verification-pending until the final gate runs again.
+
 ## URLs
 
 | Surface | URL |

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { assetResourceRef } from "@/lib/asset-refs";
-import { writableRuntimeRoot } from "@/lib/env";
+import { hasVercelKvConfig, pendingWritesStoreMode, productionRuntime, writableRuntimeRoot } from "@/lib/env";
 import { newestByTimestamp, safeEnumValue, safeIsoTimestamp, safeIsoTimestampIdPart, safeNonNegativeInt } from "@/lib/persisted-record-safety";
 import { normalizeReviewRoleWithFallback } from "@/lib/permissions";
 import { normalizePersistedDisplayText, normalizePersistedSlugText } from "@/lib/request-validation";
@@ -10,6 +10,8 @@ import { listRuntimeFiles, readRuntimeJsonFile, writeRuntimeJsonFile } from "@/l
 import type { ReviewEvidenceChecklist, ReviewWriteRecord, ReviewWriteRecordSummary, StockMediaAsset } from "@/lib/types";
 
 const pendingDirName = "pending-review-writes";
+const pendingWriteIndexKey = "tjc-stock-media:pending-review-writes:index";
+const pendingWriteRecordPrefix = "tjc-stock-media:pending-review-writes:record:";
 export const maxPendingReviewWrites = 200;
 const pendingReviewWriteFileReadWindow = maxPendingReviewWrites * 3;
 const syncStates: ReviewWriteRecord["syncState"][] = [
@@ -73,12 +75,66 @@ function writeRecord(record: ReviewWriteRecord) {
   return safeRecord;
 }
 
+function shouldUseKvPendingWrites() {
+  return pendingWritesStoreMode() === "vercel-kv";
+}
+
+function pendingWriteKey(id: string) {
+  return `${pendingWriteRecordPrefix}${id}`;
+}
+
+async function getKvClient() {
+  if (!hasVercelKvConfig()) return null;
+  const { kv } = await import("@vercel/kv");
+  return kv;
+}
+
+function durablePendingWriteError(action: string) {
+  return new Error(`Pending review write durable storage ${action} failed in hosted runtime.`);
+}
+
+export function isPendingReviewWriteDurableStorageError(error: unknown): error is Error {
+  return error instanceof Error && /^Pending review write durable storage .+ failed in hosted runtime\.$/.test(error.message);
+}
+
+async function listKvPendingReviewWrites() {
+  const kv = await getKvClient();
+  if (!kv) return null;
+  const ids = await kv.get<string[]>(pendingWriteIndexKey).catch(() => null);
+  if (!ids?.length) return [];
+  const records = await Promise.all(ids.slice(0, pendingReviewWriteFileReadWindow).map((id) => kv.get<ReviewWriteRecord>(pendingWriteKey(id)).catch(() => null)));
+  return newestByTimestamp(records.map(normalizePendingReviewWrite).filter(Boolean) as ReviewWriteRecord[], (record) => record.updatedAt)
+    .slice(0, maxPendingReviewWrites);
+}
+
+async function writeKvPendingReviewWrite(record: ReviewWriteRecord) {
+  const kv = await getKvClient();
+  if (!kv) return false;
+  const safeRecord = normalizePendingReviewWrite(record) || record;
+  const ids = await kv.get<string[]>(pendingWriteIndexKey).catch(() => null);
+  const nextIds = [safeRecord.id, ...(ids || []).filter((id) => id !== safeRecord.id)].slice(0, pendingReviewWriteFileReadWindow);
+  await Promise.all([
+    kv.set(pendingWriteKey(safeRecord.id), safeRecord),
+    kv.set(pendingWriteIndexKey, nextIds)
+  ]);
+  return true;
+}
+
 export function listPendingReviewWrites(): ReviewWriteRecord[] {
   const records = listRuntimeFiles(pendingDir(), ".json", { maxFilesFromEnd: pendingReviewWriteFileReadWindow })
     .map(readRecord)
     .filter((record): record is ReviewWriteRecord => Boolean(record));
   return newestByTimestamp(records, (record) => record.updatedAt)
     .slice(0, maxPendingReviewWrites);
+}
+
+export async function listPendingReviewWritesAsync(): Promise<ReviewWriteRecord[]> {
+  if (shouldUseKvPendingWrites()) {
+    const records = await listKvPendingReviewWrites();
+    if (records) return records;
+    if (productionRuntime()) throw durablePendingWriteError("read");
+  }
+  return listPendingReviewWrites();
 }
 
 export function pendingReviewWriteSummary(record: ReviewWriteRecord): ReviewWriteRecordSummary {
@@ -99,8 +155,24 @@ export function latestPendingWriteForResource(resourceId: string) {
   return listPendingReviewWrites().find((record) => record.resourceId === resourceId && !terminalSyncStates.includes(record.syncState));
 }
 
+export async function latestPendingWriteForResourceAsync(resourceId: string) {
+  const records = await listPendingReviewWritesAsync();
+  return records.find((record) => record.resourceId === resourceId && !terminalSyncStates.includes(record.syncState));
+}
+
 export function pendingReviewWriteDiagnostics() {
   const records = listPendingReviewWrites();
+  const lastAttempt = records[0];
+  const lastError = records.find((record) => record.lastError);
+  return {
+    count: records.filter((record) => !terminalSyncStates.includes(record.syncState)).length,
+    lastAttemptAt: lastAttempt?.updatedAt,
+    lastError: lastError?.lastError
+  };
+}
+
+export async function pendingReviewWriteDiagnosticsAsync() {
+  const records = await listPendingReviewWritesAsync();
   const lastAttempt = records[0];
   const lastError = records.find((record) => record.lastError);
   return {
@@ -145,6 +217,33 @@ export function createPendingReviewWrite({
     syncState: "queued",
     retryCount: 0
   };
+  return writeRecord(record);
+}
+
+export async function createPendingReviewWriteAsync(input: Parameters<typeof createPendingReviewWrite>[0]) {
+  const now = new Date().toISOString();
+  const resourceId = assetResourceRef(input.asset);
+  const id = `${safeIsoTimestampIdPart(now)}-${safeFilePart(resourceId)}-${crypto.randomUUID().slice(0, 8)}`;
+  const record: ReviewWriteRecord = {
+    id,
+    resourceId,
+    oldStatus: normalizePersistedDisplayText(input.asset.status, 120) || "Unknown",
+    requestedStatus: normalizePersistedDisplayText(input.requestedStatus, 120) || "Needs Review",
+    reviewerRole: input.reviewerRole,
+    reviewerName: input.reviewerName === undefined ? undefined : normalizePersistedDisplayText(input.reviewerName, 120),
+    createdAt: now,
+    updatedAt: now,
+    note: normalizePersistedDisplayText(input.note, 1200),
+    checklist: input.checklist,
+    blockers: input.blockers.map((item) => normalizePersistedDisplayText(item, 120)).filter(Boolean).slice(0, 24),
+    syncState: "queued",
+    retryCount: 0
+  };
+  if (shouldUseKvPendingWrites()) {
+    const wroteKv = await writeKvPendingReviewWrite(record).catch(() => false);
+    if (wroteKv) return record;
+    if (productionRuntime()) throw durablePendingWriteError("write");
+  }
   return writeRecord(record);
 }
 

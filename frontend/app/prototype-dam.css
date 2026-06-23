@@ -902,6 +902,18 @@ input[type="checkbox"] {
   font-weight: 800;
 }
 
+.proto-gate-note.is-success {
+  border-color: #d9e7ce;
+  background: #f2f8ec;
+  color: #496b38;
+}
+
+.proto-gate-note.is-warning {
+  border-color: #ead7c4;
+  background: #fff7ed;
+  color: #8a4f16;
+}
+
 .proto-error {
   color: var(--status-danger-text);
 }
@@ -1241,7 +1253,7 @@ input[type="checkbox"] {
 
 .proto-upload-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 24px;
   margin-top: 18px;
 }
@@ -1255,10 +1267,10 @@ input[type="checkbox"] {
 
 .proto-upload-drop-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px 180px;
+  grid-template-columns: minmax(0, 1fr) 230px 210px;
   gap: 16px;
   min-height: 210px;
-  padding: 24px;
+  padding: 22px;
   border: 1px dashed var(--dam-border-strong);
   border-radius: var(--radius-panel);
   background: var(--dam-panel);
@@ -1266,7 +1278,13 @@ input[type="checkbox"] {
 
 .proto-dropzone {
   display: grid;
+  min-height: 178px;
   place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px dashed var(--dam-border);
+  border-radius: 22px;
+  background: #fdfcfb;
   color: var(--dam-ink);
   font-size: 15px;
   font-weight: 900;
@@ -1289,7 +1307,8 @@ input[type="checkbox"] {
   gap: 10px;
   padding: 16px;
   border: 1px solid var(--dam-border);
-  border-radius: var(--radius-card);
+  border-radius: 18px;
+  background: #fdfcfb;
 }
 
 .proto-upload-settings h2,
@@ -1313,7 +1332,8 @@ input[type="checkbox"] {
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr) 90px 120px 200px 34px;
   gap: 14px;
-  min-height: 58px;
+  min-height: 66px;
+  align-items: center;
   border-top: 1px solid var(--dam-border);
 }
 
@@ -1328,6 +1348,8 @@ input[type="checkbox"] {
 
 .proto-upload-row strong {
   font-size: 14px;
+  line-height: 1.2;
+  word-break: break-word;
 }
 
 .proto-upload-row em {
@@ -1346,6 +1368,21 @@ input[type="checkbox"] {
 
 .proto-upload-bottom {
   grid-template-columns: .7fr 1.2fr .6fr;
+}
+
+.proto-upload-queue .proto-panel-head {
+  align-items: center;
+}
+
+.proto-upload-row button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--dam-border);
+  border-radius: 999px;
+  background: var(--dam-panel);
+  color: var(--dam-muted);
 }
 
 .proto-field {
@@ -1424,17 +1461,20 @@ input[type="checkbox"] {
 .proto-review-buckets > section {
   display: grid;
   gap: 8px;
-  min-height: 112px;
+  min-height: 108px;
   padding: 18px;
   border: 1px solid var(--dam-border);
-  border-radius: 14px;
+  border-radius: 20px;
   background: var(--dam-panel);
   color: var(--dam-ink);
+  box-shadow: var(--shadow-card);
   text-align: left;
 }
 
 .proto-review-buckets > button.is-active {
+  border-color: var(--dam-border-strong);
   background: #fcfbfa;
+  box-shadow: var(--shadow-panel);
 }
 
 .proto-review-buckets strong {
@@ -1450,7 +1490,26 @@ input[type="checkbox"] {
 
 .proto-review-table .proto-table-head,
 .proto-review-table .proto-table-row {
-  grid-template-columns: minmax(320px, 1.6fr) .65fr .65fr .75fr .8fr .55fr 24px;
+  grid-template-columns: minmax(270px, 1.45fr) minmax(120px, .72fr) .62fr .58fr .72fr .72fr .52fr 24px;
+}
+
+.proto-review-tag-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.proto-review-tag-cell em {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--dam-soft);
+  color: var(--dam-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
 }
 
 .proto-review-detail-top,
@@ -1652,11 +1711,12 @@ input[type="checkbox"] {
   display: grid;
   align-content: start;
   gap: 18px;
-  border-radius: 0;
-  border-top: 0;
-  border-right: 0;
-  border-bottom: 0;
-  box-shadow: none;
+  position: sticky;
+  top: 18px;
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
 }
 
 .proto-request-files {
@@ -1665,9 +1725,12 @@ input[type="checkbox"] {
   gap: 8px;
 }
 
+.proto-request-files span,
 .proto-request-files img {
   aspect-ratio: 1.15;
+  overflow: hidden;
   border-radius: 10px;
+  background: var(--dam-soft);
 }
 
 .proto-stepper {
@@ -1707,6 +1770,10 @@ input[type="checkbox"] {
   display: grid;
   align-content: start;
   gap: 20px;
+  position: sticky;
+  top: 18px;
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
 }
 
 .proto-user-permissions header {
@@ -1726,15 +1793,24 @@ input[type="checkbox"] {
   border-radius: 14px;
 }
 
+.proto-user-permissions h4 {
+  margin: 18px 0 4px;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.proto-user-permissions header h2,
+.proto-user-permissions header p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .proto-admin-meta-grid {
   display: grid;
   grid-template-columns: 1.4fr .9fr .9fr;
   gap: 16px;
   margin-top: 18px;
-}
-
-.proto-beta-status-card {
-  grid-column: 1 / -1;
 }
 
 .proto-schema-card {
@@ -1872,6 +1948,11 @@ input[type="checkbox"] {
 
 .proto-root .beta-report-button {
   display: none;
+}
+
+.proto-root .beta-task-toggle,
+.proto-root .beta-task-panel {
+  display: none !important;
 }
 
 .proto-upload-safety-note {
@@ -2020,7 +2101,10 @@ input[type="checkbox"] {
 }
 
 .proto-permission-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
   align-items: center;
+  gap: 12px;
 }
 
 .proto-permission-row > span {
@@ -2028,11 +2112,13 @@ input[type="checkbox"] {
 }
 
 .proto-permission-row > strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
   color: var(--dam-muted);
+  text-align: right;
   white-space: nowrap;
+}
+
+.proto-permission-row > svg {
+  color: var(--status-approved-text);
 }
 
 .proto-disabled-note {
@@ -2068,10 +2154,13 @@ input[type="checkbox"] {
 
 .proto-beta-status-card {
   grid-column: span 1;
+  padding: 14px;
 }
 
 .proto-beta-status-card .proto-dl {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
+  gap: 8px;
+  font-size: 12px;
 }
 
 .proto-beta-status-card h3 {
@@ -2141,7 +2230,7 @@ input[type="checkbox"] {
 }
 
 .proto-requests-grid {
-  grid-template-columns: minmax(820px, 1fr) 340px;
+  grid-template-columns: minmax(780px, 1fr) 360px;
   gap: 20px;
 }
 

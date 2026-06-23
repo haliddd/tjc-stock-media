@@ -10,6 +10,7 @@ import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback
 import { cloudPreviewBetaStorageDiagnostics, durableRuntimeStoreConfigured } from "@/lib/env";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
+import { createPendingReviewWriteAsync, isPendingReviewWriteDurableStorageError, listPendingReviewWritesAsync } from "@/lib/pending-review-writes";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
@@ -278,6 +279,56 @@ describe("production runtime write guard", () => {
       durable: false,
       statefulWritesAllowed: false
     });
+  });
+
+  it("reports pending-write KV adapter separately from missing upload-intake durability", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.PENDING_WRITES_STORE = "vercel-kv";
+    process.env.UPLOAD_INTAKE_STORE = "postgres";
+    process.env.KV_REST_API_URL = "https://kv.example.invalid";
+    process.env.KV_REST_API_TOKEN = "secret";
+    process.env.BETA_DATABASE_URL = "postgres://beta.example.invalid/tjc";
+
+    expect(cloudPreviewBetaStorageDiagnostics()).toMatchObject({
+      pendingWritesMode: "vercel-kv",
+      uploadIntakeMode: "postgres",
+      pendingWritesAdapterImplemented: true,
+      uploadIntakeAdapterImplemented: false,
+      adapterImplemented: false,
+      ready: false,
+      state: "Degraded"
+    });
+  });
+
+  it("fails hosted pending review writes in durable KV mode when KV is missing", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.PENDING_WRITES_STORE = "vercel-kv";
+    delete process.env.KV_REST_API_URL;
+    delete process.env.KV_REST_API_TOKEN;
+
+    await expect(createPendingReviewWriteAsync({
+      asset: approvedAsset({ id: "durable-review-missing" }),
+      requestedStatus: "Needs Review",
+      reviewerRole: "Reviewer",
+      note: "Hosted durable pending write proof.",
+      checklist: {
+        sourceConfirmed: true,
+        rightsConfirmed: true,
+        attributionConfirmed: true,
+        peopleVisibilityConfirmed: true,
+        childrenYouthChecked: true,
+        usageScopeSelected: true,
+        derivativeAvailable: true,
+        sensitiveContextChecked: true,
+        creditRequirementChecked: true,
+        expirationRereviewSet: true,
+        proofLinkAttached: true
+      },
+      blockers: []
+    })).rejects.toSatisfy(isPendingReviewWriteDurableStorageError);
+
+    await expect(listPendingReviewWritesAsync()).rejects.toSatisfy(isPendingReviewWriteDurableStorageError);
   });
 
   it("turns blocked runtime writes into explicit 503 route errors", () => {

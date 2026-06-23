@@ -25,7 +25,9 @@ Do not deploy production. Do not merge. Do not invite testers. Do not enable liv
 | Upload intake | Safe local runtime storage; production browser file intake blocks without durable storage |
 | Review decisions | Safe pending-write queue; live writeback disabled unless explicit env and field map are valid |
 | Feedback | Local JSON or Vercel KV path exists for feedback only |
-| Generic runtime writes | Local filesystem adapter only; durable DB adapter is not implemented |
+| Pending review writes | Local JSON for local rehearsal; Vercel KV queue adapter is implemented when `PENDING_WRITES_STORE=vercel-kv` and KV env are present |
+| Upload intake | Local/runtime only; durable Postgres/private-storage adapter is still not implemented |
+| Generic runtime writes | Local filesystem adapter only; broad durable DB adapter is not implemented |
 | Cloud preview diagnostics | Admin readiness now reports `cloud-preview-beta-storage` truthfully |
 | Cloud preview env preflight | `make cloud-beta-preview-preflight` fails closed unless ResourceSpace staging, durable DB/queues, private upload storage, beta auth, queued writeback, and download gates are configured |
 
@@ -69,7 +71,8 @@ SOURCE_ORIGINAL_DOWNLOADS_ENABLED=0
 | Blocker | Why it matters | Safe next step |
 | --- | --- | --- |
 | ResourceSpace staging not provisioned in this run | Vercel Preview cannot browse real cloud DAM data yet | Hali provisions managed/self-hosted ResourceSpace staging and shares server-side API env names only |
-| Durable generic runtime adapter missing | Pending writes/upload intake would not survive serverless restarts if code wrote local filesystem | Implement Postgres-backed stores before cloud team beta write workflows |
+| Durable upload-intake adapter missing | Upload intake metadata/files would not survive serverless restarts without approved durable storage | Implement Postgres/private-storage or ResourceSpace intake upload before cloud team beta upload workflow |
+| Broad durable runtime adapter missing | Audit/events/package/saved-search writes still use local filesystem outside implemented KV-specific paths | Keep cloud beta NO-GO until runtime write surfaces are durable or blocked |
 | Private upload storage not configured | Browser file uploads cannot persist safely in Vercel filesystem | Configure private R2/S3/Vercel Blob staging; keep public read off |
 | Live writeback unproven | Reviewer actions must not mutate wrong fields | Keep queued mode, then prove live writeback on one test resource only |
 | Public sharing not approved | Distribution links must not expose originals or public bundles | Keep links local/role-safe until Hali approves |
@@ -183,7 +186,7 @@ Approved options:
 - Upstash/Vercel KV for simple queues if code adapters are implemented
 - another Hali-approved durable DB
 
-Current code state: diagnostics exist, but generic pending-write/upload-intake durable adapters are not implemented. Cloud beta remains NO-GO until adapter proof exists.
+Current code state: diagnostics exist. Pending review writes can use a Vercel KV queue when `PENDING_WRITES_STORE=vercel-kv` and KV env are configured, but upload intake still needs durable Postgres/private-storage or ResourceSpace intake proof. Cloud beta remains NO-GO until upload intake, audit/runtime state, and private storage are proven.
 
 Schema starter artifact:
 
@@ -237,7 +240,17 @@ Before inviting testers, run:
 make cloud-beta-preview-preflight
 ```
 
-The preflight prints only redacted `set` / `missing` state and env names. It must return `GO` before any Preview team invite. In the current local shell it correctly returns `NO-GO` because cloud ResourceSpace, durable DB/queues, upload storage, auth, and download-gate env are not configured.
+The preflight prints only redacted `set` / `missing` state and env names. It must return `GO` before any Preview team invite. In the current local shell it correctly returns `NO-GO` because cloud ResourceSpace, durable upload intake, upload storage, auth, and download-gate env are not configured.
+
+If Hali chooses Vercel KV for the first queued-write proof, set:
+
+```env
+PENDING_WRITES_STORE=vercel-kv
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
+```
+
+This covers pending review write records only. It does not make upload intake, audit events, package drafts, or saved searches durable.
 
 ### 8. Preview validation
 

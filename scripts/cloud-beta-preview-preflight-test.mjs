@@ -17,6 +17,8 @@ const baseEnv = {
   BETA_DATABASE_URL: "postgres://beta-db.example.invalid/tjc",
   PENDING_WRITES_STORE: "postgres",
   UPLOAD_INTAKE_STORE: "postgres",
+  KV_REST_API_URL: "https://kv.example.invalid",
+  KV_REST_API_TOKEN: "kv-token-for-test",
   UPLOAD_STORAGE_PROVIDER: "r2",
   UPLOAD_STORAGE_BUCKET: "tjc-beta-intake",
   UPLOAD_STORAGE_REGION: "auto",
@@ -67,6 +69,7 @@ function expectFail(label, expectedText, overrides) {
 }
 
 expectPass("valid-preview-env");
+expectPass("valid-preview-env-with-kv-pending-writes", { PENDING_WRITES_STORE: "vercel-kv" });
 
 expectFail("production-env", "must run against Vercel Preview", { VERCEL_ENV: "production", NODE_ENV: "production" });
 expectFail("local-resourcespace", "must not point at local ResourceSpace", { RESOURCESPACE_BASE_URL: "http://localhost:8088" });
@@ -74,7 +77,8 @@ expectFail("live-writeback", "Live ResourceSpace writeback is not allowed", { RE
 expectFail("public-upload-storage", "UPLOAD_STORAGE_PUBLIC_READ must be 0", { UPLOAD_STORAGE_PUBLIC_READ: "1" });
 expectFail("role-switch", "NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH must be 0", { NEXT_PUBLIC_LOCAL_BETA_ROLE_SWITCH: "1" });
 expectFail("missing-durable-db", "BETA_DATABASE_URL/POSTGRES_URL/DATABASE_URL missing", { BETA_DATABASE_URL: "", POSTGRES_URL: "", DATABASE_URL: "" });
-expectFail("local-pending-store", "PENDING_WRITES_STORE must be postgres", { PENDING_WRITES_STORE: "local-filesystem" });
+expectFail("local-pending-store", "PENDING_WRITES_STORE must be postgres or vercel-kv", { PENDING_WRITES_STORE: "local-filesystem" });
+expectFail("kv-pending-missing-kv", "KV_REST_API_URL and KV_REST_API_TOKEN are required", { PENDING_WRITES_STORE: "vercel-kv", KV_REST_API_URL: "", KV_REST_API_TOKEN: "" });
 expectFail("placeholder-password", "BETA_ADMIN_PASSWORD still looks like a placeholder", { BETA_ADMIN_PASSWORD: "change-me" });
 
 if (failures.length) {

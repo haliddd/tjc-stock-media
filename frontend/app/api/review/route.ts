@@ -23,8 +23,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(denied.body, { status: denied.status });
   }
   const queueId = normalizeReviewQueueId(request.nextUrl.searchParams.get("queue"));
-  const queue = await getReviewQueue(role, queueId);
-  return NextResponse.json(buildReviewQueueResponse(queue, session));
+  try {
+    const queue = await getReviewQueue(role, queueId);
+    return NextResponse.json(await buildReviewQueueResponse(queue, session));
+  } catch (error) {
+    return NextResponse.json({
+      error: "Review queue could not load because durable review storage is unavailable.",
+      reasonCode: "review-storage-required",
+      detail: error instanceof Error ? error.message : "Pending review write read failed."
+    }, { status: 503 });
+  }
 }
 
 export async function POST(request: NextRequest) {

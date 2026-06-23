@@ -38,5 +38,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     resourceSpaceId,
     route: `/api/assets/${asset.id}`
   });
-  return NextResponse.json(buildAssetDetailResponse({ asset, related, resourceSpaceId, session, source }));
+  try {
+    return NextResponse.json(await buildAssetDetailResponse({ asset, related, resourceSpaceId, session, source }));
+  } catch (error) {
+    return NextResponse.json({
+      error: "Asset detail could not load review queue state because durable review storage is unavailable.",
+      reasonCode: "review-storage-required",
+      detail: error instanceof Error ? error.message : "Pending review write read failed.",
+      ...session.sourceEnvelope(source)
+    }, { status: 503 });
+  }
 }

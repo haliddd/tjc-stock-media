@@ -1,6 +1,6 @@
 import { assetResourceRef } from "@/lib/asset-refs";
 import { normalizeDisplayTextField } from "@/lib/request-validation";
-import { buildReviewEvidenceDecision, normalizeReviewChecklist, queuePendingReviewDecision } from "@/lib/review-decision";
+import { buildReviewEvidenceDecision, normalizeReviewChecklist, queuePendingReviewDecision, queuePendingReviewDecisionAsync } from "@/lib/review-decision";
 import type { ReviewActionBackend, reviewActions } from "@/lib/workflow-policy";
 import type { DemoRole, ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
 
@@ -156,6 +156,25 @@ export function queueReviewEvidencePacketDecision(input: QueueReviewEvidencePack
       ].filter(Boolean).join("\n")
     : input.packet.note;
   return queuePendingReviewDecision({
+    asset: input.packet.asset,
+    requestedStatus: input.packet.requestedStatus,
+    role: input.role,
+    reviewerName: input.packet.approvalEvidence.reviewerName || input.reviewerName,
+    note: reviewEvidenceNote,
+    checklist: input.packet.checklist
+  });
+}
+
+export async function queueReviewEvidencePacketDecisionAsync(input: QueueReviewEvidencePacketInput) {
+  const reviewEvidenceNote = approvalActions.has(input.packet.action)
+    ? [
+        `Reviewer: ${input.packet.approvalEvidence.reviewerName}`,
+        `Review date: ${input.packet.approvalEvidence.reviewDate}`,
+        `Usage scope: ${input.packet.approvalEvidence.approvalScope}`,
+        input.packet.note
+      ].filter(Boolean).join("\n")
+    : input.packet.note;
+  return queuePendingReviewDecisionAsync({
     asset: input.packet.asset,
     requestedStatus: input.packet.requestedStatus,
     role: input.role,

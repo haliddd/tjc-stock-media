@@ -205,7 +205,7 @@ export async function getDamReadiness(): Promise<DamReadinessResult> {
   const duplicateScore = 100 - ratio(duplicateCandidates, assetCount);
   const staleScore = 100 - ratio(staleApprovals, assetCount);
   const renditionScore = 100 - ratio(renditionGaps, assetCount);
-  const integrationReadiness = buildIntegrationReadiness({ status, approvedPublic, portalReady, auditEvents: auditLog });
+  const integrationReadiness = await buildIntegrationReadiness({ status, approvedPublic, portalReady, auditEvents: auditLog });
 
   const readiness = [
     readinessItem({

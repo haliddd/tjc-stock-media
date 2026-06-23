@@ -93,7 +93,13 @@ function validateDurableStores() {
   if (!hasAny(["BETA_DATABASE_URL", "POSTGRES_URL", "DATABASE_URL"])) {
     failures.push("BETA_DATABASE_URL/POSTGRES_URL/DATABASE_URL missing: pending writes and upload intake need durable storage.");
   }
-  requireExact("PENDING_WRITES_STORE", "postgres", "cloud beta review decisions must not use local filesystem.");
+  const pendingMode = value("PENDING_WRITES_STORE");
+  if (!["postgres", "vercel-kv"].includes(pendingMode)) {
+    failures.push("PENDING_WRITES_STORE must be postgres or vercel-kv: cloud beta review decisions must not use local filesystem.");
+  }
+  if (pendingMode === "vercel-kv" && (!value("KV_REST_API_URL") || !value("KV_REST_API_TOKEN"))) {
+    failures.push("KV_REST_API_URL and KV_REST_API_TOKEN are required when PENDING_WRITES_STORE=vercel-kv.");
+  }
   requireExact("UPLOAD_INTAKE_STORE", "postgres", "cloud beta upload intake metadata must not use local filesystem.");
   if (!hasAny(["KV_REST_API_URL", "BETA_DATABASE_URL", "POSTGRES_URL", "DATABASE_URL"])) {
     failures.push("Feedback durable storage missing: configure KV or shared beta DB before inviting testers.");

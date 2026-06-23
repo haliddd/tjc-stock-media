@@ -177,7 +177,9 @@ export function cloudPreviewBetaStorageDiagnostics() {
   const uploadStorage = hasCloudUploadStorageConfig();
   const provider = uploadStorageProvider() || "not configured";
   const requestedDurableQueues = pendingWritesMode !== "local-filesystem" || uploadIntakeMode !== "local-filesystem";
-  const adapterImplemented = false;
+  const pendingWritesAdapterImplemented = pendingWritesMode === "vercel-kv" && hasVercelKvConfig();
+  const uploadIntakeAdapterImplemented = false;
+  const adapterImplemented = pendingWritesAdapterImplemented && uploadIntakeAdapterImplemented;
   return {
     databaseConfigured,
     pendingWritesMode,
@@ -186,10 +188,12 @@ export function cloudPreviewBetaStorageDiagnostics() {
     uploadStorageConfigured: uploadStorage,
     requestedDurableQueues,
     adapterImplemented,
+    pendingWritesAdapterImplemented,
+    uploadIntakeAdapterImplemented,
     ready: false,
     state: databaseConfigured || requestedDurableQueues || uploadStorage ? "Degraded" as const : "Pending setup" as const,
     detail: databaseConfigured || requestedDurableQueues || uploadStorage
-      ? `Cloud beta storage env is partially configured, but pending writes/upload intake still use local runtime adapters until a durable adapter is implemented. DB: ${databaseConfigured ? "configured" : "missing"}; pending writes: ${pendingWritesMode}; upload intake: ${uploadIntakeMode}; upload storage ${provider}: ${uploadStorage ? "configured" : "missing"}.`
+      ? `Cloud beta storage env is partially configured. Pending writes adapter: ${pendingWritesAdapterImplemented ? "vercel-kv ready" : "not ready"}; upload intake adapter: ${uploadIntakeAdapterImplemented ? "ready" : "not implemented"}. DB: ${databaseConfigured ? "configured" : "missing"}; pending writes: ${pendingWritesMode}; upload intake: ${uploadIntakeMode}; upload storage ${provider}: ${uploadStorage ? "configured" : "missing"}.`
       : "Cloud beta durable DB, pending write store, upload intake store, and private upload storage are not configured. Vercel Preview must not rely on local filesystem writes for team beta."
   };
 }

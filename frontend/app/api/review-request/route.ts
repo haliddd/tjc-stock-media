@@ -3,7 +3,7 @@ import { appendAuditEvent } from "@/lib/audit-log";
 import { assetResourceRef } from "@/lib/asset-refs";
 import { getAssetRecordById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
-import { createPendingReviewWrite, pendingReviewWriteSummary } from "@/lib/pending-review-writes";
+import { createPendingReviewWriteAsync, pendingReviewWriteSummary } from "@/lib/pending-review-writes";
 import { canReview, canSeeAsset } from "@/lib/permissions";
 import { normalizeAssetId, normalizeDisplayTextField, readJsonObject } from "@/lib/request-validation";
 import { buildReuseDecision } from "@/lib/reuse-policy";
@@ -53,15 +53,25 @@ export async function POST(request: NextRequest) {
     `DAM review requested from Asset Detail by ${session.identity.name || role}. Current decision: ${reuse.summary}`,
     1200
   );
-  const pending = createPendingReviewWrite({
-    asset,
-    requestedStatus: "Needs Review",
-    reviewerRole: "Reviewer",
-    reviewerName: undefined,
-    note,
-    checklist: initialReviewChecklistForAsset(asset),
-    blockers: reuse.blockers.map((item) => item.label)
-  });
+  let pending: Awaited<ReturnType<typeof createPendingReviewWriteAsync>>;
+  try {
+    pending = await createPendingReviewWriteAsync({
+      asset,
+      requestedStatus: "Needs Review",
+      reviewerRole: "Reviewer",
+      reviewerName: undefined,
+      note,
+      checklist: initialReviewChecklistForAsset(asset),
+      blockers: reuse.blockers.map((item) => item.label)
+    });
+  } catch (error) {
+    return NextResponse.json({
+      error: "Review request could not be queued because durable review storage is unavailable.",
+      reasonCode: "review-storage-required",
+      detail: error instanceof Error ? error.message : "Pending review write failed.",
+      ...session.sourceEnvelope(source)
+    }, { status: 503 });
+  }
 
   appendAuditEvent({
     type: "review_pending_write_queued",

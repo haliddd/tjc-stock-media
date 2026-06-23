@@ -1,7 +1,7 @@
 import { assetResourceRef, resourceSpaceRecordRef } from "@/lib/asset-refs";
 import type { getReviewQueue } from "@/lib/catalog";
 import type { createDamRouteSession } from "@/lib/dam-route-session";
-import { latestPendingWriteForResource, pendingReviewWriteSummary } from "@/lib/pending-review-writes";
+import { latestPendingWriteForResourceAsync, pendingReviewWriteSummary } from "@/lib/pending-review-writes";
 import { canOpenResourceSpace, canReview } from "@/lib/permissions";
 import { resourceSpaceAssetUrl } from "@/lib/resourcespace-client";
 import type { AuditEventRecord } from "@/lib/audit-log";
@@ -17,11 +17,13 @@ type ReviewQueueRouteError = {
   status: 403;
 };
 
-function reviewPendingWrites(assets: StockMediaAsset[]) {
+async function reviewPendingWrites(assets: StockMediaAsset[]) {
+  const entries = assets.map((asset) => latestPendingWriteForResourceAsync(assetResourceRef(asset)));
+  const resolved = await Promise.all(entries);
   return Object.fromEntries(
     assets
-      .map((asset) => {
-        const pending = latestPendingWriteForResource(assetResourceRef(asset));
+      .map((asset, index) => {
+        const pending = resolved[index];
         return pending ? [asset.id, pendingReviewWriteSummary(pending)] : null;
       })
       .filter((item): item is [string, ReviewWriteRecordSummary] => Boolean(item))
@@ -37,14 +39,14 @@ function reviewResourceSpaceUrls(assets: StockMediaAsset[], role: DemoRole) {
   );
 }
 
-export function buildReviewQueueResponse(queue: ReviewQueueResult, session: DamRouteSession) {
+export async function buildReviewQueueResponse(queue: ReviewQueueResult, session: DamRouteSession) {
   const role = session.role;
   return {
     ...queue,
     assets: session.assetsPayload(queue.assets),
     allAssets: session.assetsPayload(queue.allAssets),
     ...session.rawSourceEnvelope(queue.source),
-    pendingWrites: reviewPendingWrites(queue.assets),
+    pendingWrites: await reviewPendingWrites(queue.assets),
     resourceSpaceUrls: reviewResourceSpaceUrls(queue.assets, role),
     canReview: canReview(role)
   };

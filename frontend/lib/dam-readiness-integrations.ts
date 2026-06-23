@@ -11,7 +11,7 @@ import {
   resourceSpaceWritebackEnabled,
   trustedSsoHeadersEnabled
 } from "@/lib/env";
-import { pendingReviewWriteDiagnostics } from "@/lib/pending-review-writes";
+import { pendingReviewWriteDiagnosticsAsync } from "@/lib/pending-review-writes";
 import { packageDraftDiagnostics } from "@/lib/package-store";
 import { derivativeIndexDiagnostics } from "@/lib/derivative-index";
 import { resourceSpaceFieldMapDiagnostics, resourceSpaceWritebackFieldMapDiagnostics } from "@/lib/resourcespace-field-map";
@@ -21,7 +21,7 @@ import { savedSearchDiagnostics } from "@/lib/saved-search-store";
 import { usageAnalyticsDiagnostics } from "@/lib/usage-analytics";
 import type { IntegrationReadinessItem, MediaSourceStatus } from "@/lib/types";
 
-export function buildIntegrationReadiness({
+export async function buildIntegrationReadiness({
   status,
   approvedPublic,
   portalReady,
@@ -31,8 +31,12 @@ export function buildIntegrationReadiness({
   approvedPublic: number;
   portalReady: number;
   auditEvents: ReturnType<typeof auditLogDiagnostics>;
-}): IntegrationReadinessItem[] {
-  const pending = pendingReviewWriteDiagnostics();
+}): Promise<IntegrationReadinessItem[]> {
+  const pending = await pendingReviewWriteDiagnosticsAsync().catch((error) => ({
+    count: 0,
+    lastAttemptAt: undefined,
+    lastError: error instanceof Error ? error.message : "Pending review write storage unavailable."
+  }));
   const apiConfigured = hasResourceSpaceApiConfig();
   const fieldMap = resourceSpaceFieldMapDiagnostics();
   const s3Configured = hasS3DeliveryConfig();
@@ -126,9 +130,9 @@ export function buildIntegrationReadiness({
     {
       id: "pending-review-writes",
       label: "Pending review write queue",
-      ready: pending.count === 0,
+      ready: pending.count === 0 && !pending.lastError,
       owner: "DAM Admin",
-      state: pending.count === 0 ? "Operational" : "Degraded",
+      state: pending.lastError ? "Blocked" : pending.count === 0 ? "Operational" : "Degraded",
       detail: `${pending.count.toLocaleString()} pending write${pending.count === 1 ? "" : "s"}. Last attempt: ${pending.lastAttemptAt || "none"}. Last error: ${pending.lastError || "none"}.`
     },
     {

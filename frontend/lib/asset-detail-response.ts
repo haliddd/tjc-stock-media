@@ -1,6 +1,6 @@
 import type { getAssetById } from "@/lib/catalog";
 import type { createDamRouteSession } from "@/lib/dam-route-session";
-import { latestPendingWriteForResource, pendingReviewWriteSummary } from "@/lib/pending-review-writes";
+import { latestPendingWriteForResourceAsync, pendingReviewWriteSummary } from "@/lib/pending-review-writes";
 import { canOpenResourceSpace, canReview, canSeeAsset } from "@/lib/permissions";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
 import { resourceSpaceRecordRef } from "@/lib/asset-refs";
@@ -27,7 +27,7 @@ export function assetDetailRoleDeniedError(session: DamRouteSession, source: Ass
   return { body: { error: "This role cannot view this asset.", ...session.sourceEnvelope(source) }, status: 403 };
 }
 
-export function buildAssetDetailResponse({
+export async function buildAssetDetailResponse({
   asset,
   related,
   resourceSpaceId,
@@ -41,7 +41,7 @@ export function buildAssetDetailResponse({
   source: AssetDetailResult["source"];
 }) {
   const role = session.role;
-  const pending = latestPendingWriteForResource(resourceSpaceId);
+  const pending = await latestPendingWriteForResourceAsync(resourceSpaceId);
   const isReviewerOrAdmin = canReview(role);
   const assetPayload = assetWithRoleImageUrls(asset, role);
   const resourceSpaceRef = resourceSpaceRecordRef(asset);

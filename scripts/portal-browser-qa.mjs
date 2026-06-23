@@ -13,7 +13,7 @@ const { chromium } = playwright;
 const base = process.env.BASE_URL || "http://localhost:4871";
 const trustedHeaderQa = process.env.PORTAL_QA_TRUSTED_HEADERS === "1";
 let betaAuthProbe = null;
-const outDir = path.resolve(process.env.PORTAL_BROWSER_QA_SCREENSHOT_DIR || "docs/screenshots");
+const outDir = path.resolve(process.env.PORTAL_BROWSER_QA_SCREENSHOT_DIR || "docs/screenshots/team-beta-ui-ux-final-2026-06-23");
 const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64");
 const preferredDetailAssetId = "368";
 const preferredUnsafeAssetId = "644";
