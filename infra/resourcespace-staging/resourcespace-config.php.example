@@ -1,0 +1,29 @@
+<?php
+// ResourceSpace staging config template. Copy to resourcespace-config.php on VM only.
+// Keep this file free of real secrets.
+
+$mysql_server = 'mariadb';
+$mysql_username = getenv('MARIADB_USER') ?: 'resourcespace';
+$mysql_password = getenv('MARIADB_PASSWORD') ?: 'replace-me';
+$mysql_db = getenv('MARIADB_DATABASE') ?: 'resourcespace';
+
+$baseurl = getenv('RESOURCESPACE_PUBLIC_URL') ?: 'https://dam-staging.tjc.org';
+
+$storage_path = '/var/www/html/filestore';
+$storagedir = '/var/www/html/filestore';
+
+$imagemagick_path = '/usr/bin';
+$ffmpeg_path = '/usr/bin';
+
+$hide_real_filepath = true;
+$originals_separate_storage = true;
+$scramble_key = 'replace-on-vm-with-random-string';
+
+$api_scramble_key = 'replace-on-vm-with-api-scramble-key';
+$enable_remote_apis = true;
+
+$defaulttheme = 'TJC Stock Media';
+$contact_link = 'mailto:media-admin@tjc.org';
+
+// Staging beta posture: upload/review defaults must be configured in ResourceSpace UI.
+// Do not use this config to make source/original files public.

@@ -1,0 +1,39 @@
+services:
+  resourcespace:
+    build:
+      context: ./resourcespace-docker
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    ports:
+      - "${RESOURCESPACE_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./data/filestore:/var/www/html/filestore
+      - ./resourcespace-config.php:/var/www/html/include/config.php:ro
+    environment:
+      TZ: "${TZ:-UTC}"
+    networks:
+      - resourcespace-public
+      - resourcespace-private
+
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: "${MARIADB_DATABASE}"
+      MARIADB_USER: "${MARIADB_USER}"
+      MARIADB_PASSWORD: "${MARIADB_PASSWORD}"
+      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD}"
+    command:
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_ci"
+      - "--max_allowed_packet=256M"
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+    networks:
+      - resourcespace-private
+
+networks:
+  resourcespace-public:
+  resourcespace-private:
+    internal: true
