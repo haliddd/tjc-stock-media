@@ -2,6 +2,8 @@
 
 CLOUD TEAM BETA STATUS: NO-GO
 
+ONE-HOUR CLOUD STATUS: NO-GO
+
 Local final QA passed, but cloud beta evidence is still incomplete.
 
 ## Local Evidence Snapshot
@@ -22,8 +24,15 @@ Local evidence does not prove cloud beta.
 
 ## ResourceSpace Staging Status
 
+- ResourceSpace free cloud signup was attempted in Safari on 2026-06-23 10:48 EDT.
+- Form data entered: full name, email, how-heard selection, empty-system template, required terms, and installation slug.
+- Requested slug `tjc-stock-media` was normalized by the form to `tjcstockmedia`.
+- Candidate URL `https://tjcstockmedia.free.resourcespace.com` was not launched or proven.
+- Direct HEAD check for the candidate URL redirects to `https://www.resourcespace.com/terminated`.
+- CAPTCHA challenge was verified in Safari, but `Launch ResourceSpace` was not clicked pending explicit action-time confirmation for account creation.
 - No HTTPS ResourceSpace cloud/staging URL is configured or proven.
 - No restricted cloud API user/API key is available.
+- No field map or staging collection IDs are available.
 - No ResourceSpace cloud API read was run.
 - No cloud thumbnails/previews were proven.
 
@@ -32,8 +41,16 @@ Local evidence does not prove cloud beta.
 - Old hosted beta URL: `https://tjc-stock-media.vercel.app`.
 - Old URL is a stable front-door candidate only after current branch/cloud env are redeployed and re-proved.
 - Old URL build marker remains `small-team-beta-readiness-2026-06-17`; do not claim current cloud readiness from it.
-- Latest preview observed earlier returned fallback/source mode `media-library`, `live=false`, total `163`, not ResourceSpace cloud.
-- Latest preview thumbnails observed earlier were generated local beta SVGs, not ResourceSpace thumbnails.
+- Current preview URL: `https://tjc-stock-media-hwizx2tgj-hali-s-projects1.vercel.app`.
+- Current branch alias: `https://tjc-stock-media-git-beta-local-team-wor-24b29a-hali-s-projects1.vercel.app`.
+- Current preview deployment: `dpl_Au6gMcETEmAoMorVjxkzXUR7MfWz`.
+- Current preview commit: `94852e170e6194cf51a446c21d3c583c09831f9e`.
+- Current preview app session route reports branch `beta/local-team-workflow-ready-overnight`, routeCount `20`, navItemCount `18`, and app contract `small-team-beta-readiness-2026-06-17`.
+- Current preview app beta auth is `enabled:false`.
+- Public read-only probes against current preview and branch alias returned Vercel Authentication 401 for all tested routes.
+- Stable URL `/` redirects to `/beta-login`; stable `/api/beta-auth/session` returns 401 JSON with beta auth enabled, but commit fields are null.
+- Stable asset/readiness routes redirect to beta login.
+- Leak scan across fetched hosted bodies found no `sourcePath`, `original`, `privateUrl`, `drive.google`, `photos.google`, or API key patterns.
 - Production deploy was not run.
 
 ## Storage Durability Status
@@ -52,6 +69,8 @@ Local evidence does not prove cloud beta.
 - ResourceSpace restricted API read.
 - Vercel Preview env verification.
 - Portal API smoke against cloud preview.
+- App beta auth on current preview.
+- Asset search/readiness counts on current preview.
 - Upload persistence after serverless restart.
 - Review pending-write persistence after serverless restart.
 - Feedback persistence after serverless restart.
