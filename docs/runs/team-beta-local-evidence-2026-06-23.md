@@ -5,6 +5,8 @@ Branch: `beta/local-team-workflow-ready-overnight`
 Portal: http://localhost:4871
 ResourceSpace: http://localhost:8088
 
+Continuation note: latest local inspection found the active portal on `http://localhost:4885`; `4871` was not listening. Use `BASE_URL=http://localhost:<active-port>` for any follow-up smoke or browser QA instead of assuming one fixed dev port.
+
 ## Commands Run
 
 | Command | Result |
@@ -20,6 +22,7 @@ ResourceSpace: http://localhost:8088
 | `cd frontend && npm run test` | PASS, 174 tests |
 | Browser screenshot/API QA | PASS, 33 page-only screenshots across 6 viewports and 20 route/role checks; 0 failures, 0 warnings, 0 console errors, 0 network failures |
 | `node --check scripts/portal-browser-qa.mjs` | PASS after screenshot wait/page-only capture updates |
+| `node --check scripts/portal-browser-qa.mjs` | PASS after final proof route matrix expansion |
 
 ## API Smoke Summary
 
@@ -41,6 +44,8 @@ ResourceSpace: http://localhost:8088
 Screenshot summary: `docs/screenshots/qa/browser-qa-report.json`
 
 Final UI/UX screenshot folder for this pass: `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
+
+The browser QA script now emits page-only proof screenshots for the final route matrix at `1440`, `1280`, `1024`, `768`, `390`, and `320` when run with `PORTAL_BROWSER_QA_FULL=1`.
 
 | Metric | Result |
 | --- | --- |
@@ -97,12 +102,13 @@ Pending writes existed before final QA and increased during authenticated review
 - `docs/screenshots/team-beta-local-readiness-2026-06-23/collections-viewer-1440.png`
 - `docs/screenshots/team-beta-local-readiness-2026-06-23/admin-1440.png`
 - `docs/screenshots/team-beta-ui-ux-final-2026-06-23/` after final UI/UX QA gate
-- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/library-desktop.png`
-- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/upload-desktop.png`
-- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/review-desktop.png`
-- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/admin-desktop.png`
-- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/requests-desktop.png`
-- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/packages-desktop.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/library-viewer-1440.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/upload-contributor-1440.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/review-reviewer-1440.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/review-detail-reviewer-1440.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/requests-reviewer-1440.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/collections-viewer-1440.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/admin-taxonomy-1440.png`
 
 ## Final Commit SHA
 

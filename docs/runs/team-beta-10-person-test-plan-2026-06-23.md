@@ -7,6 +7,8 @@ ResourceSpace: http://localhost:8088
 
 This plan is for a local rehearsal only. Do not deploy, merge, send invites, expose a public tunnel, or share production links from this pass.
 
+Before rehearsal, confirm the active portal port. A later continuation found the dev server on `http://localhost:4885` while `4871` was stopped. Use the active local URL consistently in every tester starting link.
+
 ## Tester Assignments
 
 | Tester | Role | Starting URL | Task steps | Expected result | Must not happen | Issue reporting |
@@ -54,6 +56,7 @@ This plan is for a local rehearsal only. Do not deploy, merge, send invites, exp
 ## Known Limitations
 
 - Cloud storage is not configured in this pass by request.
+- Cloud team beta remains NO-GO until ResourceSpace staging, durable beta storage, private upload storage, and Vercel Preview env are configured and proven.
 - ResourceSpace writeback is pending-write preview unless live credentials are configured.
 - Sharing is local beta only; no public link or invite delivery is created.
 - Existing Docker containers were already running, so `make up` reported container-name conflict while `make smoke` confirmed local ResourceSpace health.

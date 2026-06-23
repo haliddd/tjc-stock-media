@@ -13,6 +13,8 @@ Do not deploy. Do not merge. Do not invite team until Hali confirms.
 | Portal | http://localhost:4871 |
 | ResourceSpace | http://localhost:8088 |
 
+Continuation note: later local server inspection found the active dev portal on `http://localhost:4885` while `4871` was not listening. The committed code remains port-agnostic; set `BASE_URL` to the active local portal before running smoke/browser QA.
+
 ## Data Source
 
 | Item | Result |
@@ -64,6 +66,7 @@ Applied on 2026-06-23 after review against the Apple-style DAM reference screens
 | --- | --- |
 | Screenshot proof | Browser QA now uses Playwright page viewport screenshots and supports `PORTAL_BROWSER_QA_SCREENSHOT_DIR=docs/screenshots/team-beta-ui-ux-final-2026-06-23`. |
 | Feedback control | `Report Issues` moved from obstructing floating bottom-right overlay into sidebar/mobile inline tools. |
+| Feedback guardrail | Floating feedback fallback was removed from `BetaPrototypeTools`; the control renders inline only so it cannot cover route content. |
 | Upload / Intake | Reworked queue as polished table, replaced native green progress with neutral thin meters, removed debug/sample wording, added beta safety note and tag chips. |
 | Review Queue | Added reliable ResourceSpace/export fallback rows, loading skeleton, dense reviewer table, truthful action wiring, and review detail decision mapping. |
 | Review Detail | Side-by-side comparison, evidence checklist, decision card, and queued/synced truth copy preserved. |
@@ -91,6 +94,7 @@ Visual parity is acceptable for local team beta rehearsal. Final screenshots are
 
 - Cloud storage is not connected yet by request.
 - Cloud team beta remains NO-GO until ResourceSpace staging and durable beta stores are configured; see `docs/runs/cloud-beta-readiness-2026-06-23.md`.
+- Active local beta auth may require the current persona password from the running dev server environment; do not weaken auth to run checks.
 - Admin readiness endpoint reports broader beta readiness false because pending-write/cloud/production blockers remain.
 - Review approval for public use remains strict; if domain evidence is missing, approval stays blocked. The safe demo path uses request changes/restrict to queue pending writes truthfully.
 - Local share links are for local beta only; no public sharing/invite delivery.
