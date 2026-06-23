@@ -8,6 +8,7 @@ import {
 } from "@/lib/asset-detail-response";
 import { getAssetById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
+import { publicSnapshotBrowseEnabled } from "@/lib/env";
 import { canSeeAsset } from "@/lib/permissions";
 import { localBetaRoleOverrideFromRequest } from "@/lib/request-identity";
 import { normalizeAssetId } from "@/lib/request-validation";
@@ -22,12 +23,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const error = assetDetailMalformedIdError();
     return NextResponse.json(error.body, { status: error.status });
   }
-  const { asset, source, related } = await getAssetById(id, role);
+  const accessRole = publicSnapshotBrowseEnabled() && role === "Viewer" ? "Reviewer" : role;
+  const { asset, source, related } = await getAssetById(id, role, accessRole);
   if (!asset) {
     const error = assetDetailNotFoundError(session, source);
     return NextResponse.json(error.body, { status: error.status });
   }
-  if (!canSeeAsset(role, asset)) {
+  if (!canSeeAsset(accessRole, asset)) {
     const error = assetDetailRoleDeniedError(session, source);
     return NextResponse.json(error.body, { status: error.status });
   }
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     route: `/api/assets/${asset.id}`
   });
   try {
-    return NextResponse.json(await buildAssetDetailResponse({ asset, related, resourceSpaceId, session, source }));
+    return NextResponse.json(await buildAssetDetailResponse({ asset, related, resourceSpaceId, session, source, previewRole: accessRole }));
   } catch (error) {
     return NextResponse.json({
       error: "Asset detail could not load review queue state because durable review storage is unavailable.",

@@ -163,6 +163,7 @@ function collectionMatches(asset: StockMediaAsset, collectionId?: string) {
 
 export async function searchAssets({
   role,
+  accessRole,
   query,
   filters,
   view,
@@ -173,6 +174,7 @@ export async function searchAssets({
   offset = 0
 }: {
   role: DemoRole;
+  accessRole?: DemoRole;
   query: string;
   filters: string[];
   view?: string;
@@ -183,10 +185,11 @@ export async function searchAssets({
   offset?: number;
 }): Promise<SearchResult> {
   const { assets, status } = await getActiveMediaSource();
-  const scopedAssets = scopedCatalogAssetsForRole(role, assets, status);
+  const effectiveAccessRole = accessRole || role;
+  const scopedAssets = scopedCatalogAssetsForRole(effectiveAccessRole, assets, status);
   const safeLimit = safeBoundedInt(limit, { min: 1, max: 120, fallback: 72 });
   const safeOffset = safeBoundedInt(offset, { min: 0, max: Number.MAX_SAFE_INTEGER, fallback: 0 });
-  const roleVisible = scopedAssets.filter((asset) => decideAccess(role, "viewAsset", asset).allowed);
+  const roleVisible = scopedAssets.filter((asset) => decideAccess(effectiveAccessRole, "viewAsset", asset).allowed);
   const discoveryQuery = !view && !collection ? resolveDiscoveryQuery(query, requestedIntent) : { query, matchedIntent: undefined };
   const queryForIntent = discoveryQuery.query;
   const intent = !view && !collection ? matchSearchIntent(queryForIntent) : undefined;
@@ -210,7 +213,7 @@ export async function searchAssets({
   const rangeEnd = sorted.length && rendered ? safeOffset + rendered : 0;
 
   return {
-    assets: pagedAssets.map((asset) => assetWithRoleImageUrls(asset, role)),
+    assets: pagedAssets.map((asset) => assetWithRoleImageUrls(asset, role, effectiveAccessRole)),
     total: sorted.length,
     pagination: {
       offset: safeOffset,
@@ -266,9 +269,10 @@ export async function getAssetRecordById(id: string, role?: DemoRole) {
   return { asset: scopedAssets.find((item) => item.id === id) || null, source: status };
 }
 
-export async function getAssetById(id: string, role?: DemoRole) {
+export async function getAssetById(id: string, role?: DemoRole, accessRole?: DemoRole) {
   const { assets, status } = await getActiveMediaSource();
-  const scopedAssets = role ? scopedCatalogAssetsForRole(role, assets, status) : assets;
+  const effectiveAccessRole = accessRole || role;
+  const scopedAssets = effectiveAccessRole ? scopedCatalogAssetsForRole(effectiveAccessRole, assets, status) : assets;
   return { asset: scopedAssets.find((item) => item.id === id) || null, source: status, related: getRelatedAssets(scopedAssets, id) };
 }
 

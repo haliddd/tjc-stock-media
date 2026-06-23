@@ -108,6 +108,13 @@ export function lmPhotoBetaReleaseFixturesEnabled() {
   return ["1", "true"].includes((process.env.PORTAL_ENABLE_LM_PHOTOS_BETA_RELEASE_FIXTURES || "").toLowerCase());
 }
 
+export function publicSnapshotBrowseEnabled() {
+  const betaAuthDisabled = !["1", "true"].includes((process.env.BETA_AUTH_ENABLED || "").toLowerCase());
+  return process.env.VERCEL_ENV !== "production"
+    && betaAuthDisabled
+    && ["1", "true"].includes((process.env.PORTAL_PUBLIC_SNAPSHOT_BROWSE_ENABLED || "").toLowerCase());
+}
+
 export function hasUsageAnalyticsConfig() {
   return Boolean(process.env.PORTAL_USAGE_LOGGING === "1" || process.env.USAGE_ANALYTICS_DSN);
 }

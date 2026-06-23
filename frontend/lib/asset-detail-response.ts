@@ -5,6 +5,7 @@ import { canOpenResourceSpace, canReview, canSeeAsset } from "@/lib/permissions"
 import { assetWithRoleImageUrls } from "@/lib/presentation";
 import { resourceSpaceRecordRef } from "@/lib/asset-refs";
 import { resourceSpaceAssetUrl } from "@/lib/resourcespace-client";
+import type { DemoRole } from "@/lib/types";
 
 type AssetDetailResult = Awaited<ReturnType<typeof getAssetById>>;
 type DamRouteSession = ReturnType<typeof createDamRouteSession>;
@@ -32,18 +33,21 @@ export async function buildAssetDetailResponse({
   related,
   resourceSpaceId,
   session,
-  source
+  source,
+  previewRole
 }: {
   asset: NonNullable<AssetDetailResult["asset"]>;
   related: AssetDetailResult["related"];
   resourceSpaceId: string;
   session: DamRouteSession;
   source: AssetDetailResult["source"];
+  previewRole?: DemoRole;
 }) {
   const role = session.role;
+  const effectivePreviewRole = previewRole || role;
   const pending = await latestPendingWriteForResourceAsync(resourceSpaceId);
   const isReviewerOrAdmin = canReview(role);
-  const assetPayload = assetWithRoleImageUrls(asset, role);
+  const assetPayload = assetWithRoleImageUrls(asset, role, effectivePreviewRole);
   const resourceSpaceRef = resourceSpaceRecordRef(asset);
   return {
     asset: {
@@ -51,7 +55,9 @@ export async function buildAssetDetailResponse({
       pendingReviewWrite: isReviewerOrAdmin && pending ? pendingReviewWriteSummary(pending) : undefined
     },
     ...session.sourceEnvelope(source),
-    related: related.filter((item) => canSeeAsset(role, item)).map((item) => session.assetPayload(assetWithRoleImageUrls(item, role))),
+    related: related
+      .filter((item) => canSeeAsset(effectivePreviewRole, item))
+      .map((item) => session.assetPayload(assetWithRoleImageUrls(item, role, effectivePreviewRole))),
     resourceSpaceUrl: isReviewerOrAdmin && resourceSpaceRef && canOpenResourceSpace(role) ? resourceSpaceAssetUrl(resourceSpaceRef) : undefined
   };
 }

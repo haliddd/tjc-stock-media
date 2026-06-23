@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { decideAccess } from "@/lib/access-decisions";
 import { getAssetRecordById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
+import { publicSnapshotBrowseEnabled } from "@/lib/env";
 import {
   readThumbnailDeliveryInput,
   readThumbnailDerivativeDelivery,
@@ -25,7 +26,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(error.body, { status: error.status });
   }
   const deliveryInput = readThumbnailDeliveryInput(request.nextUrl.searchParams);
-  const { asset, source } = await getAssetRecordById(id, role);
+  const accessRole = publicSnapshotBrowseEnabled() && role === "Viewer" ? "Reviewer" : role;
+  const { asset, source } = await getAssetRecordById(id, accessRole);
   if (!asset) {
     const error = thumbnailNotFoundError(session, source);
     return NextResponse.json(error.body, { status: error.status });
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(error.body, { status: error.status });
   }
 
-  const access = decideAccess(role, deliveryInput.action, asset);
+  const access = decideAccess(accessRole, deliveryInput.action, asset);
   if (!access.allowed) {
     const error = thumbnailAccessDeniedError(access.reason, session, source);
     return NextResponse.json(error.body, { status: error.status });

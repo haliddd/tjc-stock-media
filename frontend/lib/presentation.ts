@@ -38,10 +38,10 @@ function assetMetadataForRole(asset: StockMediaAsset, role: DemoRole): StockMedi
   return redactRestrictedMetadata(asset, role === "Viewer");
 }
 
-export function assetWithRoleImageUrls(asset: StockMediaAsset, role: DemoRole): StockMediaAsset {
+export function assetWithRoleImageUrls(asset: StockMediaAsset, role: DemoRole, previewRole: DemoRole = role): StockMediaAsset {
   const roleSafeAsset = assetMetadataForRole(asset, role);
   const reuseDecision = buildReuseDecision(asset);
-  if (!canPreviewAsset(asset, role)) {
+  if (!canPreviewAsset(asset, previewRole)) {
     return {
       ...roleSafeAsset,
       reuseDecision,
