@@ -1348,6 +1348,26 @@ body {
     display: block;
   }
 
+  .proto-mobile-sheet-icon {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--proto-ink);
+  }
+
+  .proto-mobile-sheet-note {
+    display: block;
+    margin-top: 3px;
+    color: var(--proto-muted);
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 750;
+    line-height: 1.25;
+  }
+
   .proto-flow-page,
   .proto-detail-page,
   .proto-admin-page {

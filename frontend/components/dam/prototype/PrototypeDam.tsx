@@ -169,9 +169,7 @@ function assetImage(asset?: StockMediaAsset, variant: "card" | "detail" = "card"
   const src = variant === "detail"
     ? asset.imageUrls?.detail || asset.preview || asset.imageUrls?.card || asset.thumbnail || ""
     : asset.imageUrls?.card || asset.imageUrls?.small || asset.thumbnail || asset.preview || "";
-  if (src && !localThumbnailRoute(src)) return src;
-  if (src) return fallbackPhotoForAsset(asset);
-  return "";
+  return src;
 }
 
 function protoStatus(asset?: StockMediaAsset) {
@@ -189,6 +187,30 @@ function StatusPill({ asset, label, tone }: { asset?: StockMediaAsset; label?: s
 
 function AssetImage({ asset, variant = "card" }: { asset?: StockMediaAsset; variant?: "card" | "detail" }) {
   const src = assetImage(asset, variant);
+  const [resolvedSrc, setResolvedSrc] = useState(src);
+
+  useEffect(() => {
+    let cancelled = false;
+    setResolvedSrc(src);
+    if (!asset || !src || !localThumbnailRoute(src)) return;
+
+    fetch(src, { headers: { Accept: "image/*" } })
+      .then((response) => {
+        if (cancelled) return;
+        const previewMode = response.headers.get("X-TJC-Preview-Mode");
+        if (!response.ok || previewMode === "generated-local-beta") {
+          setResolvedSrc(fallbackPhotoForAsset(asset));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedSrc(fallbackPhotoForAsset(asset));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [asset, src]);
+
   if (!src) {
     return (
       <div className="proto-image-fallback">
@@ -197,7 +219,7 @@ function AssetImage({ asset, variant = "card" }: { asset?: StockMediaAsset; vari
       </div>
     );
   }
-  return <img src={src} alt={asset?.thumbnailAlt || displayTitle(asset)} loading="lazy" />;
+  return <img src={resolvedSrc} alt={asset?.thumbnailAlt || displayTitle(asset)} loading="lazy" onError={() => asset && setResolvedSrc(fallbackPhotoForAsset(asset))} />;
 }
 
 function assetMeta(asset: StockMediaAsset) {
@@ -493,19 +515,32 @@ export function PrototypeLibraryPage() {
 
 function MobileAssetSheet({ asset }: { asset: StockMediaAsset }) {
   const { role } = useDemoRole();
+  const gate = useDownloadGate(asset.id, role);
+  const [message, setMessage] = useState("");
+
+  async function download() {
+    const payload = await gate.requestDownload({ reason: `Approved-copy request for ${displayTitle(asset)}` });
+    if (payload.allowed && payload.downloadUrl) {
+      setMessage("Approved-copy gate passed. Opening derivative.");
+      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+    } else {
+      setMessage(payload.message || payload.reason || "Download blocked by policy gate.");
+    }
+  }
+
   return (
     <aside className="proto-mobile-sheet">
       <div className="proto-mobile-sheet-head">
         <div className="proto-mobile-thumb"><AssetImage asset={asset} /></div>
-        <div><strong>{displayTitle(asset)}</strong><StatusPill asset={asset} /><span>{assetMeta(asset)}</span></div>
-        <Share2 size={16} />
+        <div><strong>{displayTitle(asset)}</strong><StatusPill asset={asset} /><span>{assetMeta(asset)}</span>{message ? <em className="proto-mobile-sheet-note">{message}</em> : null}</div>
+        <button type="button" className="proto-mobile-sheet-icon" onClick={() => setMessage("Share stays gated by item approval and role.")} aria-label="Share selected asset"><Share2 size={16} /></button>
       </div>
       <div className="proto-tabs"><button className="is-active">Details</button><button>Activity</button></div>
       <div className="proto-action-row">
-        <button><Download size={16} /><span>Download</span></button>
-        <button><Share2 size={16} /><span>Share</span></button>
+        <button type="button" onClick={() => void download()}><Download size={16} /><span>Download</span></button>
+        <button type="button" onClick={() => setMessage("Share stays gated by item approval and role.")}><Share2 size={16} /><span>Share</span></button>
         <Link href={routeWithRole(`/assets/${asset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
-        <button><MoreHorizontal size={16} /><span>More</span></button>
+        <button type="button" onClick={() => setMessage("Original/source files remain restricted.")}><MoreHorizontal size={16} /><span>More</span></button>
       </div>
     </aside>
   );
