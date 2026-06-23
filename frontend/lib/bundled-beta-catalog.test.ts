@@ -53,4 +53,40 @@ describe("bundled beta catalog", () => {
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
   });
+
+  it("preserves ResourceSpace status truth unless LM Photos release fixtures are explicitly enabled", async () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "tjc-bundled-beta-truth-"));
+    process.env.TJC_STOCK_MEDIA_ROOT = tempRoot;
+    delete process.env.RESOURCESPACE_API_USER;
+    delete process.env.RS_API_USER;
+    delete process.env.RESOURCESPACE_API_KEY;
+    delete process.env.RS_API_KEY;
+    delete process.env.PORTAL_ENABLE_LM_PHOTOS_BETA_RELEASE_FIXTURES;
+
+    try {
+      const { clearMediaSourceCache, getActiveMediaSource } = await import("@/lib/media-source");
+      clearMediaSourceCache();
+      const { assets } = await getActiveMediaSource();
+
+      expect(assets[0]).toMatchObject({
+        status: "Needs Review",
+        usageScope: "Do Not Publish",
+        rightsStatus: "Unknown"
+      });
+
+      process.env.PORTAL_ENABLE_LM_PHOTOS_BETA_RELEASE_FIXTURES = "1";
+      vi.resetModules();
+      const fixtureSource = await import("@/lib/media-source");
+      fixtureSource.clearMediaSourceCache();
+      const fixtureResult = await fixtureSource.getActiveMediaSource();
+
+      expect(fixtureResult.assets[0]).toMatchObject({
+        status: "Approved Public",
+        usageScope: "Public and Internal",
+        rightsStatus: "Rights approved"
+      });
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
 });

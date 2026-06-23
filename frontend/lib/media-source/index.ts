@@ -2,6 +2,7 @@ import { clearDerivativeFileIndex, findResourceSpaceImageDerivative, type ImageV
 import type { ApprovedChannel, MediaSourceStatus, PublishStatus, StockMediaAsset, UsageScope } from "@/lib/types";
 import { bundledBetaCatalogStatus, getBundledBetaCatalogAssets } from "@/lib/media-source/bundled-beta-catalog";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
+import { lmPhotoBetaReleaseFixturesEnabled } from "@/lib/env";
 import { exportedMetadataStatus, getAssetsFromExport, latestMetadataExportPath } from "@/lib/media-source/exported-metadata";
 import { getAssetsFromResourceSpaceApi, resourceSpaceApiStatus } from "@/lib/media-source/resourcespace-api";
 
@@ -94,6 +95,7 @@ function releaseTestLmPhoto(asset: StockMediaAsset, testState: NonNullable<Retur
 }
 
 function applyLmPhotoMiniBetaRelease(assets: StockMediaAsset[]) {
+  if (!lmPhotoBetaReleaseFixturesEnabled()) return assets;
   return assets.map((asset) => {
     if (!isLmPhotoAsset(asset)) return asset;
     const testState = lmPhotoTestStatus(asset);

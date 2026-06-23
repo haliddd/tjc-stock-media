@@ -104,6 +104,10 @@ export function localBetaRoleOverridesEnabled() {
     || ["1", "true"].includes((process.env.BETA_ROLE_OVERRIDE_ENABLED || "").toLowerCase());
 }
 
+export function lmPhotoBetaReleaseFixturesEnabled() {
+  return ["1", "true"].includes((process.env.PORTAL_ENABLE_LM_PHOTOS_BETA_RELEASE_FIXTURES || "").toLowerCase());
+}
+
 export function hasUsageAnalyticsConfig() {
   return Boolean(process.env.PORTAL_USAGE_LOGGING === "1" || process.env.USAGE_ANALYTICS_DSN);
 }
