@@ -1106,7 +1106,7 @@ export function PrototypeUploadIntake() {
   const queueFiles = files.length ? files : queuedPreviewFiles;
   const queueProgress = files.length ? 0 : 67;
   const queueLabel = files.length ? `${files.length} file${files.length === 1 ? "" : "s"} ready to submit` : "Reference intake queue, no files selected yet";
-  const queueRows = queueFiles.slice(0, 8).map((file, index) => {
+  const queueRows: Array<{ file: UploadListItem | File; status: UploadQueueStatus; progress: number }> = queueFiles.slice(0, 8).map((file, index) => {
     const status: UploadQueueStatus = files.length ? "Queued" : index < 2 ? "Completed" : index < 4 ? "Uploading" : "Queued";
     const progress = files.length ? 0 : index < 2 ? 100 : index === 2 ? 74 : index === 3 ? 48 : 0;
     return { file, status, progress };

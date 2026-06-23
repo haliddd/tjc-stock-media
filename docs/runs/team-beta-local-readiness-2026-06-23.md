@@ -2,9 +2,15 @@
 
 Date: 2026-06-23
 Branch: `beta/local-team-workflow-ready-overnight`
-Status: LOCAL TEAM BETA GO for local rehearsal only.
+Status: LOCAL TEAM BETA PACKAGE READY, QA DEFERRED.
 
 Do not deploy. Do not merge. Do not invite team until Hali confirms.
+
+## Final Packaging Note
+
+Hali requested that the remaining full browser QA be skipped and that packaging finish without restarting QA. The active browser QA rerun was stopped on request after it had progressed through the route matrix but before completion.
+
+Previous QA evidence exists from the earlier local GO baseline, including page-only screenshots and smoke/API/build/test results. The latest full QA rerun was not completed after the final UI/UX/script changes. Do not call this fully GO or invite the team until full QA is rerun before the team beta link is sent.
 
 ## 2026-06-23 UI/UX Continuation Note
 
@@ -19,16 +25,16 @@ A later UI/UX acceptance-blocker pass updated the active prototype surfaces afte
 - compacted Admin readiness card so Metadata & Brand controls remain primary
 - changed browser QA default screenshot folder to `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
 
-Final full QA has not been rerun after these latest edits. Treat the older GO as the previous baseline only; this continuation remains verification-pending until the final gate runs again.
+Final full QA was intentionally deferred after these latest edits. Treat the older GO as the previous baseline only; this package remains QA-deferred until the final gate runs again.
 
 ## URLs
 
 | Surface | URL |
 | --- | --- |
-| Portal | http://localhost:4871 |
+| Portal | http://localhost:4885 |
 | ResourceSpace | http://localhost:8088 |
 
-Continuation note: later local server inspection found the active dev portal on `http://localhost:4885` while `4871` was not listening. The committed code remains port-agnostic; set `BASE_URL` to the active local portal before running smoke/browser QA.
+Continuation note: local server inspection found the active dev portal on `http://localhost:4885` while `4871` was not listening. The committed code remains port-agnostic; set `BASE_URL` to the active local portal before running smoke/browser QA.
 
 ## Data Source
 
@@ -60,18 +66,20 @@ The portal uses local ResourceSpace/export data for the library workflow. It doe
 
 | Command | Result |
 | --- | --- |
-| `make smoke` | PASS, with warning that compose containers are not the active ResourceSpace process |
-| `BASE_URL=http://localhost:4871 make portal-api-smoke` | PASS with local beta env loaded |
-| `cd frontend && npm run typecheck` | PASS |
-| `cd frontend && npm run build` | PASS |
-| `cd frontend && npm run test` | PASS, 174 tests |
-| Browser screenshot/API QA | PASS, 33 page-only proof screenshots, 0 failures, 0 warnings, 0 console errors, 0 network failures |
+| `make smoke` | PREVIOUS PASS, with warning that compose containers were not the active ResourceSpace process |
+| `BASE_URL=http://localhost:4871 make portal-api-smoke` | PREVIOUS PASS with local beta env loaded |
+| `cd frontend && npm run typecheck` | PREVIOUS PASS |
+| `cd frontend && npm run build` | PREVIOUS PASS |
+| `cd frontend && npm run test` | PREVIOUS PASS, 174 tests |
+| Browser screenshot/API QA | PREVIOUS PASS, 33 page-only proof screenshots, 0 failures, 0 warnings, 0 console errors, 0 network failures |
+| Latest full browser QA rerun | SKIPPED/STOPPED by Hali request before completion; do not claim latest full QA passed |
+| Latest final command gate | DEFERRED because the latest browser QA rerun was skipped by request |
 
 Screenshot folder from previous functional readiness pass: `docs/screenshots/team-beta-local-readiness-2026-06-23/`
 
 Final UI/UX proof folder for this pass: `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
 
-Final browser QA report: `docs/screenshots/qa/browser-qa-report.json` and copied to `docs/screenshots/team-beta-ui-ux-final-2026-06-23/browser-qa-report.json`, checked at `2026-06-23T08:33:52.265Z`.
+Previous browser QA report: `docs/screenshots/qa/browser-qa-report.json` and copied to `docs/screenshots/team-beta-ui-ux-final-2026-06-23/browser-qa-report.json`, checked at `2026-06-23T08:33:52.265Z`.
 
 ## UI/UX Correction Pass
 
@@ -89,14 +97,14 @@ Applied on 2026-06-23 after review against the Apple-style DAM reference screens
 | Users & Groups | Right permissions panel spacing fixed; scope labels separated; invite/deactivate are beta-safe and not fake identity actions. |
 | Admin Metadata | Readiness compacted into a card; schema/taxonomy/brand/settings panels remain visible above the fold. |
 
-Visual parity is acceptable for local team beta rehearsal. Final screenshots are page-only captures with no browser chrome, no overlapping feedback button, no giant blank areas, and no QA-detected mobile horizontal overflow.
+Visual parity package is ready for review against the existing proof screenshots. The latest full browser QA rerun was skipped by request, so visual acceptance must be rechecked before team invite.
 
 ## Safety State
 
 | Guardrail | Result |
 | --- | --- |
 | ResourceSpace source of truth | Preserved |
-| Original/source download exposure | Not exposed in QA; download gate response confirms `originalIncluded=false` |
+| Original/source download exposure | Not exposed in previous QA/API smoke; download gate response confirmed `originalIncluded=false` |
 | Safe-download gates | Active |
 | Upload default state | Needs Review / not public |
 | Review writeback | Pending write queued unless live ResourceSpace update confirms success |
@@ -117,6 +125,6 @@ Visual parity is acceptable for local team beta rehearsal. Final screenshots are
 
 ## Final Call
 
-LOCAL TEAM BETA GO for local morning presentation workflow.
+LOCAL TEAM BETA PACKAGE READY, QA DEFERRED.
 
-NO-GO for production, public sharing, deployment, merge, or team invite send until Hali confirms after reviewing screenshots and connecting storage.
+Do not call final GO, deploy, merge, publicly share, or invite the team until Hali reruns/accepts final QA after reviewing the package and connecting storage.

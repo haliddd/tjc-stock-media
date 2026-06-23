@@ -2,12 +2,16 @@
 
 Date: 2026-06-23
 Scope: local-only team beta workflow rehearsal
-Portal: http://localhost:4871
+Portal: http://localhost:4885
 ResourceSpace: http://localhost:8088
 
 This plan is for a local rehearsal only. Do not deploy, merge, send invites, expose a public tunnel, or share production links from this pass.
 
-Before rehearsal, confirm the active portal port. A later continuation found the dev server on `http://localhost:4885` while `4871` was stopped. Use the active local URL consistently in every tester starting link.
+Current package status: LOCAL TEAM BETA PACKAGE READY, QA DEFERRED.
+
+Before inviting the team, rerun final browser QA and the command gate. Previous QA evidence exists, but the latest full browser QA rerun was stopped on Hali request before completion. Do not call this fully GO until QA is rerun and accepted.
+
+Before rehearsal, confirm the active portal port. The latest continuation found the dev server on `http://localhost:4885` while `4871` was stopped. Use the active local URL consistently in every tester starting link.
 
 ## Tester Assignments
 
@@ -39,6 +43,7 @@ Before rehearsal, confirm the active portal port. A later continuation found the
 ## UI/UX Acceptance Notes
 
 - Final proof screenshots must come from Playwright page screenshots only; no browser toolbar/chrome.
+- The current package uses previous page-only screenshot evidence; latest full browser QA was skipped by Hali request and must be rerun before team invite.
 - `Report Issues` lives in the sidebar/mobile top tools and must not cover content.
 - Upload queue uses neutral thin progress meters and statuses `Completed`, `Uploading`, `Queued`, or `Failed`.
 - Review and Requests tables must show real rows or truthful loading/empty states; no false nonzero count with blank table.
@@ -55,6 +60,7 @@ Before rehearsal, confirm the active portal port. A later continuation found the
 
 ## Known Limitations
 
+- Final full browser QA is deferred by Hali request; package is not final GO until rerun.
 - Cloud storage is not configured in this pass by request.
 - Cloud team beta remains NO-GO until ResourceSpace staging, durable beta storage, private upload storage, and Vercel Preview env are configured and proven.
 - ResourceSpace writeback is pending-write preview unless live credentials are configured.

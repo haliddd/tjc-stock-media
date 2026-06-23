@@ -261,6 +261,24 @@ beta_password_for_role() {
   fi
 }
 
+beta_default_invite_code() {
+  BETA_CHURCH_INVITE_CODES_JSON="${BETA_CHURCH_INVITE_CODES_JSON:-}" node - <<'NODE'
+const raw = process.env.BETA_CHURCH_INVITE_CODES_JSON || "";
+if (!raw) process.exit(0);
+try {
+  const parsed = JSON.parse(raw);
+  for (const value of Object.values(parsed)) {
+    const codes = Array.isArray(value) ? value : [value];
+    const first = codes.find((code) => typeof code === "string" && code.trim());
+    if (first) {
+      process.stdout.write(first.trim());
+      process.exit(0);
+    }
+  }
+} catch {}
+NODE
+}
+
 trusted_header_role() {
   trusted_header_enabled || return 0
   local joined=" $* "
@@ -424,7 +442,7 @@ if (/BETA_|SECRET|TOKEN|PASSWORD|INVITE|real-code|private-code/i.test(serialized
       exit 1
     fi
     local payload="$TMP_DIR/api-login-${role// /-}.json"
-    local invitation_code="${PORTAL_API_SMOKE_INVITE_CODE:-}"
+    local invitation_code="${PORTAL_API_SMOKE_INVITE_CODE:-$(beta_default_invite_code)}"
     ROLE="$role" PASSWORD="$password" INVITATION_CODE="$invitation_code" node -e '
 const body = { role: process.env.ROLE, password: process.env.PASSWORD, returnTo: "/" };
 if (process.env.ROLE !== "Viewer" && process.env.INVITATION_CODE) body.invitationCode = process.env.INVITATION_CODE;

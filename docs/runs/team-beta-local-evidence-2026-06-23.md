@@ -2,16 +2,18 @@
 
 Date: 2026-06-23
 Branch: `beta/local-team-workflow-ready-overnight`
-Portal: http://localhost:4871
+Portal: http://localhost:4885
 ResourceSpace: http://localhost:8088
 
 Continuation note: latest local inspection found the active portal on `http://localhost:4885`; `4871` was not listening. Use `BASE_URL=http://localhost:<active-port>` for any follow-up smoke or browser QA instead of assuming one fixed dev port.
 
 ## Current Continuation State
 
-The UI/UX acceptance-blocker pass after the previous GO evidence has code changes pending final validation. `git diff --check` passed after the latest edits, and exact inert active-prototype patterns (`onClick={() => undefined}`, `onChange={() => undefined}`, `href="#"`, `alert(`) were not found in touched prototype files.
+The UI/UX acceptance-blocker pass after the previous GO evidence has been packaged for review. Hali requested skipping the remaining full browser QA and finishing packaging only.
 
-Full final QA commands, build, test, and browser screenshot matrix have intentionally not been rerun yet, per Hali's instruction to save full QA for the final stop point.
+Status: LOCAL TEAM BETA PACKAGE READY, QA DEFERRED.
+
+Previous QA evidence exists, but the latest full browser QA rerun was stopped on Hali request before completion. Do not claim final QA passed or invite the team until the browser QA and command gate are rerun.
 
 ## Commands Run
 
@@ -27,6 +29,7 @@ Full final QA commands, build, test, and browser screenshot matrix have intentio
 | `cd frontend && npm run build` | PASS |
 | `cd frontend && npm run test` | PASS, 174 tests |
 | Browser screenshot/API QA | PASS, 33 page-only screenshots across 6 viewports and 20 route/role checks; 0 failures, 0 warnings, 0 console errors, 0 network failures |
+| Latest full browser QA rerun | SKIPPED/STOPPED by Hali request before completion; no final pass claimed |
 | `node --check scripts/portal-browser-qa.mjs` | PASS after screenshot wait/page-only capture updates |
 | `node --check scripts/portal-browser-qa.mjs` | PASS after final proof route matrix expansion |
 | `make cloud-beta-preview-preflight-test` | PASS |
@@ -49,22 +52,22 @@ Full final QA commands, build, test, and browser screenshot matrix have intentio
 
 ## Browser QA Summary
 
-Screenshot summary: `docs/screenshots/qa/browser-qa-report.json`
+Previous screenshot summary: `docs/screenshots/qa/browser-qa-report.json`
 
 Final UI/UX screenshot folder for this pass: `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
 
-The browser QA script now emits page-only proof screenshots for the final route matrix at `1440`, `1280`, `1024`, `768`, `390`, and `320` when run with `PORTAL_BROWSER_QA_FULL=1`.
+The browser QA script now emits page-only proof screenshots for the final route matrix at `1440`, `1280`, `1024`, `768`, `390`, and `320` when run with `PORTAL_BROWSER_QA_FULL=1`. The latest rerun was not completed because Hali asked to skip remaining full browser QA.
 
 | Metric | Result |
 | --- | --- |
-| Screenshots | 33 page-only final proof screenshots |
+| Screenshots | 33 page-only previous proof screenshots |
 | Viewports | 1440, 1280, 1024, 768, 390, 320 |
 | Routes | Library roles, asset detail, upload, review, collections, distribution sets, requests, admin, help, recent uploads |
-| Horizontal overflow | 0 QA failures |
-| Console errors | 0 |
-| Page errors | 0 |
-| Route failures | 0 |
-| Mobile nav items | 5 on checked routes |
+| Horizontal overflow | 0 previous QA failures |
+| Console errors | 0 previous QA failures |
+| Page errors | 0 previous QA failures |
+| Route failures | 0 previous QA failures |
+| Mobile nav items | 5 on previously checked routes |
 
 ## UI/UX Correction Evidence
 
@@ -133,8 +136,8 @@ Pending writes existed before final QA and increased during authenticated review
 
 ## Final Commit SHA
 
-Recorded in final handoff after commit. This file is part of that commit.
+Recorded in the git commit that packages this evidence.
 
 ## Not Production
 
-This is a local beta rehearsal artifact. It is not production-ready, not deployed, not merged, and not approved for public sharing or team invites.
+This is a local beta package artifact with QA deferred. It is not production-ready, not deployed, not merged, and not approved for public sharing or team invites.

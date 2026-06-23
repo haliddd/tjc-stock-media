@@ -201,6 +201,24 @@ function betaPasswordForRole(role) {
   return envName ? process.env[envName] || "" : "";
 }
 
+function betaInviteCodeForRole(role) {
+  if (role === "Viewer") return "";
+  if (process.env.PORTAL_BROWSER_QA_INVITE_CODE) return process.env.PORTAL_BROWSER_QA_INVITE_CODE;
+  const raw = process.env.BETA_CHURCH_INVITE_CODES_JSON || "";
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    for (const value of Object.values(parsed)) {
+      const codes = Array.isArray(value) ? value : [value];
+      const first = codes.find((code) => typeof code === "string" && code.trim());
+      if (first) return first.trim();
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
 async function betaAuthState() {
   if (betaAuthProbe) return betaAuthProbe;
   try {
@@ -224,7 +242,7 @@ async function establishBetaSession(context, role) {
   }
   const response = await context.request.post(new URL("/api/beta-auth/login", base).toString(), {
     headers: { "Content-Type": "application/json", ...trustedRoleHeaders(role) },
-    data: { role, password, returnTo: "/" }
+    data: { role, password, invitationCode: betaInviteCodeForRole(role), returnTo: "/" }
   });
   if (!response.ok()) {
     const body = await response.text().catch(() => "");
@@ -523,6 +541,14 @@ async function clickUploadAction(page, label) {
   await action.waitFor({ state: "visible", timeout: 30000 });
   await action.scrollIntoViewIfNeeded().catch(() => {});
   await action.click();
+}
+
+async function setUploadInputFiles(page, files, label) {
+  await withTimeout(`upload input files ${label}`, 15000, async () => {
+    const input = uploadPhotoInput(page).first();
+    await input.waitFor({ state: "attached", timeout: 10000 });
+    await input.setInputFiles(files, { timeout: 10000 });
+  });
 }
 
 async function advanceUploadToFiles(page, prefix = "Browser QA") {
@@ -952,21 +978,38 @@ if (hasViewerDetailAsset()) {
 }
 
 {
+  console.log("[browser-qa] review-shell functional probe");
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
-  await gotoAndSettle(page, `${base}/review?queue=pending`);
-  await waitForAppReady(page, "/review?queue=pending", "Reviewer");
-  for (const text of ["Review Queue", "Needs Review", "Needs Evidence", "Bulk actions"]) {
-    if ((await page.getByText(text).count()) < 1) failures.push(`review ResourceSpace shell: missing ${text}`);
+  try {
+    await withTimeout("review ResourceSpace shell", 45000, async () => {
+      await gotoAndSettle(page, `${base}/review?queue=pending`);
+      await waitForAppReady(page, "/review?queue=pending", "Reviewer");
+      const state = await page.evaluate(() => {
+        const text = document.body.innerText || "";
+        return {
+          text,
+          tableCount: document.querySelectorAll(".proto-review-table").length,
+          selectedCount: document.querySelectorAll(".proto-review-table .proto-table-row, .ed-review-list .ed-queue-item.is-active").length
+        };
+      });
+      for (const text of ["Review Queue", "Needs Review", "Needs Evidence", "Bulk actions"]) {
+        if (!state.text.includes(text)) failures.push(`review ResourceSpace shell: missing ${text}`);
+      }
+      if (!/Review blocked|Approval blocked|Add or verify required evidence|Evidence required|evidence/i.test(state.text)) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
+      if (state.tableCount < 1) failures.push("review ResourceSpace shell: review table missing");
+      if (state.text.includes("Mark checked")) failures.push("review ResourceSpace shell: unsafe Mark checked action visible");
+      if (state.selectedCount < 1) failures.push("review ResourceSpace shell: selected queue item missing");
+      if (/ResourceSpace updated successfully/i.test(state.text)) failures.push("review ResourceSpace shell: fake ResourceSpace success visible");
+    });
+  } catch (error) {
+    failures.push(`review ResourceSpace shell: ${error.message || error}`);
+  } finally {
+    await closeContext(context);
   }
-  if ((await page.getByText(/Review blocked|Approval blocked|Add or verify required evidence|Evidence required|evidence/i).count()) < 1) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
-  if ((await page.locator(".proto-review-table").count()) < 1) failures.push("review ResourceSpace shell: review table missing");
-  if ((await page.getByText("Mark checked").count()) > 0) failures.push("review ResourceSpace shell: unsafe Mark checked action visible");
-  if ((await page.locator(".proto-review-table .proto-table-row, .ed-review-list .ed-queue-item.is-active").count()) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
-  if ((await page.getByText(/ResourceSpace updated successfully/i).count()) > 0) failures.push("review ResourceSpace shell: fake ResourceSpace success visible");
-  await closeContext(context);
 }
 
 {
+  console.log("[browser-qa] upload-flow-desktop functional probe");
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   const prototypeUpload = await isPrototypeUploadPage(page);
@@ -989,7 +1032,7 @@ if (hasViewerDetailAsset()) {
   } else if (!prototypeUpload) {
     await selectedFilePreview(page).getByRole("button", { name: "Remove all" }).first().click();
   }
-  await uploadPhotoInput(page).setInputFiles([{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await setUploadInputFiles(page, [{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }], "desktop");
   await selectedFilePreview(page).getByText("qa-photo.png").waitFor({ state: "visible", timeout: 10000 }).catch(() => {
     failures.push("upload file preview: selected file missing");
   });
@@ -1009,10 +1052,11 @@ if (hasViewerDetailAsset()) {
 }
 
 {
+  console.log("[browser-qa] upload-flow-mobile functional probe");
   const { page, context } = await newRolePage("Contributor", 320, 900);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
   await advanceUploadToFiles(page, "Mobile file preview QA");
-  await uploadPhotoInput(page).setInputFiles([{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }]);
+  await setUploadInputFiles(page, [{ name: "qa-mobile-photo-with-a-long-name.png", mimeType: "image/png", buffer: tinyPng }], "mobile");
   await selectedFilePreview(page).getByText("qa-mobile-photo-with-a-long-name.png").waitFor({ state: "visible", timeout: 10000 })
     .catch(() => failures.push("upload mobile file preview: selected file missing"));
   const mobileUploadOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
@@ -1200,7 +1244,7 @@ await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/h
 });
 
 await captureProof("upload-dropzone-tags.png", "Contributor", 1440, 1000, "/upload", async (page) => {
-  await uploadPhotoInput(page).setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
+  await setUploadInputFiles(page, [{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }], "primitive proof");
   await googleDriveInput(page).fill("https://media.tjc.example/primitive-proof");
   await selectedFilePreview(page).getByText("primitive-proof-photo.png").waitFor({ state: "visible", timeout: 30000 });
   if (!(await isPrototypeUploadPage(page))) {
