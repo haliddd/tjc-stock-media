@@ -315,6 +315,7 @@ function ToolbarSearch({ value, onChange, placeholder = "Search assets, tags, co
 function DamSidebar({ collapsed, onToggleCollapsed }: { collapsed: boolean; onToggleCollapsed: () => void }) {
   const pathname = usePathname();
   const { role } = useDemoRole();
+  const adminObserverRoute = pathname.startsWith("/admin");
   return (
     <aside className="proto-sidebar" aria-label="Primary navigation">
       <div className="proto-sidebar-logo-row">
@@ -325,7 +326,7 @@ function DamSidebar({ collapsed, onToggleCollapsed }: { collapsed: boolean; onTo
       </div>
       <nav className="proto-sidebar-nav">
         {navGroups.map((group) => {
-          const items = group.items.filter((item) => !item.guard || item.guard(role));
+          const items = group.items.filter((item) => !item.guard || item.guard(role) || (adminObserverRoute && item.href.startsWith("/admin")));
           if (!items.length) return null;
           return (
             <section key={group.label}>
@@ -1385,7 +1386,85 @@ export function PrototypeUsersGroupsPage({ publicPreviewAdmin = false }: { publi
 
 export function PrototypeAdminPage({ initialModule, adminOnly: _adminOnly, publicPreviewAdmin = false }: { initialModule?: string; adminOnly?: boolean; publicPreviewAdmin?: boolean } = {}) {
   if (initialModule === "users") return <PrototypeUsersGroupsPage publicPreviewAdmin={publicPreviewAdmin} />;
+  if (!initialModule && publicPreviewAdmin) return <PrototypeCloudAdminObserver />;
   return <PrototypeAdminMetadataBrand initialModule={initialModule} publicPreviewAdmin={publicPreviewAdmin} />;
+}
+
+function PrototypeCloudAdminObserver() {
+  const { role } = useDemoRole();
+  const library = useAssetsSearch({ role: "Viewer", limit: 6 });
+  const featuredAssets = library.data?.assets || [];
+  const statusRows = [
+    ["Hosted preview", "Live", "Current Vercel branch preview is open without login."],
+    ["ResourceSpace", "Pending", "Cloud site exists; API read is disabled, so portal uses snapshot."],
+    ["Data source", "181 assets", "Read-only MVP 2024 ResourceSpace snapshot."],
+    ["Upload / review", "Blocked", "Durable storage and writeback are not proven."],
+    ["Download gate", "Locked", "Approved-copy/source-original downloads remain blocked."],
+    ["Source files", "Hidden", "No source paths, originals, checksums, or private URLs exposed."]
+  ];
+  const gateRows = [
+    ["Library", "Open", "Browse, search, detail, thumbnails."],
+    ["Admin", "Observer", "Status dashboard only; no admin API powers."],
+    ["Upload", "Fail-closed", "No fake success."],
+    ["Review", "Fail-closed", "No ResourceSpace writeback claim."],
+    ["Requests", "Preview", "Example workflow only."],
+    ["Team invite", "Hali only", "Do not invite until confirmed."]
+  ];
+
+  return (
+    <section className="proto-page proto-cloud-admin-page">
+      <PageHeader title="Cloud Beta Control Center" subtitle="Read-only team beta status for TJC Stock Media. Safe for browsing demo; not full cloud launch.">
+        <LinkButton href="/library" tone="secondary">Open Library</LinkButton>
+        <LinkButton href="/admin/taxonomy" tone="primary">Metadata Setup</LinkButton>
+      </PageHeader>
+      <section className="proto-cloud-hero">
+        <div>
+          <span className="proto-cloud-eyebrow">Vercel Preview</span>
+          <h2>LIMITED GO: browse and admin observer only</h2>
+          <p>ResourceSpace cloud is live, but API and durable workflow stores are not proven. Team can review the portal surface and media browsing. Upload, review, feedback storage, and downloads stay blocked.</p>
+        </div>
+        <div className="proto-cloud-score">
+          <strong>181</strong>
+          <span>snapshot assets</span>
+          <StatusChip label="LIMITED GO" tone="review" />
+        </div>
+      </section>
+      <div className="proto-cloud-admin-grid">
+        <section className="proto-panel proto-cloud-status-card">
+          <header className="proto-panel-head"><div><h2>Cloud Readiness</h2><p>Truthful state for team beta.</p></div><StatusChip label="Read-only" tone="review" /></header>
+          <div className="proto-cloud-status-list">
+            {statusRows.map(([label, state, detail]) => (
+              <p key={label}><strong>{label}</strong><span>{state}</span><small>{detail}</small></p>
+            ))}
+          </div>
+        </section>
+        <section className="proto-panel proto-cloud-gates-card">
+          <header className="proto-panel-head"><div><h2>Route Gates</h2><p>What team can and cannot test.</p></div></header>
+          <div className="proto-cloud-gates">
+            {gateRows.map(([label, state, detail]) => (
+              <article key={label}>
+                <ShieldCheck size={16} />
+                <strong>{label}</strong>
+                <span>{state}</span>
+                <small>{detail}</small>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className="proto-panel proto-cloud-demo-card">
+          <header className="proto-panel-head"><div><h2>Team Demo Script</h2><p>Use this exact order.</p></div></header>
+          {["Open Library and search Bible, Plant, Bee.", "Open asset detail and confirm preview loads.", "Open Admin and show LIMITED cloud state.", "Open Upload/Review only to show blocked state.", "Do not test downloads or source files."].map((item, index) => (
+            <p className="proto-settings-row" key={item}><span className="proto-cloud-step">{index + 1}</span><strong>{item}<small>Safe beta review path.</small></strong></p>
+          ))}
+        </section>
+        <section className="proto-panel proto-cloud-media-card">
+          <header className="proto-panel-head"><div><h2>Snapshot Preview</h2><p>Current public-safe browsing set.</p></div><LinkButton href="/library">View all</LinkButton></header>
+          <ThumbnailStrip assets={featuredAssets} limit={6} />
+          <p className="proto-cloud-note">Assets remain Needs Review. The preview does not approve public use.</p>
+        </section>
+      </div>
+    </section>
+  );
 }
 
 function PrototypeAdminMetadataBrand({ initialModule, publicPreviewAdmin = false }: { initialModule?: string; publicPreviewAdmin?: boolean }) {
