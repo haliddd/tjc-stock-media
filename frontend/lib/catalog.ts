@@ -28,6 +28,7 @@ import { assetMatchesAlbumCollection, isAlbumCollectionId } from "@/lib/catalog-
 import { assetResourceRef } from "@/lib/asset-refs";
 import { buildCatalogDiscovery, discoveryScore, matchesDiscoveryQuery, resolveDiscoveryQuery } from "@/lib/catalog-discovery";
 import { findFilestoreDerivative, getActiveMediaSource } from "@/lib/media-source";
+import { bundledBetaCatalogStatus, getBundledBetaCatalogAssets } from "@/lib/media-source/bundled-beta-catalog";
 import { listPendingReviewWritesAsync } from "@/lib/pending-review-writes";
 import { safeBoundedInt } from "@/lib/persisted-record-safety";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
@@ -171,7 +172,8 @@ export async function searchAssets({
   intent: requestedIntent,
   sort,
   limit = 72,
-  offset = 0
+  offset = 0,
+  publicSnapshotOnly = false
 }: {
   role: DemoRole;
   accessRole?: DemoRole;
@@ -183,13 +185,18 @@ export async function searchAssets({
   sort?: string;
   limit?: number;
   offset?: number;
+  publicSnapshotOnly?: boolean;
 }): Promise<SearchResult> {
-  const { assets, status } = await getActiveMediaSource();
-  const effectiveAccessRole = accessRole || role;
-  const scopedAssets = scopedCatalogAssetsForRole(effectiveAccessRole, assets, status);
+  const source = publicSnapshotOnly
+    ? { assets: getBundledBetaCatalogAssets(), status: bundledBetaCatalogStatus }
+    : await getActiveMediaSource();
+  const { assets, status } = source;
+  const publicSnapshotPreview = publicSnapshotOnly && role === "Viewer";
+  const effectiveAccessRole = publicSnapshotPreview ? "Reviewer" : accessRole || role;
+  const scopedAssets = publicSnapshotOnly ? assets : scopedCatalogAssetsForRole(effectiveAccessRole, assets, status);
   const safeLimit = safeBoundedInt(limit, { min: 1, max: 120, fallback: 72 });
   const safeOffset = safeBoundedInt(offset, { min: 0, max: Number.MAX_SAFE_INTEGER, fallback: 0 });
-  const roleVisible = scopedAssets.filter((asset) => decideAccess(effectiveAccessRole, "viewAsset", asset).allowed);
+  const roleVisible = publicSnapshotPreview ? scopedAssets : scopedAssets.filter((asset) => decideAccess(effectiveAccessRole, "viewAsset", asset).allowed);
   const discoveryQuery = !view && !collection ? resolveDiscoveryQuery(query, requestedIntent) : { query, matchedIntent: undefined };
   const queryForIntent = discoveryQuery.query;
   const intent = !view && !collection ? matchSearchIntent(queryForIntent) : undefined;
@@ -269,10 +276,13 @@ export async function getAssetRecordById(id: string, role?: DemoRole) {
   return { asset: scopedAssets.find((item) => item.id === id) || null, source: status };
 }
 
-export async function getAssetById(id: string, role?: DemoRole, accessRole?: DemoRole) {
-  const { assets, status } = await getActiveMediaSource();
-  const effectiveAccessRole = accessRole || role;
-  const scopedAssets = effectiveAccessRole ? scopedCatalogAssetsForRole(effectiveAccessRole, assets, status) : assets;
+export async function getAssetById(id: string, role?: DemoRole, accessRole?: DemoRole, publicSnapshotOnly = false) {
+  const source = publicSnapshotOnly
+    ? { assets: getBundledBetaCatalogAssets(), status: bundledBetaCatalogStatus }
+    : await getActiveMediaSource();
+  const { assets, status } = source;
+  const effectiveAccessRole = publicSnapshotOnly && role === "Viewer" ? "Reviewer" : accessRole || role;
+  const scopedAssets = publicSnapshotOnly ? assets : effectiveAccessRole ? scopedCatalogAssetsForRole(effectiveAccessRole, assets, status) : assets;
   return { asset: scopedAssets.find((item) => item.id === id) || null, source: status, related: getRelatedAssets(scopedAssets, id) };
 }
 

@@ -11,6 +11,7 @@ import { getAssetRecordById } from "@/lib/catalog";
 import { createDamRouteSession, type DamSessionInput } from "@/lib/dam-route-session";
 import { buildDeliveryReadinessManifest } from "@/lib/delivery-readiness";
 import { consumeDownloadTicket, mintDownloadTicket, validateDownloadTicket } from "@/lib/download-tickets";
+import { publicSnapshotBrowseEnabled } from "@/lib/env";
 import {
   approvedCopyDownloadedAuditEvent,
   approvedCopyImageResponse,
@@ -325,6 +326,17 @@ function accessDeniedResponse(input: {
   const portalDecision = input.deps.buildPortalReuseDecision(input.asset, input.session.role);
   const access = portalDecision.access.downloadApprovedCopy;
   const reasonCode = access.reasonCodes?.[0] || portalDecision.reuse.reasonCodes[0] || "policy-denied";
+  if (publicSnapshotBrowseEnabled() && input.session.role === "Viewer") {
+    return safeBlockedResponse({
+      status: 403,
+      requiredAction: input.asset.status === "Needs Review" ? "request-approval" : "review-rights-and-permissions",
+      reason: access.reason || "This asset is not approved for this role.",
+      reasonCode,
+      reasonCodes: access.reasonCodes || portalDecision.reuse.reasonCodes,
+      label: access.label || "Download blocked",
+      deliveryManifest: input.deliveryManifest
+    });
+  }
   const audit = auditBlockedAttempt({
     deps: input.deps,
     session: input.session,

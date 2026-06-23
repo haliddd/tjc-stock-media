@@ -313,6 +313,44 @@ describe("approved delivery gate", () => {
     expect(audit.events).toHaveLength(1);
   });
 
+  it("fails closed without audit persistence for blocked public snapshot download attempts", async () => {
+    vi.stubEnv("BETA_AUTH_ENABLED", "false");
+    vi.stubEnv("PORTAL_PUBLIC_SNAPSHOT_BROWSE_ENABLED", "1");
+    const blockedAudit = auditRecorder();
+    blockedAudit.append = vi.fn(() => {
+      throw new Error("audit storage unavailable");
+    });
+    blockedAudit.appendWithId = vi.fn(() => {
+      throw new Error("audit storage unavailable");
+    });
+    const { deps, audit } = depsFor({
+      asset: approvedAsset({
+        status: "Needs Review",
+        usageScope: "Do Not Publish",
+        rightsStatus: "Needs review",
+        consentStatus: "Unknown",
+        reviewer: undefined,
+        reviewedDate: undefined,
+        downloadPolicy: "not-downloadable"
+      }),
+      audit: blockedAudit
+    });
+
+    const result = expectJson(await runApprovedDeliveryGate({
+      request: getRequest("asset-1", "ticket=missing"),
+      assetId: "asset-1",
+      intent: "deliver-copy"
+    }, deps));
+
+    expect(result.status).toBe(403);
+    expect(result.body).toMatchObject({
+      allowed: false,
+      requiredAction: "request-approval",
+      reasonCode: "blocked-needs-review"
+    });
+    expect(audit.events).toHaveLength(0);
+  });
+
   it("blocks asset/ticket and role/ticket mismatches", async () => {
     tempRuntimeRoot();
     const ticketForAssetOne = approvedDeliveryGateDefaultDeps.mintDownloadTicket({

@@ -23,8 +23,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const error = assetDetailMalformedIdError();
     return NextResponse.json(error.body, { status: error.status });
   }
-  const accessRole = publicSnapshotBrowseEnabled() && role === "Viewer" ? "Reviewer" : role;
-  const { asset, source, related } = await getAssetById(id, role, accessRole);
+  const publicSnapshotOnly = publicSnapshotBrowseEnabled() && role === "Viewer";
+  const accessRole = publicSnapshotOnly ? "Reviewer" : role;
+  const { asset, source, related } = await getAssetById(id, role, accessRole, publicSnapshotOnly);
   if (!asset) {
     const error = assetDetailNotFoundError(session, source);
     return NextResponse.json(error.body, { status: error.status });

@@ -54,6 +54,36 @@ describe("bundled beta catalog", () => {
     }
   });
 
+  it("keeps anonymous public snapshot browse bounded to the 181-record bundle", async () => {
+    const { searchAssets, getAssetById } = await import("@/lib/catalog");
+
+    const result = await searchAssets({
+      role: "Viewer",
+      query: "",
+      filters: [],
+      limit: 120,
+      publicSnapshotOnly: true
+    });
+    const detail = await getAssetById("482", "Viewer", "Reviewer", true);
+
+    expect(result.source.adapter).toBe("bundled-beta-catalog");
+    expect(result.total).toBe(181);
+    expect(result.counts.rawTotal).toBe(181);
+    expect(result.assets.every((asset) => asset.status === "Needs Review")).toBe(true);
+    expect(result.assets.every((asset) => !asset.sourcePath && !asset.masterDrivePath && !asset.checksumSha256)).toBe(true);
+    expect(detail.source.adapter).toBe("bundled-beta-catalog");
+    expect(detail.asset?.id).toBe("482");
+  });
+
+  it("does not let anonymous public snapshot browse reach active non-bundled records", async () => {
+    const { getAssetById } = await import("@/lib/catalog");
+
+    const outsideSeed = await getAssetById("1556", "Viewer", "Reviewer", true);
+
+    expect(outsideSeed.source.adapter).toBe("bundled-beta-catalog");
+    expect(outsideSeed.asset).toBeNull();
+  });
+
   it("preserves ResourceSpace status truth unless LM Photos release fixtures are explicitly enabled", async () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "tjc-bundled-beta-truth-"));
     process.env.TJC_STOCK_MEDIA_ROOT = tempRoot;

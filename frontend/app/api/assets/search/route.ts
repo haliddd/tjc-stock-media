@@ -44,13 +44,13 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const session = createDamRouteSession(request, localBetaRoleOverrideFromRequest(request));
   const role = session.role;
-  const accessRole = publicSnapshotBrowseEnabled() && role === "Viewer" ? "Reviewer" : role;
+  const publicSnapshotOnly = publicSnapshotBrowseEnabled() && role === "Viewer";
   const searchRequest = readCatalogSearchRequest(params);
   if (searchRequest.error) {
     return NextResponse.json({ error: searchRequest.error.message }, { status: searchRequest.error.status });
   }
   const input = searchRequest.input;
-  const result = await searchAssets({ role, accessRole, ...input });
+  const result = await searchAssets({ role, publicSnapshotOnly, ...input });
   const usageAnalytics = usageAnalyticsDiagnostics();
   if (canReview(role)) {
     result.usageAnalytics = {

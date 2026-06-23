@@ -71,6 +71,16 @@ function omitDownloadImageUrl(asset: StockMediaAsset): StockMediaAsset {
   return { ...asset, imageUrls };
 }
 
+function omitPrivateDamFilenameFields(asset: StockMediaAsset): StockMediaAsset {
+  if (!asset.damFilenames) return asset;
+  const {
+    original: _original,
+    originalExtension: _originalExtension,
+    ...damFilenames
+  } = asset.damFilenames;
+  return { ...asset, damFilenames: damFilenames as StockMediaAsset["damFilenames"] };
+}
+
 function safeSavedViewText(value: string) {
   return value
     .replace(/ResourceSpace-approved/gi, "Library-approved")
@@ -132,7 +142,7 @@ export function sourceForRole(role: DemoRole, source: MediaSourceStatus): MediaS
 export function assetForRolePayload(role: DemoRole, asset: StockMediaAsset): StockMediaAsset {
   const downloadSafeAsset = omitDownloadImageUrl(asset);
   if (canSeePrivateSourceFiles(role)) return downloadSafeAsset;
-  const roleSafeAsset = omitAssetKeys(downloadSafeAsset, sourceCustodyAssetKeys);
+  const roleSafeAsset = omitPrivateDamFilenameFields(omitAssetKeys(downloadSafeAsset, sourceCustodyAssetKeys));
 
   if (canSeeOperationalSource(role)) {
     return roleSafeAsset;

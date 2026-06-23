@@ -110,7 +110,10 @@ export function lmPhotoBetaReleaseFixturesEnabled() {
 
 export function publicSnapshotBrowseEnabled() {
   const betaAuthDisabled = !["1", "true"].includes((process.env.BETA_AUTH_ENABLED || "").toLowerCase());
-  return process.env.VERCEL_ENV !== "production"
+  const vercelEnv = process.env.VERCEL_ENV || "";
+  const vercelPreview = process.env.VERCEL === "1" && vercelEnv !== "" && vercelEnv !== "production";
+  const localPreview = process.env.NODE_ENV !== "production" && vercelEnv !== "production";
+  return (vercelPreview || localPreview)
     && betaAuthDisabled
     && ["1", "true"].includes((process.env.PORTAL_PUBLIC_SNAPSHOT_BROWSE_ENABLED || "").toLowerCase());
 }

@@ -3,6 +3,7 @@ import { decideAccess } from "@/lib/access-decisions";
 import { getAssetRecordById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
 import { publicSnapshotBrowseEnabled } from "@/lib/env";
+import { bundledBetaCatalogStatus, getBundledBetaCatalogAssets } from "@/lib/media-source/bundled-beta-catalog";
 import {
   readThumbnailDeliveryInput,
   readThumbnailDerivativeDelivery,
@@ -26,8 +27,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(error.body, { status: error.status });
   }
   const deliveryInput = readThumbnailDeliveryInput(request.nextUrl.searchParams);
-  const accessRole = publicSnapshotBrowseEnabled() && role === "Viewer" ? "Reviewer" : role;
-  const { asset, source } = await getAssetRecordById(id, accessRole);
+  const publicSnapshotOnly = publicSnapshotBrowseEnabled() && role === "Viewer";
+  const accessRole = publicSnapshotOnly ? "Reviewer" : role;
+  const { asset, source } = publicSnapshotOnly
+    ? { asset: getBundledBetaCatalogAssets().find((item) => item.id === id) || null, source: bundledBetaCatalogStatus }
+    : await getAssetRecordById(id, accessRole);
   if (!asset) {
     const error = thumbnailNotFoundError(session, source);
     return NextResponse.json(error.body, { status: error.status });

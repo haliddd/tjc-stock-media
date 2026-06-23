@@ -7,7 +7,7 @@ import { scopedCatalogAssetsForRole } from "@/lib/catalog-scope";
 import { buildCollections } from "@/lib/catalog-summaries";
 import { enterpriseMetadataSchemaForRole } from "@/lib/enterprise-metadata";
 import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback } from "@/lib/beta-feedback";
-import { cloudPreviewBetaStorageDiagnostics, durableRuntimeStoreConfigured } from "@/lib/env";
+import { cloudPreviewBetaStorageDiagnostics, durableRuntimeStoreConfigured, publicSnapshotBrowseEnabled } from "@/lib/env";
 import { buildFieldMappings } from "@/lib/dam-readiness-metadata";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
@@ -68,6 +68,26 @@ function approvedAsset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsse
 }
 
 describe("production identity guard", () => {
+  it("keeps anonymous public snapshot browse disabled in plain production runtimes", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("BETA_AUTH_ENABLED", "false");
+    vi.stubEnv("PORTAL_PUBLIC_SNAPSHOT_BROWSE_ENABLED", "1");
+    delete process.env.VERCEL;
+    delete process.env.VERCEL_ENV;
+
+    expect(publicSnapshotBrowseEnabled()).toBe(false);
+  });
+
+  it("allows anonymous public snapshot browse only on explicit Vercel Preview or local preview", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("BETA_AUTH_ENABLED", "false");
+    vi.stubEnv("PORTAL_PUBLIC_SNAPSHOT_BROWSE_ENABLED", "1");
+
+    expect(publicSnapshotBrowseEnabled()).toBe(true);
+  });
+
   it("does not trust caller-supplied beta role headers without middleware verification", () => {
     vi.stubEnv("BETA_AUTH_ENABLED", "true");
     vi.stubEnv("NODE_ENV", "development");
@@ -509,6 +529,29 @@ describe("photo-only beta fixture scope", () => {
     expect(text).not.toMatch(/Beta Library Sample|Hosted Pagination Fixture|Hosted beta fixture|Read-only sample record|qa\.fixture|API Smoke|demo-fallback/i);
     expect(payload.title).toBe("Media record");
     expect(payload.collection).toBe("Media library");
+  });
+
+  it("redacts nested source-grade DAM filenames from normal role asset payloads", () => {
+    const payload = assetForRolePayload("Viewer", approvedAsset({
+      damFilenames: {
+        baseName: "20260601-sabbath-001001",
+        original: "20260601-sabbath-001001-orig.heic",
+        web: "20260601-sabbath-001001-web.jpg",
+        social: "20260601-sabbath-001001-social.jpg",
+        thumb: "20260601-sabbath-001001-thumb.jpg",
+        print: "20260601-sabbath-001001-print.jpg",
+        datePart: "20260601",
+        dateSource: "captured_date",
+        collectionSlug: "sabbath",
+        sequence: "001001",
+        originalExtension: "heic",
+        derivativeExtension: "jpg"
+      }
+    }));
+
+    expect(payload.damFilenames?.original).toBeUndefined();
+    expect(payload.damFilenames?.originalExtension).toBeUndefined();
+    expect(payload.damFilenames?.web).toBe("20260601-sabbath-001001-web.jpg");
   });
 
   it("redacts fallback fixture labels from normal role collection thumbnails", () => {
