@@ -29,7 +29,7 @@ Do not deploy production. Do not merge. Do not invite testers. Do not enable liv
 | Upload intake | Local/runtime only; durable Postgres/private-storage adapter is still not implemented |
 | Generic runtime writes | Local filesystem adapter only; broad durable DB adapter is not implemented |
 | Cloud preview diagnostics | Admin readiness now reports `cloud-preview-beta-storage` truthfully |
-| Cloud preview env preflight | `make cloud-beta-preview-preflight` fails closed unless ResourceSpace staging, durable DB/queues, private upload storage, beta auth, queued writeback, and download gates are configured |
+| Cloud preview env preflight | `make cloud-beta-preview-preflight` fails closed unless ResourceSpace staging, field/collection IDs, durable DB/queues, private upload storage, beta auth, queued writeback, download gates, and implemented durable adapters are configured |
 
 ## Required Preview Environment
 
@@ -40,12 +40,18 @@ RESOURCESPACE_BASE_URL=https://dam-staging.tjc.org
 RESOURCESPACE_API_USER=portal-beta-api
 RESOURCESPACE_API_KEY=...
 RESOURCESPACE_FIELD_MAP_JSON=...
+RESOURCESPACE_DEFAULT_COLLECTION_ID=...
+RESOURCESPACE_UPLOAD_COLLECTION_ID=...
+RESOURCESPACE_REVIEW_COLLECTION_ID=...
 RESOURCESPACE_ENABLE_WRITEBACK=0
 RESOURCESPACE_WRITEBACK_MODE=queued
 
 BETA_DATABASE_URL=...
-PENDING_WRITES_STORE=postgres
+PENDING_WRITES_STORE=vercel-kv
 UPLOAD_INTAKE_STORE=postgres
+BETA_FEEDBACK_STORE=vercel-kv
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
 
 UPLOAD_STORAGE_PROVIDER=r2
 UPLOAD_STORAGE_BUCKET=...
@@ -63,8 +69,11 @@ BETA_ADMIN_PASSWORD=...
 BETA_CHURCH_INVITE_CODES_JSON=...
 
 DOWNLOAD_GATE_ALLOW_DEMO_ROLES=0
+DOWNLOAD_GATE_REQUIRE_APPROVED_COPY=true
 SOURCE_ORIGINAL_DOWNLOADS_ENABLED=0
 ```
+
+Current branch reality: Vercel KV is the implemented durable path for pending review writes and beta feedback. Postgres adapters for pending writes, upload intake, and beta feedback are not implemented. `UPLOAD_INTAKE_STORE=postgres` is a target requirement but still fails preflight until the adapter exists.
 
 ## Blockers
 
@@ -186,7 +195,7 @@ Approved options:
 - Upstash/Vercel KV for simple queues if code adapters are implemented
 - another Hali-approved durable DB
 
-Current code state: diagnostics exist. Pending review writes can use a Vercel KV queue when `PENDING_WRITES_STORE=vercel-kv` and KV env are configured, but upload intake still needs durable Postgres/private-storage or ResourceSpace intake proof. Cloud beta remains NO-GO until upload intake, audit/runtime state, and private storage are proven.
+Current code state: diagnostics exist. Pending review writes and feedback can use Vercel KV when KV env is configured, but Postgres adapters are not implemented for pending writes, upload intake, or feedback. Upload intake still needs durable Postgres/private-storage or ResourceSpace intake proof. Cloud beta remains NO-GO until upload intake, audit/runtime state, and private storage are proven.
 
 Schema starter artifact:
 
@@ -226,7 +235,10 @@ RESOURCESPACE_API_KEY=...
 RESOURCESPACE_ENABLE_WRITEBACK=0
 RESOURCESPACE_WRITEBACK_MODE=queued
 BETA_DATABASE_URL=...
-PENDING_WRITES_STORE=postgres
+PENDING_WRITES_STORE=vercel-kv
+BETA_FEEDBACK_STORE=vercel-kv
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
 UPLOAD_INTAKE_STORE=postgres
 UPLOAD_STORAGE_PROVIDER=r2
 UPLOAD_STORAGE_PUBLIC_READ=0
@@ -240,7 +252,7 @@ Before inviting testers, run:
 make cloud-beta-preview-preflight
 ```
 
-The preflight prints only redacted `set` / `missing` state and env names. It must return `GO` before any Preview team invite. In the current local shell it correctly returns `NO-GO` because cloud ResourceSpace, durable upload intake, upload storage, auth, and download-gate env are not configured.
+The preflight prints only redacted `set` / `missing` state and env names. It must return `GO` before any Preview team invite. In this branch it also correctly returns `NO-GO` for env shapes that claim unimplemented Postgres upload-intake, pending-write, or feedback adapters.
 
 If Hali chooses Vercel KV for the first queued-write proof, set:
 
@@ -250,7 +262,7 @@ KV_REST_API_URL=...
 KV_REST_API_TOKEN=...
 ```
 
-This covers pending review write records only. It does not make upload intake, audit events, package drafts, or saved searches durable.
+This covers pending review write records and beta feedback only when both flows are configured for KV. It does not make upload intake, audit events, package drafts, or saved searches durable.
 
 ### 8. Preview validation
 
@@ -279,7 +291,7 @@ Required proof:
 
 CLOUD TEAM BETA GO only when:
 
-- `make cloud-beta-preview-preflight` returns GO against Vercel Preview env.
+- `make cloud-beta-preview-preflight` returns GO against Vercel Preview env after durable adapters are implemented/proven.
 - Vercel Preview reads ResourceSpace staging or honestly labeled cloud export snapshot.
 - Upload intake persists durably or fails closed with a clear message.
 - Review decisions queue durably or sync truthfully.
@@ -288,7 +300,7 @@ CLOUD TEAM BETA GO only when:
 - Admin readiness reports source health, durable storage, pending writes, upload intake, blockers, and role gates.
 - Browser QA has 0 failures on primary routes.
 
-Current status stays NO-GO for cloud team beta because external ResourceSpace staging credentials and durable storage are not configured in this workspace.
+Current status stays NO-GO for cloud team beta because external ResourceSpace staging credentials and durable storage are not configured in this workspace, and upload-intake durability is not implemented in this branch.
 
 ## Official References Checked
 

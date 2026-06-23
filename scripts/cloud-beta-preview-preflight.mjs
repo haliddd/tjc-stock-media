@@ -33,6 +33,22 @@ function hasAny(names) {
   return names.some((name) => Boolean(value(name)));
 }
 
+function validateJsonObject(name, reason) {
+  const raw = value(name);
+  if (!raw) {
+    failures.push(`${name} missing: ${reason}`);
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      failures.push(`${name} must be a valid JSON object: ${reason}`);
+    }
+  } catch {
+    failures.push(`${name} must be valid JSON: ${reason}`);
+  }
+}
+
 function redactedState(name) {
   return value(name) ? "set" : "missing";
 }
@@ -70,11 +86,16 @@ function validateSecretShape(name, minLength = 12) {
 
 function validateUploadStorage() {
   const provider = value("UPLOAD_STORAGE_PROVIDER").toLowerCase();
-  if (!["s3", "r2", "vercel-blob"].includes(provider)) {
-    failures.push("UPLOAD_STORAGE_PROVIDER must be s3, r2, or vercel-blob for cloud beta.");
+  if (!["s3", "r2", "vercel-blob", "resourcespace-intake"].includes(provider)) {
+    failures.push("UPLOAD_STORAGE_PROVIDER must be s3, r2, vercel-blob, or resourcespace-intake for cloud beta.");
     return;
   }
   requireExact("UPLOAD_STORAGE_PUBLIC_READ", "0", "uploaded beta intake files must stay private.");
+  if (provider === "resourcespace-intake") {
+    requirePresent("RESOURCESPACE_UPLOAD_COLLECTION_ID", "ResourceSpace intake upload collection required.");
+    failures.push("UPLOAD_STORAGE_PROVIDER=resourcespace-intake is not implemented/proven in this branch.");
+    return;
+  }
   if (provider === "vercel-blob") {
     requirePresent("BLOB_READ_WRITE_TOKEN", "Vercel Blob upload staging selected.");
     return;
@@ -97,12 +118,26 @@ function validateDurableStores() {
   if (!["postgres", "vercel-kv"].includes(pendingMode)) {
     failures.push("PENDING_WRITES_STORE must be postgres or vercel-kv: cloud beta review decisions must not use local filesystem.");
   }
+  if (pendingMode === "postgres") {
+    failures.push("PENDING_WRITES_STORE=postgres is not implemented in this branch; use vercel-kv for pending writes or implement the Postgres adapter before cloud GO.");
+  }
   if (pendingMode === "vercel-kv" && (!value("KV_REST_API_URL") || !value("KV_REST_API_TOKEN"))) {
     failures.push("KV_REST_API_URL and KV_REST_API_TOKEN are required when PENDING_WRITES_STORE=vercel-kv.");
   }
   requireExact("UPLOAD_INTAKE_STORE", "postgres", "cloud beta upload intake metadata must not use local filesystem.");
-  if (!hasAny(["KV_REST_API_URL", "BETA_DATABASE_URL", "POSTGRES_URL", "DATABASE_URL"])) {
-    failures.push("Feedback durable storage missing: configure KV or shared beta DB before inviting testers.");
+  if (value("UPLOAD_INTAKE_STORE") === "postgres") {
+    failures.push("UPLOAD_INTAKE_STORE=postgres is required but not implemented in this branch; browser upload intake would still be blocked in hosted runtime.");
+  }
+  requireExact("BETA_FEEDBACK_ENABLED", "1", "cloud beta must capture tester feedback durably.");
+  const feedbackStore = value("BETA_FEEDBACK_STORE") || "vercel-kv";
+  if (!["vercel-kv", "postgres"].includes(feedbackStore)) {
+    failures.push("BETA_FEEDBACK_STORE must be vercel-kv or postgres for cloud beta.");
+  }
+  if (feedbackStore === "postgres") {
+    failures.push("BETA_FEEDBACK_STORE=postgres is not implemented in this branch; current durable feedback adapter is Vercel KV.");
+  }
+  if (!value("KV_REST_API_URL") || !value("KV_REST_API_TOKEN")) {
+    failures.push("KV_REST_API_URL and KV_REST_API_TOKEN are required for durable beta feedback in this branch.");
   }
 }
 
@@ -121,6 +156,10 @@ function validateResourceSpace() {
   validateHttpsStagingUrl();
   requirePresent("RESOURCESPACE_API_USER", "restricted portal API user required.");
   requirePresent("RESOURCESPACE_API_KEY", "restricted portal API key required.");
+  validateJsonObject("RESOURCESPACE_FIELD_MAP_JSON", "cloud beta must map ResourceSpace review/status fields explicitly.");
+  requirePresent("RESOURCESPACE_DEFAULT_COLLECTION_ID", "default searchable ResourceSpace collection required.");
+  requirePresent("RESOURCESPACE_UPLOAD_COLLECTION_ID", "intake collection required even while upload adapter is blocked.");
+  requirePresent("RESOURCESPACE_REVIEW_COLLECTION_ID", "review queue collection/status mapping required.");
   requireDisabled("RESOURCESPACE_ENABLE_WRITEBACK", "first cloud beta keeps writeback queued.");
   requireExact("RESOURCESPACE_WRITEBACK_MODE", "queued", "first cloud beta must queue reviewer writes.");
 }
