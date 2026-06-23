@@ -85,6 +85,165 @@ SOURCE_ORIGINAL_DOWNLOADS_ENABLED=0
 8. Run browser QA against Preview at 1440, 1280, 1024, 768, 390, and 320.
 9. Keep writeback queued for first 10-person beta. Enable live writeback only after field-map proof and rollback plan.
 
+## ResourceSpace Cloud/Staging Deployment Runbook
+
+This is the execution plan for moving from local rehearsal to a safe 10-person cloud beta. It is intentionally staging-only.
+
+### 1. Choose host
+
+Preferred fast path: managed ResourceSpace hosting if Hali can approve it, because the vendor owns the long-running DAM stack, DB, filestore, thumbnails, and operational patching.
+
+Self-host path:
+
+- Ubuntu 24.04 VM or managed container host.
+- 2-4 vCPU, 8 GB RAM minimum for beta thumbnail generation.
+- 80-200 GB persistent disk for initial filestore, sized after approved media seed.
+- Daily VM snapshots.
+- Restricted SSH/admin access.
+- DNS target such as `dam-staging.tjc.org`.
+
+### 2. Install ResourceSpace stack
+
+ResourceSpace officially supports a LAMP-style stack with a MySQL-compatible database, Apache, and PHP. Official Docker setup notes call out MariaDB as the database host inside Docker setup rather than `localhost`.
+
+Self-host Docker shape:
+
+```text
+ResourceSpace web container
+  -> MariaDB/MySQL database
+  -> persistent ResourceSpace filestore volume
+  -> persistent ResourceSpace config volume
+  -> HTTPS reverse proxy
+```
+
+Required staging controls:
+
+- HTTPS only; redirect HTTP to HTTPS.
+- No public bucket/filestore access.
+- ResourceSpace admin account for Hali/admins only.
+- Separate `portal-beta-api` user for portal API calls.
+- Backups cover VM image or equivalent, DB, config, and all resource files.
+
+### 3. Seed data
+
+1. Freeze approved local seed source.
+2. Export local ResourceSpace DB or use approved metadata export snapshot.
+3. Copy ResourceSpace filestore without renaming/mutating source media.
+4. Restore DB/config/filestore into staging.
+5. Run ResourceSpace thumbnail/regeneration checks if needed.
+6. Verify:
+   - Resource count.
+   - Album/collection membership, especially `MVP 2024 First Batch`.
+   - Representative thumbnails: flower/bee, plant/leaf, book, fountain/bowl, beach/ocean, flowers, Bible/rings.
+   - Viewer cannot download source/original.
+   - Admin can inspect but not accidentally publish.
+
+### 4. Portal API user
+
+Create ResourceSpace user:
+
+```text
+portal-beta-api
+```
+
+Minimum permissions:
+
+- Search/read resources the beta should expose.
+- Read safe metadata fields.
+- Read previews/thumbnails.
+- Read collections/albums.
+- Optional upload into intake-only collection/status.
+- No unrestricted original/source download.
+- No destructive admin permissions.
+- No live writeback for first beta.
+
+Record field map privately:
+
+- Resource ID field.
+- Approval/status field.
+- Usage scope field.
+- Rights/consent fields.
+- Source/album fields.
+- Thumbnail/preview route behavior.
+- Denied source/original fields.
+
+### 5. Durable beta state
+
+Vercel filesystem is not a durable team beta store. Before Vercel Preview invites, configure one durable store for:
+
+- feedback/issues
+- pending review writes
+- upload intake metadata
+- audit events
+
+Approved options:
+
+- Vercel Postgres / Neon / Supabase Postgres
+- Upstash/Vercel KV for simple queues if code adapters are implemented
+- another Hali-approved durable DB
+
+Current code state: diagnostics exist, but generic pending-write/upload-intake durable adapters are not implemented. Cloud beta remains NO-GO until adapter proof exists.
+
+### 6. Private upload storage
+
+For first cloud beta, choose one:
+
+Option A: ResourceSpace intake upload
+
+- Portal uploads to ResourceSpace intake collection/status.
+- Every asset defaults to Needs Review / Do Not Publish.
+- Reviewer queue reads intake collection/status.
+
+Option B: private staging bucket first
+
+- Portal uploads files to private R2/S3 or approved private object store.
+- Portal stores metadata in durable `upload_intake`.
+- Admin imports into ResourceSpace later.
+- Nothing is public.
+
+Do not use public-read buckets. Do not use Vercel serverless filesystem for uploaded media.
+
+### 7. Vercel Preview connection
+
+Set env only for Vercel Preview first:
+
+```env
+RESOURCESPACE_BASE_URL=https://dam-staging.tjc.org
+RESOURCESPACE_API_USER=portal-beta-api
+RESOURCESPACE_API_KEY=...
+RESOURCESPACE_ENABLE_WRITEBACK=0
+RESOURCESPACE_WRITEBACK_MODE=queued
+BETA_DATABASE_URL=...
+PENDING_WRITES_STORE=postgres
+UPLOAD_INTAKE_STORE=postgres
+UPLOAD_STORAGE_PROVIDER=r2
+UPLOAD_STORAGE_PUBLIC_READ=0
+```
+
+After env changes, redeploy the Preview branch. Do not promote to production.
+
+### 8. Preview validation
+
+Run against Vercel Preview:
+
+```bash
+export BASE_URL=https://<vercel-preview-url>
+make portal-api-smoke
+PORTAL_BROWSER_QA_FULL=1 PORTAL_BROWSER_QA_SCREENSHOT_DIR=docs/screenshots/cloud-beta-2026-06-23 make portal-browser-qa
+```
+
+Required proof:
+
+- `/api/admin/readiness` says ResourceSpace staging/export, not fallback demo.
+- Asset search/detail/thumbnails work.
+- No source/original URLs in JSON payloads.
+- Download gate blocks source/original and unapproved media.
+- Upload persists durably or fails closed.
+- Review missing evidence blocks.
+- Valid review creates durable pending write or confirmed live sync.
+- Feedback persists durably.
+- Browser QA has no primary route crashes, no console errors, no mobile overflow.
+
 ## GO Criteria
 
 CLOUD TEAM BETA GO only when:
@@ -98,3 +257,13 @@ CLOUD TEAM BETA GO only when:
 - Browser QA has 0 failures on primary routes.
 
 Current status stays NO-GO for cloud team beta because external ResourceSpace staging credentials and durable storage are not configured in this workspace.
+
+## Official References Checked
+
+- ResourceSpace Docker install: https://www.resourcespace.com/knowledge-base/systemadmin/install_docker
+- ResourceSpace general requirements: https://www.resourcespace.com/knowledge-base/systemadmin/general_requirements
+- ResourceSpace backup guidance: https://www.resourcespace.com/knowledge-base/systemadmin/backup
+- ResourceSpace API overview: https://www.resourcespace.com/knowledge-base/api/
+- ResourceSpace permissions overview: https://www.resourcespace.com/knowledge-base/developers/all-user-permissions
+- Vercel environments: https://vercel.com/docs/deployments/environments
+- Vercel environment variables: https://vercel.com/docs/environment-variables
