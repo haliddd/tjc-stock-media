@@ -2,7 +2,7 @@
 
 Date: 2026-06-23
 Branch: `beta/local-team-workflow-ready-overnight`
-Portal: http://localhost:4885
+Portal: http://localhost:4871
 ResourceSpace: http://localhost:8088
 
 ## Commands Run
@@ -14,11 +14,12 @@ ResourceSpace: http://localhost:8088
 | safety checkpoint manifest | Created under `.runtime/backups/team-beta-overnight/` |
 | `make up` | Existing ResourceSpace containers already running; command hit container-name conflict |
 | `make smoke` | PASS; ResourceSpace URL and runtime checks responded |
-| `BASE_URL=http://localhost:4885 make portal-api-smoke` | PASS after loading `.env.team-beta.local` without printing invite code |
+| `BASE_URL=http://localhost:4871 make portal-api-smoke` | PASS after loading local beta env without printing invite code |
 | `cd frontend && npm run typecheck` | PASS |
 | `cd frontend && npm run build` | PASS |
 | `cd frontend && npm run test` | PASS, 174 tests |
-| Browser screenshot/API QA | PASS, 60 screenshots across 6 viewports and 10 routes |
+| Browser screenshot/API QA | PASS, 33 page-only screenshots across 6 viewports and 20 route/role checks; 0 failures, 0 warnings, 0 console errors, 0 network failures |
+| `node --check scripts/portal-browser-qa.mjs` | PASS after screenshot wait/page-only capture updates |
 
 ## API Smoke Summary
 
@@ -37,18 +38,35 @@ ResourceSpace: http://localhost:8088
 
 ## Browser QA Summary
 
-Screenshot summary: `docs/screenshots/team-beta-local-readiness-2026-06-23/summary.json`
+Screenshot summary: `docs/screenshots/qa/browser-qa-report.json`
+
+Final UI/UX screenshot folder for this pass: `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
 
 | Metric | Result |
 | --- | --- |
-| Screenshots | 60 |
+| Screenshots | 33 page-only final proof screenshots |
 | Viewports | 1440, 1280, 1024, 768, 390, 320 |
-| Routes | Library roles, asset detail, upload, review, collections, distribution sets, admin |
-| Horizontal overflow | 0 |
+| Routes | Library roles, asset detail, upload, review, collections, distribution sets, requests, admin, help, recent uploads |
+| Horizontal overflow | 0 QA failures |
 | Console errors | 0 |
 | Page errors | 0 |
 | Route failures | 0 |
 | Mobile nav items | 5 on checked routes |
+
+## UI/UX Correction Evidence
+
+Targeted pre-final previews on the clean local dev server showed:
+
+| Route | Result |
+| --- | --- |
+| `/upload?role=Contributor` | HTTP 200, no console errors, neutral thin queue meters, no floating Report Issues overlay, no sample/debug status copy. |
+| `/review?role=Reviewer` | HTTP 200, real review rows render from ResourceSpace/export data after app-ready wait, no zero-row false count. |
+| `/review/367?role=Reviewer` | HTTP 200, review detail comparison and decision panel render with queued/synced truth copy. |
+| `/requests?role=Reviewer` | HTTP 200, table rows render, no horizontal overflow at 1440px after column trim. |
+| `/admin/users?role=DAM%20Admin` | HTTP 200, right permissions panel spacing fixed; identity actions are beta-safe. |
+| `/admin/taxonomy?role=DAM%20Admin` | HTTP 200, compact readiness card plus visible metadata/brand/admin panels. |
+
+The intermittent Next dev route 404 observed during hot reload was cleared by restarting the dev server and removing only `frontend/.next` build cache. Source media, `.runtime`, pending writes, uploads, and ResourceSpace data were not touched.
 
 ## Upload Workflow Result
 
@@ -78,6 +96,13 @@ Pending writes existed before final QA and increased during authenticated review
 - `docs/screenshots/team-beta-local-readiness-2026-06-23/review-reviewer-1440.png`
 - `docs/screenshots/team-beta-local-readiness-2026-06-23/collections-viewer-1440.png`
 - `docs/screenshots/team-beta-local-readiness-2026-06-23/admin-1440.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/` after final UI/UX QA gate
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/library-desktop.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/upload-desktop.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/review-desktop.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/admin-desktop.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/requests-desktop.png`
+- `docs/screenshots/team-beta-ui-ux-final-2026-06-23/packages-desktop.png`
 
 ## Final Commit SHA
 

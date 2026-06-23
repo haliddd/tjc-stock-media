@@ -10,7 +10,7 @@ Do not deploy. Do not merge. Do not invite team until Hali confirms.
 
 | Surface | URL |
 | --- | --- |
-| Portal | http://localhost:4885 |
+| Portal | http://localhost:4871 |
 | ResourceSpace | http://localhost:8088 |
 
 ## Data Source
@@ -43,14 +43,35 @@ The portal uses local ResourceSpace/export data for the library workflow. It doe
 
 | Command | Result |
 | --- | --- |
-| `make smoke` | PASS, with existing-container name warning from already-running ResourceSpace stack |
-| `BASE_URL=http://localhost:4885 make portal-api-smoke` | PASS with local beta env loaded |
+| `make smoke` | PASS, with warning that compose containers are not the active ResourceSpace process |
+| `BASE_URL=http://localhost:4871 make portal-api-smoke` | PASS with local beta env loaded |
 | `cd frontend && npm run typecheck` | PASS |
 | `cd frontend && npm run build` | PASS |
 | `cd frontend && npm run test` | PASS, 174 tests |
-| Browser screenshot/API QA | PASS, 60 screenshots, 0 overflow, 0 console errors, 0 page errors, 0 route failures |
+| Browser screenshot/API QA | PASS, 33 page-only proof screenshots, 0 failures, 0 warnings, 0 console errors, 0 network failures |
 
-Screenshot folder: `docs/screenshots/team-beta-local-readiness-2026-06-23/`
+Screenshot folder from previous functional readiness pass: `docs/screenshots/team-beta-local-readiness-2026-06-23/`
+
+Final UI/UX proof folder for this pass: `docs/screenshots/team-beta-ui-ux-final-2026-06-23/`
+
+Final browser QA report: `docs/screenshots/qa/browser-qa-report.json` and copied to `docs/screenshots/team-beta-ui-ux-final-2026-06-23/browser-qa-report.json`, checked at `2026-06-23T08:33:52.265Z`.
+
+## UI/UX Correction Pass
+
+Applied on 2026-06-23 after review against the Apple-style DAM reference screens.
+
+| Area | Correction |
+| --- | --- |
+| Screenshot proof | Browser QA now uses Playwright page viewport screenshots and supports `PORTAL_BROWSER_QA_SCREENSHOT_DIR=docs/screenshots/team-beta-ui-ux-final-2026-06-23`. |
+| Feedback control | `Report Issues` moved from obstructing floating bottom-right overlay into sidebar/mobile inline tools. |
+| Upload / Intake | Reworked queue as polished table, replaced native green progress with neutral thin meters, removed debug/sample wording, added beta safety note and tag chips. |
+| Review Queue | Added reliable ResourceSpace/export fallback rows, loading skeleton, dense reviewer table, truthful action wiring, and review detail decision mapping. |
+| Review Detail | Side-by-side comparison, evidence checklist, decision card, and queued/synced truth copy preserved. |
+| Requests | Tightened table columns, row selection, status copy, and right panel so content no longer collides at 1440px. |
+| Users & Groups | Right permissions panel spacing fixed; scope labels separated; invite/deactivate are beta-safe and not fake identity actions. |
+| Admin Metadata | Readiness compacted into a card; schema/taxonomy/brand/settings panels remain visible above the fold. |
+
+Visual parity is acceptable for local team beta rehearsal. Final screenshots are page-only captures with no browser chrome, no overlapping feedback button, no giant blank areas, and no QA-detected mobile horizontal overflow.
 
 ## Safety State
 

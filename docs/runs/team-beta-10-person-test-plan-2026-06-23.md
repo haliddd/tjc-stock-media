@@ -2,7 +2,7 @@
 
 Date: 2026-06-23
 Scope: local-only team beta workflow rehearsal
-Portal: http://localhost:4885
+Portal: http://localhost:4871
 ResourceSpace: http://localhost:8088
 
 This plan is for a local rehearsal only. Do not deploy, merge, send invites, expose a public tunnel, or share production links from this pass.
@@ -11,7 +11,7 @@ This plan is for a local rehearsal only. Do not deploy, merge, send invites, exp
 
 | Tester | Role | Starting URL | Task steps | Expected result | Must not happen | Issue reporting |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Viewer | `/library?role=Viewer` | Search for `Bible`, select an asset, inspect metadata, open detail. | Library filters, selected inspector, and detail route update from ResourceSpace/export data. | Source/original URL exposed; fake public approval shown. | Use bottom-right `Report Issues`; include URL and screenshot. |
+| 1 | Viewer | `/library?role=Viewer` | Search for `Bible`, select an asset, inspect metadata, open detail. | Library filters, selected inspector, and detail route update from ResourceSpace/export data. | Source/original URL exposed; fake public approval shown. | Use sidebar/mobile `Report Issues`; include URL and screenshot. |
 | 2 | Viewer | `/library?role=Viewer` | Try Download on a visible asset, then inspect Rights & Usage. | Download uses approved-copy gate or shows blocked reason. | Original/source file downloads; unexplained success toast. | Report issue with asset ID. |
 | 3 | Contributor | `/upload?role=Contributor` | Add 2 test files, fill collection, brand/source, rights, credit, tags, notes. | File list and metadata fields persist. | File disappears without receipt; public/approved status appears. | Report issue with filename and form state. |
 | 4 | Contributor | `/upload?role=Contributor` | Submit intake. | Receipt says submitted for review, not public, source/original restricted. | ResourceSpace original mutated; fake ResourceSpace ID success. | Report issue and keep browser open. |
@@ -33,6 +33,15 @@ This plan is for a local rehearsal only. Do not deploy, merge, send invites, exp
 7. Open Collections, inspect `album:mvp-2024-first-batch`, and show gated distribution behavior.
 8. Open Admin and show data source, counts, pending writes, role matrix, and local-only blockers.
 9. End with current limitation callout: no cloud storage configured, no production deploy, no team invites until owner confirms.
+
+## UI/UX Acceptance Notes
+
+- Final proof screenshots must come from Playwright page screenshots only; no browser toolbar/chrome.
+- `Report Issues` lives in the sidebar/mobile top tools and must not cover content.
+- Upload queue uses neutral thin progress meters and statuses `Completed`, `Uploading`, `Queued`, or `Failed`.
+- Review and Requests tables must show real rows or truthful loading/empty states; no false nonzero count with blank table.
+- Admin readiness stays visible but compact so Metadata Schema, Taxonomies, Brand Kit, Validation Rules, and Settings remain primary.
+- All primary buttons either perform a safe action, queue a local action truthfully, or explain why local beta disables the action.
 
 ## Daily Upload / Review Rhythm
 

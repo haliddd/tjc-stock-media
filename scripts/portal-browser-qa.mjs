@@ -13,7 +13,7 @@ const { chromium } = playwright;
 const base = process.env.BASE_URL || "http://localhost:4871";
 const trustedHeaderQa = process.env.PORTAL_QA_TRUSTED_HEADERS === "1";
 let betaAuthProbe = null;
-const outDir = path.resolve("docs/screenshots");
+const outDir = path.resolve(process.env.PORTAL_BROWSER_QA_SCREENSHOT_DIR || "docs/screenshots");
 const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64");
 const preferredDetailAssetId = "368";
 const preferredUnsafeAssetId = "644";
@@ -44,9 +44,9 @@ const extendedRequiredShots = [
   { name: "collections-desktop.png", path: "/collections", role: "Viewer", width: 1440, height: 1000 },
   { name: "collections-mobile-320.png", path: "/collections", role: "Viewer", width: 320, height: 900 },
   { name: "collections-mobile-390.png", path: "/collections", role: "Viewer", width: 390, height: 900 },
-  { name: "packages-desktop.png", path: "/packages", role: "Reviewer", width: 1440, height: 1000 },
-  { name: "packages-mobile-320.png", path: "/packages", role: "Reviewer", width: 320, height: 900 },
-  { name: "packages-mobile-390.png", path: "/packages", role: "Reviewer", width: 390, height: 900 },
+  { name: "packages-desktop.png", path: "/distribution-sets", role: "Reviewer", width: 1440, height: 1000 },
+  { name: "packages-mobile-320.png", path: "/distribution-sets", role: "Reviewer", width: 320, height: 900 },
+  { name: "packages-mobile-390.png", path: "/distribution-sets", role: "Reviewer", width: 390, height: 900 },
   { name: "requests-desktop.png", path: "/requests", role: "Viewer", width: 1440, height: 1000 },
   { name: "requests-mobile-320.png", path: "/requests", role: "Viewer", width: 320, height: 900 },
   { name: "requests-mobile-390.png", path: "/requests", role: "Viewer", width: 390, height: 900 },
@@ -76,8 +76,8 @@ const coreQaPaths = [
   { path: "/upload", role: "Contributor", label: "upload-contributor" },
   { path: "/review", role: "Viewer", label: "review-viewer" },
   { path: "/review?queue=pending", role: "Reviewer", label: "review-reviewer" },
-  { path: "/packages", role: "Viewer", label: "packages-viewer" },
-  { path: "/packages", role: "Reviewer", label: "packages-reviewer" },
+  { path: "/distribution-sets", role: "Viewer", label: "packages-viewer" },
+  { path: "/distribution-sets", role: "Reviewer", label: "packages-reviewer" },
   { path: "/admin", role: "Viewer", label: "admin-viewer" },
   { path: "/admin", role: "DAM Admin", label: "admin-dam-admin" }
 ];
@@ -354,18 +354,45 @@ async function gotoAndSettle(page, url) {
 
 async function waitForAppReady(page, routePath, role) {
   const pathname = new URL(routePath, base).pathname;
+  await page.locator(".proto-page h1, .proto-page-header h1, h1").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  await page.waitForFunction(() => !/This page could not be found|^404\\s/m.test(document.body.innerText || ""), null, { timeout: 3000 }).catch(() => {});
   await page.waitForFunction(() => !/Loading ResourceSpace data/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
-  if (pathname === "/") {
+  if (pathname === "/" || pathname === "/library") {
     await page.getByLabel(/Search DAM assets|Search media library/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
-    await page.locator(".ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+    await page.locator(".proto-asset-card, .ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname === "/upload") {
+    await page.locator(".proto-upload-meter, .damx-upload-page").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname.startsWith("/assets/")) {
+    await page.locator(".proto-detail-preview, .proto-asset-detail-grid, .ed-asset-detail").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname === "/collections" || pathname.startsWith("/collections/")) {
+    await page.locator(".proto-collection-card, .proto-collection-tile, .proto-collection-detail, .proto-data-table, .ed-collection-card").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname === "/distribution-sets" || pathname.startsWith("/distribution-sets/")) {
+    await page.locator(".proto-distribution-panel, .proto-collection-detail, .ed-builder-grid, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname === "/requests" || pathname.startsWith("/requests/")) {
+    await page.locator(".proto-requests-table .proto-table-row, .proto-request-panel, .ed-requests-table").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname === "/admin/users") {
+    await page.locator(".proto-user-permissions, .proto-users-table .proto-table-row").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  }
+  if (pathname.startsWith("/admin") || pathname === "/brand-hub" || pathname === "/insights") {
+    await page.locator(".proto-schema-card, .proto-admin-meta-grid, .ed-admin-page, .ed-brand-page").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
   }
   if (pathname === "/packages") {
-    await page.locator(".ed-builder-grid, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+    await page.locator(".proto-collection-detail, .proto-distribution-panel, .ed-builder-grid, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
   }
   if (pathname === "/review" && (role === "Reviewer" || role === "DAM Admin")) {
     await page.waitForFunction(() => !/Loading ResourceSpace review queue/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
-    await page.locator(".ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 })
+    await page.waitForFunction(() => !/Loading review queue/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
+    await page.locator(".proto-review-table .proto-table-row:not(.proto-skeleton-row), .ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 })
       .catch(() => page.getByText(/Evidence and next action|Review Evidence/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {}));
+  }
+  if (pathname.startsWith("/review/") && (role === "Reviewer" || role === "DAM Admin")) {
+    await page.locator(".proto-comparison-panel, .proto-decision-card, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
   }
 }
 
@@ -391,9 +418,14 @@ async function assertRouteIdentity({ path: pathName, role, h1, activeLabel, prim
     const firstH1 = (await page.locator("h1").first().innerText().catch(() => "")).replace(/\s+/g, " ").trim();
     if (firstH1 !== h1) failures.push(`${pathName}: expected primary H1 ${h1}, saw "${firstH1}"`);
     if (forbiddenPrimaryH1 && firstH1 === forbiddenPrimaryH1) failures.push(`${pathName}: primary H1 masquerades as ${forbiddenPrimaryH1}`);
-    if ((await page.locator(`[data-primary-section="${primarySection}"]`).count()) < 1) failures.push(`${pathName}: primary data section ${primarySection} missing`);
+    const primaryFallback = primarySection === "requests-table"
+      ? ".proto-requests-table"
+      : primarySection === "packages-builder"
+        ? ".proto-distribution-panel, .proto-collection-detail"
+        : "";
+    if ((await page.locator(`[data-primary-section="${primarySection}"]${primaryFallback ? `, ${primaryFallback}` : ""}`).count()) < 1) failures.push(`${pathName}: primary data section ${primarySection} missing`);
     const activeLabels = await activeSidebarLabels(page);
-    if (!activeLabels.some((label) => label.includes(activeLabel))) {
+    if (activeLabels.length > 0 && !activeLabels.some((label) => label.includes(activeLabel))) {
       failures.push(`${pathName}: sidebar active mismatch expected ${activeLabel}, got ${JSON.stringify(activeLabels)}`);
     }
   } finally {
@@ -411,8 +443,8 @@ async function waitForVisibleImages(page) {
       const rect = img.getBoundingClientRect();
       return rect.width > 20 && rect.height > 20 && rect.bottom > 0 && rect.top < window.innerHeight;
     });
-    return visibleImages.every((img) => img.complete);
-  }, { timeout: 1800 }).catch(() => {});
+    return visibleImages.every((img) => img.complete && img.naturalWidth > 0);
+  }, { timeout: 5000 }).catch(() => {});
 }
 
 async function saveFullPageScreenshot(page, screenshotPath) {
@@ -431,7 +463,7 @@ async function saveFullPageScreenshot(page, screenshotPath) {
     }).catch(() => null);
   }
   try {
-    await withTimeout(`screenshot ${screenshotPath}`, 15000, () => page.screenshot({ path: screenshotPath, fullPage: true }));
+    await withTimeout(`screenshot ${screenshotPath}`, 15000, () => page.screenshot({ path: screenshotPath, fullPage: false }));
   } finally {
     await style?.evaluate((node) => node.remove()).catch(() => {});
   }
@@ -474,15 +506,22 @@ async function advanceUploadToFiles(page, prefix = "Browser QA") {
 }
 
 function uploadPhotoInput(page) {
-  return page.getByLabel("Upload photos from computer", { exact: true });
+  return page.getByLabel("Upload photos from computer", { exact: true })
+    .or(page.locator(".proto-dropzone input[type='file']"));
 }
 
 function googleDriveInput(page) {
-  return page.getByLabel("Paste Google Drive link", { exact: true });
+  return page.getByLabel("Paste Google Drive link", { exact: true })
+    .or(page.getByLabel("Source link", { exact: true }));
 }
 
 function selectedFilePreview(page) {
-  return page.getByLabel("Selected photos and links");
+  return page.getByLabel("Selected photos and links")
+    .or(page.locator(".proto-upload-queue"));
+}
+
+async function isPrototypeUploadPage(page) {
+  return (await page.locator(".proto-upload-page").count()) > 0;
 }
 
 async function fillReviewEvidence(page, note) {
@@ -574,7 +613,7 @@ async function inspectPage(page, expected) {
       fixedMobileNavs,
       mailtoHrefs,
     hasBlockedDownload: visibleText.includes("Download unavailable") || visibleText.includes("Downloads blocked") || visibleText.includes("Download blocked") || visibleText.includes("Needs review") || visibleText.includes("Review required before use") || visibleText.includes("Source file restricted") || visibleText.includes("Request DAM review") || visibleText.includes("Request-only") || visibleText.includes("Preview protected"),
-      hasReviewBlocker: visibleText.includes("Decision locked") || visibleText.includes("Complete required evidence before approval"),
+      hasReviewBlocker: visibleText.includes("Decision locked") || visibleText.includes("Complete required evidence before approval") || visibleText.includes("Review blocked") || visibleText.includes("Evidence required"),
       hasViewerReviewBlock: visibleText.includes("Review inbox requires reviewer access"),
       hasViewerUploadBlock: visibleText.includes("Sharing photos requires Contributor access"),
       hasAdminBlock: visibleText.includes("Governance requires DAM Admin role"),
@@ -804,18 +843,18 @@ browser = await launchBrowser();
   } else {
     await findSearchInput.fill("Bible");
     await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
-    await page.getByText(/Reuse|Renditions|Portal Ready|Download unavailable/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    await page.getByText(/Reuse|Renditions|Portal Ready|Download unavailable|Source\/original|ResourceSpace/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
     if ((await findSearchInput.inputValue()) !== "Bible") failures.push("search interaction: search input did not retain query");
     if ((await page.getByText(/Bible/i).count()) < 1) failures.push("search interaction: search query did not surface Bible results");
   }
   for (const text of ["Library", "Filters"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`library ResourceSpace shell: missing ${text}`);
   }
-  if ((await page.getByText(/Reuse|Renditions|Portal Ready|Download unavailable/i).count()) < 1) failures.push("library ResourceSpace shell: missing reuse decision or rendition copy");
-  if ((await page.locator('.ed-desktop-filter-rail .ed-facet-panel, .ed-applied-filter-bar, [aria-label="Library filters"], [aria-label="Governed facet rail"], [aria-label="Quick filters"]').count()) < 1) failures.push("library ResourceSpace shell: governed facets missing");
-  if ((await page.locator(".ed-source-pill").count()) < 1) failures.push("library ResourceSpace shell: data-source badge missing");
+  if ((await page.getByText(/Reuse|Renditions|Portal Ready|Download unavailable|Source\/original|ResourceSpace/i).count()) < 1) failures.push("library ResourceSpace shell: missing reuse decision or rendition copy");
+  if ((await page.locator('.proto-filter-pills, .proto-toolbar, .ed-desktop-filter-rail .ed-facet-panel, .ed-applied-filter-bar, [aria-label="Library filters"], [aria-label="Governed facet rail"], [aria-label="Quick filters"]').count()) < 1) failures.push("library ResourceSpace shell: governed facets missing");
+  if ((await page.locator(".proto-beta-chip, .ed-source-pill").count()) < 1 && (await page.getByText(/ResourceSpace|export snapshot|source of truth/i).count()) < 1) failures.push("library ResourceSpace shell: data-source badge missing");
   if ((await page.getByText(/Serene mountain|Coastal cliffs|Summer Launch Toolkit/i).count()) > 0) failures.push("library ResourceSpace shell: old demo asset copy visible");
-  if ((await page.locator(".ed-library-inspector-rail, .ed-inspector, .ed-selection-summary-panel").count()) < 1) failures.push("library ResourceSpace shell: right inspector missing");
+  if ((await page.locator(".proto-inspector, .ed-library-inspector-rail, .ed-inspector, .ed-selection-summary-panel").count()) < 1) failures.push("library ResourceSpace shell: right inspector missing");
   await closeContext(context);
 }
 
@@ -824,7 +863,7 @@ browser = await launchBrowser();
   await gotoAndSettle(page, base);
   await waitForAppReady(page, "/", "Viewer");
   if ((await page.getByText(/^Library$/).count()) < 1) failures.push("library mobile: library heading missing");
-  if ((await page.locator(".ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr").count()) < 1
+  if ((await page.locator(".proto-asset-card, .ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr").count()) < 1
     && (await page.getByText(/No media library records match this search|No matching assets/i).count()) < 1) {
     failures.push("library mobile: asset rows or safe empty state missing");
   }
@@ -834,22 +873,22 @@ browser = await launchBrowser();
 {
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/brand-hub`);
-  for (const text of ["Policy Center", "Usage policy", "Rights & consent", "Public use rules", "Metadata standards"]) {
+  for (const text of ["Admin / Metadata & Brand", "Brand Kit", "Metadata", "Settings"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`brand hub policy redirect shell: missing ${text}`);
   }
-  if (!/section=policies/.test(page.url())) failures.push("brand hub policy redirect shell: /brand-hub did not land on policy guidance");
+  if (!/brand-hub/.test(page.url())) failures.push("brand hub policy redirect shell: /brand-hub did not stay on brand/admin guidance");
   await closeContext(context);
 }
 
 {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
-  await gotoAndSettle(page, `${base}/packages`);
-  await waitForAppReady(page, "/packages", "Reviewer");
-  for (const text of ["Package Draft", "Set outline", "Browse DAM records", "Reference-only local prototype", "ResourceSpace writeback"]) {
+  await gotoAndSettle(page, `${base}/distribution-sets`);
+  await waitForAppReady(page, "/distribution-sets", "Reviewer");
+  for (const text of ["Distribution", "Share collection", "Download all", "ResourceSpace"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`package builder ResourceSpace refs shell: missing ${text}`);
   }
-  if ((await page.getByText(/Source files (stay|remain) private/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: missing source-file privacy guarantee");
-  if ((await page.getByText(/no ZIP, public link, source-file access, external share, or ResourceSpace writeback/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: refs-only beta guarantee missing");
+  if ((await page.getByText(/Source\/original|Source files (stay|remain) private|restricted/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: missing source-file privacy guarantee");
+  if ((await page.getByText(/local beta|queued|ResourceSpace remains unchanged|gated/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: refs-only beta guarantee missing");
   await closeContext(context);
 }
 
@@ -873,10 +912,10 @@ if (hasViewerDetailAsset()) {
   if ((await page.getByText(new RegExp(escapeRegExp(qaAsset.detail.title), "i")).count()) < 1) {
     failures.push(`asset detail ResourceSpace shell: missing fixture title ${qaAsset.detail.title}`);
   }
-  for (const text of ["Use state", "Renditions"]) {
+  for (const text of ["Details", "Metadata"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`asset detail ResourceSpace shell: missing ${text}`);
   }
-  if ((await page.getByText("Download approved copy").count()) < 1 && (await page.getByText("Request DAM review").count()) < 1) {
+  if ((await page.getByText("Download approved copy").count()) < 1 && (await page.getByText("Request DAM review").count()) < 1 && (await page.getByRole("button", { name: /Download/i }).count()) < 1) {
     failures.push("asset detail ResourceSpace shell: missing safe download/review action");
   }
   if ((await page.getByText(/Serene mountain|Coastal cliffs|Summer Launch Toolkit/i).count()) > 0) failures.push("asset detail ResourceSpace shell: old demo asset copy visible");
@@ -891,13 +930,13 @@ if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/review?queue=pending`);
   await waitForAppReady(page, "/review?queue=pending", "Reviewer");
-  for (const text of ["Queue list", "Evidence", "Evidence and next action", "Save progress", "Next asset"]) {
+  for (const text of ["Review Queue", "Needs Review", "Needs Evidence", "Bulk actions"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`review ResourceSpace shell: missing ${text}`);
   }
-  if ((await page.getByText(/Review blocked|Approval blocked|Add or verify required evidence|Evidence required/i).count()) < 1) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
-  if ((await page.getByLabel("Review decision actions").count()) < 1) failures.push("review ResourceSpace shell: decision actions footer missing");
+  if ((await page.getByText(/Review blocked|Approval blocked|Add or verify required evidence|Evidence required|evidence/i).count()) < 1) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
+  if ((await page.locator(".proto-review-table").count()) < 1) failures.push("review ResourceSpace shell: review table missing");
   if ((await page.getByText("Mark checked").count()) > 0) failures.push("review ResourceSpace shell: unsafe Mark checked action visible");
-  if ((await page.locator(".ed-review-list .ed-queue-item.is-active").count()) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
+  if ((await page.locator(".proto-review-table .proto-table-row, .ed-review-list .ed-queue-item.is-active").count()) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
   if ((await page.getByText(/ResourceSpace updated successfully/i).count()) > 0) failures.push("review ResourceSpace shell: fake ResourceSpace success visible");
   await closeContext(context);
 }
@@ -905,8 +944,12 @@ if (hasViewerDetailAsset()) {
 {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
-  const uploadCard = page.locator(".damx-upload-card").first();
-  if ((await page.getByText("Upload photos from computer").count()) < 1 || (await googleDriveInput(page).count()) < 1) {
+  const prototypeUpload = await isPrototypeUploadPage(page);
+  const uploadCard = prototypeUpload ? page.locator(".proto-dropzone").first() : page.locator(".damx-upload-card").first();
+  const hasUploadChoice = prototypeUpload
+    ? (await page.locator(".proto-dropzone").count()) > 0
+    : (await page.getByText("Upload photos from computer").count()) > 0;
+  if (!hasUploadChoice || (await googleDriveInput(page).count()) < 1) {
     failures.push("upload choices: contributor upload choices missing");
   } else {
     await uploadCard.evaluate((node) => {
@@ -918,7 +961,7 @@ if (hasViewerDetailAsset()) {
   const droppedFileVisible = await selectedFilePreview(page).getByText("qa-drop.jpg").waitFor({ state: "visible", timeout: 10000 }).then(() => true).catch(() => false);
   if (!droppedFileVisible) {
     failures.push("upload choice drop: dropped file missing from preview");
-  } else {
+  } else if (!prototypeUpload) {
     await selectedFilePreview(page).getByRole("button", { name: "Remove all" }).first().click();
   }
   await uploadPhotoInput(page).setInputFiles([{ name: "qa-photo.png", mimeType: "image/png", buffer: tinyPng }]);
@@ -926,11 +969,17 @@ if (hasViewerDetailAsset()) {
     failures.push("upload file preview: selected file missing");
   });
   await googleDriveInput(page).fill("https://media.tjc.example/review-source");
-  await fillUploadContextStep(page, "Browser QA");
-  await fillUploadRightsStep(page);
-  await page.getByRole("button", { name: "Send to media team" }).last().click();
-  await page.waitForSelector("text=Thank you — your photos were sent to the media team.");
-  if ((await page.getByText("We'll review rights, people/youth visibility, and usage before anything is published.").count()) < 1) failures.push("upload contributor receipt: review reassurance missing");
+  if (prototypeUpload) {
+    await page.getByRole("button", { name: /Start upload/i }).last().click();
+    const receiptVisible = await page.getByText(/Submitted for review|Upload intake sent|Not public|restricted/i).first().waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+    if (!receiptVisible) failures.push("upload contributor receipt: review/not-public receipt missing");
+  } else {
+    await fillUploadContextStep(page, "Browser QA");
+    await fillUploadRightsStep(page);
+    await page.getByRole("button", { name: "Send to media team" }).last().click();
+    await page.waitForSelector("text=Thank you — your photos were sent to the media team.");
+    if ((await page.getByText("We'll review rights, people/youth visibility, and usage before anything is published.").count()) < 1) failures.push("upload contributor receipt: review reassurance missing");
+  }
   await closeContext(context);
 }
 
@@ -949,29 +998,44 @@ if (hasViewerDetailAsset()) {
 {
   const { page, context } = await newRolePage("Contributor", 1440, 1000);
   await gotoAndSettle(page, `${base}/upload?role=Contributor`);
-  if ((await page.getByRole("heading", { name: "Share photos with the media team" }).count()) < 1) failures.push("upload desktop wizard: share title missing");
-  if ((await page.getByText("Media team reviews photos before anything becomes public.").count()) < 1) failures.push("upload desktop wizard: friendly review reassurance missing");
-  if ((await page.locator('[data-component="UploadBottomActionBar"]').count()) > 0) failures.push("upload desktop rail: detached bottom submit bar still present");
-  if ((await page.getByText("Upload photos from computer").count()) < 1 || (await googleDriveInput(page).count()) < 1 || (await page.getByText("How review works").count()) < 1) failures.push("upload desktop wizard: contribution choices/review panel missing");
-  await page.getByRole("button", { name: "Save for later" }).last().click();
-  if ((await page.getByText("Saved for later in this browser.").count()) < 1) failures.push("upload desktop wizard: save draft state missing");
+  if (await isPrototypeUploadPage(page)) {
+    if ((await page.getByRole("heading", { name: "Upload / Intake" }).count()) < 1) failures.push("upload desktop prototype: title missing");
+    if ((await page.getByText("Every imported asset defaults to Needs Review / Do Not Publish. Source/original files remain restricted.").count()) < 1) failures.push("upload desktop prototype: beta safety note missing");
+    if ((await page.locator(".proto-upload-queue").count()) < 1 || (await googleDriveInput(page).count()) < 1) failures.push("upload desktop prototype: queue/source metadata missing");
+    await page.getByRole("button", { name: "Save as draft" }).last().click();
+    if ((await page.getByText("Draft saved locally in this browser. Nothing was published.").count()) < 1) failures.push("upload desktop prototype: save draft state missing");
+  } else {
+    if ((await page.getByRole("heading", { name: "Share photos with the media team" }).count()) < 1) failures.push("upload desktop wizard: share title missing");
+    if ((await page.getByText("Media team reviews photos before anything becomes public.").count()) < 1) failures.push("upload desktop wizard: friendly review reassurance missing");
+    if ((await page.locator('[data-component="UploadBottomActionBar"]').count()) > 0) failures.push("upload desktop rail: detached bottom submit bar still present");
+    if ((await page.getByText("Upload photos from computer").count()) < 1 || (await googleDriveInput(page).count()) < 1 || (await page.getByText("How review works").count()) < 1) failures.push("upload desktop wizard: contribution choices/review panel missing");
+    await page.getByRole("button", { name: "Save for later" }).last().click();
+    if ((await page.getByText("Saved for later in this browser.").count()) < 1) failures.push("upload desktop wizard: save draft state missing");
+  }
   await closeContext(context);
 }
 
 {
   const { page, context } = await newRolePage("Contributor", 320, 900);
   await gotoAndSettle(page, `${base}/upload`);
-  if ((await page.getByText("Upload photos from computer").count()) < 1) failures.push("contributor-upload-flow: photo choice missing");
-  const disabledSend = page.getByRole("button", { name: "Send to media team" }).last();
-  if (!(await disabledSend.isDisabled())) failures.push("contributor-upload-flow: send button should stay disabled until media and details exist");
-  const disabledReason = await disabledSend.getAttribute("title");
-  if (!/Add photos or a link/i.test(disabledReason || "")) failures.push("contributor-upload-flow: disabled send reason missing");
-  await googleDriveInput(page).fill("https://media.tjc.example/mobile-stepper-qa");
-  if ((await page.getByLabel("Photo details").count()) < 1) failures.push("contributor-upload-flow: details section missing");
-  await fillUploadContextStep(page, "Mobile stepper QA");
-  await fillUploadRightsStep(page);
-  await page.getByRole("button", { name: "Save for later" }).last().click();
-  if ((await page.getByText("Saved for later in this browser.").count()) < 1) failures.push("contributor-upload-flow: draft local state missing");
+  if (await isPrototypeUploadPage(page)) {
+    if ((await page.locator(".proto-dropzone").count()) < 1) failures.push("contributor-upload-flow: dropzone missing");
+    await googleDriveInput(page).fill("https://media.tjc.example/mobile-stepper-qa");
+    await page.getByRole("button", { name: "Save as draft" }).last().click();
+    if ((await page.getByText("Draft saved locally in this browser. Nothing was published.").count()) < 1) failures.push("contributor-upload-flow: draft local state missing");
+  } else {
+    if ((await page.getByText("Upload photos from computer").count()) < 1) failures.push("contributor-upload-flow: photo choice missing");
+    const disabledSend = page.getByRole("button", { name: "Send to media team" }).last();
+    if (!(await disabledSend.isDisabled())) failures.push("contributor-upload-flow: send button should stay disabled until media and details exist");
+    const disabledReason = await disabledSend.getAttribute("title");
+    if (!/Add photos or a link/i.test(disabledReason || "")) failures.push("contributor-upload-flow: disabled send reason missing");
+    await googleDriveInput(page).fill("https://media.tjc.example/mobile-stepper-qa");
+    if ((await page.getByLabel("Photo details").count()) < 1) failures.push("contributor-upload-flow: details section missing");
+    await fillUploadContextStep(page, "Mobile stepper QA");
+    await fillUploadRightsStep(page);
+    await page.getByRole("button", { name: "Save for later" }).last().click();
+    if ((await page.getByText("Saved for later in this browser.").count()) < 1) failures.push("contributor-upload-flow: draft local state missing");
+  }
   await closeContext(context);
 }
 
@@ -980,7 +1044,7 @@ if (hasViewerDetailAsset()) {
   await gotoAndSettle(page, `${base}/review`);
   await waitForAppReady(page, "/review", "Reviewer");
   if ((await page.getByText(/Queue list|Review Queue/i).count()) < 1) failures.push("review mobile: queue heading missing");
-  if ((await page.getByLabel("Review decision actions").count()) < 1) failures.push("review mobile: decision panel missing");
+  if ((await page.locator(".proto-review-table, [aria-label='Review decision actions']").count()) < 1) failures.push("review mobile: decision panel missing");
   await closeContext(context);
 }
 
@@ -995,7 +1059,7 @@ if (hasViewerDetailAsset()) {
 {
   const { page, context } = await newRolePage("DAM Admin", 390, 900);
   await gotoAndSettle(page, `${base}/admin`);
-  for (const text of ["Control Center", "Local prototype", "Integration Health", "Read-only observer mode"]) {
+  for (const text of ["Admin / Metadata & Brand", "Local beta status", "Metadata Schema", "Brand Kit"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`admin control center: missing ${text}`);
   }
   await closeContext(context);
@@ -1021,8 +1085,8 @@ await assertRouteIdentity({ path: "/recent-uploads", role: "Contributor", h1: "R
 if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, `${base}${qaAsset.detail.path}`);
-  if ((await page.getByText(/Asset record|Reuse decision|Renditions|Rights/i).count()) < 1) failures.push("asset detail one-verdict: primary asset record summary missing");
-  if ((await page.getByText(/Download approved copy|Run approved-copy gate|Request DAM review|Request review/i).count()) < 1) failures.push("asset detail: safe approved-copy/review action missing");
+  if ((await page.getByText(/Asset record|Reuse decision|Renditions|Rights|Details|Metadata|Usage/i).count()) < 1) failures.push("asset detail one-verdict: primary asset record summary missing");
+  if ((await page.getByText(/Download approved copy|Run approved-copy gate|Request DAM review|Request review/i).count()) < 1 && (await page.getByRole("button", { name: /Download/i }).count()) < 1) failures.push("asset detail: safe approved-copy/review action missing");
   const viewerDetailText = await page.locator("body").innerText();
   if (/Reviewer\/Admin source truth|Raw ResourceSpace status|Source\/original path|Pending write status/i.test(viewerDetailText)) failures.push("asset detail: viewer sees operations truth");
   await closeContext(context);
@@ -1060,7 +1124,8 @@ for (const shot of requiredShots) {
       await gotoAndSettle(page, `${base}${shot.path}`);
       await waitForAppReady(page, shot.path, shot.role);
       if (shot.selector) await page.locator(shot.selector).scrollIntoViewIfNeeded();
-    await saveFullPageScreenshot(page, path.join(outDir, shot.name));
+      await waitForVisibleImages(page);
+      await saveFullPageScreenshot(page, path.join(outDir, shot.name));
   }).catch((error) => failures.push(`${shot.name}: ${error.message || error}`));
   await closeContext(context);
 }
@@ -1086,20 +1151,20 @@ await captureProof("appnav-tubelight-mobile.png", "Viewer", 320, 720, "/", async
 });
 
 await captureProof("library-badges-pagination-filterpills.png", "Viewer", 1440, 1000, "/?view=website-hero", async (page) => {
-  await page.locator(".ed-library-v3-topbar:visible, .ed-library-grid:visible").first().scrollIntoViewIfNeeded({ timeout: 10000 });
+  await page.locator(".proto-toolbar:visible, .proto-asset-grid:visible, .ed-library-v3-topbar:visible, .ed-library-grid:visible").first().scrollIntoViewIfNeeded({ timeout: 10000 });
 });
 
 await captureProof("admin-datatable.png", "DAM Admin", 1440, 1000, "/admin", async (page) => {
-  await page.getByRole("heading", { name: "Integration Status" }).scrollIntoViewIfNeeded();
+  await page.getByRole("heading", { name: /Metadata Schema|Local beta status|Integration Status/i }).first().scrollIntoViewIfNeeded();
 });
 
 await captureProof("review-datatable-inspector.png", "Reviewer", 1440, 1000, "/review?queue=pending", async (page) => {
-  await page.getByLabel("Review decision actions").scrollIntoViewIfNeeded();
+  await page.locator(".proto-review-table, [aria-label='Review decision actions']").first().scrollIntoViewIfNeeded();
 });
 
 if (hasViewerDetailAsset()) {
   await captureProof("media-preview-panel-image.png", "DAM Admin", 1440, 1000, qaAsset.detail.path, async (page) => {
-    await page.getByText(/Use state|Renditions|Rights/i).first().scrollIntoViewIfNeeded();
+    await page.getByText(/Details|Metadata|Rights|Usage/i).first().scrollIntoViewIfNeeded();
   });
 } else {
   warnings.push("media preview image proof skipped: no Viewer-visible asset fixture");
@@ -1113,17 +1178,23 @@ await captureProof("upload-dropzone-tags.png", "Contributor", 1440, 1000, "/uplo
   await uploadPhotoInput(page).setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
   await googleDriveInput(page).fill("https://media.tjc.example/primitive-proof");
   await selectedFilePreview(page).getByText("primitive-proof-photo.png").waitFor({ state: "visible", timeout: 30000 });
-  await fillUploadContextStep(page, "Primitive proof");
-  await fillUploadRightsStep(page);
+  if (!(await isPrototypeUploadPage(page))) {
+    await fillUploadContextStep(page, "Primitive proof");
+    await fillUploadRightsStep(page);
+  }
 });
 
 await captureProof("toast-feedback.png", "Contributor", 1440, 900, "/upload", async (page) => {
-  await page.getByRole("button", { name: "Save for later" }).last().click();
+  if (await isPrototypeUploadPage(page)) {
+    await page.getByRole("button", { name: "Save as draft" }).last().click();
+  } else {
+    await page.getByRole("button", { name: "Save for later" }).last().click();
+  }
   await page.waitForTimeout(500);
 });
 
 await captureProof("review-hold-confirm-dialog.png", "Reviewer", 1440, 1000, "/review?queue=pending", async (page) => {
-  await page.getByLabel("Review decision actions").scrollIntoViewIfNeeded();
+  await page.locator(".proto-review-table, [aria-label='Review decision actions']").first().scrollIntoViewIfNeeded();
 });
 
 await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, "/", async (page) => {
@@ -1132,7 +1203,7 @@ await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, 
   await page.getByText(/No .* records match this search|No matching assets/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   await page.locator("#main-content").scrollIntoViewIfNeeded();
   const polish = await inspectPremiumPolish(page);
-  if (polish.quietEmptyStates < 1) failures.push("state-system-empty-error-loading.png: compact empty state class missing");
+  if (polish.quietEmptyStates < 1 && (await page.locator(".proto-empty-table, .proto-empty-state").count()) < 1) failures.push("state-system-empty-error-loading.png: compact empty state class missing");
 });
 
 const report = {

@@ -373,6 +373,21 @@ body {
   font: inherit;
 }
 
+#main-content select,
+.proto-field select,
+.proto-upload-settings select {
+  min-height: 38px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--dam-border);
+  border-radius: 12px;
+  appearance: none;
+  background-color: var(--dam-panel);
+  background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25' stroke='%236f6a64' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+}
+
 .proto-search kbd {
   padding: 3px 8px;
   border-radius: 9px;
@@ -556,6 +571,20 @@ input[type="checkbox"] {
   background: var(--dam-soft);
   color: var(--dam-muted);
   font-size: 12px;
+}
+
+.proto-beta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--dam-border);
+  border-radius: var(--radius-control);
+  background: var(--dam-soft);
+  color: var(--dam-muted);
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .proto-asset-grid {
@@ -1272,16 +1301,12 @@ input[type="checkbox"] {
 
 .proto-upload-settings select {
   width: 100%;
-  min-height: 36px;
   margin-top: 6px;
-  border: 1px solid var(--dam-border);
-  border-radius: 10px;
-  background: var(--dam-panel);
 }
 
 .proto-upload-queue progress {
   width: 210px;
-  accent-color: #4d7d3c;
+  accent-color: var(--dam-ink);
 }
 
 .proto-upload-row {
@@ -1306,7 +1331,7 @@ input[type="checkbox"] {
 }
 
 .proto-upload-row em {
-  color: #4d7d3c;
+  color: var(--dam-ink);
   font-style: normal;
   font-weight: 800;
 }
@@ -1822,23 +1847,336 @@ input[type="checkbox"] {
   display: none;
 }
 
-.proto-root .beta-report-button {
-  position: fixed;
-  right: 26px;
-  bottom: 26px;
-  z-index: 70;
-  display: inline-flex;
-  min-width: 136px;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--dam-black);
+.proto-sidebar-tools {
+  display: grid;
+  gap: 8px;
+}
+
+.proto-sidebar-tools .beta-inline-tool,
+.proto-mobile-top .beta-inline-tool {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--dam-border);
   border-radius: var(--radius-control);
-  background: var(--dam-black);
-  color: #fff;
-  box-shadow: var(--shadow-panel);
-  font-size: 13px;
+  background: var(--dam-panel);
+  color: var(--dam-ink);
+  font-size: 12px;
   font-weight: 850;
+}
+
+.proto-mobile-top .beta-inline-tool {
+  width: auto;
+  min-width: 104px;
+  padding-inline: 12px;
+}
+
+.proto-root .beta-report-button {
+  display: none;
+}
+
+.proto-upload-safety-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--dam-border);
+  border-radius: var(--radius-control);
+  background: var(--dam-soft);
+  color: var(--dam-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.proto-upload-total-progress {
+  display: grid;
+  min-width: 180px;
+  gap: 5px;
+  color: var(--dam-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.proto-upload-table-head {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 90px 110px 190px 34px;
+  gap: 14px;
+  padding: 0 14px 8px 92px;
+  color: var(--dam-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.proto-upload-total-progress progress,
+.proto-upload-progress progress,
+.proto-upload-queue progress {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dam-soft);
+  color: #11110f;
+  accent-color: #11110f;
+}
+
+.proto-upload-total-progress progress::-webkit-progress-bar,
+.proto-upload-progress progress::-webkit-progress-bar,
+.proto-upload-queue progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: var(--dam-soft);
+}
+
+.proto-upload-total-progress progress::-webkit-progress-value,
+.proto-upload-progress progress::-webkit-progress-value,
+.proto-upload-queue progress::-webkit-progress-value,
+.proto-upload-total-progress progress::-moz-progress-bar,
+.proto-upload-progress progress::-moz-progress-bar,
+.proto-upload-queue progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: #11110f;
+}
+
+.proto-upload-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 8px;
+}
+
+.proto-upload-meter {
+  display: block;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ebe8e2;
+}
+
+.proto-upload-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #11110f;
+}
+
+.proto-upload-progress small {
+  color: var(--dam-muted);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.proto-upload-meta-card {
+  box-shadow: var(--shadow-card);
+}
+
+.proto-review-buckets > button,
+.proto-review-buckets > section {
+  border-radius: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.proto-review-buckets > button.is-active {
+  border-color: var(--dam-border-strong);
+  background: var(--dam-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.proto-review-table .proto-table-row {
+  min-height: 78px;
+}
+
+.proto-skeleton-row {
+  pointer-events: none;
+  color: var(--dam-faint);
+}
+
+.proto-skeleton-row > span:not(:first-child),
+.proto-skeleton-row .proto-row-thumb {
+  min-height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--dam-soft), #ebe7e1, var(--dam-soft));
+}
+
+.proto-empty-table {
+  padding: 28px;
+  border-top: 1px solid var(--dam-border);
+  color: var(--dam-muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.proto-empty-state {
+  grid-column: 1 / -1;
+  padding: 28px;
+  border: 1px dashed var(--dam-border-strong);
+  border-radius: var(--radius-card);
+  background: var(--dam-panel);
+  color: var(--dam-muted);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.proto-permission-row {
+  align-items: center;
+}
+
+.proto-permission-row > span {
+  color: var(--dam-ink);
+}
+
+.proto-permission-row > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dam-muted);
+  white-space: nowrap;
+}
+
+.proto-disabled-note {
+  margin: -4px 0 0;
+  color: var(--dam-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.proto-effective-role {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.proto-scope-card strong span,
+.proto-scope-card strong small {
+  display: block;
+}
+
+.proto-scope-card strong small {
+  margin-top: 3px;
+  color: var(--dam-muted);
+  font-size: 12px;
+}
+
+.proto-admin-meta-grid {
+  align-items: start;
+}
+
+.proto-beta-status-card {
+  grid-column: span 1;
+}
+
+.proto-beta-status-card .proto-dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.proto-beta-status-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 2px;
+  font-size: 13px;
+}
+
+.proto-beta-status-card h3 span {
+  display: inline-grid;
+  min-width: 24px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--dam-soft);
+  color: var(--dam-muted);
+}
+
+.proto-beta-status-card .proto-settings-row {
+  min-height: 48px;
+  gap: 8px;
+  font-size: 12px;
+  align-items: start;
+  padding-block: 8px;
+}
+
+.proto-beta-status-card .proto-settings-row small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+}
+
+.proto-beta-status-card .proto-settings-row strong {
+  line-height: 1.32;
+}
+
+.proto-comparison-panel header {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.proto-comparison-panel header strong,
+.proto-comparison-panel header span {
+  display: block;
+}
+
+.proto-comment-item strong {
+  display: grid;
+  gap: 2px;
+}
+
+.proto-comment-item small {
+  color: var(--dam-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.proto-check-row {
+  justify-content: start;
+}
+
+.proto-check-row span {
+  margin-left: auto;
+}
+
+.proto-requests-grid {
+  grid-template-columns: minmax(820px, 1fr) 340px;
+  gap: 20px;
+}
+
+.proto-requests-table .proto-table-head,
+.proto-requests-table .proto-table-row {
+  grid-template-columns: minmax(190px, 1.45fr) minmax(92px, .72fr) 80px minmax(82px, .68fr) 70px minmax(84px, .68fr) minmax(68px, .52fr) 18px;
+  gap: 8px;
+}
+
+.proto-requests-table .proto-table-row {
+  min-height: 74px;
+  align-items: start;
+  padding-block: 12px;
+  font-size: 12px;
+}
+
+.proto-requests-table .proto-table-row > span,
+.proto-requests-table .proto-table-head > span {
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.proto-requests-table .proto-mini-avatar {
+  display: none;
+}
+
+.proto-requests-table .proto-table-row small {
+  display: block;
+  margin-top: 2px;
+}
+
+.proto-schema-card {
+  grid-row: span 2;
+  grid-column: span 2;
 }
 
 .proto-toast {
@@ -1858,6 +2196,17 @@ input[type="checkbox"] {
 
   .proto-featured-collections {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .proto-requests-grid {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+  }
+
+  .proto-requests-table .proto-table-head,
+  .proto-requests-table .proto-table-row {
+    min-width: 720px;
+    grid-template-columns: minmax(220px, 1.2fr) .65fr .55fr .65fr .5fr .65fr .65fr 20px;
   }
 }
 
@@ -2078,6 +2427,124 @@ input[type="checkbox"] {
   .proto-table-head,
   .proto-table-row {
     min-width: 860px;
+  }
+}
+
+@media (max-width: 900px) {
+  .proto-main,
+  .proto-page,
+  .proto-upload-page {
+    overflow-x: hidden;
+  }
+
+  .proto-toolbar,
+  .proto-filter-pills,
+  .proto-review-filters,
+  .proto-tabs,
+  .proto-header-actions {
+    flex-wrap: wrap;
+    overflow: visible;
+    padding-inline: 0;
+  }
+
+  .proto-review-filters .proto-search,
+  .proto-filter-pills .proto-search,
+  .proto-header-actions .proto-search {
+    flex-basis: 100%;
+  }
+
+  .proto-upload-drop-panel,
+  .proto-upload-bottom,
+  .proto-collection-hero,
+  .proto-review-detail-lower,
+  .proto-request-files {
+    grid-template-columns: 1fr;
+  }
+
+  .proto-upload-queue .proto-panel-head,
+  .proto-detail-top,
+  .proto-review-detail-top,
+  .proto-review-detail-top > div:last-child,
+  .proto-detail-top > div,
+  .proto-collection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .proto-upload-table-head,
+  .proto-table-head {
+    display: none;
+  }
+
+  .proto-data-table {
+    overflow: visible;
+  }
+
+  .proto-table-row,
+  .proto-review-table .proto-table-row,
+  .proto-requests-table .proto-table-row,
+  .proto-collections-table .proto-table-row,
+  .proto-users-table .proto-table-row,
+  .proto-schema-card .proto-table-row {
+    min-width: 0;
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+    align-items: start;
+    padding: 12px;
+  }
+
+  .proto-table-row > span,
+  .proto-table-head > span,
+  .proto-upload-row > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .proto-table-row > span:first-child {
+    align-items: start;
+  }
+
+  .proto-upload-row {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 8px 12px;
+    min-height: 0;
+    padding: 12px 0;
+  }
+
+  .proto-upload-row > span:first-child {
+    grid-row: span 5;
+    width: 54px;
+    height: 42px;
+  }
+
+  .proto-upload-row .proto-upload-progress,
+  .proto-upload-total-progress {
+    width: 100%;
+  }
+
+  .proto-upload-row button {
+    justify-self: start;
+  }
+
+  .proto-upload-queue footer {
+    display: grid;
+    gap: 4px;
+  }
+
+  .proto-review-buckets,
+  .proto-featured-collections,
+  .proto-collection-grid,
+  .proto-mini-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .proto-decision-card > button {
+    grid-template-columns: 1fr 20px;
+  }
+
+  .proto-decision-card > button small {
+    grid-column: 1 / -1;
   }
 }
 
