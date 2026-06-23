@@ -35,7 +35,7 @@ export function readCatalogSearchRequest(params: Pick<URLSearchParams, "get" | "
     .filter(Boolean)
     .slice(0, 40);
   const view = normalizeTextField(params.get("view"), "", 80) || undefined;
-  const collection = normalizeTextField(params.get("collection"), "", 80) || undefined;
+  const collection = normalizeTextField(params.get("collection"), "", 120) || undefined;
   const intent = normalizeTextField(params.get("intent"), "", 40) || undefined;
   const sort = normalizeTextField(params.get("sort"), "", 40) || undefined;
 

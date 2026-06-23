@@ -1,5 +1,4 @@
 export { EnterpriseHelpPage, EnterpriseInsightsPage } from "./enterprise/EnterpriseDamRedesign";
-export { EnterpriseBrandHubPage } from "./enterprise/BrandHubPage";
 export { EnterpriseDashboardPage } from "./enterprise/DashboardPage";
 export { RequestsPage } from "./enterprise/RequestsPage";
 export { MyTasksPage } from "./enterprise/MyTasksPage";
@@ -7,6 +6,7 @@ export { RecentUploadsPage } from "./enterprise/RecentUploadsPage";
 export {
   PrototypeAdminPage as EnterpriseAdminPage,
   PrototypeAssetDetailPage as EnterpriseAssetDetailPage,
+  PrototypeBrandKitsPage as EnterpriseBrandHubPage,
   PrototypeCollectionsDistribute as EnterpriseCollectionsPage,
   PrototypeLibraryPage as EnterpriseLibraryPage,
   PrototypeReviewApprove as EnterpriseReviewPage,

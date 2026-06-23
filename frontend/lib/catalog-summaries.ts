@@ -18,6 +18,7 @@ import {
   matchesCatalogFilter,
   savedViewDefinitions
 } from "@/lib/catalog-language";
+import { albumCollectionId, assetHasImportedAlbum, assetMatchesAlbumCollection, assetPrimaryAlbumName } from "@/lib/catalog-albums";
 import { collectionImageUrl } from "@/lib/presentation";
 import { canReview } from "@/lib/permissions";
 import { assetForRolePayload } from "@/lib/source-redaction";
@@ -56,7 +57,44 @@ function approvalSummary(assets: StockMediaAsset[]) {
 
 export function buildCollections(assets: StockMediaAsset[], role: DemoRole): CatalogCollection[] {
   const approvedOrInternal = assets.filter(assetIsApproved);
-  return collectionDefinitions.map((definition) => {
+  const albumGroups = new Map<string, StockMediaAsset[]>();
+  assets.filter(assetHasImportedAlbum).forEach((asset) => {
+    const album = assetPrimaryAlbumName(asset);
+    albumGroups.set(album, [...(albumGroups.get(album) || []), asset]);
+  });
+
+  const albumCollections = [...albumGroups.entries()]
+    .sort((left, right) => right[1].length - left[1].length || left[0].localeCompare(right[0], undefined, { numeric: true }))
+    .slice(0, 60)
+    .map(([album, matching]) => {
+      const warning = matching.some((asset) => asset.peopleRisk === "Possible minors")
+        ? "Contains children/youth review items"
+        : matching.some((asset) => asset.peopleRisk === "Adults visible")
+          ? "People visible in some assets"
+          : undefined;
+      return {
+        id: albumCollectionId(album),
+        name: album,
+        description: "Imported LM Photos album membership",
+        count: matching.length,
+        countLabel: `${matching.length.toLocaleString()} item${matching.length === 1 ? "" : "s"}`,
+        dateRange: dateRangeFor(matching),
+        ministry: "Source album",
+        approvalSummary: approvalSummary(matching),
+        peopleWarning: warning,
+        searchQuery: album,
+        viewId: albumCollectionId(album),
+        images: matching
+          .slice(0, 5)
+          .map((asset) => {
+            const payload = assetForRolePayload(role, asset);
+            return { src: collectionImageUrl(asset, role), alt: payload.thumbnailAlt || "Media preview" };
+          })
+          .filter((image): image is { src: string; alt: string } => Boolean(image.src))
+      };
+    });
+
+  const definedCollections = collectionDefinitions.map((definition) => {
     const routeMatches = definition.routeFilter
       ? assets.filter((asset) => matchesCatalogFilter(asset, definition.routeFilter || ""))
       : [];
@@ -91,11 +129,14 @@ export function buildCollections(assets: StockMediaAsset[], role: DemoRole): Cat
         .filter((image): image is { src: string; alt: string } => Boolean(image.src))
     };
   });
+  return [...albumCollections, ...definedCollections];
 }
 
 export function collectionRouteFilter(collectionId: string) {
   return collectionDefinitionForId(collectionId)?.routeFilter;
 }
+
+export { assetMatchesAlbumCollection };
 
 export function buildMetadataHealth(assets: StockMediaAsset[]): MetadataHealthSummary {
   const health = assets.map(assetMetadataHealth);

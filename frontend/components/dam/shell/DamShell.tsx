@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import { Toaster } from "sonner";
-import { BetaPrototypeTools } from "@/components/BetaPrototypeTools";
 import { AppSidebar } from "@/components/dam/shell/AppSidebar";
 import { DamCommandHeader } from "@/components/dam/shell/DamCommandHeader";
 import { getVisibleMobileNavItems, workspaceCopyForPath } from "@/components/dam/shell/damShellNav";
@@ -144,7 +143,6 @@ export function DamShell({ children }: { children: ReactNode }) {
         <div id="main-content" className="relative z-10 min-w-0 flex-1 pb-4 md:pb-10">
           <Suspense fallback={null}>{children}</Suspense>
         </div>
-        <BetaPrototypeTools />
         <Toaster
           position="bottom-center"
           offset={{ bottom: "7.25rem" }}

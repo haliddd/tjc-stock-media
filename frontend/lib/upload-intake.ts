@@ -69,8 +69,11 @@ export type UploadIntakeValidationError = {
   status: 400 | 403 | 503;
 };
 
+type UploadIntakeResponseBody = ReturnType<typeof buildUploadIntakeResponse>;
+type PublicUploadIntakeResponseBody = Omit<UploadIntakeResponseBody, "betaBoundaries">;
+
 export type SubmitUploadIntakeResult = {
-  body: ReturnType<typeof buildUploadIntakeResponse>;
+  body: UploadIntakeResponseBody | PublicUploadIntakeResponseBody;
   status: 200 | 503;
 };
 
@@ -364,11 +367,16 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     adminTasks: intake.adminTasks,
     systemWarnings: intake.systemWarnings,
     reviewWarnings: intake.reviewWarnings,
-    betaBoundaries: uploadBetaBoundaries,
     storageMode,
     custodyMode: storageMode === "local-runtime" ? "local-private-beta-staging" : storageMode,
-    resourceSpaceWritten: false
+    resourceSpaceWritten: false,
+    betaBoundaries: uploadBetaBoundaries
   };
+}
+
+function publicUploadIntakeResponse(body: UploadIntakeResponseBody): PublicUploadIntakeResponseBody {
+  const { betaBoundaries: _betaBoundaries, ...safeBody } = body;
+  return safeBody;
 }
 
 function uploadIntakeSuggestedTags(value: string) {
@@ -414,7 +422,8 @@ async function persistUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRo
 
 export async function submitUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRole, actor: string): Promise<SubmitUploadIntakeResult> {
   const persisted = await persistUploadIntakeBatch(intake, role, actor);
-  const body = buildUploadIntakeResponse(intake, persisted);
+  const responseBody = buildUploadIntakeResponse(intake, persisted);
+  const body = role === "Contributor" ? publicUploadIntakeResponse(responseBody) : responseBody;
   return {
     body,
     status: body.storageMode === "blocked-no-durable-store" ? 503 : 200
