@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildUploadIntakeResponse, normalizeUploadIntake, uploadIntakeValidationError } from "@/lib/upload-intake";
+import { persistIntakeBatch } from "@/lib/intake-batch-store";
 
 function form(entries: Array<[string, string | File]>) {
   const data = new FormData();
@@ -12,6 +13,10 @@ function photo(name = "photo.jpg") {
 }
 
 describe("upload intake batch validation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("allows minimal contributor packet with files and batch identity", () => {
     const intake = normalizeUploadIntake(form([
       ["files", photo()],
@@ -47,6 +52,46 @@ describe("upload intake batch validation", () => {
     });
     expect(response.resourceSpaceWritten).toBe(false);
     expect(response.betaBoundaries.forbidden).toContain("Public approval, download enablement, or ResourceSpace approval writeback from upload");
+  });
+
+  it("blocks hosted source-link intake until durable cloud storage exists", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const intake = normalizeUploadIntake(form([
+      ["sourceLink", "https://drive.google.com/example"],
+      ["batchName", "Sabbath Service"],
+      ["eventDate", "2026-06-06"],
+      ["ministry", "Internet Ministry"],
+      ["source", "Media Team"]
+    ]));
+    const persisted = await persistIntakeBatch({
+      actor: "test",
+      role: "Contributor",
+      defaultAssetStatus: "Needs Review",
+      defaultUsageScope: "Do Not Publish",
+      source: {
+        kind: "drive-link",
+        sourceLink: "captured-redacted",
+        uploader: "Media Team"
+      },
+      detected: intake.detected,
+      mediaInventory: intake.mediaInventory,
+      suggestions: {
+        tags: [],
+        tjcTerms: [],
+        collections: [],
+        requestedUse: []
+      },
+      riskFlags: intake.riskFlags,
+      reviewerTasks: intake.reviewerTasks,
+      adminTasks: intake.adminTasks,
+      files: intake.files,
+      sourceLinkCaptured: true
+    });
+    const response = buildUploadIntakeResponse(intake, persisted);
+
+    expect(response.ok).toBe(false);
+    expect(response.storageMode).toBe("blocked-no-durable-store");
+    expect(response.message).toContain("ResourceSpace cloud pending");
   });
 
   it("blocks no files/link and missing batch identity only", () => {

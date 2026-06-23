@@ -1023,11 +1023,12 @@ export function EnterpriseUploadPage() {
     const response = await fetch("/api/upload", { method: "POST", body: form });
     const body = await response.json().catch(() => ({}));
     setSubmitting(false);
-    setReceipt(body);
     if (response.ok) {
+      setReceipt(body);
       window.localStorage.removeItem(uploadDraftKey);
       setMessage("");
     } else {
+      setReceipt(null);
       setMessage(body.message || body.error || "We could not send these photos. Nothing was published.");
     }
   }

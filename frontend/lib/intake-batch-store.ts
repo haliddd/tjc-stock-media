@@ -171,11 +171,11 @@ export async function persistIntakeBatch(input: PersistIntakeBatchInput): Promis
   const batchId = safeBatchId(input.detected.eventName);
   const now = new Date().toISOString();
   const hasFiles = input.files.length > 0;
-  if (productionRuntime() && hasFiles) {
+  if (productionRuntime()) {
     return {
       batchId,
       storageMode: "blocked-no-durable-store",
-      blockedReason: "Production browser file intake requires durable storage or admin/Drive intake."
+      blockedReason: "ResourceSpace cloud pending. Cloud upload intake requires durable storage or admin/Drive intake."
     };
   }
 
