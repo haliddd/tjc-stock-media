@@ -39,6 +39,7 @@ export type AuditEventType =
   | "resourcespace_write_attempted"
   | "resourcespace_write_succeeded"
   | "resourcespace_write_failed"
+  | "request_recorded"
   | "original_access_requested"
   | "original_access_granted"
   | "original_access_denied"
@@ -63,6 +64,7 @@ export type AuditAccountabilityArea =
   | "duplicate"
   | "taxonomy"
   | "search"
+  | "request-management"
   | "admin-readiness"
   | "intake"
   | "beta-feedback";
@@ -127,6 +129,7 @@ const auditEventTypes: AuditEventType[] = [
   "resourcespace_write_attempted",
   "resourcespace_write_succeeded",
   "resourcespace_write_failed",
+  "request_recorded",
   "original_access_requested",
   "original_access_granted",
   "original_access_denied",
@@ -173,6 +176,7 @@ const auditAccountabilityAreas: Record<AuditEventType, AuditAccountabilityArea> 
   resourcespace_write_attempted: "resourcespace-sync",
   resourcespace_write_succeeded: "resourcespace-sync",
   resourcespace_write_failed: "resourcespace-sync",
+  request_recorded: "request-management",
   original_access_requested: "original-access",
   original_access_granted: "original-access",
   original_access_denied: "original-access",

@@ -15,6 +15,7 @@ import { packageDraftDiagnostics } from "@/lib/package-store";
 import { derivativeIndexDiagnostics } from "@/lib/derivative-index";
 import { resourceSpaceFieldMapDiagnostics, resourceSpaceWritebackFieldMapDiagnostics } from "@/lib/resourcespace-field-map";
 import { resourceSpaceApiReadDiagnostics } from "@/lib/media-source/resourcespace-api";
+import { requestRecordDiagnostics } from "@/lib/request-record-store";
 import { runtimeStoreDiagnostics } from "@/lib/runtime-file-store";
 import { savedSearchDiagnostics } from "@/lib/saved-search-store";
 import { usageAnalyticsDiagnostics } from "@/lib/usage-analytics";
@@ -41,6 +42,7 @@ export function buildIntegrationReadiness({
   const feedback = betaFeedbackDiagnostics();
   const packages = packageDraftDiagnostics();
   const savedSearches = savedSearchDiagnostics();
+  const requests = requestRecordDiagnostics();
   const inviteCodes = betaChurchInviteCodeDiagnostics();
   const writebackFieldMap = resourceSpaceWritebackFieldMapDiagnostics();
   const runtimeStore = runtimeStoreDiagnostics();
@@ -220,6 +222,14 @@ export function buildIntegrationReadiness({
       detail: feedback.kvConfigured
         ? `Vercel KV feedback storage is configured. Blob attachments: ${feedback.blobConfigured ? "configured" : "not configured"}. Records: ${feedback.count.toLocaleString()}; open: ${feedback.openCount.toLocaleString()}; critical open: ${feedback.criticalOpenCount.toLocaleString()}.`
         : `Feedback is using ${feedback.primaryStorageMode}${feedback.hostedRuntime ? " in hosted runtime" : ""}; this is suitable for local/private beta rehearsal only, not wider rollout. Records: ${feedback.count.toLocaleString()}; open: ${feedback.openCount.toLocaleString()}; critical open: ${feedback.criticalOpenCount.toLocaleString()}. Configure Vercel KV for durable hosted feedback and Blob for attachments before larger testing.`
+    },
+    {
+      id: "request-record-storage",
+      label: "Request records",
+      ready: requests.count > 0,
+      owner: "Portal",
+      state: requests.count > 0 ? "Degraded" : "Pending setup",
+      detail: `Request records use ${requests.storageMode}; suitable for local/private beta only, not wider rollout. Requests: ${requests.count.toLocaleString()}; open: ${requests.openCount.toLocaleString()}; blocked: ${requests.blockedCount.toLocaleString()}. Connect durable request workflow storage before team assignment or notifications are promised.`
     },
     {
       id: "saved-search-storage",

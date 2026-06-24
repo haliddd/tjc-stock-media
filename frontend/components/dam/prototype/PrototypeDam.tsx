@@ -81,10 +81,10 @@ const navGroups = [
 const mobileNav = [
   { label: "Library", href: "/library", icon: LayoutGrid },
   { label: "Collections", href: "/collections", icon: Folder },
-  { label: "Uploads", href: "/upload", icon: Upload },
-  { label: "Review", href: "/review", icon: ShieldCheck },
-  { label: "More", href: "/admin", icon: MoreHorizontal }
-];
+  { label: "Uploads", href: "/upload", icon: Upload, guard: canUpload },
+  { label: "Review", href: "/review", icon: ShieldCheck, guard: canReview },
+  { label: "More", href: "/admin", icon: MoreHorizontal, guard: canAdmin }
+] satisfies Array<{ label: string; href: string; icon: typeof LayoutGrid; guard?: (role: DemoRole) => boolean }>;
 
 function pathActive(pathname: string, href: string) {
   if (href === "/library") return pathname === "/" || pathname === "/library" || pathname.startsWith("/library/");
@@ -221,7 +221,7 @@ function AssetImage({ asset, variant = "card" }: { asset?: StockMediaAsset; vari
       </div>
     );
   }
-  return <img src={resolvedSrc} alt={asset?.thumbnailAlt || displayTitle(asset)} loading="lazy" onError={() => asset && setResolvedSrc(fallbackPhotoForAsset(asset))} />;
+  return <img src={resolvedSrc || src} alt={asset?.thumbnailAlt || displayTitle(asset)} loading="lazy" onError={() => asset && setResolvedSrc(fallbackPhotoForAsset(asset))} />;
 }
 
 function assetMeta(asset: StockMediaAsset) {
@@ -279,19 +279,14 @@ function PrototypeMobileBars() {
         <IconButton label="Notifications"><Bell size={17} /></IconButton>
       </header>
       <nav className="proto-mobile-bottom" aria-label="Mobile navigation">
-        {mobileNav.map((item) => {
+        {mobileNav.filter((item) => !item.guard || item.guard(role)).map((item) => {
           const Icon = item.icon;
           const active = pathActive(pathname, item.href);
-          const disabled =
-            (item.href === "/upload" && !canUpload(role)) ||
-            (item.href === "/review" && !canReview(role)) ||
-            (item.href === "/admin" && !canAdmin(role));
           return (
             <Link
               key={item.href}
-              href={disabled ? routeWithRole("/library", role) : routeWithRole(item.href, role)}
-              className={`${active ? "is-active" : ""}${disabled ? " is-disabled" : ""}`}
-              aria-disabled={disabled}
+              href={routeWithRole(item.href, role)}
+              className={active ? "is-active" : ""}
             >
               <Icon size={18} />
               <span>{item.label}</span>
@@ -565,7 +560,9 @@ export function PrototypeLibraryPage() {
                 </div>
               ) : null}
             </div>
-            <LinkButton className="proto-upload-button" href={routeWithRole("/upload", role)} tone="primary">Upload <ChevronDown size={14} /></LinkButton>
+            {canUpload(role) ? (
+              <LinkButton className="proto-upload-button" href={routeWithRole("/upload", role)} tone="primary">Upload <ChevronDown size={14} /></LinkButton>
+            ) : null}
           </div>
         </header>
         <div className="proto-toolbar">
@@ -662,6 +659,24 @@ export function PrototypeUploadIntake() {
   const [message, setMessage] = useState("");
   const canSend = canUpload(role);
 
+  if (!canSend) {
+    return (
+      <div className="proto-flow-page">
+        <section className="proto-flow-card proto-upload-card" aria-label="Upload access unavailable">
+          <header><h1>Upload / Intake</h1></header>
+          <div className="proto-access-block">
+            <ShieldCheck size={24} aria-hidden="true" />
+            <div>
+              <h2>Contributor access required</h2>
+              <p>Viewer role can browse approved media and create requests, but cannot upload files or start intake records.</p>
+            </div>
+          </div>
+          <p className="proto-muted">Ask media team to switch to Contributor, Reviewer, or DAM Admin before sending intake.</p>
+        </section>
+      </div>
+    );
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -721,7 +736,7 @@ export function PrototypeUploadIntake() {
                 <input type={key === "eventDate" ? "date" : "text"} value={form[key as keyof typeof form]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
               </label>
             ))}
-            <Button type="submit" tone="primary" disabled={!canSend}>{canSend ? "Start upload" : "Contributor access required"}</Button>
+            <Button type="submit" tone="primary">Start upload</Button>
             <p className="proto-muted">Every imported asset defaults to Needs Review / Do Not Publish.</p>
           </div>
         </div>

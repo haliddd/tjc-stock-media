@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { BETA_SESSION_ROLE_HEADER, BETA_SESSION_VERIFIED_HEADER } from "@/lib/beta-auth";
@@ -10,20 +13,30 @@ import { createBetaFeedback, isBetaFeedbackDurableStorageError, listBetaFeedback
 import { durableRuntimeStoreConfigured } from "@/lib/env";
 import { demoFallbackAssets, demoFallbackStatus } from "@/lib/media-source/demo-fallback";
 import { assetWithRoleImageUrls } from "@/lib/presentation";
+import { listPendingReviewWrites, pendingReviewWriteDiagnostics } from "@/lib/pending-review-writes";
 import { requestIdentity, resolveClientRoleOverride } from "@/lib/request-identity";
 import { resourceSpaceSearchAll } from "@/lib/resourcespace-client";
 import { validateAssetMetadataContract } from "@/lib/resourcespace-schema";
-import { isRuntimeWriteBlockedError, runtimeStoreDiagnostics, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
+import { isRuntimeJsonReadError, isRuntimeWriteBlockedError, runtimeStoreDiagnostics, runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 import { assetForRolePayload } from "@/lib/source-redaction";
 import { taxonomyGovernanceForRole } from "@/lib/taxonomy";
 import type { StockMediaAsset } from "@/lib/types";
 
 const originalEnv = { ...process.env };
+const tempRoots: string[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   process.env = { ...originalEnv };
   vi.restoreAllMocks();
+  await Promise.all(tempRoots.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
+
+async function useTempRuntimeRoot(prefix = "tjc-production-hardening-test-") {
+  const root = await mkdtemp(path.join(tmpdir(), prefix));
+  tempRoots.push(root);
+  process.env.TJC_STOCK_MEDIA_ROOT = root;
+  return root;
+}
 
 function nextRequest(url: string) {
   return new NextRequest(url);
@@ -288,6 +301,99 @@ describe("production runtime write guard", () => {
     })).rejects.toSatisfy(isBetaFeedbackDurableStorageError);
 
     await expect(listBetaFeedback()).rejects.toSatisfy(isBetaFeedbackDurableStorageError);
+  });
+
+  it("fails closed and reports diagnostics when pending review JSON is corrupt", async () => {
+    const root = await useTempRuntimeRoot();
+    const pendingDir = path.join(root, ".runtime", "pending-review-writes");
+    await mkdir(pendingDir, { recursive: true });
+    await writeFile(path.join(pendingDir, "bad.json"), "{bad-json");
+
+    expect(() => listPendingReviewWrites()).toThrow();
+    try {
+      listPendingReviewWrites();
+    } catch (error) {
+      expect(isRuntimeJsonReadError(error)).toBe(true);
+    }
+    expect(pendingReviewWriteDiagnostics()).toMatchObject({
+      count: 0,
+      corrupted: true,
+      corruption: { reasonCode: "runtime-json-invalid" }
+    });
+  });
+
+  it("returns partial failure when live writeback succeeds but local sync state cannot be marked synced", async () => {
+    await useTempRuntimeRoot();
+    process.env.RESOURCESPACE_BASE_URL = "https://resourcespace.example.org";
+    process.env.RESOURCESPACE_API_USER = "api";
+    process.env.RESOURCESPACE_API_KEY = "secret";
+    process.env.RESOURCESPACE_ENABLE_WRITEBACK = "1";
+    process.env.RESOURCESPACE_WRITEBACK_MODE = "live";
+    process.env.RESOURCESPACE_FIELD_MAP_JSON = JSON.stringify({
+      approvalStatus: "publish_status",
+      reviewer: "reviewed_by",
+      reviewedDate: "reviewed_date",
+      notes: "approval_notes"
+    });
+    const reviewedDate = new Date().toISOString().slice(0, 10);
+    let resourceReadCount = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const params = new URL(url).searchParams;
+      const fn = params.get("function");
+      if (fn === "do_search") return new Response(JSON.stringify([]), { status: 200 });
+      if (fn === "get_resource_data") {
+        resourceReadCount += 1;
+        return new Response(JSON.stringify(resourceReadCount === 1
+          ? { ref: "123", publish_status: "Needs Review" }
+          : {
+              ref: "123",
+              publish_status: "Approved Public",
+              reviewed_by: "QA Reviewer",
+              reviewed_date: reviewedDate,
+              approval_notes: "Approved after evidence."
+            }), { status: 200 });
+      }
+      if (fn === "update_field") return new Response(JSON.stringify(true), { status: 200 });
+      return new Response(JSON.stringify({ error: "unexpected API call" }), { status: 200 });
+    }));
+    vi.resetModules();
+    const { updateResourceReviewStatus } = await import("@/lib/media-source/resourcespace-api");
+
+    const result = await updateResourceReviewStatus({
+      id: "missing-local-pending-record",
+      resourceId: "123",
+      oldStatus: "Unknown",
+      requestedStatus: "Approved Public",
+      reviewerRole: "Reviewer",
+      reviewerName: "QA Reviewer",
+      createdAt: "2026-06-24T00:00:00.000Z",
+      updatedAt: "2026-06-24T00:00:00.000Z",
+      note: "Approved after evidence.",
+      checklist: {
+        sourceConfirmed: true,
+        rightsConfirmed: true,
+        attributionConfirmed: true,
+        peopleVisibilityConfirmed: true,
+        childrenYouthChecked: true,
+        usageScopeSelected: true,
+        derivativeAvailable: true,
+        sensitiveContextChecked: true,
+        creditRequirementChecked: true,
+        expirationRereviewSet: true,
+        proofLinkAttached: true
+      },
+      blockers: [],
+      syncState: "syncing",
+      retryCount: 0
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: 503,
+      attemptedLiveWriteback: true,
+      reasonCode: "local-sync-state-update-failed",
+      record: null
+    });
   });
 });
 

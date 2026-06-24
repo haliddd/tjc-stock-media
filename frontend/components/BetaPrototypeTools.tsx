@@ -9,6 +9,7 @@ import type { BetaFeedbackSeverity, DemoRole } from "@/lib/types";
 
 const betaTaskModeEnabled = process.env.NEXT_PUBLIC_BETA_TASK_MODE_ENABLED === "1";
 const betaFeedbackEnabled = process.env.NEXT_PUBLIC_BETA_FEEDBACK_ENABLED === "1";
+const betaRoleSwitchSafetyCopy = "Role switch is simulated QA access for beta testing only: not production auth, not SSO, not real user impersonation, and not permission delegation.";
 
 type BetaMission = {
   label: string;
@@ -157,6 +158,7 @@ export function BetaPrototypeTools({ variant = "floating" }: { variant?: "floati
                 <label>Name optional<input value={reporterName} onChange={(event) => setReporterName(event.target.value)} placeholder="Your name" /></label>
                 <label>Redacted screenshot or link optional<input value={screenshotLink} onChange={(event) => setScreenshotLink(event.target.value)} placeholder="Paste a redacted screenshot, Loom, or note link" /></label>
                 <section className="beta-report-safety"><AlertTriangle size={16} /><span>No people, minors, source paths, private URLs, or sensitive media in reports. File attachments are disabled for this beta.</span></section>
+                <section className="beta-report-safety"><AlertTriangle size={16} /><span>{betaRoleSwitchSafetyCopy}</span></section>
                 {message ? <p className={message.startsWith("Saved") ? "beta-report-success" : "beta-report-error"}>{message.startsWith("Saved") ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}{message}</p> : null}
                 <footer>
                   <button type="button" onClick={() => setReportOpen(false)}>Close</button>
@@ -203,6 +205,7 @@ export function BetaPrototypeTools({ variant = "floating" }: { variant?: "floati
               <label>Name optional<input value={reporterName} onChange={(event) => setReporterName(event.target.value)} placeholder="Your name" /></label>
               <label>Redacted screenshot or link optional<input value={screenshotLink} onChange={(event) => setScreenshotLink(event.target.value)} placeholder="Paste a redacted screenshot, Loom, or note link" /></label>
               <section className="beta-report-safety"><AlertTriangle size={16} /><span>No people, minors, source paths, private URLs, or sensitive media in reports. File attachments are disabled for this beta.</span></section>
+              <section className="beta-report-safety"><AlertTriangle size={16} /><span>{betaRoleSwitchSafetyCopy}</span></section>
               {message ? <p className={message.startsWith("Saved") ? "beta-report-success" : "beta-report-error"}>{message.startsWith("Saved") ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}{message}</p> : null}
               <footer>
                 <button type="button" onClick={() => setReportOpen(false)}>Close</button>

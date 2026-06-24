@@ -18,6 +18,10 @@ const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0l
 const preferredDetailAssetId = "368";
 const preferredUnsafeAssetId = "644";
 const fullBrowserQa = process.env.PORTAL_BROWSER_QA_FULL === "1";
+const deepBrowserQa = process.env.PORTAL_BROWSER_QA_DEEP === "1";
+const qaMode = deepBrowserQa
+  ? (fullBrowserQa ? "deep-full-matrix" : "deep-core-matrix")
+  : "standard-screenshot-refresh-critical-guards";
 
 fs.mkdirSync(path.join(outDir, "qa"), { recursive: true });
 fs.mkdirSync(path.join(outDir, "primitive-proof"), { recursive: true });
@@ -117,6 +121,7 @@ let browser = await launchBrowser();
 const failures = [];
 const warnings = [];
 const consoleErrors = [];
+const pageErrors = [];
 const expectedDeniedConsole = [];
 const networkFailures = [];
 
@@ -243,6 +248,13 @@ async function closeContext(context) {
   ]).catch(() => {});
 }
 
+async function closeBrowserInstance(instance = browser) {
+  await Promise.race([
+    instance?.close(),
+    new Promise((resolve) => setTimeout(resolve, 3500))
+  ]).catch(() => {});
+}
+
 async function withTimeout(label, ms, work) {
   let timer;
   try {
@@ -299,6 +311,14 @@ async function newRolePage(role, width, height) {
     if (isExpectedDeniedConsole(item.text)) expectedDeniedConsole.push(item);
     else consoleErrors.push(item);
   });
+  page.on("pageerror", (error) => {
+    pageErrors.push({
+      role,
+      width,
+      url: page.url(),
+      text: String(error?.stack || error?.message || error).slice(0, 500)
+    });
+  });
   page.on("requestfailed", (request) => {
     const url = request.url();
     const failure = request.failure()?.errorText || "request failed";
@@ -329,11 +349,13 @@ async function openCommandPalette(page) {
   return commandSearch;
 }
 
-async function gotoAndSettle(page, url) {
+async function gotoAndSettle(page, url, options = {}) {
+  const waitUntil = options.waitUntil || "load";
+  const timeout = options.timeout || 60000;
   let response;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
-      response = await page.goto(url, { waitUntil: "load", timeout: 60000 });
+      response = await page.goto(url, { waitUntil, timeout });
       break;
     } catch (error) {
       const message = String(error?.message || error);
@@ -352,20 +374,38 @@ async function gotoAndSettle(page, url) {
   return response;
 }
 
+async function gotoAndSettleLightweight(page, url) {
+  return gotoAndSettle(page, url, { waitUntil: "domcontentloaded", timeout: 30000 });
+}
+
 async function waitForAppReady(page, routePath, role) {
   const pathname = new URL(routePath, base).pathname;
   await page.waitForFunction(() => !/Loading ResourceSpace data/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
   if (pathname === "/") {
-    await page.getByLabel(/Search DAM assets|Search media library/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
-    await page.locator(".ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+    await page.locator([
+      'input[placeholder*="Search assets"]',
+      'input[aria-label*="Search DAM assets"]',
+      'input[aria-label*="Search media library"]',
+      '[role="searchbox"]'
+    ].join(", ")).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+    await page.locator([
+      ".proto-asset-card",
+      ".proto-asset-grid article",
+      ".ed-mobile-card-list article",
+      ".ed-grid .ed-asset-card",
+      ".ed-desktop-table tbody tr",
+      ".ed-empty-state",
+      ".proto-empty-state"
+    ].join(", ")).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   }
   if (pathname === "/packages") {
-    await page.locator(".ed-builder-grid, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+    await page.locator(".ed-builder-grid, .ed-empty-state, .proto-package-builder, .proto-package-page").first().waitFor({ state: "visible", timeout: 10000 })
+      .catch(() => page.getByText(/Package Draft|Distribution|Package/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {}));
   }
   if (pathname === "/review" && (role === "Reviewer" || role === "DAM Admin")) {
     await page.waitForFunction(() => !/Loading ResourceSpace review queue/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
-    await page.locator(".ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 })
-      .catch(() => page.getByText(/Evidence and next action|Review Evidence/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {}));
+    await page.locator(".ed-review-list .ed-queue-item, .proto-review-queue, .proto-review-list, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 10000 })
+      .catch(() => page.getByText(/Evidence and next action|Review Evidence|Queue list/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {}));
   }
 }
 
@@ -403,6 +443,14 @@ async function assertRouteIdentity({ path: pathName, role, h1, activeLabel, prim
 
 async function waitForVisibleText(page, text, timeout = 5000) {
   await page.getByText(text).first().waitFor({ state: "visible", timeout }).catch(() => {});
+}
+
+async function safeBodyText(page, label, timeout = 10000) {
+  return await withTimeout(label, timeout + 1000, () => page.locator("body").innerText({ timeout }))
+    .catch((error) => {
+      failures.push(`${label}: ${error.message || error}`);
+      return "";
+    });
 }
 
 async function waitForVisibleImages(page) {
@@ -474,7 +522,7 @@ async function advanceUploadToFiles(page, prefix = "Browser QA") {
 }
 
 function uploadPhotoInput(page) {
-  return page.getByLabel("Upload photos from computer", { exact: true });
+  return page.locator('input[type="file"]').first();
 }
 
 function googleDriveInput(page) {
@@ -735,6 +783,172 @@ async function resolveQaAssetFixtures() {
 
 await resolveQaAssetFixtures();
 
+async function runScreenshotRefreshQa() {
+  console.log(`[browser-qa] ${qaMode}; set PORTAL_BROWSER_QA_DEEP=1 for full interaction sweep`);
+  const requiredWidths = [1440, 1280, 1024, 768, 390, 320];
+  for (const width of requiredWidths) {
+    const { page, context } = await newRolePage("Viewer", width, width <= 390 ? 900 : 1000);
+    try {
+      console.log(`[browser-qa] width-smoke library-viewer ${width}`);
+      await withTimeout(`width smoke ${width}`, 45000, async () => {
+        await gotoAndSettleLightweight(page, base);
+        await waitForAppReady(page, "/", "Viewer");
+        const state = await inspectPageAfterSettledNavigation(page, { label: "library-viewer", role: "Viewer" });
+        if (state.overflowX) failures.push(`library-viewer ${width}: horizontal overflow ${state.scrollWidth}/${state.clientWidth}`);
+        if (state.clippedControls.length) failures.push(`library-viewer ${width}: clipped controls ${JSON.stringify(state.clippedControls)}`);
+        if (state.headerOverlaps.length) failures.push(`library-viewer ${width}: header controls overlap ${JSON.stringify(state.headerOverlaps)}`);
+      });
+    } catch (error) {
+      failures.push(`library-viewer ${width}: ${error.message || error}`);
+    } finally {
+      await closeContext(context);
+    }
+  }
+
+  const screenshotPlan = [...coreRequiredShots, ...extendedRequiredShots].map((shot) => ({ ...shot }));
+  for (const shot of screenshotPlan) {
+    if (["asset-detail-desktop.png", "detail-mobile-320.png", "detail-mobile-390.png"].includes(shot.name)) {
+      shot.path = qaAsset.detail.path;
+    }
+  }
+  for (const shot of screenshotPlan) {
+    if (!hasViewerDetailAsset() && ["asset-detail-desktop.png", "detail-mobile-320.png", "detail-mobile-390.png"].includes(shot.name)) continue;
+    const { page, context } = await newRolePage(shot.role, shot.width, shot.height);
+    console.log(`[browser-qa] screenshot ${shot.name}`);
+    await withTimeout(`screenshot refresh ${shot.name}`, 65000, async () => {
+      await gotoAndSettleLightweight(page, `${base}${shot.path}`);
+      await waitForAppReady(page, shot.path, shot.role);
+      await saveFullPageScreenshot(page, path.join(outDir, shot.name));
+    }).catch((error) => failures.push(`${shot.name}: ${error.message || error}`));
+    await closeContext(context);
+  }
+
+  await runCriticalBrowserGuardQa();
+
+  const currentReport = {
+    checkedAt: new Date().toISOString(),
+    mode: qaMode,
+    viewports: requiredWidths,
+    pages: screenshotPlan.length,
+    qaAsset,
+    screenshots: screenshotPlan.map((shot) => shot.name),
+    consoleErrors,
+    pageErrors,
+    expectedDeniedConsole,
+    networkFailures,
+    warnings,
+    failures
+  };
+  fs.writeFileSync(path.resolve("docs/screenshots/qa/current-local-browser-qa-report.json"), JSON.stringify(currentReport, null, 2));
+  console.log(JSON.stringify({
+    checkedAt: currentReport.checkedAt,
+    mode: currentReport.mode,
+    pages: currentReport.pages,
+    viewports: currentReport.viewports,
+    screenshots: currentReport.screenshots.length,
+    failures: currentReport.failures.length,
+    consoleErrors: currentReport.consoleErrors.length,
+    pageErrors: currentReport.pageErrors.length,
+    networkFailures: currentReport.networkFailures.length,
+    warnings: currentReport.warnings.length,
+    report: "docs/screenshots/qa/current-local-browser-qa-report.json"
+  }));
+}
+
+async function assertTextPresent(page, label, pattern) {
+  const body = await safeBodyText(page, label, 7000);
+  if (!pattern.test(body)) failures.push(`${label}: expected ${pattern}`);
+  return body;
+}
+
+async function runCriticalBrowserGuardQa() {
+  const guardedPages = [
+    { path: "/review", role: "Viewer", label: "viewer review gate", expected: /Review inbox requires reviewer access|Reviewer access required/i },
+    { path: "/review", role: "Contributor", label: "contributor review gate", expected: /Review inbox requires reviewer access|Reviewer access required/i },
+    { path: "/admin", role: "Viewer", label: "viewer admin gate", expected: /Governance requires DAM Admin role|DAM Admin access required/i },
+    { path: "/upload", role: "Viewer", label: "viewer upload gate", expected: /Sharing photos requires Contributor access|Contributor access required/i }
+  ];
+  for (const item of guardedPages) {
+    const { page, context } = await newRolePage(item.role, 390, 900);
+    try {
+      console.log(`[browser-qa] guard ${item.label}`);
+      await withTimeout(item.label, 30000, async () => {
+        await gotoAndSettleLightweight(page, `${base}${item.path}`);
+        await assertTextPresent(page, item.label, item.expected);
+      });
+    } catch (error) {
+      failures.push(`${item.label}: ${error.message || error}`);
+    } finally {
+      await closeContext(context);
+    }
+  }
+
+  {
+    const { page, context } = await newRolePage("Reviewer", 1440, 1000);
+    try {
+      console.log("[browser-qa] guard reviewer review surface");
+      await withTimeout("reviewer review surface", 35000, async () => {
+        await gotoAndSettleLightweight(page, `${base}/review?queue=pending`);
+        await waitForAppReady(page, "/review?queue=pending", "Reviewer");
+        const body = await safeBodyText(page, "reviewer review surface text", 7000);
+        if (!/Review|Queue|Evidence|Approve/i.test(body)) failures.push("reviewer review surface: review/evidence copy missing");
+        if (/ResourceSpace updated successfully/i.test(body)) failures.push("reviewer review surface: fake ResourceSpace success visible");
+      });
+    } catch (error) {
+      failures.push(`reviewer review surface: ${error.message || error}`);
+    } finally {
+      await closeContext(context);
+    }
+  }
+
+  if (hasViewerDetailAsset()) {
+    const { page, context } = await newRolePage("Viewer", 1440, 1000);
+    try {
+      console.log("[browser-qa] guard viewer asset detail");
+      await withTimeout("viewer asset detail guard", 30000, async () => {
+        await gotoAndSettleLightweight(page, `${base}${qaAsset.detail.path}`);
+        const body = await safeBodyText(page, "viewer asset detail text", 7000);
+        if (!/Source\/original files remain restricted|Source file restricted|Request-only|Preview protected/i.test(body)) {
+          failures.push("viewer asset detail: source/original restriction copy missing");
+        }
+        const leaks = visibleOpsLeaks(body);
+        if (leaks.length) failures.push(`viewer asset detail: normal-user ops language leak ${leaks.join(", ")}`);
+      });
+    } catch (error) {
+      failures.push(`viewer asset detail: ${error.message || error}`);
+    } finally {
+      await closeContext(context);
+    }
+  }
+
+  {
+    const { page, context } = await newRolePage("Viewer", 1440, 1000);
+    try {
+      console.log("[browser-qa] guard unsafe downloads");
+      await withTimeout("unsafe download guard", 20000, async () => {
+        await gotoAndSettleLightweight(page, base);
+        const statuses = await page.evaluate(async ({ unsafeId }) => {
+          const unsafe = await fetch(`/api/download/${encodeURIComponent(unsafeId)}?role=Viewer`);
+          const malformed = await fetch(`/api/download/%2E%2E${encodeURIComponent(unsafeId)}?role=Viewer`);
+          return { unsafe: unsafe.status, malformed: malformed.status };
+        }, { unsafeId: qaAsset.unsafe.id });
+        if (![403, 503].includes(statuses.unsafe)) failures.push(`unsafe download browser fetch status ${statuses.unsafe}`);
+        if (statuses.malformed !== 400) failures.push(`malformed download browser fetch status ${statuses.malformed}`);
+      });
+    } catch (error) {
+      failures.push(`unsafe download guard: ${error.message || error}`);
+    } finally {
+      await closeContext(context);
+    }
+  }
+}
+
+if (!deepBrowserQa) {
+  await runScreenshotRefreshQa();
+  await closeBrowserInstance();
+  process.exit(failures.length || consoleErrors.length || pageErrors.length || networkFailures.length ? 1 : 0);
+}
+
 for (const width of qaViewports) {
   for (const item of qaPaths) {
     let completed = false;
@@ -790,7 +1004,7 @@ for (const width of qaViewports) {
   }
 }
 
-await browser.close().catch(() => {});
+await closeBrowserInstance();
 browser = await launchBrowser();
 
 {
@@ -891,14 +1105,15 @@ if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/review?queue=pending`);
   await waitForAppReady(page, "/review?queue=pending", "Reviewer");
+  const reviewShellText = await safeBodyText(page, "review ResourceSpace shell text");
   for (const text of ["Queue list", "Evidence", "Evidence and next action", "Save progress", "Next asset"]) {
-    if ((await page.getByText(text).count()) < 1) failures.push(`review ResourceSpace shell: missing ${text}`);
+    if (!reviewShellText.includes(text)) failures.push(`review ResourceSpace shell: missing ${text}`);
   }
-  if ((await page.getByText(/Review blocked|Approval blocked|Add or verify required evidence|Evidence required/i).count()) < 1) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
-  if ((await page.getByLabel("Review decision actions").count()) < 1) failures.push("review ResourceSpace shell: decision actions footer missing");
-  if ((await page.getByText("Mark checked").count()) > 0) failures.push("review ResourceSpace shell: unsafe Mark checked action visible");
-  if ((await page.locator(".ed-review-list .ed-queue-item.is-active").count()) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
-  if ((await page.getByText(/ResourceSpace updated successfully/i).count()) > 0) failures.push("review ResourceSpace shell: fake ResourceSpace success visible");
+  if (!/Review blocked|Approval blocked|Add or verify required evidence|Evidence required/i.test(reviewShellText)) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
+  if ((await withTimeout("review decision action count", 5000, () => page.getByLabel("Review decision actions").count()).catch(() => 0)) < 1) failures.push("review ResourceSpace shell: decision actions footer missing");
+  if (reviewShellText.includes("Mark checked")) failures.push("review ResourceSpace shell: unsafe Mark checked action visible");
+  if ((await withTimeout("review active queue item count", 5000, () => page.locator(".ed-review-list .ed-queue-item.is-active").count()).catch(() => 0)) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
+  if (/ResourceSpace updated successfully/i.test(reviewShellText)) failures.push("review ResourceSpace shell: fake ResourceSpace success visible");
   await closeContext(context);
 }
 
@@ -1137,11 +1352,13 @@ await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, 
 
 const report = {
   checkedAt: new Date().toISOString(),
+  mode: qaMode,
   viewports: qaViewports,
   pages: qaPaths.length,
   qaAsset,
   screenshots: requiredShots.map((shot) => shot.name),
   consoleErrors,
+  pageErrors,
   expectedDeniedConsole,
   networkFailures,
   warnings,
@@ -1158,11 +1375,12 @@ console.log(
     qaAsset: report.qaAsset,
     failures: report.failures.length,
     consoleErrors: report.consoleErrors.length,
+    pageErrors: report.pageErrors.length,
     networkFailures: report.networkFailures.length,
     warnings: report.warnings.length,
     expectedDeniedConsole: report.expectedDeniedConsole.length,
     report: "docs/screenshots/qa/browser-qa-report.json"
   })
 );
-browser.close().catch(() => {});
-process.exit(failures.length || consoleErrors.length || networkFailures.length ? 1 : 0);
+closeBrowserInstance().catch(() => {});
+process.exit(failures.length || consoleErrors.length || pageErrors.length || networkFailures.length ? 1 : 0);

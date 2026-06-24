@@ -151,6 +151,8 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: 409,
+      attemptedLiveWriteback: false,
+      reasonCode: "resourcespace-api-unconfigured",
       message: "Review decision passed evidence checks and is queued for media-team follow-up. Final library update is not completed from this page."
     };
   }
@@ -159,6 +161,8 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: 409,
+      attemptedLiveWriteback: false,
+      reasonCode: "resourcespace-writeback-disabled",
       message: "ResourceSpace writeback is configured but disabled. Decision remains queued for pending sync."
     };
   }
@@ -172,6 +176,8 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: 409,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-field-map-invalid",
       record: failed,
       message
     };
@@ -185,6 +191,8 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: diagnostics.status,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-api-diagnostics-failed",
       record: failed,
       message: diagnostics.error || "ResourceSpace API smoke failed before writeback."
     };
@@ -197,6 +205,8 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: current.status,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-record-read-failed",
       record: failed,
       message
     };
@@ -208,6 +218,8 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: 409,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-status-conflict",
       record: conflict,
       message
     };
@@ -216,20 +228,12 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
   markPendingReviewWriteSyncing(record.id);
 
   const statusField = resourceSpaceFieldMap.approvalStatus;
-  const statusResult = await resourceSpaceUpdateField(record.resourceId, statusField, record.requestedStatus);
-  if (!statusResult.ok) {
-    const failed = markPendingReviewWriteSyncFailed(record.id, statusResult.error || "ResourceSpace status update failed.");
-    return {
-      ok: false,
-      status: statusResult.status,
-      record: failed,
-      message: statusResult.error || "ResourceSpace status update failed."
-    };
-  }
+  const expectedDate = new Date().toISOString().slice(0, 10);
+  const expectedReviewer = record.reviewerName || record.reviewerRole;
 
   const secondaryResults = await Promise.all([
-    resourceSpaceUpdateField(record.resourceId, resourceSpaceFieldMap.reviewedDate, new Date().toISOString().slice(0, 10)),
-    resourceSpaceUpdateField(record.resourceId, resourceSpaceFieldMap.reviewer, record.reviewerName || record.reviewerRole),
+    resourceSpaceUpdateField(record.resourceId, resourceSpaceFieldMap.reviewedDate, expectedDate),
+    resourceSpaceUpdateField(record.resourceId, resourceSpaceFieldMap.reviewer, expectedReviewer),
     resourceSpaceUpdateField(record.resourceId, resourceSpaceFieldMap.notes, record.note)
   ]);
   const secondaryFailure = secondaryResults.find((result) => !result.ok);
@@ -239,8 +243,23 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: secondaryFailure.status,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-secondary-field-update-failed",
       record: failed,
       message
+    };
+  }
+
+  const statusResult = await resourceSpaceUpdateField(record.resourceId, statusField, record.requestedStatus);
+  if (!statusResult.ok) {
+    const failed = markPendingReviewWriteSyncFailed(record.id, statusResult.error || "ResourceSpace status update failed.");
+    return {
+      ok: false,
+      status: statusResult.status,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-status-update-failed",
+      record: failed,
+      message: statusResult.error || "ResourceSpace status update failed."
     };
   }
 
@@ -251,6 +270,8 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: confirmation.status || 502,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-confirmation-read-failed",
       record: failed,
       message
     };
@@ -259,8 +280,6 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
   const confirmedReviewer = recordValue(confirmation.data, resourceSpaceFieldMap.reviewer);
   const confirmedDate = recordValue(confirmation.data, resourceSpaceFieldMap.reviewedDate);
   const confirmedNotes = recordValue(confirmation.data, resourceSpaceFieldMap.notes);
-  const expectedReviewer = record.reviewerName || record.reviewerRole;
-  const expectedDate = new Date().toISOString().slice(0, 10);
   const confirmed = confirmedStatus === record.requestedStatus
     && valuesMatch(confirmedReviewer, expectedReviewer)
     && valuesMatch(confirmedDate, expectedDate)
@@ -271,15 +290,41 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: 502,
+      attemptedLiveWriteback: true,
+      reasonCode: "resourcespace-confirmation-mismatch",
       record: failed,
       message
     };
   }
 
-  const synced = markPendingReviewWriteSynced(record.id);
+  let synced: ReviewWriteRecord | null;
+  try {
+    synced = markPendingReviewWriteSynced(record.id);
+  } catch (error) {
+    return {
+      ok: false,
+      status: 503,
+      attemptedLiveWriteback: true,
+      reasonCode: "local-sync-state-update-failed",
+      record: null,
+      message: error instanceof Error ? error.message : "Local pending write record could not be marked synced."
+    };
+  }
+  if (!synced) {
+    return {
+      ok: false,
+      status: 503,
+      attemptedLiveWriteback: true,
+      reasonCode: "local-sync-state-update-failed",
+      record: null,
+      message: "ResourceSpace writeback was confirmed, but the local pending write record could not be marked synced."
+    };
+  }
   return {
     ok: true,
     status: 200,
+    attemptedLiveWriteback: true,
+    reasonCode: "resourcespace-writeback-synced",
     record: synced,
     message: "ResourceSpace review fields were updated through the live API."
   };

@@ -2,7 +2,8 @@ import { normalizeDateField, normalizeDisplayTextField, normalizePublicTextField
 import { fileRequiresAdminIntake, routeUploadIntakeForReview, type IntakeRoutingReason } from "@/lib/intake-routing";
 import { nonCanonicalUploadTags, parseUploadTags } from "@/lib/upload-tags";
 import { uploadBetaBoundaries, uploadDefaultState } from "@/lib/workflow-policy";
-import { persistIntakeBatch } from "@/lib/intake-batch-store";
+import { createIntakeBatchId, persistIntakeBatch } from "@/lib/intake-batch-store";
+import { createAuditedRequestRecord, requestRecordForRolePayload, type RequestRecordPayload } from "@/lib/request-record-store";
 import {
   buildDuplicateHints,
   buildMediaInventory,
@@ -69,7 +70,15 @@ export type UploadIntakeValidationError = {
   status: 400 | 403 | 503;
 };
 
-type UploadIntakeResponseBody = ReturnType<typeof buildUploadIntakeResponse>;
+type BaseUploadIntakeResponseBody = ReturnType<typeof buildUploadIntakeResponse>;
+type UploadIntakeResponseBody = BaseUploadIntakeResponseBody & {
+  requestRecord?: RequestRecordPayload;
+  partialFailure?: boolean;
+  reasonCode?: string;
+  linkedIntakeBatchId?: string;
+  intakePersisted?: boolean;
+  blocker?: string;
+};
 type PublicUploadIntakeResponseBody = Omit<UploadIntakeResponseBody, "betaBoundaries">;
 
 export type SubmitUploadIntakeResult = {
@@ -383,10 +392,11 @@ function uploadIntakeSuggestedTags(value: string) {
   return value.split(/[|,]/).map((tag) => tag.trim()).filter(Boolean);
 }
 
-async function persistUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRole, actor: string) {
+async function persistUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRole, actor: string, batchId?: string) {
   if (intake.largeFiles.length) return undefined;
   const sourceLinkCaptured = Boolean(intake.sourceLink);
   return persistIntakeBatch({
+    batchId,
     actor,
     role,
     defaultAssetStatus: "Needs Review",
@@ -420,9 +430,34 @@ async function persistUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRo
   });
 }
 
+async function createUploadIntakeRequestRecord(intake: UploadIntakePacket, batchId: string | undefined, role: DemoRole, actor: string) {
+  const requestRecord = await createAuditedRequestRecord({
+    type: "Upload intake",
+    relatedAsset: intake.eventName || intake.title || "Upload intake batch",
+    blocker: intake.reviewWarnings[0] || "Reviewer handoff pending",
+    requiredEvidence: intake.reviewerTasks.length ? intake.reviewerTasks.slice(0, 8) : ["Uploader declaration", "Event context", "People visibility"],
+    nextAction: intake.largeFiles.length ? "Route large media through admin intake" : "Reviewer reviews intake packet",
+    linkedIntakeBatchId: batchId
+  }, { id: actor, role });
+  return requestRecordForRolePayload(role, requestRecord);
+}
+
 export async function submitUploadIntakeBatch(intake: UploadIntakePacket, role: DemoRole, actor: string): Promise<SubmitUploadIntakeResult> {
-  const persisted = await persistUploadIntakeBatch(intake, role, actor);
-  const responseBody = buildUploadIntakeResponse(intake, persisted);
+  const plannedBatchId = intake.largeFiles.length ? undefined : createIntakeBatchId(intake.detected.eventName);
+  const requestRecord = await createUploadIntakeRequestRecord(intake, plannedBatchId, role, actor);
+  const persisted = await persistUploadIntakeBatch(intake, role, actor, plannedBatchId);
+  const baseResponseBody = buildUploadIntakeResponse(intake, persisted);
+  const responseBody: UploadIntakeResponseBody = baseResponseBody.ok
+    ? { ...baseResponseBody, requestRecord, intakePersisted: Boolean(persisted?.record) }
+    : {
+        ...baseResponseBody,
+        requestRecord,
+        partialFailure: true,
+        reasonCode: "intake-persistence-failed",
+        linkedIntakeBatchId: plannedBatchId,
+        intakePersisted: false,
+        blocker: persisted?.blockedReason || "Intake batch could not be persisted after request record was saved."
+      };
   const body = role === "Contributor" ? publicUploadIntakeResponse(responseBody) : responseBody;
   return {
     body,
