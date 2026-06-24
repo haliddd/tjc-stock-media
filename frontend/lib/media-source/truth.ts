@@ -1,6 +1,7 @@
 import type { MediaSourceStatus } from "@/lib/types";
 
 export type MediaSourceKind = "resourcespace" | "fallback-fixtures" | "media-library";
+export type MediaSourceTruthBoundary = "resourcespace-truth" | "fallback-fixtures" | "media-library";
 
 export function mediaSourceKind(source?: MediaSourceStatus | null): MediaSourceKind {
   if (!source) return "media-library";
@@ -12,5 +13,12 @@ export function mediaSourceKind(source?: MediaSourceStatus | null): MediaSourceK
 
 export function mediaSourceIsLive(source?: MediaSourceStatus | null) {
   if (typeof source?.live === "boolean") return source.live;
-  return Boolean(source && mediaSourceKind(source) === "resourcespace");
+  return Boolean(source && source.adapter === "resourcespace-api" && !source.readOnly);
+}
+
+export function mediaSourceTruthBoundary(source?: MediaSourceStatus | null): MediaSourceTruthBoundary {
+  const kind = mediaSourceKind(source);
+  if (kind === "resourcespace") return "resourcespace-truth";
+  if (kind === "fallback-fixtures") return "fallback-fixtures";
+  return "media-library";
 }

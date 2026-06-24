@@ -128,17 +128,20 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
   return {
     status: sync.ok ? 200 : 202,
     body: {
-      ok: true,
+      ok: sync.ok,
+      queued: true,
       id: assetId,
       action: packet.action,
       label: packet.label,
       notes: packet.note,
       message: sync.ok
-        ? "ResourceSpace review fields were updated through the live API."
-        : `Review decision queued for media-team follow-up. Record status remains unchanged until review is completed. ${sync.message}`,
+        ? "ResourceSpace review fields were updated through the live API and confirmed by post-write re-read."
+        : `Review decision queued for media-team follow-up. ResourceSpace remains authoritative and record status remains unchanged until sync is completed and confirmed. ${sync.message}`,
       pendingWriteId: pending.id,
       syncState: sync.ok ? "synced_to_resourcespace" : sync.record?.syncState || pending.syncState,
       sync,
+      resourceSpaceWritten: sync.ok,
+      writePolicy: "ResourceSpace-first with post-write re-read confirmation; unsafe writes stay queued/fail-closed.",
       auditRecord: {
         ...reviewEvidencePacketAuditRecord(packet, role, identity.id, pending.createdAt),
         blockers: pending.blockers
@@ -148,7 +151,7 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
         recorded: usageEvent.recorded,
         reason: usageEvent.reason
       },
-      mode: sync.ok ? "resourcespace-live-writeback" : "review-follow-up-preview"
+      mode: sync.ok ? "resourcespace-live-writeback-confirmed" : "resourcespace-write-queued-fail-closed"
     }
   };
 }

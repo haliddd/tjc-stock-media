@@ -151,7 +151,7 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: 409,
-      message: "Review decision passed evidence checks and is queued for media-team follow-up. Final library update is not completed from this page."
+      message: "ResourceSpace API is not configured. Decision remains queued; no ResourceSpace approval truth was written."
     };
   }
 
@@ -159,7 +159,7 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     return {
       ok: false,
       status: 409,
-      message: "ResourceSpace writeback is configured but disabled. Decision remains queued for pending sync."
+      message: "ResourceSpace writeback is configured but disabled. Decision remains queued; no ResourceSpace approval truth was written."
     };
   }
 
@@ -266,7 +266,7 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     && valuesMatch(confirmedDate, expectedDate)
     && valuesMatch(confirmedNotes, record.note);
   if (!confirmed) {
-    const message = "ResourceSpace writeback completed but confirmation fields did not match the requested evidence packet.";
+    const message = "ResourceSpace writeback completed but post-write confirmation fields did not match the requested evidence packet; treating write as failed closed.";
     const failed = markPendingReviewWriteSyncFailed(record.id, message);
     return {
       ok: false,
@@ -281,6 +281,6 @@ export async function updateResourceReviewStatus(record: ReviewWriteRecord) {
     ok: true,
     status: 200,
     record: synced,
-    message: "ResourceSpace review fields were updated through the live API."
+    message: "ResourceSpace review fields were updated through the live API and confirmed by post-write re-read."
   };
 }
