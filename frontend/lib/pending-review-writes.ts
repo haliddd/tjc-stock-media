@@ -6,7 +6,7 @@ import { newestByTimestamp, safeEnumValue, safeIsoTimestamp, safeIsoTimestampIdP
 import { normalizeReviewRoleWithFallback } from "@/lib/permissions";
 import { normalizePersistedDisplayText, normalizePersistedSlugText } from "@/lib/request-validation";
 import { normalizeReviewChecklist } from "@/lib/review-evidence";
-import { listRuntimeFiles, readRuntimeJsonFile, writeRuntimeJsonFile } from "@/lib/runtime-file-store";
+import { isRuntimeJsonReadError, listRuntimeFiles, readRuntimeJsonFileStrict, writeRuntimeJsonFile } from "@/lib/runtime-file-store";
 import type { ReviewEvidenceChecklist, ReviewWriteRecord, ReviewWriteRecordSummary, StockMediaAsset } from "@/lib/types";
 
 const pendingDirName = "pending-review-writes";
@@ -64,7 +64,7 @@ function normalizePendingReviewWrite(input: unknown): ReviewWriteRecord | null {
 }
 
 function readRecord(filePath: string): ReviewWriteRecord | null {
-  return readRuntimeJsonFile(filePath, normalizePendingReviewWrite);
+  return readRuntimeJsonFileStrict(filePath, normalizePendingReviewWrite);
 }
 
 function writeRecord(record: ReviewWriteRecord) {
@@ -100,13 +100,27 @@ export function latestPendingWriteForResource(resourceId: string) {
 }
 
 export function pendingReviewWriteDiagnostics() {
-  const records = listPendingReviewWrites();
+  let records: ReviewWriteRecord[];
+  let corruption: { reasonCode: string; detail: string; filePath: string } | undefined;
+  try {
+    records = listPendingReviewWrites();
+  } catch (error) {
+    if (!isRuntimeJsonReadError(error)) throw error;
+    records = [];
+    corruption = {
+      reasonCode: error.issue.reasonCode,
+      detail: error.issue.detail,
+      filePath: error.issue.filePath
+    };
+  }
   const lastAttempt = records[0];
   const lastError = records.find((record) => record.lastError);
   return {
     count: records.filter((record) => !terminalSyncStates.includes(record.syncState)).length,
     lastAttemptAt: lastAttempt?.updatedAt,
-    lastError: lastError?.lastError
+    lastError: corruption?.detail || lastError?.lastError,
+    corrupted: Boolean(corruption),
+    corruption
   };
 }
 

@@ -5,6 +5,7 @@ import { createDamRouteSession } from "@/lib/dam-route-session";
 import { canReview } from "@/lib/permissions";
 import { localBetaRoleOverrideFromRequest } from "@/lib/request-identity";
 import { readReviewActionRequestBody, runReviewActionWorkflow } from "@/lib/review-action-workflow";
+import { isRuntimeJsonReadError, runtimeJsonReadRouteError } from "@/lib/runtime-file-store";
 import {
   buildReviewQueueResponse,
   reviewQueueDeniedAuditEvent,
@@ -23,8 +24,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(denied.body, { status: denied.status });
   }
   const queueId = normalizeReviewQueueId(request.nextUrl.searchParams.get("queue"));
-  const queue = await getReviewQueue(role, queueId);
-  return NextResponse.json(buildReviewQueueResponse(queue, session));
+  try {
+    const queue = await getReviewQueue(role, queueId);
+    return NextResponse.json(buildReviewQueueResponse(queue, session));
+  } catch (error) {
+    if (!isRuntimeJsonReadError(error)) throw error;
+    const blocked = runtimeJsonReadRouteError(error);
+    return NextResponse.json(blocked.body, { status: blocked.status });
+  }
 }
 
 export async function POST(request: NextRequest) {

@@ -10,6 +10,7 @@ export type RuntimeStateCategory =
   | "beta-feedback"
   | "package-drafts"
   | "intake-batches"
+  | "request-records"
   | "saved-searches"
   | "usage-events"
   | "runtime";
@@ -102,6 +103,15 @@ export function runtimeStateTruthMatrix(): RuntimeStateTruthRow[] {
       blocker: "Browser file intake is blocked in production without durable storage or admin/Drive intake."
     },
     {
+      id: "request-records",
+      label: "Request records",
+      category: "request-records",
+      state: genericState,
+      storage: "Local JSON request records",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs durable request queue storage, assignee workflow, notifications, and close/reopen audit proof."
+    },
+    {
       id: "saved-searches",
       label: "Saved searches",
       category: "saved-searches",
@@ -142,6 +152,7 @@ function categoryForPath(filePath: string): RuntimeStateCategory {
   if (filePath.includes("beta-feedback")) return "beta-feedback";
   if (filePath.includes("package-drafts")) return "package-drafts";
   if (filePath.includes("intake-batches")) return "intake-batches";
+  if (filePath.includes("request-records")) return "request-records";
   if (filePath.includes("saved-searches")) return "saved-searches";
   if (filePath.includes("usage")) return "usage-events";
   return "runtime";
@@ -203,6 +214,78 @@ export function readRuntimeJsonFile<TRecord>(filePath: string, normalize: (input
   } catch {
     return null;
   }
+}
+
+export type RuntimeJsonReadIssue = {
+  filePath: string;
+  category: RuntimeStateCategory;
+  reasonCode: "runtime-json-read-failed" | "runtime-json-invalid" | "runtime-json-normalization-failed";
+  detail: string;
+};
+
+export class RuntimeJsonReadError extends Error {
+  issue: RuntimeJsonReadIssue;
+
+  constructor(issue: RuntimeJsonReadIssue) {
+    super(issue.detail);
+    this.name = "RuntimeJsonReadError";
+    this.issue = issue;
+  }
+}
+
+export function isRuntimeJsonReadError(error: unknown): error is RuntimeJsonReadError {
+  return error instanceof RuntimeJsonReadError;
+}
+
+export function runtimeJsonReadRouteError(error: RuntimeJsonReadError) {
+  return {
+    status: 503 as const,
+    body: {
+      ok: false,
+      error: "Runtime state is corrupt or unreadable; refusing to serve incomplete operational data.",
+      reasonCode: error.issue.reasonCode,
+      category: error.issue.category,
+      detail: error.issue.detail,
+      filePath: error.issue.filePath
+    }
+  };
+}
+
+export function readRuntimeJsonFileStrict<TRecord>(filePath: string, normalize: (input: unknown) => TRecord | null) {
+  let contents: string;
+  try {
+    contents = fs.readFileSync(filePath, "utf8");
+  } catch (error) {
+    throw new RuntimeJsonReadError({
+      filePath,
+      category: categoryForPath(filePath),
+      reasonCode: "runtime-json-read-failed",
+      detail: error instanceof Error ? error.message : "Runtime JSON read failed."
+    });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(contents);
+  } catch (error) {
+    throw new RuntimeJsonReadError({
+      filePath,
+      category: categoryForPath(filePath),
+      reasonCode: "runtime-json-invalid",
+      detail: error instanceof Error ? error.message : "Runtime JSON parse failed."
+    });
+  }
+
+  const record = normalize(parsed);
+  if (!record) {
+    throw new RuntimeJsonReadError({
+      filePath,
+      category: categoryForPath(filePath),
+      reasonCode: "runtime-json-normalization-failed",
+      detail: "Runtime JSON record failed validation."
+    });
+  }
+  return record;
 }
 
 function writeRuntimeFileAtomically(filePath: string, contents: string) {

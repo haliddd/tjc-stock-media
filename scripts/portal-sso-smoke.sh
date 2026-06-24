@@ -103,6 +103,32 @@ group_admin_headers=(
   -H "cf-access-authenticated-user-email: group-admin.sso@example.test"
 )
 
+select_review_smoke_asset_id() {
+  local output="$TMP_DIR/review-smoke-assets.json"
+  local code
+  code="$(http_code "$output" "${trusted_headers[@]}" "$BASE_URL/api/review?role=Viewer&queue=pending")"
+  if [ "$code" = "200" ]; then
+    node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const asset=(data.assets||[]).find((item)=>item&&item.id); if (asset) process.stdout.write(String(asset.id));' "$output"
+  fi
+}
+
+select_collection_smoke_asset_id() {
+  local output="$TMP_DIR/collection-smoke-assets.json"
+  local code
+  code="$(http_code "$output" "${contributor_headers[@]}" "$BASE_URL/api/assets/search?role=Viewer&limit=10")"
+  if [ "$code" = "200" ]; then
+    node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const asset=(data.assets||[]).find((item)=>item&&item.id); if (asset) process.stdout.write(String(asset.id));' "$output"
+  fi
+}
+
+review_smoke_asset_id="${PORTAL_SSO_SMOKE_REVIEW_ASSET_ID:-$(select_review_smoke_asset_id)}"
+review_smoke_asset_id="${review_smoke_asset_id:-644}"
+collection_smoke_asset_id="${PORTAL_SSO_SMOKE_COLLECTION_ASSET_ID:-$(select_collection_smoke_asset_id)}"
+collection_smoke_asset_id="${collection_smoke_asset_id:-368}"
+download_smoke_asset_id="${PORTAL_SSO_SMOKE_DOWNLOAD_ASSET_ID:-$review_smoke_asset_id}"
+
+# Client downgrade/spoof fixture: {"role":"Viewer"} must not beat trusted SSO headers.
+
 expect_json_status 403 malformed-admin-header-does-not-escalate '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 if (!/DAM Admin/i.test(data.error || "")) {
@@ -166,7 +192,7 @@ if (data.ok !== false || data.count !== 1 || !/Sharing stays paused/.test(data.m
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' "${trusted_headers[@]}" \
-  -d '{"role":"Viewer","action":"request-review","assetIds":["644"]}' \
+  -d "{\"role\":\"Viewer\",\"action\":\"request-review\",\"assetIds\":[\"$review_smoke_asset_id\"]}" \
   "$BASE_URL/api/batch"
 
 expect_json contributor-header-previews-collection '
@@ -176,12 +202,12 @@ if (data.ok !== false || data.assetCount !== 1 || !/Sharing stays paused/.test(d
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' "${contributor_headers[@]}" \
-  -d '{"role":"Viewer","assetIds":["368"],"title":"SSO smoke collection","audience":"Internal ministry"}' \
+  -d "{\"role\":\"Viewer\",\"assetIds\":[\"$collection_smoke_asset_id\"],\"title\":\"SSO smoke collection\",\"audience\":\"Internal ministry\"}" \
   "$BASE_URL/api/collections"
 
 expect_json contributor-header-validates-upload '
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-if (data.status !== "validated" || data.sourceLinkCaptured !== true) {
+if (data.status !== "needs-review" || data.sourceLinkCaptured !== true || data.defaultReviewState !== "Needs Review") {
   console.error(`upload intake did not resolve Contributor from trusted headers: ${JSON.stringify(data).slice(0, 500)}`);
   process.exit(1);
 }
@@ -225,7 +251,7 @@ if (!Array.isArray(data.reasonCodes) || !data.reasonCodes.length) {
   process.exit(1);
 }
 ' -X POST -H 'Content-Type: application/json' "${trusted_headers[@]}" \
-  -d '{"role":"Viewer","termsAccepted":true,"usageChannel":"SSO smoke","reason":"trusted identity rehearsal"}' \
-  "$BASE_URL/api/download/368"
+  -d '{"termsAccepted":true,"usageChannel":"SSO smoke","reason":"trusted identity rehearsal"}' \
+  "$BASE_URL/api/download/$download_smoke_asset_id"
 
 echo "Portal SSO smoke complete."

@@ -12,7 +12,7 @@ import { presentReviewContext } from "@/lib/portal-context-presenters";
 import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems, reviewEvidenceCompletion } from "@/lib/review-decision-presenter";
 import { buildSelectedReviewGuidance, checklistActionLabel, reviewEvidenceGroups, reviewWaitingDays, type PendingReviewDecisionSummary } from "@/lib/review-workbench";
 import { routeWithRole } from "@/lib/role-routes";
-import type { ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
+import type { ReviewEvidenceChecklist, ReviewWriteSyncState, StockMediaAsset, UsageScope } from "@/lib/types";
 import { normalizeReviewQueueId, reviewGovernanceGroupsForAsset, reviewRiskFlags, type ReviewQueueId } from "@/lib/workflow-policy";
 import { cn } from "@/lib/ui";
 import { ActionButton, AssetThumb, ErrorCard, IconButton, LoadingCard, SourcePill } from "./EnterpriseShared";
@@ -24,6 +24,129 @@ const evidenceRequiredBeforeCompletion = new Set<keyof ReviewEvidenceChecklist>(
   "attributionConfirmed",
   "creditRequirementChecked"
 ]);
+type LocalPendingReviewDecisionSummary = PendingReviewDecisionSummary & { syncState?: ReviewWriteSyncState | "blocked" };
+const reviewWriteSyncStates: Array<ReviewWriteSyncState | "blocked"> = [
+  "queued",
+  "ready_to_sync",
+  "syncing",
+  "sync_failed",
+  "conflict_detected",
+  "synced_to_resourcespace",
+  "cancelled",
+  "superseded",
+  "blocked"
+];
+
+function normalizeReviewSyncState(value: unknown, fallback: ReviewWriteSyncState | "blocked" = "blocked") {
+  return reviewWriteSyncStates.includes(value as ReviewWriteSyncState | "blocked") ? value as ReviewWriteSyncState | "blocked" : fallback;
+}
+
+function statusForRequestedReviewStatus(requestedStatus: string, fallback: EnterpriseStatus = "Needs Review"): EnterpriseStatus {
+  if (/approved/i.test(requestedStatus)) return "Approved";
+  if (/do not use|restricted/i.test(requestedStatus)) return "Restricted";
+  if (/needs review|more info/i.test(requestedStatus)) return "Needs Review";
+  return fallback;
+}
+
+function reviewSyncStatePresentation(input: {
+  requestedStatus: string;
+  syncState: ReviewWriteSyncState | "blocked";
+  action?: string;
+  message?: string;
+  lastError?: string;
+  optimisticStatus?: EnterpriseStatus;
+}): LocalPendingReviewDecisionSummary {
+  const action = input.action || input.requestedStatus;
+  const finalMessage = input.message || input.lastError || "ResourceSpace remains unchanged until reviewer follow-up completes.";
+  switch (input.syncState) {
+    case "queued":
+      return {
+        status: input.optimisticStatus || "Needs Review",
+        action,
+        syncState: input.syncState,
+        message: `Queued ${input.requestedStatus}. ResourceSpace remains unchanged until sync succeeds or media team completes follow-up. ${finalMessage}`
+      };
+    case "ready_to_sync":
+      return {
+        status: "Pending setup",
+        action,
+        syncState: input.syncState,
+        message: `Ready to sync ${input.requestedStatus}; ResourceSpace has not been updated yet. ${finalMessage}`
+      };
+    case "syncing":
+      return {
+        status: "Pending setup",
+        action,
+        syncState: input.syncState,
+        message: `Syncing ${input.requestedStatus}; wait for ResourceSpace confirmation before treating this as complete. ${finalMessage}`
+      };
+    case "sync_failed":
+      return {
+        status: "Degraded",
+        action,
+        syncState: input.syncState,
+        message: `Sync failed for ${input.requestedStatus}. ResourceSpace remains unchanged until retry or media-team repair. ${finalMessage}`
+      };
+    case "conflict_detected":
+      return {
+        status: "Blocked",
+        action,
+        syncState: input.syncState,
+        message: `Conflict detected for ${input.requestedStatus}. ResourceSpace remains unchanged until reviewer resolves conflict. ${finalMessage}`
+      };
+    case "synced_to_resourcespace":
+      return {
+        status: input.optimisticStatus || statusForRequestedReviewStatus(input.requestedStatus),
+        action,
+        syncState: input.syncState,
+        message: `Synced to ResourceSpace: ${input.requestedStatus}. ${finalMessage}`
+      };
+    case "cancelled":
+      return {
+        status: "Read-only",
+        action,
+        syncState: input.syncState,
+        message: `Pending write cancelled for ${input.requestedStatus}. ResourceSpace remains source of truth. ${finalMessage}`
+      };
+    case "superseded":
+      return {
+        status: "Read-only",
+        action,
+        syncState: input.syncState,
+        message: `Pending write superseded for ${input.requestedStatus}. Check newest ResourceSpace decision before acting. ${finalMessage}`
+      };
+    default:
+      return {
+        status: "Blocked",
+        action,
+        syncState: "blocked",
+        message: `Review write blocked for ${input.requestedStatus}. ResourceSpace remains unchanged. ${finalMessage}`
+      };
+  }
+}
+
+function reviewSyncRowLabel(syncState?: ReviewWriteSyncState | "blocked") {
+  switch (syncState) {
+    case "queued":
+      return "Pending sync";
+    case "ready_to_sync":
+      return "Ready to sync";
+    case "syncing":
+      return "Syncing";
+    case "sync_failed":
+      return "Sync failed";
+    case "conflict_detected":
+      return "Conflict";
+    case "synced_to_resourcespace":
+      return "Synced";
+    case "cancelled":
+      return "Cancelled";
+    case "superseded":
+      return "Superseded";
+    default:
+      return "Pending write";
+  }
+}
 
 function reviewChipLabels(asset: StockMediaAsset) {
   const flags = reviewRiskFlags(asset);
@@ -48,7 +171,7 @@ export function EnterpriseReviewPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<"preview" | "oldest" | "newest">("preview");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [pendingDecisionById, setPendingDecisionById] = useState<Record<string, PendingReviewDecisionSummary>>({});
+  const [pendingDecisionById, setPendingDecisionById] = useState<Record<string, LocalPendingReviewDecisionSummary>>({});
   const [comment, setComment] = useState("");
   const [reviewerName, setReviewerName] = useState("");
   const [reviewDate, setReviewDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -125,11 +248,11 @@ export function EnterpriseReviewPage() {
   const selectedStatus = assetEnterpriseStatus(selectedAsset);
   const currentQueueLabel = review.data?.queues?.find((item) => item.id === queueId)?.label || "Pending review";
   const selectedPendingWrite = pendingWritesByAssetId[selectedAsset?.id || ""];
-  const selectedPending = pendingDecisionById[selectedAsset?.id || ""] || (selectedPendingWrite ? {
-    status: "Needs Review" as EnterpriseStatus,
-    action: selectedPendingWrite.requestedStatus,
-    message: `Queued ${selectedPendingWrite.requestedStatus} / ${selectedPendingWrite.syncState}. ResourceSpace remains unchanged until sync succeeds or media team completes follow-up.`
-  } : undefined);
+  const selectedPending = pendingDecisionById[selectedAsset?.id || ""] || (selectedPendingWrite ? reviewSyncStatePresentation({
+    requestedStatus: selectedPendingWrite.requestedStatus,
+    syncState: selectedPendingWrite.syncState,
+    lastError: selectedPendingWrite.lastError
+  }) : undefined);
   const evidenceCompletion = reviewEvidenceCompletion(checklist, comment);
   const evidencePercent = Math.round((evidenceCompletion.completed / evidenceCompletion.total) * 100);
   const selectedGuidance = buildSelectedReviewGuidance({ asset: selectedAsset, checklist, comment, pending: selectedPending });
@@ -184,11 +307,17 @@ export function EnterpriseReviewPage() {
     }
     const response = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role, id: selectedAsset.id, action, notes: comment || `Reviewer decision for ${displayTitle(selectedAsset)}. Pending ResourceSpace sync required.`, checklist, reviewerName, reviewDate, approvalScope }) });
     const payload = await response.json().catch(() => ({}));
-    const syncState = typeof payload.syncState === "string" ? payload.syncState : response.ok ? "queued" : "blocked";
-    const prefix = syncState === "synced_to_resourcespace" ? "Synced to ResourceSpace." : syncState === "sync_failed" ? "Sync failed." : syncState === "blocked" ? "Blocked." : "Queued for ResourceSpace sync.";
-    const message = `${prefix} ${payload.message || payload.error || "ResourceSpace writeback is not configured. This decision is saved as a portal pending-sync event."}`;
+    const syncState = normalizeReviewSyncState(payload.syncState, response.ok ? "queued" : "blocked");
+    const pendingSummary = reviewSyncStatePresentation({
+      requestedStatus: typeof payload.label === "string" ? payload.label : nextStatus,
+      syncState,
+      action,
+      optimisticStatus: nextStatus,
+      message: typeof payload.message === "string" ? payload.message : typeof payload.error === "string" ? payload.error : undefined
+    });
+    const message = pendingSummary.message;
     if (response.ok) {
-      setPendingDecisionById((current) => ({ ...current, [selectedAsset.id]: { status: nextStatus, message, action } }));
+      setPendingDecisionById((current) => ({ ...current, [selectedAsset.id]: pendingSummary }));
     }
     setDecisionMessage(message);
   };
@@ -274,7 +403,14 @@ export function EnterpriseReviewPage() {
           {pagedQueue.map((asset) => {
             const recordAgeDays = reviewWaitingDays(asset);
             const rowFlags = reviewChipLabels(asset);
-            return <button className={cn("ed-queue-item", selectedAsset?.id === asset.id && "is-active")} type="button" key={asset.id} onClick={() => setSelectedId(asset.id)}><AssetThumb asset={asset} /><span><strong title={displayTitle(asset)}>{displayTitle(asset)}</strong><small>{assetType(asset)} · {formatBytes(asset.fileSizeBytes)}</small><small>Record {assetRecordRef(asset)}{recordAgeDays ? ` · ${recordAgeDays}d` : ""}</small><span className="ed-review-row-meta">{rowFlags.map((flag) => <em key={flag}>{flag}</em>)}</span>{pendingDecisionById[asset.id] || pendingWritesByAssetId[asset.id] || asset.pendingReviewWrite ? <em>Pending sync</em> : null}</span></button>;
+            const pendingDecision = pendingDecisionById[asset.id];
+            const pendingWrite = pendingWritesByAssetId[asset.id] || asset.pendingReviewWrite;
+            const pendingLabel = pendingDecision
+              ? reviewSyncRowLabel(pendingDecision.syncState)
+              : pendingWrite
+                ? reviewSyncRowLabel(pendingWrite.syncState)
+                : "";
+            return <button className={cn("ed-queue-item", selectedAsset?.id === asset.id && "is-active")} type="button" key={asset.id} onClick={() => setSelectedId(asset.id)}><AssetThumb asset={asset} /><span><strong title={displayTitle(asset)}>{displayTitle(asset)}</strong><small>{assetType(asset)} · {formatBytes(asset.fileSizeBytes)}</small><small>Record {assetRecordRef(asset)}{recordAgeDays ? ` · ${recordAgeDays}d` : ""}</small><span className="ed-review-row-meta">{rowFlags.map((flag) => <em key={flag}>{flag}</em>)}</span>{pendingLabel ? <em>{pendingLabel}</em> : null}</span></button>;
           })}
           <nav className="ed-review-pager" aria-label="Review queue pages">
             <span>{filteredQueue.length ? `${(pageStart + 1).toLocaleString()}-${pageEnd.toLocaleString()} of ${filteredQueue.length.toLocaleString()}` : "No review records"}</span>

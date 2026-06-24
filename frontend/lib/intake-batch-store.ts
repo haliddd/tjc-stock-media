@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { productionRuntime, writableRuntimeRoot } from "@/lib/env";
 import { safeCompactText, safeEnumValue, safeFileNameText, safeIsoTimestamp, safePathSlugText } from "@/lib/persisted-record-safety";
-import { assertRuntimeWriteAllowed, ensureRuntimeDir, readRuntimeJsonFile, writeRuntimeJsonFile } from "@/lib/runtime-file-store";
+import { assertRuntimeWriteAllowed, ensureRuntimeDir, isRuntimeJsonReadError, readRuntimeJsonFileStrict, writeRuntimeJsonFile } from "@/lib/runtime-file-store";
 import type { DetectionConfidence, MediaInventory } from "@/lib/upload-intake-detection";
 import type { DemoRole } from "@/lib/types";
 
@@ -57,6 +57,7 @@ export type IntakeBatchManifestItem = {
 };
 
 export type PersistIntakeBatchInput = Omit<IntakeBatchRecord, "id" | "createdAt" | "updatedAt" | "submittedAt" | "status" | "manifestPath" | "storageMode" | "resourceSpaceWritten"> & {
+  batchId?: string;
   files: File[];
   sourceLinkCaptured: boolean;
 };
@@ -77,6 +78,10 @@ function safeBatchId(eventName?: string) {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const slug = safePathSlugText(eventName || "intake-batch", 48) || "intake-batch";
   return `${stamp}-${slug}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+export function createIntakeBatchId(eventName?: string) {
+  return safeBatchId(eventName);
 }
 
 function safeRole(value: DemoRole): DemoRole {
@@ -168,7 +173,7 @@ async function writeOriginals(originalsDir: string, files: File[], manifest: Int
 }
 
 export async function persistIntakeBatch(input: PersistIntakeBatchInput): Promise<PersistIntakeBatchResult> {
-  const batchId = safeBatchId(input.detected.eventName);
+  const batchId = input.batchId || safeBatchId(input.detected.eventName);
   const now = new Date().toISOString();
   const hasFiles = input.files.length > 0;
   if (productionRuntime() && hasFiles) {
@@ -217,9 +222,6 @@ export async function persistIntakeBatch(input: PersistIntakeBatchInput): Promis
     if (hasFiles) await writeOriginals(path.join(batchDir, "originals"), input.files, manifest);
     return { record, batchId, storageMode: record.storageMode, manifestPath: record.manifestPath };
   } catch (error) {
-    if (!hasFiles && input.sourceLinkCaptured) {
-      return { batchId, storageMode: "source-link-only", blockedReason: error instanceof Error ? error.message : "Runtime store write failed." };
-    }
     return { batchId, storageMode: "blocked-no-durable-store", blockedReason: error instanceof Error ? error.message : "Runtime store write failed." };
   }
 }
@@ -228,11 +230,35 @@ export function listIntakeBatches(limit = 50) {
   const root = intakeRoot();
   try {
     return fs.readdirSync(root)
-      .map((id) => readRuntimeJsonFile(path.join(root, id, "batch.json"), normalizeIntakeBatchRecord))
+      .map((id) => readRuntimeJsonFileStrict(path.join(root, id, "batch.json"), normalizeIntakeBatchRecord))
       .filter((record): record is IntakeBatchRecord => Boolean(record))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
-  } catch {
+  } catch (error) {
+    if (isRuntimeJsonReadError(error)) throw error;
     return [];
+  }
+}
+
+export function intakeBatchDiagnostics(limit = 50) {
+  try {
+    const records = listIntakeBatches(limit);
+    return {
+      count: records.length,
+      corrupted: false,
+      latestAt: records[0]?.updatedAt || ""
+    };
+  } catch (error) {
+    if (!isRuntimeJsonReadError(error)) throw error;
+    return {
+      count: 0,
+      corrupted: true,
+      latestAt: "",
+      corruption: {
+        reasonCode: error.issue.reasonCode,
+        detail: error.issue.detail,
+        filePath: error.issue.filePath
+      }
+    };
   }
 }

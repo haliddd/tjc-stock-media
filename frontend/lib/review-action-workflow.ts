@@ -1,8 +1,9 @@
-import { appendAuditEvent } from "@/lib/audit-log";
+import { appendAuditEvent, appendRequiredAuditEvent } from "@/lib/audit-log";
 import { getAssetRecordById } from "@/lib/catalog";
 import { createDamWorkflowSession } from "@/lib/dam-route-session";
 import { sourceEnvelope } from "@/lib/media-source/session";
 import { updateResourceReviewStatus } from "@/lib/media-source/resourcespace-api";
+import { markPendingReviewWriteSyncFailed } from "@/lib/pending-review-writes";
 import { canReview } from "@/lib/permissions";
 import { normalizeAssetId, readJsonObject } from "@/lib/request-validation";
 import {
@@ -113,7 +114,29 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
     };
   }
 
-  appendAuditEvent(reviewEvidencePacketQueuedAuditEvent(packet, role, identity.id, pending.id));
+  try {
+    appendRequiredAuditEvent(reviewEvidencePacketQueuedAuditEvent(packet, role, identity.id, pending.id));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Audit write failed.";
+    const failed = markPendingReviewWriteSyncFailed(
+      pending.id,
+      `Required audit failed after pending review write was queued. ${detail}`
+    );
+    return {
+      status: 503,
+      body: {
+        ok: false,
+        error: "Review decision was queued but required audit failed; ResourceSpace sync was not attempted.",
+        reasonCode: "required-audit-failed-after-pending-write",
+        detail,
+        pendingWriteId: pending.id,
+        syncState: failed?.syncState || "sync_failed",
+        partialFailure: true,
+        ...envelope
+      }
+    };
+  }
+
   const usageEvent = recordUsageEvent({
     type: "review_action",
     role,
@@ -125,6 +148,34 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
   });
 
   const sync = await updateResourceReviewStatus(pending);
+  if (!sync.ok && sync.attemptedLiveWriteback) {
+    const status = sync.status === 409 ? 409 : 503;
+    return {
+      status,
+      body: {
+        ok: false,
+        id: assetId,
+        error: "Review decision passed evidence checks, but live ResourceSpace writeback did not complete.",
+        message: sync.message,
+        reasonCode: sync.reasonCode || "resourcespace-live-writeback-failed",
+        partialFailure: true,
+        pendingWriteId: pending.id,
+        syncState: sync.record?.syncState || "sync_failed",
+        sync,
+        auditRecord: {
+          ...reviewEvidencePacketAuditRecord(packet, role, identity.id, pending.createdAt),
+          blockers: pending.blockers
+        },
+        usageRecord: {
+          actor: identity.id,
+          recorded: usageEvent.recorded,
+          reason: usageEvent.reason
+        },
+        mode: "resourcespace-live-writeback-failed",
+        ...envelope
+      }
+    };
+  }
   return {
     status: sync.ok ? 200 : 202,
     body: {

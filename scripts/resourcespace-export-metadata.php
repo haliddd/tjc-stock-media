@@ -4,6 +4,7 @@ include "/var/www/html/include/boot.php";
 command_line_only();
 
 $out = $argv[1] ?? "/tmp/tjc-mvp-metadata-export.csv";
+$min_ref = max(1, (int) ($argv[2] ?? 363));
 $fields = [
     "original_filename" => 51,
     "title" => 8,
@@ -26,6 +27,7 @@ $fields = [
     "resourcespace_ref" => "resourcespace_ref",
     "master_drive_path" => "master_drive_path",
     "master_drive_paths_all" => "master_drive_paths_all",
+    "master_custody_path_status" => "master_custody_path_status",
     "media_type" => "media_type",
     "event_or_topic" => "event_or_topic",
     "ministry_area" => "ministry_area",
@@ -45,6 +47,14 @@ $fields = [
     "tjc_terms" => "tjc_terms",
     "brand_terms" => "brand_terms",
     "usage_terms" => "usage_terms",
+    "rights_basis" => "rights_basis",
+    "approved_channels" => "approved_channels",
+    "reuse_tier" => "reuse_tier",
+    "visibility_tier" => "visibility_tier",
+    "sensitivity_class" => "sensitivity_class",
+    "withdrawal_status" => "withdrawal_status",
+    "domain_reviewer" => "domain_reviewer",
+    "required_notice" => "required_notice",
     "human_title_final" => "human_title_final",
     "human_tags_final" => "human_tags_final",
     "people_visible" => "people_visible",
@@ -105,7 +115,10 @@ $header = array_merge([
 ], array_keys($fields));
 fputcsv($handle, $header);
 
-$rows = ps_query("SELECT ref, archive, resource_type, file_extension, file_size FROM resource WHERE ref >= 363 AND archive IN (-1,0) ORDER BY ref");
+$rows = ps_query(
+    "SELECT ref, archive, resource_type, file_extension, file_size FROM resource WHERE ref >= ? AND archive IN (-1,0) ORDER BY ref",
+    ["i", $min_ref]
+);
 foreach ($rows as $row) {
     $ref = (int) $row["ref"];
     $alternative_count = (int) ps_value(

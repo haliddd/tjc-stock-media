@@ -429,9 +429,9 @@ race_one="$TMP_DIR/race-one.body"
 race_two="$TMP_DIR/race-two.body"
 code_one_file="$TMP_DIR/race-one.code"
 code_two_file="$TMP_DIR/race-two.code"
-(curl --max-time "$CURL_MAX_TIME" -sS -o "$race_one" -w '%{http_code}' "${REVIEWER_HEADERS[@]}" "$ABS_RACE_DOWNLOAD_URL" > "$code_one_file") &
+(trusted_http_code "$race_one" "${REVIEWER_HEADERS[@]}" "$ABS_RACE_DOWNLOAD_URL" > "$code_one_file") &
 pid_one=$!
-(curl --max-time "$CURL_MAX_TIME" -sS -o "$race_two" -w '%{http_code}' "${REVIEWER_HEADERS[@]}" "$ABS_RACE_DOWNLOAD_URL" > "$code_two_file") &
+(trusted_http_code "$race_two" "${REVIEWER_HEADERS[@]}" "$ABS_RACE_DOWNLOAD_URL" > "$code_two_file") &
 pid_two=$!
 wait "$pid_one"
 wait "$pid_two"

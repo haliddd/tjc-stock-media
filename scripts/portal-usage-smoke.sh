@@ -109,7 +109,7 @@ console.log(asset.id);
 '
 
 ASSET_VIEW_ID="$(select_json_value usage-asset-view-id "$first_asset_id_script" \
-  "$BASE_URL/api/assets/search?role=Reviewer&q=Bible&limit=5")"
+  "$BASE_URL/api/assets/search?role=Reviewer&limit=5")"
 
 if ! BLOCKED_DOWNLOAD_ID="$(select_json_value usage-blocked-download-id "$blocked_asset_id_script" \
   "$BASE_URL/api/assets/search?role=Reviewer&view=needs-review&limit=25")"; then
