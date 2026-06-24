@@ -1,5 +1,5 @@
-import { RequestsPage } from "@/components/dam/EnterpriseDamPages";
+import { AtlasRequestsPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <RequestsPage />;
+  return <AtlasRequestsPage />;
 }

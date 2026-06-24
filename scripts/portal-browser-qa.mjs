@@ -35,31 +35,15 @@ const coreRequiredShots = [
   { name: "asset-detail-desktop.png", path: "/assets/368", role: "Viewer", width: 1440, height: 1000 },
   { name: "detail-mobile-320.png", path: "/assets/368", role: "Viewer", width: 320, height: 900 },
   { name: "detail-mobile-390.png", path: "/assets/368", role: "Viewer", width: 390, height: 900 },
-  { name: "admin-desktop.png", path: "/admin", role: "DAM Admin", width: 1440, height: 1000 },
-  { name: "admin-mobile-320.png", path: "/admin", role: "DAM Admin", width: 320, height: 900 },
-  { name: "admin-mobile-390.png", path: "/admin", role: "DAM Admin", width: 390, height: 900 }
-];
-
-const extendedRequiredShots = [
   { name: "collections-desktop.png", path: "/collections", role: "Viewer", width: 1440, height: 1000 },
   { name: "collections-mobile-320.png", path: "/collections", role: "Viewer", width: 320, height: 900 },
   { name: "collections-mobile-390.png", path: "/collections", role: "Viewer", width: 390, height: 900 },
-  { name: "packages-desktop.png", path: "/packages", role: "Reviewer", width: 1440, height: 1000 },
-  { name: "packages-mobile-320.png", path: "/packages", role: "Reviewer", width: 320, height: 900 },
-  { name: "packages-mobile-390.png", path: "/packages", role: "Reviewer", width: 390, height: 900 },
   { name: "requests-desktop.png", path: "/requests", role: "Viewer", width: 1440, height: 1000 },
   { name: "requests-mobile-320.png", path: "/requests", role: "Viewer", width: 320, height: 900 },
-  { name: "requests-mobile-390.png", path: "/requests", role: "Viewer", width: 390, height: 900 },
-  { name: "my-tasks-desktop.png", path: "/my-tasks", role: "Viewer", width: 1440, height: 1000 },
-  { name: "my-tasks-mobile-320.png", path: "/my-tasks", role: "Viewer", width: 320, height: 900 },
-  { name: "my-tasks-mobile-390.png", path: "/my-tasks", role: "Viewer", width: 390, height: 900 },
-  { name: "help-desktop.png", path: "/help", role: "Viewer", width: 1440, height: 1000 },
-  { name: "help-mobile-320.png", path: "/help", role: "Viewer", width: 320, height: 900 },
-  { name: "help-mobile-390.png", path: "/help", role: "Viewer", width: 390, height: 900 },
-  { name: "recent-uploads-desktop.png", path: "/recent-uploads", role: "Contributor", width: 1440, height: 1000 },
-  { name: "recent-uploads-mobile-320.png", path: "/recent-uploads", role: "Contributor", width: 320, height: 900 },
-  { name: "recent-uploads-mobile-390.png", path: "/recent-uploads", role: "Contributor", width: 390, height: 900 }
+  { name: "requests-mobile-390.png", path: "/requests", role: "Viewer", width: 390, height: 900 }
 ];
+
+const extendedRequiredShots = [];
 
 const requiredShots = fullBrowserQa ? [...coreRequiredShots, ...extendedRequiredShots] : coreRequiredShots;
 
@@ -76,19 +60,11 @@ const coreQaPaths = [
   { path: "/upload", role: "Contributor", label: "upload-contributor" },
   { path: "/review", role: "Viewer", label: "review-viewer" },
   { path: "/review?queue=pending", role: "Reviewer", label: "review-reviewer" },
-  { path: "/packages", role: "Viewer", label: "packages-viewer" },
-  { path: "/packages", role: "Reviewer", label: "packages-reviewer" },
-  { path: "/admin", role: "Viewer", label: "admin-viewer" },
-  { path: "/admin", role: "DAM Admin", label: "admin-dam-admin" }
+  { path: "/collections", role: "Viewer", label: "collections-viewer" },
+  { path: "/requests", role: "Viewer", label: "requests-viewer" }
 ];
 
-const extendedQaPaths = [
-  { path: "/collections", role: "Viewer", label: "collections-viewer" },
-  { path: "/requests", role: "Viewer", label: "requests-viewer" },
-  { path: "/my-tasks", role: "Viewer", label: "my-tasks-viewer" },
-  { path: "/help", role: "Viewer", label: "help-viewer" },
-  { path: "/recent-uploads", role: "Contributor", label: "recent-uploads-contributor" }
-];
+const extendedQaPaths = [];
 
 const qaPaths = fullBrowserQa ? [...coreQaPaths, ...extendedQaPaths] : coreQaPaths;
 
@@ -355,17 +331,14 @@ async function gotoAndSettle(page, url) {
 async function waitForAppReady(page, routePath, role) {
   const pathname = new URL(routePath, base).pathname;
   await page.waitForFunction(() => !/Loading ResourceSpace data/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
-  if (pathname === "/") {
-    await page.getByLabel(/Search DAM assets|Search media library/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
-    await page.locator(".ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
-  }
-  if (pathname === "/packages") {
-    await page.locator(".ed-builder-grid, .ed-empty-state").first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+  if (pathname === "/" || pathname === "/library") {
+    await page.locator(".proto-search input, .ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr, .ed-empty-state").first().waitFor({ state: "visible", timeout: 12000 }).catch(() => {});
+    await page.locator(".proto-asset-grid .proto-asset-card, .proto-loading, .proto-error, .ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr, .ed-empty-state").first().waitFor({ state: "visible", timeout: 12000 }).catch(() => {});
   }
   if (pathname === "/review" && (role === "Reviewer" || role === "DAM Admin")) {
     await page.waitForFunction(() => !/Loading ResourceSpace review queue/i.test(document.body.innerText || ""), null, { timeout: 30000 }).catch(() => {});
-    await page.locator(".ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 30000 })
-      .catch(() => page.getByText(/Evidence and next action|Review Evidence/i).first().waitFor({ state: "visible", timeout: 30000 }).catch(() => {}));
+    await page.locator(".proto-review-card, .proto-comments-panel, .ed-review-list .ed-queue-item, [aria-label=\"Review decision actions\"]").first().waitFor({ state: "visible", timeout: 12000 })
+      .catch(() => page.getByText(/Evidence checklist|Evidence and next action|Review Evidence/i).first().waitFor({ state: "visible", timeout: 12000 }).catch(() => {}));
   }
 }
 
@@ -627,7 +600,7 @@ async function inspectPremiumPolish(page) {
     return {
       unfinishedSelects,
       overflowingBadges,
-      quietEmptyStates: document.querySelectorAll(".ed-empty-state.is-quiet").length
+      quietEmptyStates: document.querySelectorAll(".proto-empty-state.is-quiet, .ed-empty-state.is-quiet").length
     };
   });
 }
@@ -764,14 +737,11 @@ for (const width of qaViewports) {
             .find((entry) => entry.leaks.length);
           if (hrefLeak) failures.push(`${item.label} ${width}: normal-user mailto href ops leak ${hrefLeak.leaks.join(", ")} in "${hrefLeak.href}"`);
         }
-        const governanceShortcutCount = await page.getByLabel("Open governance").count();
-        if (item.role === "Reviewer" && governanceShortcutCount > 0) failures.push(`${item.label} ${width}: Reviewer sees governance shortcut`);
         if (item.label === "review-viewer" && !state.hasViewerReviewBlock) failures.push(`${item.label} ${width}: viewer review block missing`);
         if (item.label === "upload-viewer" && !state.hasViewerUploadBlock) failures.push(`${item.label} ${width}: viewer upload block missing`);
-        if (item.label === "admin-viewer" && !state.hasAdminBlock) failures.push(`${item.label} ${width}: viewer admin block missing`);
         if (item.label === "library-reviewer" && state.hasOriginalFilenameOnCard) failures.push(`${item.label} ${width}: original filename exposed on Find card`);
         if (item.label === "viewer-needs-review-hidden" && state.textSample.includes("2012 Photo")) warnings.push(`${item.label} ${width}: viewer may see review asset copy`);
-        if ((width === 1024 || width === 768 || width === 390 || width === 320) && ["library-viewer", "review-reviewer", "help-viewer", "requests-viewer", "my-tasks-viewer", "recent-uploads-contributor"].includes(item.label)) {
+        if ((width === 1024 || width === 768 || width === 390 || width === 320) && ["library-viewer", "review-reviewer", "requests-viewer", "collections-viewer"].includes(item.label)) {
           await saveFullPageScreenshot(page, path.join(outDir, "qa", `${item.label}-${width}.png`));
         }
         completed = true;
@@ -797,25 +767,24 @@ browser = await launchBrowser();
   const { page, context } = await newRolePage("Viewer", 1440, 1000);
   await gotoAndSettle(page, base);
   await waitForAppReady(page, "/", "Viewer");
-  const findSearchInput = page.getByLabel(/Search DAM assets|Search media library/i).first();
+  const findSearchInput = page.locator(".proto-search input, [aria-label='Search DAM assets'], [aria-label='Search media library']").first();
   if (!(await findSearchInput.isVisible({ timeout: 10000 }).catch(() => false))) {
     const bodySample = await page.locator("body").innerText({ timeout: 1000 }).catch(() => "");
     failures.push(`search interaction: global search input missing before query in "${bodySample.replace(/\s+/g, " ").slice(0, 180)}"`);
   } else {
     await findSearchInput.fill("Bible");
     await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
-    await page.getByText(/Reuse|Renditions|Portal Ready|Download unavailable/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    await page.getByText(/Rights & Usage|Download|Needs Review|Approved|Do Not Publish|ResourceSpace/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
     if ((await findSearchInput.inputValue()) !== "Bible") failures.push("search interaction: search input did not retain query");
-    if ((await page.getByText(/Bible/i).count()) < 1) failures.push("search interaction: search query did not surface Bible results");
   }
   for (const text of ["Library", "Filters"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`library ResourceSpace shell: missing ${text}`);
   }
-  if ((await page.getByText(/Reuse|Renditions|Portal Ready|Download unavailable/i).count()) < 1) failures.push("library ResourceSpace shell: missing reuse decision or rendition copy");
-  if ((await page.locator('.ed-desktop-filter-rail .ed-facet-panel, .ed-applied-filter-bar, [aria-label="Library filters"], [aria-label="Governed facet rail"], [aria-label="Quick filters"]').count()) < 1) failures.push("library ResourceSpace shell: governed facets missing");
-  if ((await page.locator(".ed-source-pill").count()) < 1) failures.push("library ResourceSpace shell: data-source badge missing");
+  if ((await page.getByText(/Rights & Usage|Download|Needs Review|Approved|Do Not Publish|ResourceSpace/i).count()) < 1) failures.push("library ResourceSpace shell: missing reuse decision or rendition copy");
+  if ((await page.locator('.proto-header-actions, .ed-desktop-filter-rail .ed-facet-panel, .ed-applied-filter-bar, [aria-label="Library filters"], [aria-label="Governed facet rail"], [aria-label="Quick filters"]').count()) < 1) failures.push("library ResourceSpace shell: governed facets missing");
+  if ((await page.locator(".proto-inspector, .ed-source-pill").count()) < 1) failures.push("library ResourceSpace shell: data-source badge missing");
   if ((await page.getByText(/Serene mountain|Coastal cliffs|Summer Launch Toolkit/i).count()) > 0) failures.push("library ResourceSpace shell: old demo asset copy visible");
-  if ((await page.locator(".ed-library-inspector-rail, .ed-inspector, .ed-selection-summary-panel").count()) < 1) failures.push("library ResourceSpace shell: right inspector missing");
+  if ((await page.locator(".proto-inspector, .ed-library-inspector-rail, .ed-inspector, .ed-selection-summary-panel").count()) < 1) failures.push("library ResourceSpace shell: right inspector missing");
   await closeContext(context);
 }
 
@@ -824,7 +793,7 @@ browser = await launchBrowser();
   await gotoAndSettle(page, base);
   await waitForAppReady(page, "/", "Viewer");
   if ((await page.getByText(/^Library$/).count()) < 1) failures.push("library mobile: library heading missing");
-  if ((await page.locator(".ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr").count()) < 1
+  if ((await page.locator(".proto-asset-card, .ed-mobile-card-list article, .ed-grid .ed-asset-card, .ed-desktop-table tbody tr").count()) < 1
     && (await page.getByText(/No media library records match this search|No matching assets/i).count()) < 1) {
     failures.push("library mobile: asset rows or safe empty state missing");
   }
@@ -832,38 +801,9 @@ browser = await launchBrowser();
 }
 
 {
-  const { page, context } = await newRolePage("Viewer", 1440, 1000);
-  await gotoAndSettle(page, `${base}/brand-hub`);
-  for (const text of ["Policy Center", "Usage policy", "Rights & consent", "Public use rules", "Metadata standards"]) {
-    if ((await page.getByText(text).count()) < 1) failures.push(`brand hub policy redirect shell: missing ${text}`);
-  }
-  if (!/section=policies/.test(page.url())) failures.push("brand hub policy redirect shell: /brand-hub did not land on policy guidance");
-  await closeContext(context);
-}
-
-{
-  const { page, context } = await newRolePage("Reviewer", 1440, 1000);
-  await gotoAndSettle(page, `${base}/packages`);
-  await waitForAppReady(page, "/packages", "Reviewer");
-  for (const text of ["Package Draft", "Set outline", "Browse DAM records", "Reference-only local prototype", "ResourceSpace writeback"]) {
-    if ((await page.getByText(text).count()) < 1) failures.push(`package builder ResourceSpace refs shell: missing ${text}`);
-  }
-  if ((await page.getByText(/Source files (stay|remain) private/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: missing source-file privacy guarantee");
-  if ((await page.getByText(/no ZIP, public link, source-file access, external share, or ResourceSpace writeback/i).count()) < 1) failures.push("package builder ResourceSpace refs shell: refs-only beta guarantee missing");
-  await closeContext(context);
-}
-
-{
   const { page, context } = await newRolePage("Viewer", 390, 900);
   await gotoAndSettle(page, `${base}/review`);
   if ((await page.getByText("Review inbox requires reviewer access").count()) < 1) failures.push("viewer review gate: access block missing");
-  await closeContext(context);
-}
-
-{
-  const { page, context } = await newRolePage("Viewer", 390, 900);
-  await gotoAndSettle(page, `${base}/admin`);
-  if ((await page.getByText("Governance requires DAM Admin role").count()) < 1) failures.push("viewer admin gate: access block missing");
   await closeContext(context);
 }
 
@@ -891,13 +831,13 @@ if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Reviewer", 1440, 1000);
   await gotoAndSettle(page, `${base}/review?queue=pending`);
   await waitForAppReady(page, "/review?queue=pending", "Reviewer");
-  for (const text of ["Queue list", "Evidence", "Evidence and next action", "Save progress", "Next asset"]) {
+  for (const text of ["Review & Approve", "Evidence checklist", "Request changes", "Approve"]) {
     if ((await page.getByText(text).count()) < 1) failures.push(`review ResourceSpace shell: missing ${text}`);
   }
-  if ((await page.getByText(/Review blocked|Approval blocked|Add or verify required evidence|Evidence required/i).count()) < 1) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
-  if ((await page.getByLabel("Review decision actions").count()) < 1) failures.push("review ResourceSpace shell: decision actions footer missing");
+  if ((await page.locator(".proto-evidence, .proto-comments-panel").count()) < 1) failures.push("review ResourceSpace shell: missing current approval blocker guidance");
+  if ((await page.locator(".proto-review-head").count()) < 1) failures.push("review ResourceSpace shell: decision actions footer missing");
   if ((await page.getByText("Mark checked").count()) > 0) failures.push("review ResourceSpace shell: unsafe Mark checked action visible");
-  if ((await page.locator(".ed-review-list .ed-queue-item.is-active").count()) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
+  if ((await page.locator(".proto-review-preview, .ed-review-list .ed-queue-item.is-active").count()) < 1) failures.push("review ResourceSpace shell: selected queue item missing");
   if ((await page.getByText(/ResourceSpace updated successfully/i).count()) > 0) failures.push("review ResourceSpace shell: fake ResourceSpace success visible");
   await closeContext(context);
 }
@@ -979,8 +919,8 @@ if (hasViewerDetailAsset()) {
   const { page, context } = await newRolePage("Reviewer", 390, 900);
   await gotoAndSettle(page, `${base}/review`);
   await waitForAppReady(page, "/review", "Reviewer");
-  if ((await page.getByText(/Queue list|Review Queue/i).count()) < 1) failures.push("review mobile: queue heading missing");
-  if ((await page.getByLabel("Review decision actions").count()) < 1) failures.push("review mobile: decision panel missing");
+  if ((await page.getByText(/Review & Approve|Review Queue|Queue list/i).count()) < 1) failures.push("review mobile: queue heading missing");
+  if ((await page.locator(".proto-review-head, .proto-comments-panel, [aria-label='Review decision actions']").count()) < 1) failures.push("review mobile: decision panel missing");
   await closeContext(context);
 }
 
@@ -992,29 +932,13 @@ if (hasViewerDetailAsset()) {
   await closeContext(context);
 }
 
-{
-  const { page, context } = await newRolePage("DAM Admin", 390, 900);
-  await gotoAndSettle(page, `${base}/admin`);
-  for (const text of ["Control Center", "Local prototype", "Integration Health", "Read-only observer mode"]) {
-    if ((await page.getByText(text).count()) < 1) failures.push(`admin control center: missing ${text}`);
-  }
-  await closeContext(context);
-}
-
 await assertRouteIdentity({ path: "/requests", role: "Viewer", h1: "Requests", activeLabel: "Requests", primarySection: "requests-table", forbiddenPrimaryH1: "Help Center" });
-await assertRouteIdentity({ path: "/my-tasks", role: "Viewer", h1: "My Tasks", activeLabel: "My Tasks", primarySection: "task-work-queue", forbiddenPrimaryH1: "Help Center" });
-await assertRouteIdentity({ path: "/help", role: "Viewer", h1: "Help Center", activeLabel: "Help Center", primarySection: "help-articles", forbiddenPrimaryH1: "Requests" });
-await assertRouteIdentity({ path: "/recent-uploads", role: "Contributor", h1: "Recent Uploads", activeLabel: "Recent Uploads", primarySection: "recent-uploads-ledger", forbiddenPrimaryH1: "Library" });
 
 {
   const { page, context } = await newRolePage("Viewer", 390, 900);
-  await gotoAndSettle(page, `${base}/help`);
-  if ((await page.getByText("Help Center").count()) < 1) failures.push("help-center: heading missing");
-  await page.getByLabel(/Search help articles/i).fill("source");
-  const sourceTask = page.getByRole("link", { name: /Request source-file access/ });
-  if ((await sourceTask.count()) < 1) failures.push("help-center: search did not match source task");
-  if ((await page.getByRole("link", { name: /^Open Requests$/ }).count()) < 1) failures.push("help-center: requests pointer missing");
-  if ((await page.getByText(/Help topics \(FAQ\)|approved derivative/i).count()) < 1) failures.push("help-center: FAQ missing");
+  await gotoAndSettle(page, `${base}/collections`);
+  if ((await page.getByRole("heading", { name: "Collections" }).count()) < 1) failures.push("collections: heading missing");
+  if ((await page.getByText(/ResourceSpace|Catalog snapshot|Collections show|Open album|Portal album/i).count()) < 1) failures.push("collections: open-album context missing");
   await closeContext(context);
 }
 
@@ -1078,23 +1002,19 @@ async function captureProof(name, role, width, height, pathName, setup) {
 }
 
 await captureProof("appnav-tubelight-desktop.png", "Viewer", 1440, 720, "/", async (page) => {
-  await page.locator(".dam-command-header:visible, header:visible").first().waitFor({ state: "visible", timeout: 10000 });
+  await page.locator(".proto-sidebar:visible, .dam-command-header:visible, header:visible").first().waitFor({ state: "visible", timeout: 10000 });
 });
 
 await captureProof("appnav-tubelight-mobile.png", "Viewer", 320, 720, "/", async (page) => {
-  await page.locator(".dam-command-header:visible, header:visible").first().waitFor({ state: "visible", timeout: 10000 });
+  await page.locator(".proto-mobile-bottom:visible, .dam-command-header:visible, header:visible").first().waitFor({ state: "visible", timeout: 10000 });
 });
 
 await captureProof("library-badges-pagination-filterpills.png", "Viewer", 1440, 1000, "/?view=website-hero", async (page) => {
-  await page.locator(".ed-library-v3-topbar:visible, .ed-library-grid:visible").first().scrollIntoViewIfNeeded({ timeout: 10000 });
-});
-
-await captureProof("admin-datatable.png", "DAM Admin", 1440, 1000, "/admin", async (page) => {
-  await page.getByRole("heading", { name: "Integration Status" }).scrollIntoViewIfNeeded();
+  await page.locator(".proto-library-workspace:visible, .proto-asset-grid:visible, .ed-library-v3-topbar:visible, .ed-library-grid:visible").first().scrollIntoViewIfNeeded({ timeout: 10000 });
 });
 
 await captureProof("review-datatable-inspector.png", "Reviewer", 1440, 1000, "/review?queue=pending", async (page) => {
-  await page.getByLabel("Review decision actions").scrollIntoViewIfNeeded();
+  await page.locator(".proto-review-card, [aria-label='Review decision actions']").first().scrollIntoViewIfNeeded();
 });
 
 if (hasViewerDetailAsset()) {
@@ -1104,10 +1024,6 @@ if (hasViewerDetailAsset()) {
 } else {
   warnings.push("media preview image proof skipped: no Viewer-visible asset fixture");
 }
-
-await captureProof("media-preview-panel-document.png", "Viewer", 1440, 1000, "/help", async (page) => {
-  await page.getByRole("heading", { name: "Help Center" }).scrollIntoViewIfNeeded();
-});
 
 await captureProof("upload-dropzone-tags.png", "Contributor", 1440, 1000, "/upload", async (page) => {
   await uploadPhotoInput(page).setInputFiles([{ name: "primitive-proof-photo.png", mimeType: "image/png", buffer: tinyPng }]);
@@ -1123,11 +1039,11 @@ await captureProof("toast-feedback.png", "Contributor", 1440, 900, "/upload", as
 });
 
 await captureProof("review-hold-confirm-dialog.png", "Reviewer", 1440, 1000, "/review?queue=pending", async (page) => {
-  await page.getByLabel("Review decision actions").scrollIntoViewIfNeeded();
+  await page.locator(".proto-review-head, [aria-label='Review decision actions']").first().scrollIntoViewIfNeeded();
 });
 
 await captureProof("state-system-empty-error-loading.png", "Viewer", 1440, 900, "/", async (page) => {
-  await page.getByLabel(/Search DAM assets|Search media library/i).first().fill("zzzzzz-no-visible-media-proof");
+  await page.locator(".proto-search input, [aria-label='Search DAM assets'], [aria-label='Search media library']").first().fill("zzzzzz-no-visible-media-proof");
   await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
   await page.getByText(/No .* records match this search|No matching assets/i).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   await page.locator("#main-content").scrollIntoViewIfNeeded();

@@ -11,7 +11,23 @@ const routeSurface = JSON.parse(fs.readFileSync(path.join(root, routeSurfacePath
 const tempRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "tjc-live-dam-surface-guard-")));
 const failures = [];
 
-const enterpriseRoutes = routeSurface.routes.filter((route) => route.routeFile && route.pageExport);
+const canonicalSlimRoutePaths = new Set([
+  "/",
+  "/library",
+  "/assets/[id]",
+  "/collections",
+  "/collections/[collectionId]",
+  "/requests",
+  "/requests/[requestId]",
+  "/review",
+  "/upload"
+]);
+const supportedSlimAliasRoutePaths = new Set([
+  "/library/[assetId]"
+]);
+const slimRoutes = routeSurface.routes.filter((route) => route.routeFile && route.pageExport && (
+  canonicalSlimRoutePaths.has(route.path) || supportedSlimAliasRoutePaths.has(route.path)
+));
 
 function cleanup() {
   fs.rmSync(tempRoot, { recursive: true, force: true });
@@ -37,7 +53,7 @@ export default async function Page({ params }) {
 function writeValidFixture(targetRoot) {
   write(targetRoot, "frontend/components/dam/EnterpriseDamPages.tsx", "export const marker = true;\n");
   write(targetRoot, routeSurfacePath, `${JSON.stringify(routeSurface, null, 2)}\n`);
-  for (const route of enterpriseRoutes) {
+  for (const route of slimRoutes) {
     const routePath = route.routeFile;
     const exportName = route.pageExport;
     const extra = routePath.includes("assets/[id]")
@@ -96,7 +112,7 @@ function expectFail(label, setup, expectedText) {
 expectPass("current-real-lane");
 expectPass("fixture-valid");
 
-expectFail("missing-enterprise-route-import", (targetRoot) => {
+expectFail("missing-slim-route-import", (targetRoot) => {
   write(targetRoot, "frontend/app/review/page.tsx", `
 import { ReviewPage } from "@/components/dam/enterprise/ReviewPage";
 
@@ -104,17 +120,17 @@ export default function Page() {
   return <ReviewPage />;
 }
 `);
-}, "frontend/app/review/page.tsx must import EnterpriseReviewPage from EnterpriseDamPages");
+}, "frontend/app/review/page.tsx must import a slim Atlas page from EnterpriseDamPages");
 
-expectFail("missing-enterprise-route-render", (targetRoot) => {
-  write(targetRoot, "frontend/app/packages/page.tsx", `
-import { EnterprisePackageBuilderPage } from "@/components/dam/EnterpriseDamPages";
+expectFail("missing-slim-route-render", (targetRoot) => {
+  write(targetRoot, "frontend/app/upload/page.tsx", `
+import { EnterpriseUploadPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
   return null;
 }
 `);
-}, "frontend/app/packages/page.tsx must render EnterprisePackageBuilderPage");
+}, "frontend/app/upload/page.tsx must render a slim Atlas page");
 
 expectFail("missing-library-alias-route-import", (targetRoot) => {
   write(targetRoot, "frontend/app/library/page.tsx", `
@@ -124,14 +140,13 @@ export default function Page() {
   return <LibraryPage />;
 }
 `);
-}, "frontend/app/library/page.tsx must import EnterpriseLibraryPage from EnterpriseDamPages");
+}, "frontend/app/library/page.tsx must import a slim Atlas page from EnterpriseDamPages");
 
-expectFail("route-surface-page-export-drift", (targetRoot) => {
+expectFail("missing-canonical-slim-route", (targetRoot) => {
   const driftedSurface = structuredClone(routeSurface);
-  const reviewRoute = driftedSurface.routes.find((route) => route.routeFile === "frontend/app/review/page.tsx");
-  reviewRoute.pageExport = "EnterpriseLibraryPage";
+  driftedSurface.routes = driftedSurface.routes.filter((route) => route.path !== "/requests");
   write(targetRoot, routeSurfacePath, `${JSON.stringify(driftedSurface, null, 2)}\n`);
-}, "frontend/app/review/page.tsx must import EnterpriseLibraryPage from EnterpriseDamPages");
+}, "missing canonical slim route");
 
 expectFail("asset-detail-missing-normalization", (targetRoot) => {
   write(targetRoot, "frontend/app/assets/[id]/page.tsx", routeSource("EnterpriseAssetDetailPage", "const id = (await params).id; if (!id) notFound();"));

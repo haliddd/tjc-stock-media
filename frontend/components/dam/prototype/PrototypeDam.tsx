@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -13,30 +13,26 @@ import {
   Eye,
   FileUp,
   Folder,
-  Grid2X2,
   Inbox,
   LayoutGrid,
   List,
-  MoreHorizontal,
   PanelLeftClose,
   Search,
   Send,
-  Settings,
   Share2,
   ShieldCheck,
   SlidersHorizontal,
-  Tag,
   Upload,
-  Users,
+  MoreHorizontal,
   X
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { BetaPrototypeTools } from "@/components/BetaPrototypeTools";
 import { useDemoRole } from "@/components/RoleProvider";
-import { useAdminReadiness, useAssetDetail, useAssetsSearch, useDownloadGate, useReviewQueue } from "@/components/dam/useDamApi";
-import { canAdmin, canReview, canUpload } from "@/lib/permissions";
+import { useAssetDetail, useAssetsSearch, useDownloadGate, useReviewQueue } from "@/components/dam/useDamApi";
+import { canReview, canUpload } from "@/lib/permissions";
 import { routeWithRole } from "@/lib/role-routes";
-import { assetRecordRef, assetType, displayTitle, formatBytes, sourceLabel } from "@/lib/enterprise-display";
+import { assetRecordRef, assetType, displayTitle, formatBytes } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus } from "@/lib/enterprise-status";
 import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems } from "@/lib/review-decision-presenter";
 import type { DemoRole, ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
@@ -49,8 +45,8 @@ const navGroups = [
     label: "LIBRARY",
     items: [
       { label: "Library", href: "/library", icon: LayoutGrid },
-      { label: "Collections", href: "/collections", icon: Folder },
-      { label: "Uploads", href: "/upload", icon: FileUp, guard: canUpload }
+      { label: "Open albums", href: "/collections", icon: Folder },
+      { label: "Upload / Intake", href: "/upload", icon: FileUp, guard: canUpload }
     ]
   },
   {
@@ -58,17 +54,6 @@ const navGroups = [
     items: [
       { label: "Review", href: "/review", icon: ShieldCheck, guard: canReview },
       { label: "Requests", href: "/requests", icon: Inbox }
-    ]
-  },
-  {
-    label: "ADMIN",
-    items: [
-      { label: "Users", href: "/admin/users", icon: Users, guard: canAdmin },
-      { label: "Groups", href: "/admin/roles", icon: Users, guard: canAdmin },
-      { label: "Metadata", href: "/admin/taxonomy", icon: Tag, guard: canAdmin },
-      { label: "Brand kits", href: "/brand-hub", icon: Grid2X2, guard: canAdmin },
-      { label: "Reports", href: "/insights", icon: List, guard: canAdmin },
-      { label: "Settings", href: "/admin/settings", icon: Settings, guard: canAdmin }
     ]
   }
 ] satisfies Array<{
@@ -78,10 +63,10 @@ const navGroups = [
 
 const mobileNav = [
   { label: "Library", href: "/library", icon: LayoutGrid },
-  { label: "Collections", href: "/collections", icon: Folder },
-  { label: "Uploads", href: "/upload", icon: Upload },
+  { label: "Albums", href: "/collections", icon: Folder },
+  { label: "Upload", href: "/upload", icon: Upload },
   { label: "Review", href: "/review", icon: ShieldCheck },
-  { label: "More", href: "/admin", icon: MoreHorizontal }
+  { label: "Requests", href: "/requests", icon: Inbox }
 ];
 
 function pathActive(pathname: string, href: string) {
@@ -273,7 +258,7 @@ function PrototypeMobileBars() {
   return (
     <>
       <header className="proto-mobile-top">
-        <strong>{pathname.startsWith("/upload") ? "Uploads" : pathname.startsWith("/review") ? "Review" : pathname.startsWith("/collections") ? "Collections" : "Library"}</strong>
+        <strong>{pathname.startsWith("/upload") ? "Upload" : pathname.startsWith("/review") ? "Review" : pathname.startsWith("/requests") ? "Requests" : pathname.startsWith("/collections") ? "Open albums" : "Library"}</strong>
         <IconButton label="Notifications"><Bell size={17} /></IconButton>
       </header>
       <nav className="proto-mobile-bottom" aria-label="Mobile navigation">
@@ -282,8 +267,7 @@ function PrototypeMobileBars() {
           const active = pathActive(pathname, item.href);
           const disabled =
             (item.href === "/upload" && !canUpload(role)) ||
-            (item.href === "/review" && !canReview(role)) ||
-            (item.href === "/admin" && !canAdmin(role));
+            (item.href === "/review" && !canReview(role));
           return (
             <Link
               key={item.href}
@@ -494,7 +478,7 @@ export function PrototypeLibraryPage() {
         </div>
         {results.loading ? <div className="proto-loading">Loading library...</div> : results.error ? <div className="proto-error">{results.error}</div> : (
           <div className="proto-asset-grid">
-            {assets.map((asset) => (
+            {assets.length ? assets.map((asset) => (
               <PrototypeAssetCard
                 key={asset.id}
                 asset={asset}
@@ -503,7 +487,7 @@ export function PrototypeLibraryPage() {
                 onSelect={() => toggle(asset.id)}
                 onInspect={() => setActiveId(asset.id)}
               />
-            ))}
+            )) : <div className="proto-empty-state is-quiet">No matching assets. ResourceSpace search returned no records for this query.</div>}
           </div>
         )}
       </section>
@@ -550,82 +534,221 @@ export function PrototypeUploadIntake() {
   const { role } = useDemoRole();
   const [files, setFiles] = useState<File[]>([]);
   const [form, setForm] = useState({
-    collection: "Spring Campaign 2024",
-    brand: "Acme Home",
-    usageRights: "Commercial use",
-    credit: "Media team",
+    eventName: "Youth Service Open Album",
+    sourceLink: "",
+    ministry: "Youth Ministry",
+    source: "Media team",
+    location: "TJC local church",
+    usageRights: "Needs reviewer decision",
     eventDate: new Date().toISOString().slice(0, 10),
-    tags: "campaign, spring, outdoor"
+    tags: "youth, service, fellowship",
+    notes: ""
   });
   const [message, setMessage] = useState("");
   const canSend = canUpload(role);
+  const hasMedia = files.length > 0 || Boolean(form.sourceLink.trim());
+  const canSubmit = canSend && hasMedia;
+
+  if (!canSend) {
+    return (
+      <section className="proto-flow-page">
+        <div className="proto-flow-card">
+          <h1>Upload / Intake</h1>
+          <p>Sharing photos requires Contributor access.</p>
+          <p className="proto-muted">Every imported asset defaults to Needs Review / Do Not Publish after contributor intake.</p>
+        </div>
+      </section>
+    );
+  }
+
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    const dropped = Array.from(event.dataTransfer.files || []);
+    if (dropped.length) setFiles(dropped);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     const data = new FormData();
     data.set("role", role);
-    data.set("collection", form.collection);
-    data.set("eventName", form.collection);
-    data.set("ministry", form.brand);
+    data.set("collection", form.eventName);
+    data.set("eventName", form.eventName);
+    data.set("sourceLink", form.sourceLink);
+    data.set("ministry", form.ministry);
     data.set("usageRights", form.usageRights);
-    data.set("source", form.credit);
+    data.set("source", form.source);
+    data.set("location", form.location);
     data.set("eventDate", form.eventDate);
     data.set("tags", form.tags);
+    data.set("notes", form.notes);
+    data.set("intakeNotes", form.notes);
     data.set("peopleVisible", "Unknown");
     data.set("minorsVisible", "Unknown");
     data.set("approvalSuggestion", "Needs Review");
     files.forEach((file) => data.append("files", file));
     const response = await fetch("/api/upload", { method: "POST", body: data });
     const payload = await response.json().catch(() => ({}));
-    setMessage(payload.message || payload.error || (response.ok ? "Upload intake sent to media team. Not public until review." : "Upload blocked."));
+    setMessage(response.ok
+      ? "Thank you — your photos were sent to the media team. We'll review rights, people/youth visibility, and usage before anything is published."
+      : payload.message || payload.error || "Upload blocked.");
   }
 
   return (
     <form className="proto-flow-page" onSubmit={submit}>
       <section className="proto-flow-card proto-upload-card">
-        <header><h1>Upload / Intake</h1></header>
+        <header>
+          <h1>Upload / Intake</h1>
+          <h2>Share photos with the media team</h2>
+          <p>Share photos with the media team. Media team reviews photos before anything becomes public.</p>
+        </header>
         <div className="proto-upload-layout">
           <div>
-            <label className="proto-dropzone">
+            <label
+              className="proto-dropzone damx-upload-card"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleDrop}
+            >
               <Upload size={24} />
-              <span>Drag & drop files or folders or browse</span>
-              <input type="file" multiple onChange={(event) => setFiles(Array.from(event.target.files || []))} />
+              <span>Upload photos from computer</span>
+              <small>Drag and drop files, or browse. Every item enters review first.</small>
+              <input aria-label="Upload photos from computer" type="file" multiple onChange={(event) => setFiles(Array.from(event.target.files || []))} />
             </label>
-            <div className="proto-file-list">
+            <div className="proto-file-list" aria-label="Selected photos and links">
               <p>{files.length || 23} files selected · {files.length ? formatBytes(files.reduce((sum, file) => sum + file.size, 0)) : "1.2 GB"}</p>
+              {files.length ? <button type="button" className="proto-inline-action" onClick={() => setFiles([])}>Remove all</button> : null}
               {((files.length ? files : [
-                { name: "Product-Set-016.jpg", size: 4_100_000 },
-                { name: "Lifestyle-Outdoor-07.jpg", size: 5_100_000 },
-                { name: "Architecture-15.jpg", size: 6_800_000 },
-                { name: "Portrait-Urban-046.jpg", size: 2_700_000 }
+                { name: "Youth-Service-Opening-Prayer.jpg", size: 4_100_000 },
+                { name: "Fellowship-Hall-Volunteer-Team.jpg", size: 5_100_000 },
+                { name: "Bible-Study-Classroom-Wide.jpg", size: 6_800_000 },
+                { name: "Media-Team-Intake-Note.pdf", size: 2_700_000 }
               ]) as UploadListItem[]).slice(0, 5).map((file, index) => (
                 <div key={`${file.name}-${index}`}><span>{file.name}</span><small>{file.size ? formatBytes(file.size) : ["4.2 MB", "5.1 MB", "6.8 MB", "3.7 MB"][index]}</small><Check size={14} /></div>
               ))}
             </div>
           </div>
-          <div className="proto-field-panel">
+          <div className="proto-field-panel" aria-label="Photo details">
             <h2>Assign metadata</h2>
             {[
-              ["collection", "Collection"],
-              ["brand", "Brand"],
+              ["sourceLink", "Paste Google Drive link"],
+              ["eventName", "Event name"],
+              ["eventDate", "Date"],
+              ["ministry", "Ministry / team"],
+              ["source", "Photographer / source"],
+              ["location", "Location"],
               ["usageRights", "Usage rights"],
-              ["credit", "Credit"],
-              ["eventDate", "Review date"],
-              ["tags", "Tags"]
+              ["tags", "Suggested tags"],
+              ["notes", "Notes for reviewers"]
             ].map(([key, label]) => (
               <label key={key} className="proto-field">
                 <span>{label}</span>
                 <input type={key === "eventDate" ? "date" : "text"} value={form[key as keyof typeof form]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
               </label>
             ))}
-            <Button type="submit" tone="primary" disabled={!canSend}>{canSend ? "Start upload" : "Contributor access required"}</Button>
+            <div className="proto-action-row">
+              <Button type="button" onClick={() => setMessage("Saved for later in this browser.")}>Save for later</Button>
+              <Button
+                type="submit"
+                tone="primary"
+                disabled={!canSubmit}
+                title={!hasMedia ? "Add photos or a link first." : undefined}
+              >
+                Send to media team
+              </Button>
+            </div>
+            <p className="proto-muted"><strong>How review works</strong>: rights, people/youth visibility, and usage are reviewed before anything is published.</p>
             <p className="proto-muted">Every imported asset defaults to Needs Review / Do Not Publish.</p>
           </div>
         </div>
         {message ? <p className="proto-gate-note">{message}</p> : null}
       </section>
     </form>
+  );
+}
+
+export function PrototypeRequestsPage() {
+  const { role } = useDemoRole();
+  const search = useAssetsSearch({ role, sort: "Newest", limit: 8 });
+  const assets = search.data?.assets || [];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = assets.find((asset) => asset.id === selectedId) || assets[0];
+  const selectedIndex = Math.max(0, assets.findIndex((asset) => asset.id === selected?.id));
+  const requests = useMemo(() => {
+    const visible = assets.slice(0, 5);
+    return visible.map((asset, index) => ({
+      asset,
+      title: index % 2 === 0 ? "Usage review request" : "Approved-copy request",
+      requester: index % 2 === 0 ? "Ministry Team" : "Media Team",
+      scope: index % 3 === 0 ? "Public web" : index % 3 === 1 ? "Internal slides" : "Open album cleanup",
+      note: asset.usageGuidance || asset.rightsNotes || "Needs reviewer evidence before reuse."
+    }));
+  }, [assets]);
+
+  useEffect(() => {
+    if (!selectedId && assets[0]) setSelectedId(assets[0].id);
+  }, [assets, selectedId]);
+
+  return (
+    <section className="proto-flow-page">
+      <div className="proto-flow-card proto-review-card" data-primary-section="requests-table">
+        <header className="proto-review-head">
+          <div>
+            <h1>Requests</h1>
+            <p>{selected ? displayTitle(selected) : "Loading ResourceSpace request context..."}</p>
+          </div>
+          <StatusPill asset={selected} />
+          <span>{selected ? selectedIndex + 1 : 0} of {requests.length || 1}</span>
+          <LinkButton href={routeWithRole("/upload", role)}>New intake</LinkButton>
+          <LinkButton href={routeWithRole("/review", role)} tone="primary">Open review</LinkButton>
+        </header>
+        {search.loading ? <div className="proto-loading">Loading requests...</div> : search.error ? <div className="proto-error">{search.error}</div> : (
+          <div className="proto-review-layout">
+            <div className="proto-comments-panel">
+              <div className="proto-tabs"><button className="is-active">Open</button><button>Waiting</button><button>Closed</button></div>
+              <div className="proto-comment-list">
+                {requests.map((request) => (
+                  <button
+                    key={request.asset.id}
+                    type="button"
+                    className={`proto-request-row${selected?.id === request.asset.id ? " is-active" : ""}`}
+                    onClick={() => setSelectedId(request.asset.id)}
+                  >
+                    <strong>{request.title}</strong>
+                    <small>{request.requester} · {request.scope}</small>
+                    <span>{displayTitle(request.asset)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <aside className="proto-inspector" aria-label="Request detail">
+              {selected ? (
+                <>
+                  <div className="proto-inspector-head">
+                    <div className="proto-inspector-thumb"><AssetImage asset={selected} /></div>
+                    <div>
+                      <h2>{displayTitle(selected)}</h2>
+                      <StatusPill asset={selected} />
+                      <p>{assetMeta(selected) || assetRecordRef(selected)}</p>
+                      <small>Portal record ready for reviewer follow-up</small>
+                    </div>
+                  </div>
+                  <div className="proto-detail-stack">
+                    <section><h3>Request</h3><p>{requests.find((request) => request.asset.id === selected.id)?.note || "Review usage before any public reuse."}</p></section>
+                    <section><h3>Usage scope</h3><p>{selected.usageScope}. Reviewer, review date, notes, and usage scope required before public use.</p></section>
+                    <section><h3>Album context</h3><div className="proto-tag-row"><span>{selected.collection}</span>{selected.eventName ? <span>{selected.eventName}</span> : null}</div></section>
+                  </div>
+                  <div className="proto-action-row">
+                    <Link href={routeWithRole(`/assets/${selected.id}`, role)}><Eye size={16} /><span>Asset</span></Link>
+                    <Link href={routeWithRole("/review", role)}><ShieldCheck size={16} /><span>Review</span></Link>
+                    <button type="button" onClick={() => toast.message("Requester info note staged.")}><Send size={16} /><span>Ask info</span></button>
+                  </div>
+                </>
+              ) : <p className="proto-muted">No requests available.</p>}
+            </aside>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -650,7 +773,7 @@ export function PrototypeReviewApprove() {
   }, [selected?.id]);
 
   if (!canReview(role)) {
-    return <section className="proto-flow-page"><div className="proto-flow-card"><h1>Review & Approve</h1><p>Reviewer access required.</p></div></section>;
+    return <section className="proto-flow-page"><div className="proto-flow-card"><h1>Review & Approve</h1><p>Review inbox requires reviewer access.</p></div></section>;
   }
 
   async function decide(action: "Approve Public" | "Request More Info") {
@@ -717,7 +840,7 @@ export function PrototypeReviewApprove() {
   );
 }
 
-export function PrototypeCollectionsDistribute({ distribution = false }: { distribution?: boolean }) {
+export function PrototypeCollectionsDistribute({ distribution: _distribution = false }: { distribution?: boolean }) {
   const { role } = useDemoRole();
   const search = useAssetsSearch({ role, sort: "Approved first", limit: 12 });
   const collections = search.data?.collections || [];
@@ -730,26 +853,26 @@ export function PrototypeCollectionsDistribute({ distribution = false }: { distr
           <header className="proto-collection-head">
             <div className="proto-collection-cover"><AssetImage asset={assets[0]} /></div>
             <div>
-              <h1>{distribution ? "Distribution Sets" : "Collections / Distribute"}</h1>
-              <h2>{selected?.name || "Spring Campaign 2024"}</h2>
+              <h1>Collections / Open albums</h1>
+              <h2>{selected?.name || "Youth Service Open Album"}</h2>
               <span>{selected?.countLabel || "12 assets"}</span>
-              <p>{selected?.description || "Campaign assets for web, social, and print."}</p>
+              <p>{selected?.description || "ResourceSpace album view for ministry search, review context, and approved-copy requests."}</p>
             </div>
           </header>
-          <div className="proto-tabs"><button className="is-active">Assets</button><button>Details</button><button>Activity</button><button>Distribution</button></div>
+          <div className="proto-tabs"><button className="is-active">Assets</button><button>Album details</button><button>Activity</button><button>Usage review</button></div>
           <div className="proto-collection-assets">
             {assets.slice(0, 7).map((asset) => <div key={asset.id}><AssetImage asset={asset} /></div>)}
-            <button type="button">+ Add assets</button>
+            <button type="button">+ Link assets</button>
           </div>
         </div>
         <aside className="proto-share-panel">
-          <h2>Share collection</h2>
-          <label className="proto-toggle-row"><span>Share link</span><input type="checkbox" defaultChecked /></label>
-          <label className="proto-field"><span>URL</span><input readOnly value="https://dam.local/c/campaign2024" /></label>
-          <Button onClick={() => toast.message("Share link copied. Asset gates still apply.")}>Copy link</Button>
-          <label className="proto-field"><span>Permission</span><select defaultValue="view"><option value="view">People with the link can view</option><option value="request">Request access required</option></select></label>
-          <Button onClick={() => toast.message("Download all checks each item approval before packaging.")}>Download all</Button>
-          <p className="proto-muted">Source/original files stay restricted. Per-asset approval is never bypassed.</p>
+          <h2>Open album access</h2>
+          <label className="proto-toggle-row"><span>Open album</span><input type="checkbox" defaultChecked /></label>
+          <label className="proto-field"><span>Portal album link</span><input readOnly value="Available after reviewer confirms album access" /></label>
+          <Button onClick={() => toast.message("Album link copied. Asset gates still apply.")}>Copy link</Button>
+          <label className="proto-field"><span>Access</span><select defaultValue="view"><option value="view">Church team can view</option><option value="request">Request access required</option></select></label>
+          <Button onClick={() => toast.message("Request queued. Approved-copy gates still check each asset.")}>Request approved copies</Button>
+          <p className="proto-muted">Source/original files stay restricted. Album membership never bypasses per-asset review.</p>
         </aside>
       </div>
     </section>
@@ -782,62 +905,6 @@ export function PrototypeAssetDetailPage({ id }: { id: string }) {
           </div>
         </div>
       ) : <div className="proto-error">Asset not found.</div>}
-    </section>
-  );
-}
-
-export function PrototypeAdminPage({ initialModule, adminOnly: _adminOnly }: { initialModule?: string; adminOnly?: boolean } = {}) {
-  const { role } = useDemoRole();
-  const readiness = useAdminReadiness(role);
-  const review = useReviewQueue(role, "pending");
-  if (!canAdmin(role)) return <section className="proto-flow-page"><div className="proto-flow-card"><h1>Admin</h1><p>DAM Admin access required.</p></div></section>;
-  const metrics = readiness.data?.metrics;
-  const pendingWrites = Object.values(review.data?.pendingWrites || {});
-  const sourceState = readiness.source?.detail || "ResourceSpace connection status unavailable in this environment.";
-  const adminRows = [
-    { label: "Source health", value: sourceLabel(readiness.source), detail: sourceState, tone: readiness.live ? "approved" : "review" },
-    { label: "Review queues", value: `${review.data?.assets?.length ?? metrics?.needsReview ?? 0} active`, detail: "Reviewer and DAM Admin queues preserve required evidence checks.", tone: (review.data?.assets?.length || metrics?.needsReview) ? "review" : "approved" },
-    { label: "Pending writes", value: `${pendingWrites.length} queued`, detail: "ResourceSpace remains unchanged until live writeback or media team sync completes.", tone: pendingWrites.length ? "review" : "draft" },
-    { label: "Users / Roles", value: "4 roles", detail: "Viewer, Contributor, Reviewer, and DAM Admin gates stay enforced.", tone: "approved" },
-    { label: "Metadata health", value: `${metrics?.rightsReview ?? 0} rights`, detail: `${metrics?.renditionGaps ?? 0} rendition gaps, ${metrics?.missingSource ?? 0} missing source records.`, tone: (metrics?.rightsReview || metrics?.renditionGaps || metrics?.missingSource) ? "review" : "approved" },
-    { label: "Launch blockers", value: `${readiness.data?.readiness?.filter((item) => item.tone !== "ok" || item.score < 80).length ?? 0} open`, detail: "Launch readiness tracks integrations, audit evidence, metadata, and safe delivery gates.", tone: (readiness.data?.score ?? 0) >= 80 ? "approved" : "review" }
-  ];
-  const integrationRows = readiness.data?.integrationReadiness?.length
-    ? readiness.data.integrationReadiness
-    : [
-      { id: "resourcespace", owner: "ResourceSpace", label: "Source connection", ready: Boolean(readiness.live), detail: sourceState, state: readiness.live ? "Operational" as const : "Read-only" as const },
-      { id: "writeback", owner: "Portal", label: "Pending write semantics", ready: pendingWrites.length === 0, detail: "Review decisions queue safely when ResourceSpace writeback is unavailable.", state: pendingWrites.length ? "Pending setup" as const : "Operational" as const },
-      { id: "delivery", owner: "Portal", label: "Safe downloads", ready: true, detail: "Approved-copy gates protect source/original files and audit every request.", state: "Operational" as const }
-    ];
-  return (
-    <section className="proto-admin-page">
-      <div className="proto-admin-header">
-        <h1>{initialModule ? "Admin" : "Admin"}</h1>
-        <p>{sourceLabel(readiness.source)}. ResourceSpace remains source of truth.</p>
-      </div>
-      <div className="proto-admin-ops-grid">
-        {adminRows.map((row) => (
-          <article key={row.label}>
-            <div>
-              <span>{row.label}</span>
-              <strong>{row.value}</strong>
-            </div>
-            <StatusPill label={row.tone === "approved" ? "Operational" : row.tone === "draft" ? "Draft" : "In Review"} tone={row.tone} />
-            <p>{row.detail}</p>
-          </article>
-        ))}
-      </div>
-      <div className="proto-admin-table">
-        <header><h2>Operations modules</h2><span>Compact status</span></header>
-        {integrationRows.slice(0, 8).map((item) => (
-          <div key={item.id}>
-            <span>{item.owner}</span>
-            <strong>{item.label}</strong>
-            <p>{item.detail}</p>
-            <StatusPill label={item.state || (item.ready ? "Operational" : "Not configured")} tone={item.ready ? "approved" : "review"} />
-          </div>
-        ))}
-      </div>
     </section>
   );
 }

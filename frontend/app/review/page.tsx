@@ -1,6 +1,6 @@
-import { EnterpriseReviewPage } from "@/components/dam/EnterpriseDamPages";
+import { AtlasReviewPage } from "@/components/dam/EnterpriseDamPages";
 
 export default async function Page({ searchParams }: { searchParams?: Promise<{ queue?: string }> }) {
   await searchParams;
-  return <EnterpriseReviewPage />;
+  return <AtlasReviewPage />;
 }

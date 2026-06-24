@@ -11,6 +11,10 @@ function stringArrayConst(source, constName) {
   return match ? [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]) : [];
 }
 
+function exists(relativePath) {
+  return fs.existsSync(path.join(root, relativePath));
+}
+
 const sourceCustodyAssetKeys = stringArrayConst(sourceRedactionSource, "sourceCustodyAssetKeys");
 const forbiddenPayloadKeys = [
   "signedUrl",
@@ -226,16 +230,19 @@ if (/readJsonObject|function\s+normalizeQueue|reviewQueues|pendingReviewWriteSum
 }
 
 const adminReadinessRoute = "frontend/app/api/admin/readiness/route.ts";
-const adminReadinessRouteSource = fs.readFileSync(path.join(root, adminReadinessRoute), "utf8");
-const damReadinessSource = fs.readFileSync(path.join(root, "frontend/lib/dam-readiness.ts"), "utf8");
-if (!adminReadinessRouteSource.includes("damReadinessDeniedError()") || !adminReadinessRouteSource.includes("damReadinessDeniedAuditEvent(session)") || !adminReadinessRouteSource.includes("damReadinessViewedAuditEvent(session)")) {
-  failures.push(`${adminReadinessRoute} must delegate readiness denial copy and audit details to dam-readiness`);
-}
-if (!damReadinessSource.includes("function damReadinessDeniedError") || !damReadinessSource.includes("function damReadinessDeniedAuditEvent") || !damReadinessSource.includes("function damReadinessViewedAuditEvent")) {
-  failures.push("dam-readiness must own readiness denial copy and audit details");
-}
-if (/role-cannot-admin|DAM readiness is available to DAM Admin role|admin_readiness_(denied|viewed)|Governance readiness/.test(adminReadinessRouteSource)) {
-  failures.push(`${adminReadinessRoute} must not hand-roll readiness denial copy or audit details`);
+const damReadinessPath = "frontend/lib/dam-readiness.ts";
+if (exists(adminReadinessRoute) && exists(damReadinessPath)) {
+  const adminReadinessRouteSource = fs.readFileSync(path.join(root, adminReadinessRoute), "utf8");
+  const damReadinessSource = fs.readFileSync(path.join(root, damReadinessPath), "utf8");
+  if (!adminReadinessRouteSource.includes("damReadinessDeniedError()") || !adminReadinessRouteSource.includes("damReadinessDeniedAuditEvent(session)") || !adminReadinessRouteSource.includes("damReadinessViewedAuditEvent(session)")) {
+    failures.push(`${adminReadinessRoute} must delegate readiness denial copy and audit details to dam-readiness`);
+  }
+  if (!damReadinessSource.includes("function damReadinessDeniedError") || !damReadinessSource.includes("function damReadinessDeniedAuditEvent") || !damReadinessSource.includes("function damReadinessViewedAuditEvent")) {
+    failures.push("dam-readiness must own readiness denial copy and audit details");
+  }
+  if (/role-cannot-admin|DAM readiness is available to DAM Admin role|admin_readiness_(denied|viewed)|Governance readiness/.test(adminReadinessRouteSource)) {
+    failures.push(`${adminReadinessRoute} must not hand-roll readiness denial copy or audit details`);
+  }
 }
 
 if (!assetDetailRouteSource.includes("buildAssetDetailResponse({ asset, related, resourceSpaceId, session, source })") || !assetDetailRouteSource.includes("assetDetailMalformedIdError()") || !assetDetailRouteSource.includes("assetDetailNotFoundError(session, source)") || !assetDetailRouteSource.includes("assetDetailRoleDeniedError(session, source)") || !assetDetailResponseSource.includes("function buildAssetDetailResponse") || !assetDetailResponseSource.includes("function assetDetailMalformedIdError") || !assetDetailResponseSource.includes("function assetDetailNotFoundError") || !assetDetailResponseSource.includes("function assetDetailRoleDeniedError") || !assetDetailResponseSource.includes("pendingReviewWriteSummary") || !assetDetailResponseSource.includes("resourceSpaceRecordRef")) {
@@ -246,19 +253,22 @@ if (/pendingReviewWriteSummary|resourceSpaceRecordRef|resourceSpaceAssetUrl|canO
 }
 
 const brandKitRoute = "frontend/app/api/brand-kits/[id]/route.ts";
-const brandKitRouteSource = fs.readFileSync(path.join(root, brandKitRoute), "utf8");
-const brandKitSource = fs.readFileSync(path.join(root, "frontend/lib/brand-kits.ts"), "utf8");
-if (!brandKitRouteSource.includes("normalizeBrandKitId((await params).id)")) {
-  failures.push(`${brandKitRoute} must normalize path params through normalizeBrandKitId`);
-}
-if (!brandKitRouteSource.includes("brandKitUnknownError()") || !brandKitSource.includes("function brandKitUnknownError")) {
-  failures.push(`${brandKitRoute} must delegate unknown brand kit response copy to brand-kits`);
-}
-if (/Unknown brand kit/.test(brandKitRouteSource)) {
-  failures.push(`${brandKitRoute} must not hand-roll unknown brand kit response copy`);
-}
-if (!brandKitRouteSource.includes("`/api/brand-kits/${encodeURIComponent(kitId)}`")) {
-  failures.push(`${brandKitRoute} must record usage route with encoded brand kit id`);
+const brandKitPath = "frontend/lib/brand-kits.ts";
+if (exists(brandKitRoute) && exists(brandKitPath)) {
+  const brandKitRouteSource = fs.readFileSync(path.join(root, brandKitRoute), "utf8");
+  const brandKitSource = fs.readFileSync(path.join(root, brandKitPath), "utf8");
+  if (!brandKitRouteSource.includes("normalizeBrandKitId((await params).id)")) {
+    failures.push(`${brandKitRoute} must normalize path params through normalizeBrandKitId`);
+  }
+  if (!brandKitRouteSource.includes("brandKitUnknownError()") || !brandKitSource.includes("function brandKitUnknownError")) {
+    failures.push(`${brandKitRoute} must delegate unknown brand kit response copy to brand-kits`);
+  }
+  if (/Unknown brand kit/.test(brandKitRouteSource)) {
+    failures.push(`${brandKitRoute} must not hand-roll unknown brand kit response copy`);
+  }
+  if (!brandKitRouteSource.includes("`/api/brand-kits/${encodeURIComponent(kitId)}`")) {
+    failures.push(`${brandKitRoute} must record usage route with encoded brand kit id`);
+  }
 }
 
 const betaFeedbackItemRoute = "frontend/app/api/beta-feedback/[id]/route.ts";
@@ -331,16 +341,19 @@ if (/readJsonObject|sanitizeSavedSearch|safeIsoTimestampIdPart|saveSavedSearch\(
 }
 
 const packageRoute = "frontend/app/api/packages/route.ts";
-const packageRouteSource = fs.readFileSync(path.join(root, packageRoute), "utf8");
-const packageSource = fs.readFileSync(path.join(root, "frontend/lib/package-store.ts"), "utf8");
-if (!packageRouteSource.includes("readPackageDraftInput(request)") || !packageRouteSource.includes("savePackageDraftSubmission(draft, identity, governance)") || !packageRouteSource.includes("buildPackageDraftListResponse(packages)") || !packageRouteSource.includes("buildPackageDraftSaveResponse(identity.role, record, governance)") || !packageRouteSource.includes("packageDraftSavedAuditEvent(record, governance, identity.role, identity.id)")) {
-  failures.push(`${packageRoute} must delegate draft parsing, stored record creation, response payloads, and audit details to package-store`);
-}
-if (!packageSource.includes("function readPackageDraftInput") || !packageSource.includes("function savePackageDraftSubmission") || !packageSource.includes("function storedGovernanceSnapshot") || !packageSource.includes("function buildPackageDraftListResponse") || !packageSource.includes("function buildPackageDraftSaveResponse") || !packageSource.includes("function packageDraftSavedAuditEvent")) {
-  failures.push("package-store must own package draft parsing, stored governance snapshots, record creation, response payloads, and audit details");
-}
-if (/readJsonObject|sanitizePackageDraft|safeIsoTimestampIdPart|savePackageDraft\(|packageDraftForRolePayload|storageMode:\s*record\.storageMode|totalRefs|portalReadyRefs|blockedRefs|role-cannot-(list|save)-packages/.test(packageRouteSource)) {
-  failures.push(`${packageRoute} must not hand-roll package draft body parsing, sanitization, timestamp ids, persistence record creation, role payloads, response payloads, or audit details`);
+const packageStorePath = "frontend/lib/package-store.ts";
+if (exists(packageRoute) && exists(packageStorePath)) {
+  const packageRouteSource = fs.readFileSync(path.join(root, packageRoute), "utf8");
+  const packageSource = fs.readFileSync(path.join(root, packageStorePath), "utf8");
+  if (!packageRouteSource.includes("readPackageDraftInput(request)") || !packageRouteSource.includes("savePackageDraftSubmission(draft, identity, governance)") || !packageRouteSource.includes("buildPackageDraftListResponse(packages)") || !packageRouteSource.includes("buildPackageDraftSaveResponse(identity.role, record, governance)") || !packageRouteSource.includes("packageDraftSavedAuditEvent(record, governance, identity.role, identity.id)")) {
+    failures.push(`${packageRoute} must delegate draft parsing, stored record creation, response payloads, and audit details to package-store`);
+  }
+  if (!packageSource.includes("function readPackageDraftInput") || !packageSource.includes("function savePackageDraftSubmission") || !packageSource.includes("function storedGovernanceSnapshot") || !packageSource.includes("function buildPackageDraftListResponse") || !packageSource.includes("function buildPackageDraftSaveResponse") || !packageSource.includes("function packageDraftSavedAuditEvent")) {
+    failures.push("package-store must own package draft parsing, stored governance snapshots, record creation, response payloads, and audit details");
+  }
+  if (/readJsonObject|sanitizePackageDraft|safeIsoTimestampIdPart|savePackageDraft\(|packageDraftForRolePayload|storageMode:\s*record\.storageMode|totalRefs|portalReadyRefs|blockedRefs|role-cannot-(list|save)-packages/.test(packageRouteSource)) {
+    failures.push(`${packageRoute} must not hand-roll package draft body parsing, sanitization, timestamp ids, persistence record creation, role payloads, response payloads, or audit details`);
+  }
 }
 
 for (const route of [

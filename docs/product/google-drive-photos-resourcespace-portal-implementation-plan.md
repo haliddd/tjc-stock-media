@@ -1,8 +1,10 @@
 # Google Photos / Drive ResourceSpace Portal Implementation Plan
 
 Version: v0.1
-Status: Draft
+Status: superseded as product canon; reference evidence only
 Source PRD: `docs/product/google-drive-photos-resourcespace-portal-prd.md`
+
+Superseded by `docs/product/PRD-slim-atlas-resourcespace-portal-cleanup.md` and `docs/START_HERE.md`. Use this file only for visual/workflow reference. Do not treat beta, production, package/distribution, admin/governance, or enterprise DAM language here as current Slim Atlas truth.
 
 ## Planning Constraints
 
@@ -14,7 +16,7 @@ Source PRD: `docs/product/google-drive-photos-resourcespace-portal-prd.md`
 - ResourceSpace remains source truth.
 - Google Shared Drive remains master archive.
 - Approved Public/Internal folders remain delivery outputs, not the full archive.
-- Current beta remains photo-only and beta-ready with limitations.
+- No beta-ready or production-ready claim from this plan is canonical for Slim Atlas.
 
 ## Phase 1: Viewer / Contributor Friendly Front Door
 
@@ -77,7 +79,7 @@ Acceptance:
 
 ## Phase 4: Review / Admin Polish
 
-Goal: make governance easier without making it dominate normal UX.
+Reference goal only: make review/support easier without making broad governance dominate normal UX.
 
 Work:
 
