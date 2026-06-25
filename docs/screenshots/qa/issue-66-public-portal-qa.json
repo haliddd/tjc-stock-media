@@ -1,0 +1,39 @@
+{
+  "issue": 66,
+  "url": "http://localhost:4871/public-portal/spring-campaign-2024",
+  "capturedAt": "2026-06-25T15:19:01.824Z",
+  "screenshots": [
+    "docs/screenshots/qa/issue-66-public-portal-desktop-1448.png",
+    "docs/screenshots/qa/issue-66-public-portal-mobile-390.png"
+  ],
+  "checks": {
+    "desktop": {
+      "title": "Spring Campaign 2024",
+      "hasAppShell": false,
+      "hasFloatingCard": true,
+      "assetCards": 10,
+      "disabledActions": [
+        {
+          "text": "Download all disabled",
+          "disabled": true
+        },
+        {
+          "text": "Request asset",
+          "disabled": true
+        },
+        {
+          "text": "Share collection link",
+          "disabled": true
+        }
+      ],
+      "bodyWidth": 1448,
+      "viewportWidth": 1448
+    },
+    "mobile": {
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "assetCards": 10
+    }
+  }
+}

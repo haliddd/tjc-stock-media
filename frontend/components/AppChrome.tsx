@@ -12,7 +12,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  if (pathname === "/beta-login") return <>{children}</>;
+  if (pathname === "/beta-login" || pathname.startsWith("/public-portal/")) return <>{children}</>;
 
   if (!mounted) {
     return <div className="min-h-dvh bg-tjc-bg" aria-label="Loading DAM workspace" />;
