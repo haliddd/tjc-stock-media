@@ -349,13 +349,13 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     },
     defaultReviewState: "Needs Review",
     defaultUsageScope: "Do Not Publish",
-    atlasStoresOriginals: false,
-    originalsStoredByAtlas: false,
+    portalStoresOriginals: false,
+    originalsStoredByPortal: false,
     message: storageMode === "blocked-no-durable-store"
       ? persisted?.blockedReason || "Durable storage is required before browser file intake can continue."
       : intake.largeFiles.length
         ? uploadDefaultState.largeMediaMessage
-        : "Intake packet submitted for ResourceSpace/admin review. Nothing is public and no original custody moved into Atlas.",
+        : "Intake packet submitted for ResourceSpace/admin review. Nothing is public and no original custody moved into the portal.",
     eventName: intake.eventName,
     fileCount: intake.files.length,
     sourceLinkCaptured: Boolean(intake.sourceLink),
@@ -369,7 +369,7 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     betaBoundaries: uploadBetaBoundaries,
     storageMode,
     custodyMode: storageMode === "local-runtime" ? "portal-intake-metadata-only" : storageMode,
-    custodyBoundary: "ResourceSpace/Shared Drive originals remain authoritative; Atlas records intake metadata only.",
+    custodyBoundary: "ResourceSpace/Shared Drive originals remain authoritative; the portal records intake metadata only.",
     resourceSpaceWritten: false,
     resourceSpaceWritePolicy: "no-upload-writeback"
   };

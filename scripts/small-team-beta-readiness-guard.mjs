@@ -216,7 +216,7 @@ if (blockers) {
     if (buildCurrentness.readinessContract !== "small-team-beta-readiness-2026-06-17") failures.push(`${files.blockers} buildCurrentness.readinessContract mismatch`);
     if (buildCurrentness.sessionEndpoint !== "/api/beta-auth/session") failures.push(`${files.blockers} buildCurrentness.sessionEndpoint mismatch`);
     if (![null, "small-team-beta-readiness-2026-06-17"].includes(buildCurrentness.hostedSessionBuildContract)) failures.push(`${files.blockers} buildCurrentness.hostedSessionBuildContract must be null or small-team-beta-readiness-2026-06-17`);
-    if (buildCurrentness.routeSurfaceHomePage !== "EnterpriseLibraryPage") failures.push(`${files.blockers} buildCurrentness.routeSurfaceHomePage mismatch`);
+    if (buildCurrentness.routeSurfaceHomePage !== "MarketingLandingPage") failures.push(`${files.blockers} buildCurrentness.routeSurfaceHomePage mismatch`);
     if (buildCurrentness.routeSurfaceUploadPage !== "EnterpriseUploadPage") failures.push(`${files.blockers} buildCurrentness.routeSurfaceUploadPage mismatch`);
   }
   if (browserQa && summary) {

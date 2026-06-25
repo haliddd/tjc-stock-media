@@ -20,7 +20,7 @@ function asset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsset {
     status: "Approved Public",
     usageScope: "Public",
     peopleRisk: "No people",
-    sourceSystem: "Atlas local ResourceSpace export",
+    sourceSystem: "TJC local ResourceSpace export",
     sourceAccount: "Media Team",
     imageDimensions: "2400x1600",
     rightsStatus: "Rights approved",

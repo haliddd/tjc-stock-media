@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BUILD_READINESS_CONTRACT, publicBuildInfo } from "@/lib/build-info";
+import { enterpriseRoutes } from "@/lib/dam/enterprise-route-surface";
 
 const originalEnv = { ...process.env };
 
@@ -9,6 +10,16 @@ afterEach(() => {
 });
 
 describe("publicBuildInfo", () => {
+  it("reports marketing home by page identity instead of a fake Next page export", () => {
+    const homeRoute = enterpriseRoutes.find((route) => route.path === "/");
+
+    expect(homeRoute).toMatchObject({
+      pageIdentity: "MarketingLandingPage"
+    });
+    expect(homeRoute).not.toHaveProperty("pageExport");
+    expect(publicBuildInfo().routeSurface.homePage).toBe("MarketingLandingPage");
+  });
+
   it("exposes a non-secret currentness contract for hosted read-only probes", () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "63474a70e930687b188d6327f888e677dde3c2d2");
@@ -26,7 +37,7 @@ describe("publicBuildInfo", () => {
       commitShort: "63474a70e930",
       branch: "codex/merge-recommended-set-2026-06-17",
       routeSurface: {
-        homePage: "EnterpriseLibraryPage",
+        homePage: "MarketingLandingPage",
         uploadPage: "EnterpriseUploadPage"
       }
     });

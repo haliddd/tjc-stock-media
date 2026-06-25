@@ -24,6 +24,8 @@ const allowedMediaPatterns = [
   /^frontend\/public\/brand\/[^/]+\.png$/i,
   /^docs\/screenshots\/free-internal-beta-2026-06-12\/[^/]+\.png$/i,
   /^docs\/screenshots\/prototype-final-blocker-pass-2026-06-22\/[^/]+\.png$/i,
+  /^docs\/screenshots\/qa\/issue-\d+[-\w]*\.png$/i,
+  /^docs\/screenshots\/qa\/product-wide-parity-\d{4}-\d{2}-\d{2}\/[^/]+\.png$/i,
   /^docs\/runs\/evidence\/2026-06-18\/final-premerge-ui-review\/[^/]+\.png$/i,
 ];
 const modelArtifactPattern = /\.(safetensors|ckpt|pt|pth|onnx)$/i;

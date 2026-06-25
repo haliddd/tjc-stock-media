@@ -57,7 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const role = betaSession?.role || trustedRoleFromHeaders(headerStore) || "Viewer";
 
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body className={`${sourceSans.variable} ${crimsonText.variable} ${playfairDisplay.variable} ${notoSansTc.variable} ${geistMono.variable} font-sans`}>
         <RoleProvider initialRole={role} betaLocked={Boolean(betaEnabled && betaSession)}>
           <AppChrome>{children}</AppChrome>

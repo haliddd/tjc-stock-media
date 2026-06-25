@@ -41,7 +41,7 @@ const sidebarItems = [
   ["Trash", Trash2],
 ] as const;
 
-const savedViews = ["Campaign 2024", "Website", "Product shots", "Need review", "Expiring soon", "New view"];
+const savedViews = ["Sabbath service", "Website", "Teaching assets", "Need review", "Expiring soon", "New view"];
 
 const mockAssets = ["is-mountain", "is-portrait", "is-ceramic", "is-peaks", "is-product", "is-architecture", "is-canyon", "is-chair", "is-forms"];
 
@@ -60,11 +60,11 @@ const features = [
   ["Secure distribution", "Share assets securely with audience-based access and watermarking controls.", LockKeyhole],
 ] as const;
 
-export default function Page() {
+function MarketingLandingPage() {
   return (
     <main className="proto-marketing-page">
       <nav className="proto-marketing-nav">
-        <Link className="proto-marketing-brand" href="/" aria-label="Archive One home"><span>A</span><strong>Archive One</strong></Link>
+        <Link className="proto-marketing-brand" href="/" aria-label="TJC Media Library home"><span>T</span><strong>TJC Media Library</strong></Link>
         <div className="proto-marketing-links">
           {navItems.map(([item, hasMenu]) => <Link href="/library" key={item}>{item}{hasMenu ? <ChevronDown size={13} /> : null}</Link>)}
         </div>
@@ -74,15 +74,15 @@ export default function Page() {
       <section className="proto-marketing-hero">
         <div className="proto-marketing-copy">
           <span className="proto-marketing-eyebrow">The intelligent DAM for modern teams</span>
-          <h1>A beautiful DAM for teams that need control.</h1>
-          <p>Organize, approve, protect, and distribute brand assets with confidence. Archive One gives your team the clarity and control to get work done&mdash;at scale.</p>
+          <h1>A church media DAM for teams that need control.</h1>
+          <p>Organize, review, protect, and distribute TJC media with confidence. The portal keeps rights, people/youth safety, and ResourceSpace truth visible.</p>
           <div className="proto-marketing-actions"><Link className="is-primary" href="/library">Request a demo <ArrowRight size={16} /></Link><Link href="/library">Explore the product</Link></div>
-          <div className="proto-marketing-logos"><span>Acme Inc.</span><span>NORTHWOOD</span><span>Vertika</span><span>Sonder</span><span>LUMEN</span></div>
+          <div className="proto-marketing-logos"><span>TJC Media</span><span>ResourceSpace</span><span>Shared Drive</span><span>Reviewer Queue</span><span>Approved Copies</span></div>
         </div>
 
-        <div className="proto-marketing-mockup" aria-label="Archive One product mockup">
+        <div className="proto-marketing-mockup" aria-label="TJC Media Library product mockup">
           <aside className="proto-marketing-mock-sidebar">
-            <div className="proto-marketing-app-brand"><span>A</span><strong>Archive One</strong></div>
+            <div className="proto-marketing-app-brand"><span>T</span><strong>TJC Media Library</strong></div>
             <div className="proto-marketing-nav-list">
               {sidebarItems.map(([item, Icon], index) => <span className={index === 0 ? "is-active" : ""} key={item}><Icon size={13} />{item}</span>)}
             </div>
@@ -90,7 +90,7 @@ export default function Page() {
               <div><strong>Saved views</strong><ChevronDown size={12} /><button aria-label="Add saved view">+</button></div>
               {savedViews.map((item) => <span key={item}><Bookmark size={12} />{item}</span>)}
             </div>
-            <div className="proto-marketing-user"><div className="proto-user-avatar" /> <span><strong>Taylor Morgan</strong><small>Acme Inc.</small></span><ChevronDown size={13} /></div>
+            <div className="proto-marketing-user"><div className="proto-user-avatar" /> <span><strong>Media Team</strong><small>DAM Admin</small></span><ChevronDown size={13} /></div>
           </aside>
           <section className="proto-marketing-library">
             <header className="proto-marketing-mock-topbar">
@@ -105,17 +105,17 @@ export default function Page() {
           <aside className="proto-marketing-inspector">
             <button aria-label="Close inspector">&times;</button>
             <div className="proto-public-photo is-mountain" />
-            <h2>Mountain Lake Hero.jpg</h2>
+            <h2>Bible Teaching Background.jpg</h2>
             <span className="proto-status is-approved">Approved</span>
-            <small>AONE-54712 / 24.3 MB / JPG</small>
+            <small>TJC-367 / approved copy / JPG</small>
             <dl>
-              <div><dt>Campaign</dt><dd>Spring Campaign 2024</dd></div>
-              <div><dt>Usage rights</dt><dd>Worldwide / Web / Social / Print</dd></div>
-              <div><dt>License</dt><dd>Royalty-free</dd></div>
-              <div><dt>Usage channels</dt><dd>Commercial use</dd></div>
-              <div><dt>Region</dt><dd>Worldwide</dd></div>
-              <div><dt>Expires</dt><dd>May 14, 2026</dd></div>
-              <div><dt>Creator</dt><dd>Taylor Morgan</dd></div>
+              <div><dt>Collection</dt><dd>Teaching & Study</dd></div>
+              <div><dt>Usage rights</dt><dd>Website / Slides / Newsletter</dd></div>
+              <div><dt>License</dt><dd>TJC-owned</dd></div>
+              <div><dt>Usage channels</dt><dd>Public ministry use</dd></div>
+              <div><dt>Region</dt><dd>Church media</dd></div>
+              <div><dt>Expires</dt><dd>Reviewer recheck</dd></div>
+              <div><dt>Owner</dt><dd>Media Team</dd></div>
             </dl>
             <button className="is-download"><Download size={14} />Download <ChevronDown size={13} /></button>
             <div className="proto-marketing-mini-actions"><button><Share2 size={13} />Share</button><button><Folder size={13} />Add to collection</button></div>
@@ -137,13 +137,17 @@ export default function Page() {
             <h3>{title}</h3>
             <p>{copy}</p>
             {index === 0 ? <div className="proto-feature-mini is-search"><span><Search size={13} />campaign hero lakes</span><div><i className="proto-public-photo is-mountain" /><i className="proto-public-photo is-ceramic" /></div><small><Check size={12} />Safe to use</small></div> : null}
-            {index === 1 ? <div className="proto-feature-mini is-approval"><i className="proto-public-photo is-mountain" /><span><strong>Mountain Lake Hero.jpg</strong><small>In review</small></span><b>+2</b></div> : null}
-            {index === 2 ? <div className="proto-feature-mini is-table"><span>License <b>Royalty-free</b><Check size={12} /></span><span>Usage <b>Commercial use</b><Check size={12} /></span><span>Region <b>Worldwide</b><Check size={12} /></span></div> : null}
-            {index === 3 ? <div className="proto-feature-mini is-brand"><strong>Acme</strong><span>Aa</span><i /><i /><i /></div> : null}
-            {index === 4 ? <div className="proto-feature-mini is-share"><span><Share2 size={12} />External share link <LockKeyhole size={12} /></span><strong>Acme Spring Campaign</strong><small>Expires May 14, 2026</small></div> : null}
+            {index === 1 ? <div className="proto-feature-mini is-approval"><i className="proto-public-photo is-mountain" /><span><strong>Bible Teaching Background.jpg</strong><small>In review</small></span><b>+2</b></div> : null}
+            {index === 2 ? <div className="proto-feature-mini is-table"><span>License <b>TJC-owned</b><Check size={12} /></span><span>Usage <b>Ministry use</b><Check size={12} /></span><span>Source <b>ResourceSpace</b><Check size={12} /></span></div> : null}
+            {index === 3 ? <div className="proto-feature-mini is-brand"><strong>TJC</strong><span>Aa</span><i /><i /><i /></div> : null}
+            {index === 4 ? <div className="proto-feature-mini is-share"><span><Share2 size={12} />External share request <LockKeyhole size={12} /></span><strong>Sabbath Service Media</strong><small>Pending reviewer gate</small></div> : null}
           </article>
         ))}
       </section>
     </main>
   );
+}
+
+export default function Page() {
+  return <MarketingLandingPage />;
 }

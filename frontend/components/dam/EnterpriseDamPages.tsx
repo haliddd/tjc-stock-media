@@ -10,39 +10,47 @@ import {
   PrototypeAuditCompliancePage,
   PrototypeBrandKitPage,
   PrototypeDistributionSetsPage,
-  PrototypeIntegrationsSettingsPage
+  PrototypeIntegrationsSettingsPage,
+  PrototypeRolesAccessPage
 } from "./prototype/PrototypeAdminSurfaces";
 
-export function AtlasLibraryPage() {
+export function TjcDamLibraryPage() {
   return <PrototypeLibraryPage />;
 }
 
-export function AtlasAssetDetailPage({ id }: { id: string }) {
+export function TjcDamAssetDetailPage({ id }: { id: string }) {
   return <PrototypeAssetDetailPage id={id} />;
 }
 
-export function AtlasCollectionsPage() {
+export function TjcDamCollectionsPage() {
   return <PrototypeCollectionsDistribute />;
 }
 
-export function AtlasRequestsPage() {
+export function TjcDamRequestsPage() {
   return <PrototypeRequestsPage />;
 }
 
-export function AtlasReviewPage() {
+export function TjcDamReviewPage() {
   return <PrototypeReviewApprove />;
 }
 
-export function AtlasUploadPage() {
+export function TjcDamUploadPage() {
   return <PrototypeUploadIntake />;
 }
 
-export const EnterpriseLibraryPage = AtlasLibraryPage;
-export const EnterpriseAssetDetailPage = AtlasAssetDetailPage;
-export const EnterpriseCollectionsPage = AtlasCollectionsPage;
-export const RequestsPage = AtlasRequestsPage;
-export const EnterpriseReviewPage = AtlasReviewPage;
-export const EnterpriseUploadPage = AtlasUploadPage;
+export const AtlasLibraryPage = TjcDamLibraryPage;
+export const AtlasAssetDetailPage = TjcDamAssetDetailPage;
+export const AtlasCollectionsPage = TjcDamCollectionsPage;
+export const AtlasRequestsPage = TjcDamRequestsPage;
+export const AtlasReviewPage = TjcDamReviewPage;
+export const AtlasUploadPage = TjcDamUploadPage;
+
+export const EnterpriseLibraryPage = TjcDamLibraryPage;
+export const EnterpriseAssetDetailPage = TjcDamAssetDetailPage;
+export const EnterpriseCollectionsPage = TjcDamCollectionsPage;
+export const RequestsPage = TjcDamRequestsPage;
+export const EnterpriseReviewPage = TjcDamReviewPage;
+export const EnterpriseUploadPage = TjcDamUploadPage;
 
 type LegacyAdminProps = {
   initialModule?: string;
@@ -58,23 +66,23 @@ export function EnterpriseBrandHubPage() {
 }
 
 export function EnterpriseDashboardPage() {
-  return <AtlasLibraryPage />;
+  return <TjcDamLibraryPage />;
 }
 
 export function EnterpriseHelpPage() {
-  return <AtlasLibraryPage />;
+  return <TjcDamLibraryPage />;
 }
 
 export function EnterpriseInsightsPage() {
-  return <AtlasRequestsPage />;
+  return <TjcDamRequestsPage />;
 }
 
 export function MyTasksPage() {
-  return <AtlasRequestsPage />;
+  return <TjcDamRequestsPage />;
 }
 
 export function RecentUploadsPage() {
-  return <AtlasUploadPage />;
+  return <TjcDamUploadPage />;
 }
 
 function NonCanonicalSurface({ title }: { title: string }) {
@@ -82,7 +90,13 @@ function NonCanonicalSurface({ title }: { title: string }) {
     <section className="proto-flow-page">
       <div className="proto-flow-card">
         <h1>{title}</h1>
-        <p>This surface is not canonical for Slim Atlas. Use Library, Collections, Requests, Review, or Upload.</p>
+        <p>This TJC DAM cockpit is local-demo only. Use the cards below to manage library operations, review queues, governance, and integration readiness without claiming ResourceSpace writeback.</p>
+        <div className="proto-action-row">
+          <a href="/library">Library</a>
+          <a href="/collections">Collections</a>
+          <a href="/review">Review</a>
+          <a href="/governance/integrations">Settings</a>
+        </div>
       </div>
     </section>
   );
@@ -91,5 +105,6 @@ function NonCanonicalSurface({ title }: { title: string }) {
 export function EnterpriseAdminPage(props: LegacyAdminProps = {}) {
   if (props.initialModule === "audit") return <PrototypeAuditCompliancePage />;
   if (props.initialModule === "integrations") return <PrototypeIntegrationsSettingsPage />;
-  return <NonCanonicalSurface title="Admin" />;
+  if (props.initialModule === "users") return <PrototypeRolesAccessPage />;
+  return <PrototypeIntegrationsSettingsPage />;
 }

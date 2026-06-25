@@ -31,7 +31,7 @@ export type DamAsset = {
 export const damAssets: DamAsset[] = [
   {
     id: "368",
-    title: "Serene mountain lake at sunrise",
+    title: "Worship retreat mountain sunrise",
     filename: "TJC_2024_MountainLake_0123.jpg",
     type: "JPG",
     mime: "image/jpeg",
@@ -56,13 +56,13 @@ export const damAssets: DamAsset[] = [
       { label: "v2", date: "May 20, 2024, 3:11 PM", size: "4.2 MB" },
       { label: "v1", date: "May 19, 2024, 11:07 AM", size: "1.1 MB" }
     ],
-    activity: ["Approved by Maria Santos", "Added to package Summer Campaign 2024", "Downloaded by Jamie Lee"],
+    activity: ["Approved by Maria Santos", "Added to worship media review set", "Downloaded by Jamie Lee"],
     usageChannels: ["Website", "Email", "Social Media", "Print"],
-    collectionMembership: ["Mountain Collection", "Summer Launch Toolkit"]
+    collectionMembership: ["Mountain Collection", "Worship Media Toolkit"]
   },
   {
     id: "1556",
-    title: "Coastal cliffs and turquoise water",
+    title: "Coastal fellowship retreat shoreline",
     filename: "TJC_2024_Coast_0045.mp4",
     type: "MP4",
     mime: "video/mp4",
@@ -85,7 +85,7 @@ export const damAssets: DamAsset[] = [
     versions: [{ label: "v1", date: "May 21, 2024", size: "7.2 MB", current: true }],
     activity: ["Approved by Maria Santos", "Added to Hero Assets"],
     usageChannels: ["Website", "Social Media"],
-    collectionMembership: ["Summer Launch Toolkit"]
+    collectionMembership: ["Worship Media Toolkit"]
   },
   {
     id: "777",

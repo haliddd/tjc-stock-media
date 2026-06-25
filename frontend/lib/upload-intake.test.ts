@@ -66,8 +66,8 @@ describe("upload intake batch validation", () => {
       publishable: false
     });
     expect(response.resourceSpaceWritten).toBe(false);
-    expect(response.atlasStoresOriginals).toBe(false);
-    expect(response.originalsStoredByAtlas).toBe(false);
+    expect(response.portalStoresOriginals).toBe(false);
+    expect(response.originalsStoredByPortal).toBe(false);
     expect(response.resourceSpaceWritePolicy).toBe("no-upload-writeback");
     expect(response.betaBoundaries.forbidden).toContain("Public approval, download enablement, or ResourceSpace approval writeback from upload");
   });
@@ -108,7 +108,7 @@ describe("upload intake batch validation", () => {
     expect(response.resourceSpaceWritten).toBe(false);
     expect(response.defaultReviewState).toBe("Needs Review");
     expect(response.defaultUsageScope).toBe("Do Not Publish");
-    expect(response.atlasStoresOriginals).toBe(false);
+    expect(response.portalStoresOriginals).toBe(false);
     expect(response.status).toBe("large-media-intake");
     expect(response.message).toContain("large-media/admin intake path");
     expect(response.reviewWarnings).toEqual(expect.arrayContaining([
@@ -117,7 +117,7 @@ describe("upload intake batch validation", () => {
     ]));
   });
 
-  it("persists intake manifest metadata without storing original bytes in Atlas", async () => {
+  it("persists intake manifest metadata without storing original bytes in the portal", async () => {
     const root = useTempRuntimeRoot();
     const intake = normalizeUploadIntake(form([
       ["files", photo("sabbath.jpg")],
@@ -134,8 +134,8 @@ describe("upload intake batch validation", () => {
     expect(batchId).toBeTruthy();
     expect(result.body).toMatchObject({
       custodyMode: "portal-intake-metadata-only",
-      atlasStoresOriginals: false,
-      originalsStoredByAtlas: false,
+      portalStoresOriginals: false,
+      originalsStoredByPortal: false,
       resourceSpaceWritten: false
     });
     expect(fs.existsSync(path.join(root, ".runtime", "intake-batches", batchId || "", "manifest.json"))).toBe(true);

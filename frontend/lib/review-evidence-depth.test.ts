@@ -15,7 +15,7 @@ function asset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsset {
     thumbnail: "/thumb.jpg",
     thumbnailAlt: "Mountain Lake Hero",
     mediaType: "photo",
-    collection: "Campaign 2024",
+    collection: "Worship Services",
     status: "Approved Public",
     usageScope: "Public",
     peopleRisk: "No people",

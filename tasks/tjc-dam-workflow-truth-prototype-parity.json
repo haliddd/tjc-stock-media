@@ -1,0 +1,112 @@
+{
+  "title": "TJC DAM Workflow Truth + Prototype Parity",
+  "date": "2026-06-25",
+  "contract": "docs/ui/tjc-dam-workflow-truth-parity-contract.md",
+  "prd": "tasks/prd-tjc-dam-workflow-truth-prototype-parity.md",
+  "status": "runtime_proof_passed",
+  "stories": [
+    {
+      "id": "story-01-shell-frame-canonical-shell",
+      "title": "Global Shell Frame Removal + Canonical Authenticated Shell",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/app/prototype-dam.css",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/library-admin.png",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/runtime-proof.json"
+      ]
+    },
+    {
+      "id": "story-02-placeholder-purge-tjc-truth-copy",
+      "title": "Placeholder Purge + TJC Truth Copy",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/app/page.tsx",
+        "frontend/app/public-portal/[collectionId]/page.tsx",
+        "frontend/components/dam/prototype/PrototypeAdminSurfaces.tsx",
+        "frontend/components/dam/prototype/PrototypeDam.tsx",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/runtime-proof.json"
+      ]
+    },
+    {
+      "id": "story-03-library-real-dam-center",
+      "title": "Library Real DAM Center",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/components/dam/prototype/PrototypeDam.tsx",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/library-admin.png",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/library-interactions-admin.png"
+      ]
+    },
+    {
+      "id": "story-04-collections-real-page",
+      "title": "Collections Real Page",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/components/dam/prototype/PrototypeDam.tsx",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/collections-admin.png"
+      ]
+    },
+    {
+      "id": "story-05-upload-requests-review-workflow-truth",
+      "title": "Upload -> Requests -> Review Workflow Truth",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/components/dam/prototype/PrototypeDam.tsx",
+        "frontend/lib/upload-intake.ts",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/upload-contributor-success.png",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/requests-after-upload.png"
+      ]
+    },
+    {
+      "id": "story-06-reviewer-workbench",
+      "title": "Reviewer Workbench",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/components/dam/prototype/PrototypeDam.tsx",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/reviewer-workbench.png"
+      ]
+    },
+    {
+      "id": "story-07-public-portal-tjc-facing",
+      "title": "Public Portal TJC Facing",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/app/public-portal/[collectionId]/page.tsx",
+        "frontend/app/public-portal/[collectionId]/PublicPortalActions.tsx",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/public-portal.png"
+      ]
+    },
+    {
+      "id": "story-08-governance-status-honesty",
+      "title": "Governance/Brand/Distribution/Settings Honesty",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/components/dam/prototype/PrototypeAdminSurfaces.tsx",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/distribution-admin.png",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/audit-admin.png",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/settings-integrations-admin.png",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/brand-kit-admin.png"
+      ]
+    },
+    {
+      "id": "story-09-visible-interaction-wiring",
+      "title": "Visible Interaction Wiring",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "frontend/components/dam/prototype/PrototypeDam.tsx",
+        "frontend/app/public-portal/[collectionId]/PublicPortalActions.tsx",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/library-interactions-admin.png",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/runtime-proof.json"
+      ]
+    },
+    {
+      "id": "story-10-product-wide-qa",
+      "title": "Product-wide QA",
+      "status": "runtime_proof_passed",
+      "evidence": [
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/runtime-proof.json",
+        "docs/screenshots/qa/product-wide-parity-2026-06-25/ledger.md"
+      ]
+    }
+  ]
+}

@@ -539,7 +539,7 @@ export type IntegrationReadinessItem = {
   label: string;
   ready: boolean;
   detail: string;
-  owner: "ResourceSpace" | "Google Shared Drive" | "Amazon S3" | "Identity Provider" | "DAM Admin" | "Reviewers" | "Portal";
+  owner: "ResourceSpace" | "Google Shared Drive" | "Delivery provider" | "Identity Provider" | "DAM Admin" | "Reviewers" | "Portal";
   state?: "Operational" | "Degraded" | "Not configured" | "Read-only" | "Blocked" | "Pending setup";
 };
 

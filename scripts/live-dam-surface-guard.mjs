@@ -4,18 +4,25 @@ import path from "node:path";
 
 const root = process.cwd();
 const routeSurfacePath = "frontend/lib/dam/enterprise-route-surface.json";
-const canonicalSlimRoutePaths = new Set([
-  "/",
+const canonicalTjcDamRoutePaths = new Set([
   "/library",
   "/assets/[id]",
   "/collections",
   "/collections/[collectionId]",
+  "/distribution-sets",
+  "/distribution-sets/[distributionSetId]",
+  "/brand-hub",
   "/requests",
   "/requests/[requestId]",
   "/review",
-  "/upload"
+  "/upload",
+  "/admin",
+  "/admin/roles",
+  "/admin/settings",
+  "/governance/audit-log",
+  "/governance/integrations"
 ]);
-const supportedSlimAliasRoutePaths = new Set([
+const supportedTjcDamAliasRoutePaths = new Set([
   "/library/[assetId]"
 ]);
 const legacyModules = [
@@ -43,22 +50,29 @@ function walk(dir) {
 }
 
 const failures = [];
-let slimRoutes = [];
+let tjcDamRoutes = [];
 
 try {
   const surface = JSON.parse(read(routeSurfacePath));
-  const routePaths = new Set((surface.routes || []).map((route) => route.path));
-  for (const routePath of canonicalSlimRoutePaths) {
-    if (!routePaths.has(routePath)) failures.push(`missing canonical slim route in ${routeSurfacePath}: ${routePath}`);
+  const marketingHome = (surface.routes || []).find((route) => route.path === "/");
+  if (!marketingHome) {
+    failures.push(`missing marketing home route in ${routeSurfacePath}: /`);
+  } else {
+    if (marketingHome.pageExport) failures.push(`marketing home route must use pageIdentity, not pageExport`);
+    if (marketingHome.pageIdentity !== "MarketingLandingPage") failures.push(`marketing home route pageIdentity must be MarketingLandingPage`);
   }
-  slimRoutes = (surface.routes || []).filter((route) => route.routeFile && route.pageExport && (
-    canonicalSlimRoutePaths.has(route.path) || supportedSlimAliasRoutePaths.has(route.path)
+  const routePaths = new Set((surface.routes || []).map((route) => route.path));
+  for (const routePath of canonicalTjcDamRoutePaths) {
+    if (!routePaths.has(routePath)) failures.push(`missing canonical TJC DAM route in ${routeSurfacePath}: ${routePath}`);
+  }
+  tjcDamRoutes = (surface.routes || []).filter((route) => route.routeFile && route.pageExport && (
+    canonicalTjcDamRoutePaths.has(route.path) || supportedTjcDamAliasRoutePaths.has(route.path)
   ));
 } catch (error) {
-  failures.push(`missing or invalid slim route surface: ${routeSurfacePath} (${error.message})`);
+  failures.push(`missing or invalid TJC DAM route surface: ${routeSurfacePath} (${error.message})`);
 }
 
-for (const route of slimRoutes) {
+for (const route of tjcDamRoutes) {
   const routePath = route.routeFile;
   if (!fs.existsSync(path.join(root, routePath))) {
     failures.push(`missing live route: ${routePath}`);
@@ -66,14 +80,14 @@ for (const route of slimRoutes) {
   }
   const content = read(routePath);
   if (!content.includes('from "@/components/dam/EnterpriseDamPages"')) {
-    failures.push(`${routePath} must import a slim Atlas page from EnterpriseDamPages`);
+    failures.push(`${routePath} must import a TJC DAM page from EnterpriseDamPages`);
   }
   if (!/return\s+<([A-Z][A-Za-z0-9]*)\b/.test(content)) {
-    failures.push(`${routePath} must render a slim Atlas page`);
+    failures.push(`${routePath} must render a TJC DAM page`);
   }
 }
 
-const assetDetailRoutes = slimRoutes.filter((route) => route.pathParam);
+const assetDetailRoutes = tjcDamRoutes.filter((route) => route.pathParam);
 for (const route of assetDetailRoutes) {
   const routePath = route.routeFile;
   const paramName = route.pathParam;
@@ -96,9 +110,9 @@ for (const file of walk("frontend")) {
 }
 
 if (failures.length) {
-  console.error("Slim Atlas surface guard failed:");
+  console.error("TJC DAM surface guard failed:");
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
-console.log("Slim Atlas surface guard passed.");
+console.log("TJC DAM surface guard passed.");

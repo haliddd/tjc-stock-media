@@ -43,7 +43,7 @@ export const uploadBetaBoundaries = {
     received: "Received",
     review: "Needs Review",
     usage: "Do Not Publish",
-    custody: "Source custody stays in ResourceSpace/Shared Drive; Atlas records intake metadata only"
+    custody: "Source custody stays in ResourceSpace/Shared Drive; portal records intake metadata only"
   }
 } as const;
 

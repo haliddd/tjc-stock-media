@@ -51,6 +51,7 @@ if [ ! -d frontend/node_modules ]; then
 fi
 
 (cd frontend && npm run typecheck)
+node scripts/product-wide-parity-proof-test.mjs
 rm -rf frontend/.next
 node scripts/dev-server-build-guard.mjs
 (cd frontend && npm run build)

@@ -25,6 +25,11 @@ function branchName() {
 export function publicBuildInfo() {
   const homeRoute = enterpriseRoutes.find((route) => route.path === "/");
   const uploadRoute = enterpriseRoutes.find((route) => route.path === "/upload");
+  const homePage = homeRoute
+    ? "pageIdentity" in homeRoute
+      ? homeRoute.pageIdentity
+      : homeRoute.pageExport
+    : null;
   const sha = commitSha();
   return {
     app: "tjc-stock-media",
@@ -36,7 +41,7 @@ export function publicBuildInfo() {
     routeSurface: {
       routeCount: enterpriseRoutes.length,
       navItemCount: enterpriseNavItems.length,
-      homePage: homeRoute?.pageExport || null,
+      homePage,
       uploadPage: uploadRoute?.pageExport || null
     }
   };

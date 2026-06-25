@@ -1,5 +1,5 @@
-import { AtlasLibraryPage } from "@/components/dam/EnterpriseDamPages";
+import { TjcDamLibraryPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <AtlasLibraryPage />;
+  return <TjcDamLibraryPage />;
 }

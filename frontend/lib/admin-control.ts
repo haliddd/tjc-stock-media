@@ -97,7 +97,7 @@ export function custodyMapRows(readiness?: DamReadinessResult | null): CustodyMa
     },
     {
       id: "s3",
-      name: "Amazon S3",
+      name: "Approved derivative storage",
       role: "Approved derivative delivery",
       detail: integration.get("approved-copy-delivery")?.detail || "Approved derivative delivery status not configured.",
       status: custodyMapStatus(readiness, "approved-copy-delivery")
