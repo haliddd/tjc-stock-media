@@ -162,19 +162,35 @@ const navGroups = [
     items: [
       { label: "Library", href: "/library", icon: LayoutGrid },
       { label: "Collections", href: "/collections", icon: Folder },
-      { label: "Uploads", href: "/upload", icon: FileUp, guard: canUpload }
+      { label: "Brand Kits", href: "/brand-hub", icon: Folder },
+      { label: "Shared with me", href: "/library?view=shared", icon: Share2 },
+      { label: "Favorites", href: "/library?view=favorites", icon: Check },
+      { label: "Recent", href: "/recent-uploads", icon: Inbox },
+      { label: "Trash", href: "/requests?filter=trash", icon: X }
     ]
   },
   {
-    label: "WORKFLOW",
+    label: "GOVERNANCE",
     items: [
-      { label: "Rehearsal", href: "/rehearsal", icon: UserCog },
+      { label: "Metadata & Brand Governance", href: "/governance/metadata-health", icon: UserCog },
       { label: "Review", href: "/review", icon: ShieldCheck, guard: canReview },
       { label: "Requests", href: "/requests", icon: Inbox }
     ]
   },
   {
-    label: "ADMIN",
+    label: "SAVED VIEWS",
+    items: [
+      { label: "Campaign 2024", href: "/library?view=campaign-2024", icon: Folder },
+      { label: "Website", href: "/library?view=website", icon: Folder },
+      { label: "Product shots", href: "/library?view=product-shots", icon: Folder },
+      { label: "Need review", href: "/library?view=need-review", icon: Folder },
+      { label: "Expiring soon", href: "/library?view=expiring-soon", icon: Folder },
+      { label: "Rights issues", href: "/library?view=rights-issues", icon: Folder },
+      { label: "External sharing", href: "/library?view=external-sharing", icon: Folder }
+    ]
+  },
+  {
+    label: "SETTINGS",
     items: [
       { label: "Admin", href: "/admin", icon: Settings, guard: canAdmin }
     ]
@@ -651,71 +667,90 @@ function PrototypeAssetInspector({ asset, index, total, onClose }: { asset?: Sto
   }
 
   if (!displayAsset) {
-    return <aside className="proto-inspector"><p className="proto-muted">Select an asset.</p></aside>;
+    return (
+      <aside className="proto-inspector" aria-label="Asset inspector">
+        <div className="proto-inspector-nav">
+          <div>
+            <strong>Asset inspector</strong>
+            <span>Metadata / rights / activity</span>
+          </div>
+        </div>
+        <div className="proto-inspector-body">
+          <p className="proto-muted">Select an asset.</p>
+        </div>
+      </aside>
+    );
   }
 
   return (
     <aside className="proto-inspector" aria-label="Asset inspector">
       <div className="proto-inspector-nav">
-        <ChevronLeft size={15} />
-        <span>{index + 1} of {total.toLocaleString()}</span>
-        <ChevronRight size={15} />
-        <button type="button" onClick={onClose} aria-label="Close inspector"><X size={15} /></button>
-      </div>
-      <div className="proto-inspector-head">
-        <div className="proto-inspector-thumb"><AssetImage asset={displayAsset} /></div>
         <div>
-          <h2>{displayTitle(displayAsset)}</h2>
+          <strong>Asset inspector</strong>
+          <span>{index + 1} of {total.toLocaleString()} / metadata / rights / activity</span>
+        </div>
+        <div className="proto-inspector-nav-controls">
+          <ChevronLeft size={15} />
+          <ChevronRight size={15} />
+          <button type="button" onClick={onClose} aria-label="Close inspector"><X size={15} /></button>
+        </div>
+      </div>
+      <div className="proto-inspector-body">
+        <div className="proto-inspector-thumb"><AssetImage asset={displayAsset} /></div>
+        <div className="proto-inspector-head">
+          <div>
+            <h2>{displayTitle(displayAsset)}</h2>
+            <p>{assetMeta(displayAsset) || assetRecordRef(displayAsset)}</p>
+          </div>
           <StatusPill asset={displayAsset} />
-          <span className={`proto-card-use is-${reuseState?.tone || "review"}`}>{reuseState?.label || "Needs review"}</span>
-          <p>{assetMeta(displayAsset) || assetRecordRef(displayAsset)}</p>
-          <small>Uploaded {displayAsset.importDate || displayAsset.capturedDate || "date pending"} by {displayAsset.sourceAccount || displayAsset.reviewer || "media team"}</small>
         </div>
-      </div>
-      {detail.loading ? <p className="proto-gate-note">Loading asset details from Atlas library...</p> : null}
-      {detail.error ? <p className="proto-gate-note">Asset detail unavailable: {detail.error}</p> : null}
-      <div className="proto-action-row">
-        <button type="button" onClick={() => void download()} disabled={actionPending}><Download size={16} /><span>{reuseState?.actionLabel || "Check use gate"}</span></button>
-        <button type="button" onClick={() => void requestReview()} disabled={actionPending}><Share2 size={16} /><span>{reuseState?.tone === "ready" ? "Request usage" : "Request review"}</span></button>
-        <Link href={routeWithRole(`/assets/${displayAsset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
-        <button type="button" onClick={() => setDownloadCenterOpen(true)}>
-          <Download size={16} />
-          <span>Download Center</span>
-        </button>
-      </div>
-      <Button className="w-full justify-start" onClick={() => setRightsExplanationOpen(true)}><ShieldCheck size={14} />Why can I use this?</Button>
-      <PortalGuardrailRow role={role} />
-      <Separator className="proto-separator" />
-      <div className="proto-tabs">
-        {(["details", "metadata", "activity"] as ProtoTab[]).map((item) => (
-          <button key={item} className={tab === item ? "is-active" : ""} type="button" onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}</button>
-        ))}
-      </div>
-      {tab === "details" ? (
-        <div className="proto-detail-stack">
-          <section><h3>Description</h3><p>{displayAsset.usageGuidance || displayAsset.rightsNotes || "Review-safe Atlas library record."}</p></section>
-          <section><h3>Tags</h3><div className="proto-tag-row">{(displayAsset.tags || displayAsset.tjcTerms || ["review", "media"]).slice(0, 5).map((tag) => <span key={tag}>{tag}</span>)}{elevatedRole ? <span>+ Add tag</span> : null}</div></section>
-          <section><h3>Rights & Usage</h3><p>{reuseState?.label || "Needs review"}. {reuseState?.detail || "Reviewer evidence required before public use."}</p></section>
-          <section><h3>Collections</h3><div className="proto-tag-row"><span>{displayAsset.collection}</span>{displayAsset.eventName ? <span>{displayAsset.eventName}</span> : null}</div></section>
-          <section><h3>Version</h3><p>{displayAsset.pendingReviewWrite ? `Pending review sync: ${displayAsset.pendingReviewWrite.syncState}` : "Current record. Version history is not exported in this local detail payload."}</p></section>
-          <section><h3>Source file</h3><p>{elevatedRole && displayAsset.originalFilename ? displayAsset.originalFilename : "Restricted source/master"} · source access stays audited</p></section>
-          <section><h3>Related files</h3><p>{detail.data?.related?.length ? `${detail.data.related.length} role-visible related file${detail.data.related.length === 1 ? "" : "s"}` : "No related role-visible files exported for this record."}</p></section>
+        <span className={`proto-card-use is-${reuseState?.tone || "review"}`}>{reuseState?.label || "Needs review"}</span>
+        <p>Uploaded {displayAsset.importDate || displayAsset.capturedDate || "date pending"} by {displayAsset.sourceAccount || displayAsset.reviewer || "media team"}</p>
+        {detail.loading ? <p className="proto-gate-note">Loading asset details from Atlas library...</p> : null}
+        {detail.error ? <p className="proto-gate-note">Asset detail unavailable: {detail.error}</p> : null}
+        <div className="proto-action-row">
+          <button type="button" onClick={() => void download()} disabled={actionPending}><Download size={16} /><span>{reuseState?.actionLabel || "Check use gate"}</span></button>
+          <button type="button" onClick={() => void requestReview()} disabled={actionPending}><Share2 size={16} /><span>{reuseState?.tone === "ready" ? "Request usage" : "Request review"}</span></button>
+          <Link href={routeWithRole(`/assets/${displayAsset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
+          <button type="button" onClick={() => setDownloadCenterOpen(true)}>
+            <Download size={16} />
+            <span>Download Center</span>
+          </button>
         </div>
-      ) : tab === "metadata" ? (
-        <dl className="proto-dl">
-          <div><dt>{elevatedRole ? "Source record" : "Portal ref"}</dt><dd>{elevatedRole ? displayAsset.resourceSpaceId || assetRecordRef(displayAsset) : portalAssetRef(displayAsset)}</dd></div>
-          <div><dt>Source</dt><dd>{elevatedRole ? displayAsset.sourceSystem || displayAsset.sourcePlatform || "Atlas library" : "Portal safe lane"}</dd></div>
-          <div><dt>People</dt><dd>{displayAsset.peopleRisk || "Unknown"}</dd></div>
-          <div><dt>Review</dt><dd>{displayAsset.reviewedDate || "Pending"}</dd></div>
-        </dl>
-      ) : (
-        <div className="proto-detail-stack">
-          <p>Import recorded. Review evidence and sync state remain governed by library policy.</p>
-          <p>{displayAsset.pendingReviewWrite ? `Pending sync: ${displayAsset.pendingReviewWrite.syncState}` : "No pending review sync."}</p>
-          {detail.data?.related?.length ? <p>{detail.data.related.length} related library item{detail.data.related.length === 1 ? "" : "s"} available.</p> : null}
+        <Button className="w-full justify-start" onClick={() => setRightsExplanationOpen(true)}><ShieldCheck size={14} />Why can I use this?</Button>
+        <PortalGuardrailRow role={role} />
+        <Separator className="proto-separator" />
+        <div className="proto-tabs">
+          {(["details", "metadata", "activity"] as ProtoTab[]).map((item) => (
+            <button key={item} className={tab === item ? "is-active" : ""} type="button" onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}</button>
+          ))}
         </div>
-      )}
-      {message ? <p className="proto-gate-note">{message}</p> : null}
+        {tab === "details" ? (
+          <div className="proto-detail-stack">
+            <section><h3>Description</h3><p>{displayAsset.usageGuidance || displayAsset.rightsNotes || "Review-safe Atlas library record."}</p></section>
+            <section><h3>Tags</h3><div className="proto-tag-row">{(displayAsset.tags || displayAsset.tjcTerms || ["review", "media"]).slice(0, 5).map((tag) => <span key={tag}>{tag}</span>)}{elevatedRole ? <span>+ Add tag</span> : null}</div></section>
+            <section><h3>Rights & Usage</h3><p>{reuseState?.label || "Needs review"}. {reuseState?.detail || "Reviewer evidence required before public use."}</p></section>
+            <section><h3>Collections</h3><div className="proto-tag-row"><span>{displayAsset.collection}</span>{displayAsset.eventName ? <span>{displayAsset.eventName}</span> : null}</div></section>
+            <section><h3>Version</h3><p>{displayAsset.pendingReviewWrite ? `Pending review sync: ${displayAsset.pendingReviewWrite.syncState}` : "Current record. Version history is not exported in this local detail payload."}</p></section>
+            <section><h3>Source file</h3><p>{elevatedRole && displayAsset.originalFilename ? displayAsset.originalFilename : "Restricted source/master"} / source access stays audited</p></section>
+            <section><h3>Related files</h3><p>{detail.data?.related?.length ? `${detail.data.related.length} role-visible related file${detail.data.related.length === 1 ? "" : "s"}` : "No related role-visible files exported for this record."}</p></section>
+          </div>
+        ) : tab === "metadata" ? (
+          <dl className="proto-dl">
+            <div><dt>{elevatedRole ? "Source record" : "Portal ref"}</dt><dd>{elevatedRole ? displayAsset.resourceSpaceId || assetRecordRef(displayAsset) : portalAssetRef(displayAsset)}</dd></div>
+            <div><dt>Source</dt><dd>{elevatedRole ? displayAsset.sourceSystem || displayAsset.sourcePlatform || "Atlas library" : "Portal safe lane"}</dd></div>
+            <div><dt>People</dt><dd>{displayAsset.peopleRisk || "Unknown"}</dd></div>
+            <div><dt>Review</dt><dd>{displayAsset.reviewedDate || "Pending"}</dd></div>
+          </dl>
+        ) : (
+          <div className="proto-detail-stack">
+            <p>Import recorded. Review evidence and sync state remain governed by library policy.</p>
+            <p>{displayAsset.pendingReviewWrite ? `Pending sync: ${displayAsset.pendingReviewWrite.syncState}` : "No pending review sync."}</p>
+            {detail.data?.related?.length ? <p>{detail.data.related.length} related library item{detail.data.related.length === 1 ? "" : "s"} available.</p> : null}
+          </div>
+        )}
+        {message ? <p className="proto-gate-note">{message}</p> : null}
+      </div>
       <DownloadCenterDrawer
         open={downloadCenterOpen}
         onClose={() => setDownloadCenterOpen(false)}
@@ -733,7 +768,6 @@ function PrototypeAssetInspector({ asset, index, total, onClose }: { asset?: Sto
     </aside>
   );
 }
-
 export function PrototypeLibraryPage() {
   const { role } = useDemoRole();
   const router = useRouter();
@@ -748,13 +782,14 @@ export function PrototypeLibraryPage() {
   const [rightsSafe, setRightsSafe] = useState(() => readBooleanUrlFlag(searchParams.get("rightsSafe")));
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [inspectorClosed, setInspectorClosed] = useState(false);
   const results = useAssetsSearch({ role, query, sort, limit, offset, rightsSafe });
   const assets = results.data?.assets || [];
   const rightsSafeSummary = results.data?.rightsSafe;
   const searchDiscovery = results.data?.discovery;
   const visibleAssetIds = useMemo(() => assets.map((asset) => asset.id), [assets]);
   const visibleAssetIdSet = useMemo(() => new Set(visibleAssetIds), [visibleAssetIds]);
-  const activeAsset = results.loading ? undefined : assets.find((asset) => asset.id === activeId) || (mode === "ops" ? assets[0] : undefined);
+  const activeAsset = results.loading || inspectorClosed ? undefined : assets.find((asset) => asset.id === activeId) || assets[0];
   const total = results.data?.total ?? 0;
   const pagination = results.data?.pagination;
   const pageLimit = pagination?.limit ?? limit;
@@ -842,17 +877,20 @@ export function PrototypeLibraryPage() {
     setQuery(value);
     setOffset(0);
     setActiveId(null);
+    setInspectorClosed(false);
   }, []);
 
   const updateSort = useCallback((value: CatalogSort) => {
     setSort(value);
     setOffset(0);
     setActiveId(null);
+    setInspectorClosed(false);
   }, []);
 
   const updateMode = useCallback((value: LibraryMode) => {
     setMode(value);
-    if (value === "browse") setActiveId(null);
+    setActiveId(null);
+    setInspectorClosed(false);
   }, []);
 
   const updateRightsSafe = useCallback((checked: boolean) => {
@@ -860,11 +898,13 @@ export function PrototypeLibraryPage() {
     setOffset(0);
     setActiveId(null);
     setSelected(new Set<string>());
+    setInspectorClosed(false);
   }, []);
 
   const goToOffset = useCallback((nextOffset: number) => {
     setOffset(Math.max(0, nextOffset));
     setActiveId(null);
+    setInspectorClosed(false);
   }, []);
 
   return (
@@ -997,7 +1037,10 @@ export function PrototypeLibraryPage() {
                 selected={selected.has(asset.id)}
                 active={activeAsset?.id === asset.id}
                 onSelect={() => toggle(asset.id)}
-                onInspect={() => setActiveId(asset.id)}
+                onInspect={() => {
+                  setActiveId(asset.id);
+                  setInspectorClosed(false);
+                }}
                 mode={mode}
                 matchedBecause={mode === "browse" ? matchedBecauseChips(asset, query, searchDiscovery || {
                   mode: "browse",
@@ -1027,7 +1070,17 @@ export function PrototypeLibraryPage() {
           )}
         </div>
       </section>
-      {activeAsset ? <PrototypeAssetInspector asset={activeAsset} index={Math.max(0, assets.findIndex((asset) => asset.id === activeAsset?.id))} total={total} onClose={() => setActiveId(null)} /> : null}
+      {activeAsset ? (
+        <PrototypeAssetInspector
+          asset={activeAsset}
+          index={Math.max(0, assets.findIndex((asset) => asset.id === activeAsset?.id))}
+          total={total}
+          onClose={() => {
+            setActiveId(null);
+            setInspectorClosed(true);
+          }}
+        />
+      ) : null}
       {activeAsset ? <MobileAssetSheet asset={activeAsset} /> : null}
     </div>
   );

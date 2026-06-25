@@ -1,0 +1,144 @@
+{
+  "generatedAt": "2026-06-25T14:19:08.244Z",
+  "desktop": {
+    "url": "http://localhost:4871/library?sort=Newest&limit=24&offset=0",
+    "bodyScrollWidth": 1448,
+    "viewportWidth": 1448,
+    "horizontalOverflow": false,
+    "root": {
+      "x": 0,
+      "y": 0,
+      "width": 1448,
+      "height": 1086
+    },
+    "app": {
+      "x": 22,
+      "y": 22,
+      "width": 1404,
+      "height": 1042
+    },
+    "sidebar": {
+      "x": 23,
+      "y": 23,
+      "width": 214,
+      "height": 1040
+    },
+    "main": {
+      "x": 237,
+      "y": 23,
+      "width": 1188,
+      "height": 1040
+    },
+    "page": {
+      "x": 237,
+      "y": 23,
+      "width": 1188,
+      "height": 1040
+    },
+    "workspace": {
+      "x": 237,
+      "y": 23,
+      "width": 832,
+      "height": 1040
+    },
+    "topbar": {
+      "x": 237,
+      "y": 23,
+      "width": 831,
+      "height": 76
+    },
+    "inspector": {
+      "x": 1069,
+      "y": 23,
+      "width": 356,
+      "height": 1040
+    },
+    "inspectorHead": {
+      "x": 1070,
+      "y": 23,
+      "width": 355,
+      "height": 76
+    },
+    "inspectorBody": {
+      "x": 1070,
+      "y": 99,
+      "width": 355,
+      "height": 964
+    },
+    "inspectorPreview": {
+      "x": 1086,
+      "y": 115,
+      "width": 323,
+      "height": 190
+    },
+    "appStyles": {
+      "display": "grid",
+      "gridTemplateColumns": "214px 1188px",
+      "background": "rgba(255, 254, 250, 0.68)",
+      "borderRadius": "28px",
+      "overflow": "hidden"
+    },
+    "pageStyles": {
+      "display": "grid",
+      "gridTemplateColumns": "832px 356px",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderRadius": "0px",
+      "overflow": "visible"
+    },
+    "topbarStyles": {
+      "display": "grid",
+      "gridTemplateColumns": "256.141px 328.859px 170px",
+      "background": "rgba(255, 254, 250, 0.88)",
+      "borderRadius": "0px",
+      "overflow": "hidden"
+    },
+    "sidebarNav": {
+      "x": 35,
+      "y": 97,
+      "width": 189,
+      "height": 722
+    },
+    "userCard": {
+      "x": 35,
+      "y": 993,
+      "width": 189,
+      "height": 57
+    },
+    "trustStripPresent": false,
+    "betaPanelPresent": false,
+    "diagnosticCardTextPresent": false,
+    "consoleErrors": []
+  },
+  "mobile": {
+    "bodyScrollWidth": 390,
+    "viewportWidth": 390,
+    "horizontalOverflow": false,
+    "app": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 1432
+    },
+    "sidebarDisplay": "none",
+    "topbar": {
+      "x": 0,
+      "y": 56,
+      "width": 390,
+      "height": 335
+    },
+    "inspectorDisplay": "none",
+    "mobileTop": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 56
+    },
+    "mobileBottom": {
+      "x": 0,
+      "y": 774,
+      "width": 390,
+      "height": 70
+    },
+    "consoleErrors": []
+  }
+}
