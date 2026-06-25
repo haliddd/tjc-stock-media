@@ -1,4 +1,5 @@
 export {
+  buildOriginalAccessRequestDecision,
   buildPortalReuseDecision,
   decideAccess
 } from "@/lib/portal-reuse-decision";

@@ -20,6 +20,7 @@ function localFilesEnabled<TRecord>(options: LocalJsonStoreOptions<TRecord>) {
 function categoryForPath(filePath: string): RuntimeStateCategory {
   if (filePath.includes("beta-feedback")) return "beta-feedback";
   if (filePath.includes("package-drafts")) return "package-drafts";
+  if (filePath.includes("request-records")) return "request-records";
   if (filePath.includes("saved-searches")) return "saved-searches";
   if (filePath.includes("usage")) return "usage-events";
   return "runtime";
@@ -44,24 +45,36 @@ function tempFilePath(filePath: string) {
   return `${filePath}.${process.pid}.${Date.now()}.${randomUUID().slice(0, 8)}.tmp`;
 }
 
+function isMissingFileError(error: unknown) {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+function normalizeParsedArray<TRecord>(parsed: unknown, options: LocalJsonStoreOptions<TRecord>) {
+  if (!Array.isArray(parsed)) {
+    throw new Error(`Local JSON store must contain an array: ${options.filePath()}`);
+  }
+  return normalizeWindow(parsed, options);
+}
+
 export async function readLocalJsonStore<TRecord>(options: LocalJsonStoreOptions<TRecord>) {
   if (!localFilesEnabled(options)) return memoryWindow(options);
   try {
     const raw = await readFile(options.filePath(), "utf8");
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? normalizeWindow(parsed, options) : [];
-  } catch {
-    return memoryWindow(options);
+    return normalizeParsedArray(parsed, options);
+  } catch (error) {
+    if (isMissingFileError(error)) return memoryWindow(options);
+    throw error;
   }
 }
 
 export async function writeLocalJsonStore<TRecord>(records: TRecord[], options: LocalJsonStoreOptions<TRecord>) {
   const windowed = normalizeWindow(records, options);
-  assertRuntimeWriteAllowed(categoryForPath(options.filePath()));
   if (!localFilesEnabled(options)) {
     replaceMemory(windowed, options);
     return;
   }
+  assertRuntimeWriteAllowed(categoryForPath(options.filePath()));
   const filePath = options.filePath();
   let tmpPath = "";
   try {
@@ -71,7 +84,7 @@ export async function writeLocalJsonStore<TRecord>(records: TRecord[], options: 
     await rename(tmpPath, filePath);
   } catch (error) {
     if (tmpPath) await unlink(tmpPath).catch(() => undefined);
-    if (!replaceMemory(windowed, options)) throw error;
+    throw error;
   }
 }
 
@@ -79,8 +92,9 @@ export function readLocalJsonStoreSync<TRecord>(options: LocalJsonStoreOptions<T
   if (!localFilesEnabled(options)) return memoryWindow(options);
   try {
     const parsed = JSON.parse(fs.readFileSync(options.filePath(), "utf8")) as unknown;
-    return Array.isArray(parsed) ? normalizeWindow(parsed, options) : [];
-  } catch {
-    return memoryWindow(options);
+    return normalizeParsedArray(parsed, options);
+  } catch (error) {
+    if (isMissingFileError(error)) return memoryWindow(options);
+    throw error;
   }
 }

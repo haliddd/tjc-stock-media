@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Slim Atlas Cleanup Intake</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211b;
+      --muted: #5b6b61;
+      --line: #d8e2dc;
+      --panel: #ffffff;
+      --page: #f5f8f5;
+      --accent: #1f7a5a;
+      --accent-strong: #11583f;
+      --accent-soft: #e3f2eb;
+      --warn: #9b5c00;
+      --warn-soft: #fff3d8;
+      --danger: #9f2d27;
+      --danger-soft: #fce7e4;
+      --shadow: 0 18px 60px rgba(23, 33, 27, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    a {
+      color: var(--accent-strong);
+    }
+
+    .page {
+      width: min(1160px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    header {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--accent-strong);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 850px;
+      font-size: clamp(2rem, 4vw, 4.25rem);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 850px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.06rem;
+      font-weight: 650;
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      padding: 6px 12px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    .chip strong {
+      color: var(--ink);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    form {
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    fieldset {
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    legend {
+      width: 100%;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdfb;
+      font-size: 1.05rem;
+      font-weight: 900;
+    }
+
+    .section-body {
+      display: grid;
+      gap: 16px;
+      padding: 18px 20px 20px;
+    }
+
+    .question {
+      display: grid;
+      gap: 9px;
+    }
+
+    .question-title {
+      margin: 0;
+      font-weight: 900;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 620;
+    }
+
+    .options {
+      display: grid;
+      gap: 8px;
+    }
+
+    .option {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .option:hover {
+      border-color: #9dbbaa;
+      background: #fbfdfb;
+    }
+
+    .option input {
+      margin-top: 4px;
+      accent-color: var(--accent);
+    }
+
+    .option span {
+      display: block;
+      font-weight: 850;
+    }
+
+    .option small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 620;
+    }
+
+    .recommended {
+      color: var(--accent-strong);
+    }
+
+    .inline-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    label.text-field {
+      display: grid;
+      gap: 7px;
+      font-weight: 850;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      resize: vertical;
+    }
+
+    textarea {
+      min-height: 94px;
+    }
+
+    aside {
+      position: sticky;
+      top: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .summary {
+      padding: 18px;
+    }
+
+    .summary h2,
+    .export-panel h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .summary ol {
+      margin: 0;
+      padding-left: 21px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 680;
+    }
+
+    .summary li + li {
+      margin-top: 7px;
+    }
+
+    .gate {
+      border-left: 4px solid var(--warn);
+      background: var(--warn-soft);
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #573900;
+      font-size: 0.9rem;
+      font-weight: 760;
+    }
+
+    .export-panel {
+      padding: 18px;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--accent-strong);
+    }
+
+    button.secondary {
+      border-color: var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    button.secondary:hover {
+      border-color: #9dbbaa;
+      background: var(--accent-soft);
+    }
+
+    #exportOutput {
+      min-height: 240px;
+      margin-top: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.78rem;
+      line-height: 1.42;
+    }
+
+    .prd-preview {
+      min-height: 220px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+    }
+
+    .notice {
+      border-left: 4px solid var(--danger);
+      background: var(--danger-soft);
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #621611;
+      font-size: 0.9rem;
+      font-weight: 780;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        position: static;
+      }
+
+      .inline-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <p class="eyebrow">TJC Stock Media cleanup intake</p>
+      <h1>Slim Atlas over ResourceSpace</h1>
+      <p class="lead">Answer every gate-level decision in one packet. Defaults keep Atlas thin, ResourceSpace authoritative, source media untouched, and destructive cleanup blocked until separate approval.</p>
+      <div class="status-row" aria-label="Current defaults">
+        <span class="chip"><strong>Base</strong> origin/main</span>
+        <span class="chip"><strong>Scope</strong> Core portal</span>
+        <span class="chip"><strong>Writes</strong> ResourceSpace first</span>
+        <span class="chip"><strong>Cleanup</strong> archive before remove</span>
+      </div>
+    </header>
+
+    <main>
+      <form id="intakeForm">
+        <fieldset>
+          <legend>1. Product Thesis</legend>
+          <div class="section-body">
+            <div class="question" data-question="product_thesis">
+              <p class="question-title">What is Atlas?</p>
+              <p class="hint">This controls what code survives branch cleanup.</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="product_thesis" value="thin_resource_space_companion" checked>
+                  <span class="recommended">Thin ResourceSpace companion portal</span>
+                  <small>Atlas makes church-user interactions easier while ResourceSpace remains DAM truth.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="product_thesis" value="enterprise_dam_replacement">
+                  <span>Enterprise DAM replacement</span>
+                  <small>Atlas owns broad admin, distribution, governance, storage, launch, and workflow state.</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="question" data-question="success_definition">
+              <p class="question-title">What counts as success for this cleanup pass?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="success_definition" value="clean_slim_branch" checked>
+                  <span class="recommended">Clean slim branch</span>
+                  <small>One branch from origin/main with core portal UI/API, docs, tests, and no enterprise overreach.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="success_definition" value="audit_only">
+                  <span>Audit only</span>
+                  <small>Create maps and recommendations without building the slim branch.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="success_definition" value="full_repo_prune">
+                  <span>Full repo prune</span>
+                  <small>Remove stale branches/worktrees/folders after approval and migration.</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>2. Core Workflows</legend>
+          <div class="section-body">
+            <div class="question" data-question="visual_target">
+              <p class="question-title">What should slim Atlas look like?</p>
+              <p class="hint">Uses `/Users/halim4pro/Downloads/atlas_dam_10_10_full_prototype.html` plus supplied image set as visual reference.</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="visual_target" value="match_prior_atlas_prototype" checked>
+                  <span class="recommended">Match prior Atlas prototype</span>
+                  <small>Warm off-white app shell, left nav, asset grid/table, right inspector, mobile companion, compact cards, and quiet controls.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="visual_target" value="native_current_ui">
+                  <span>Keep current repo UI</span>
+                  <small>Use existing components with only small copy and scope cleanup.</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="question" data-question="core_workflows">
+              <p class="question-title">Which workflows stay in slim Atlas?</p>
+              <p class="hint">Recommended: keep these ResourceSpace-backed portal workflows; everything else must justify itself as support code.</p>
+              <div class="options">
+                <label class="option">
+                  <input type="checkbox" name="core_workflows" value="library_search" checked>
+                  <span>Library/search</span>
+                  <small>Search, facets, safe previews, role-safe results, ResourceSpace-backed status.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="core_workflows" value="asset_usage_detail" checked>
+                  <span>Asset usage detail</span>
+                  <small>Can I use this, why, what scope, what next, and ResourceSpace reference when safe.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="core_workflows" value="resourcespace_collections" checked>
+                  <span>ResourceSpace collections/open albums</span>
+                  <small>Browse canonical ResourceSpace collections without creating a separate portal distribution system.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="core_workflows" value="request_review" checked>
+                  <span>Request/review</span>
+                  <small>Permission requests and reviewer decisions without pretending local state is truth.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="core_workflows" value="upload_intake" checked>
+                  <span>Upload/intake</span>
+                  <small>ResourceSpace upload/import path; large media routes to Shared Drive/admin intake.</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="question" data-question="request_review_surface">
+              <p class="question-title">How should request/review appear?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="request_review_surface" value="separate_request_and_review_routes" checked>
+                  <span class="recommended">Separate `/requests` and `/review` routes</span>
+                  <small>Viewer/contributor requests stay simple; reviewer queue stays role-gated.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="request_review_surface" value="single_requests_route">
+                  <span>Single `/requests` route</span>
+                  <small>Less UI surface, but reviewer queue must fit inside requests.</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. Out Of Scope</legend>
+          <div class="section-body">
+            <div class="question" data-question="out_of_scope">
+              <p class="question-title">What should be removed, archived, or de-canonicalized from slim Atlas?</p>
+              <p class="hint">Checked items become explicit non-goals unless later re-approved.</p>
+              <div class="options">
+                <label class="option">
+                  <input type="checkbox" name="out_of_scope" value="dashboards" checked>
+                  <span>Dashboards and command-center UI</span>
+                  <small>No broad operational cockpit in slim portal.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="out_of_scope" value="packages_distribution_sets" checked>
+                  <span>Packages and distribution sets</span>
+                  <small>ResourceSpace collections/open albums remain canonical grouping.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="out_of_scope" value="governance_admin_center" checked>
+                  <span>Governance/admin command center</span>
+                  <small>Keep only minimal diagnostics needed for safety and setup.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="out_of_scope" value="enterprise_beta_claims" checked>
+                  <span>Enterprise beta/production claims</span>
+                  <small>No local-only proof gets promoted into beta-ready or production-ready wording.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="out_of_scope" value="second_dam_state" checked>
+                  <span>Second-DAM state stores</span>
+                  <small>Portal does not own canonical approvals, albums, originals, or source custody.</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>4. ResourceSpace Write Policy</legend>
+          <div class="section-body">
+            <div class="question" data-question="resourcespace_boundary">
+              <p class="question-title">How should Atlas sit on ResourceSpace?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="resourcespace_boundary" value="ui_layer_on_resourcespace" checked>
+                  <span class="recommended">UI layer on ResourceSpace</span>
+                  <small>Atlas wraps ResourceSpace search, assets, collections, upload, review, and metadata fields with simpler church-user UI.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="resourcespace_boundary" value="parallel_portal_model">
+                  <span>Parallel portal model</span>
+                  <small>Atlas maintains separate portal concepts and maps back to ResourceSpace later.</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="question" data-question="write_policy">
+              <p class="question-title">Where does state write?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="write_policy" value="resourcespace_first_confirmed" checked>
+                  <span class="recommended">ResourceSpace first, confirmed by re-read</span>
+                  <small>Writes succeed only when ResourceSpace accepts and post-write read confirms expected truth.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="write_policy" value="read_only_portal">
+                  <span>Read-only portal</span>
+                  <small>Atlas reads and links users to ResourceSpace for every write workflow.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="write_policy" value="local_queue_demo">
+                  <span>Local queue demo</span>
+                  <small>Local queue may collect requests, but copy must say ResourceSpace is unchanged.</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="question" data-question="write_failure_policy">
+              <p class="question-title">When ResourceSpace cannot safely write, what happens?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="write_failure_policy" value="queue_or_fail_closed" checked>
+                  <span class="recommended">Queue or fail closed</span>
+                  <small>No false success. User sees pending, failed, or conflict state.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="write_failure_policy" value="block_all_writes">
+                  <span>Block all writes</span>
+                  <small>Disable writes until ResourceSpace API configuration is fully proven.</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>5. Branch And Worktree Plan</legend>
+          <div class="section-body">
+            <div class="inline-grid">
+              <label class="text-field">
+                New branch name
+                <input type="text" name="branch_name" value="codex/atlas-thin-resourcespace-portal">
+              </label>
+              <label class="text-field">
+                Base branch
+                <input type="text" name="base_branch" value="origin/main">
+              </label>
+            </div>
+
+            <div class="question" data-question="branch_strategy">
+              <p class="question-title">How should code move?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="branch_strategy" value="fresh_branch_manual_reapply" checked>
+                  <span class="recommended">Fresh branch, manually reapply useful pieces</span>
+                  <small>Avoid pulling enterprise replacement work by bulk cherry-pick.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="branch_strategy" value="trim_atlas_new">
+                  <span>Trim `codex/atlas-new`</span>
+                  <small>Faster start, higher risk of carrying heavy surfaces and stale tests.</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="question" data-question="worktree_policy">
+              <p class="question-title">What happens to old worktrees?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="worktree_policy" value="archive_first_remove_after_approval" checked>
+                  <span class="recommended">Archive first, remove after approval</span>
+                  <small>Capture status, patches, and refs. Deletion waits for explicit separate approval.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="worktree_policy" value="keep_all_document_canonical">
+                  <span>Keep all, document canonical branch</span>
+                  <small>No folder removal; cleanup is organizational only.</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>6. Docs And Claims</legend>
+          <div class="section-body">
+            <div class="question" data-question="docs_policy">
+              <p class="question-title">What should docs say after cleanup?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="radio" name="docs_policy" value="local_thin_portal_no_overclaim" checked>
+                  <span class="recommended">Local thin portal, no overclaim</span>
+                  <small>Docs explain ResourceSpace truth, local demo boundary, and core portal workflows only.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="docs_policy" value="beta_readiness_track">
+                  <span>Beta readiness track</span>
+                  <small>Keep beta packets and gates prominent while slimming app code.</small>
+                </label>
+              </div>
+            </div>
+
+            <label class="text-field">
+              Extra docs notes
+              <textarea name="docs_notes" placeholder="Anything docs must preserve or avoid?"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>7. Validation Gates</legend>
+          <div class="section-body">
+            <div class="question" data-question="validation_gates">
+              <p class="question-title">Which gates must pass before PR/merge?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="checkbox" name="validation_gates" value="git_diff_check" checked>
+                  <span>Git whitespace</span>
+                  <small>`git diff --check`</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="validation_gates" value="frontend_typecheck" checked>
+                  <span>Frontend typecheck</span>
+                  <small>`npm --prefix frontend run typecheck`</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="validation_gates" value="frontend_tests" checked>
+                  <span>Frontend tests</span>
+                  <small>`npm --prefix frontend run test`</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="validation_gates" value="frontend_build" checked>
+                  <span>Frontend build</span>
+                  <small>`npm --prefix frontend run build`</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="validation_gates" value="git_hygiene_guard" checked>
+                  <span>Git hygiene guard</span>
+                  <small>No media, env, runtime, model, or OS metadata artifacts.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="validation_gates" value="core_portal_smoke" checked>
+                  <span>Core portal route smoke</span>
+                  <small>Library, Asset Detail, Collections/Open Albums, Request/Review, Upload/Intake.</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>8. Approval Gates</legend>
+          <div class="section-body">
+            <div class="notice">These approvals cannot be implied by this form. They must be separately confirmed when the action is about to happen.</div>
+            <div class="question" data-question="approval_gates">
+              <p class="question-title">Which actions require explicit separate approval?</p>
+              <div class="options">
+                <label class="option">
+                  <input type="checkbox" name="approval_gates" value="delete_worktrees" checked>
+                  <span>Delete old worktrees or folders</span>
+                  <small>Removal happens only after archive and direct approval.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="approval_gates" value="delete_or_mutate_source_media" checked>
+                  <span>Delete, move, rename, or mutate source media</span>
+                  <small>`Stock Media/` and source originals stay read-only.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="approval_gates" value="force_push_or_reset" checked>
+                  <span>Force push, reset, or destructive Git action</span>
+                  <small>No branch surgery without direct approval.</small>
+                </label>
+                <label class="option">
+                  <input type="checkbox" name="approval_gates" value="hosted_mutation_or_deploy" checked>
+                  <span>Hosted mutation or deploy</span>
+                  <small>No production deploy, public publishing, or hosted write smoke from this intake.</small>
+                </label>
+              </div>
+            </div>
+
+            <label class="text-field">
+              Final notes for PRD/Ralph
+              <textarea name="final_notes" placeholder="Constraints, priorities, or people to mention in the PRD."></textarea>
+            </label>
+          </div>
+        </fieldset>
+      </form>
+
+      <aside>
+        <section class="card summary" aria-label="Workflow summary">
+          <h2>Expected workflow</h2>
+          <ol>
+            <li>Fill intake once.</li>
+            <li>Export JSON.</li>
+            <li>Create PRD + prd.json from answers.</li>
+            <li>Approve PRD.</li>
+            <li>Ralph executes slices on clean branch.</li>
+            <li>Approve destructive cleanup separately.</li>
+          </ol>
+        </section>
+
+        <section class="gate" aria-label="Hard gate">
+          No source media mutation. No deploy. No worktree deletion. No force push. No branch reset. Separate approval required.
+        </section>
+
+        <section class="card export-panel" aria-label="Export answers">
+          <h2>Export answers</h2>
+          <p class="hint">Use this JSON as PRD input. It includes timestamp, selected decisions, issue slices, and PRD seed text.</p>
+          <div class="button-row">
+            <button type="button" id="refreshExport">Refresh JSON</button>
+            <button type="button" id="copyExport" class="secondary">Copy JSON</button>
+            <button type="button" id="downloadExport" class="secondary">Download JSON</button>
+          </div>
+          <textarea id="exportOutput" aria-label="Exported intake JSON" readonly></textarea>
+        </section>
+      </aside>
+    </main>
+
+    <section class="card export-panel" style="margin-top: 18px;" aria-label="PRD seed preview">
+      <h2>PRD seed preview</h2>
+      <p class="hint">This preview updates from your answers. It is not the final PRD until approved.</p>
+      <textarea id="prdPreview" class="prd-preview" readonly></textarea>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById("intakeForm");
+    const exportOutput = document.getElementById("exportOutput");
+    const prdPreview = document.getElementById("prdPreview");
+    const refreshExport = document.getElementById("refreshExport");
+    const copyExport = document.getElementById("copyExport");
+    const downloadExport = document.getElementById("downloadExport");
+
+    const issueSlices = [
+      {
+        id: "SLIM-001",
+        title: "Create approved PRD and prd.json from intake",
+        outcome: "Decision-complete PRD exists before branch cleanup."
+      },
+      {
+        id: "SLIM-002",
+        title: "Archive dirty worktree state",
+        outcome: "Status, refs, and patches captured without deleting folders."
+      },
+      {
+        id: "SLIM-003",
+        title: "Create clean slim branch from origin/main",
+        outcome: "Canonical branch starts clean and tracks thin portal scope."
+      },
+      {
+        id: "SLIM-004",
+        title: "Reapply core Atlas UI and ResourceSpace API pieces",
+        outcome: "Library, Asset Detail, Collections/Open Albums, Request/Review, Upload/Intake work against ResourceSpace truth."
+      },
+      {
+        id: "SLIM-005",
+        title: "Remove or de-canonicalize enterprise replacement surfaces",
+        outcome: "Dashboards, packages, command center, and beta overclaim code no longer define the product."
+      },
+      {
+        id: "SLIM-006",
+        title: "Update docs, tests, and guards for thin portal",
+        outcome: "Docs and validation enforce ResourceSpace truth without enterprise overclaim."
+      },
+      {
+        id: "SLIM-007",
+        title: "Run validation and request cleanup approval",
+        outcome: "Green checks plus explicit next approval for stale worktree/folder removal."
+      }
+    ];
+
+    function valueFor(name) {
+      const checked = form.querySelector(`[name="${name}"]:checked`);
+      return checked ? checked.value : "";
+    }
+
+    function valuesFor(name) {
+      return Array.from(form.querySelectorAll(`[name="${name}"]:checked`)).map((input) => input.value);
+    }
+
+    function textFor(name) {
+      const input = form.elements[name];
+      return input ? input.value.trim() : "";
+    }
+
+    function labelForValue(name, value) {
+      const input = form.querySelector(`[name="${name}"][value="${CSS.escape(value)}"]`);
+      const option = input ? input.closest(".option") : null;
+      const label = option ? option.querySelector("span") : null;
+      return label ? label.textContent.trim() : value;
+    }
+
+    function labelsForValues(name, values) {
+      return values.map((value) => labelForValue(name, value));
+    }
+
+    function buildAnswers() {
+      const answers = {
+        product_thesis: valueFor("product_thesis"),
+        success_definition: valueFor("success_definition"),
+        visual_target: valueFor("visual_target"),
+        core_workflows: valuesFor("core_workflows"),
+        request_review_surface: valueFor("request_review_surface"),
+        out_of_scope: valuesFor("out_of_scope"),
+        resourcespace_boundary: valueFor("resourcespace_boundary"),
+        write_policy: valueFor("write_policy"),
+        write_failure_policy: valueFor("write_failure_policy"),
+        branch_name: textFor("branch_name") || "codex/atlas-thin-resourcespace-portal",
+        base_branch: textFor("base_branch") || "origin/main",
+        branch_strategy: valueFor("branch_strategy"),
+        worktree_policy: valueFor("worktree_policy"),
+        docs_policy: valueFor("docs_policy"),
+        docs_notes: textFor("docs_notes"),
+        validation_gates: valuesFor("validation_gates"),
+        approval_gates: valuesFor("approval_gates"),
+        final_notes: textFor("final_notes")
+      };
+
+      return {
+        schema: "tjc-stock-media.slim-atlas-cleanup-intake.v1",
+        generatedAt: new Date().toISOString(),
+        project: "TJC Stock Media",
+        purpose: "Create PRD and Ralph-ready issues for slim Atlas cleanup.",
+        answers,
+        labels: {
+          product_thesis: labelForValue("product_thesis", answers.product_thesis),
+          success_definition: labelForValue("success_definition", answers.success_definition),
+          visual_target: labelForValue("visual_target", answers.visual_target),
+          core_workflows: labelsForValues("core_workflows", answers.core_workflows),
+          request_review_surface: labelForValue("request_review_surface", answers.request_review_surface),
+          out_of_scope: labelsForValues("out_of_scope", answers.out_of_scope),
+          resourcespace_boundary: labelForValue("resourcespace_boundary", answers.resourcespace_boundary),
+          write_policy: labelForValue("write_policy", answers.write_policy),
+          write_failure_policy: labelForValue("write_failure_policy", answers.write_failure_policy),
+          branch_strategy: labelForValue("branch_strategy", answers.branch_strategy),
+          worktree_policy: labelForValue("worktree_policy", answers.worktree_policy),
+          docs_policy: labelForValue("docs_policy", answers.docs_policy),
+          validation_gates: labelsForValues("validation_gates", answers.validation_gates),
+          approval_gates: labelsForValues("approval_gates", answers.approval_gates)
+        },
+        issueSlices,
+        referenceArtifacts: [
+          "/Users/halim4pro/Downloads/atlas_dam_10_10_full_prototype.html",
+          "Supplied Atlas DAM prototype image set from June 21-22, 2026"
+        ],
+        hardGates: [
+          "Do not delete, rename, move, or mutate source media.",
+          "Do not remove worktrees or folders before archive and explicit approval.",
+          "Do not force push, reset, deploy, publish, mutate hosted services, or change credentials without explicit approval.",
+          "Do not claim beta-ready or production-ready from local-only evidence."
+        ],
+        prdSeed: buildPrdSeed(answers)
+      };
+    }
+
+    function buildPrdSeed(answers) {
+      const workflows = labelsForValues("core_workflows", answers.core_workflows).join(", ");
+      const out = labelsForValues("out_of_scope", answers.out_of_scope).join(", ");
+      const gates = labelsForValues("validation_gates", answers.validation_gates).join(", ");
+      const approvals = labelsForValues("approval_gates", answers.approval_gates).join(", ");
+
+      return [
+        "# Slim Atlas ResourceSpace Portal Cleanup PRD Seed",
+        "",
+        "## Thesis",
+        `Atlas is ${labelForValue("product_thesis", answers.product_thesis)}.`,
+        "ResourceSpace remains the DAM/search/review/write truth. Google Shared Drive remains master-original custody.",
+        "",
+        "## Visual Target",
+        `${labelForValue("visual_target", answers.visual_target)}. Use the prior Atlas prototype as reference for layout, density, cards, inspector, upload/review/request screens, and mobile behavior.`,
+        "",
+        "## ResourceSpace Boundary",
+        `${labelForValue("resourcespace_boundary", answers.resourcespace_boundary)}.`,
+        "",
+        "## Success",
+        `${labelForValue("success_definition", answers.success_definition)} on branch ${answers.branch_name} from ${answers.base_branch}.`,
+        "",
+        "## In Scope",
+        workflows || "No workflows selected.",
+        "",
+        "## Out Of Scope",
+        out || "No out-of-scope surfaces selected.",
+        "",
+        "## Write Policy",
+        `${labelForValue("write_policy", answers.write_policy)}. Failure policy: ${labelForValue("write_failure_policy", answers.write_failure_policy)}.`,
+        "",
+        "## Branch And Worktrees",
+        `Branch strategy: ${labelForValue("branch_strategy", answers.branch_strategy)}.`,
+        `Worktree policy: ${labelForValue("worktree_policy", answers.worktree_policy)}.`,
+        "",
+        "## Docs",
+        `${labelForValue("docs_policy", answers.docs_policy)}.`,
+        answers.docs_notes ? `Notes: ${answers.docs_notes}` : "",
+        "",
+        "## Validation",
+        gates || "No validation gates selected.",
+        "",
+        "## Separate Approval Required",
+        approvals || "No approval gates selected.",
+        answers.final_notes ? `\n## Final Notes\n${answers.final_notes}` : ""
+      ].filter(Boolean).join("\n");
+    }
+
+    function refresh() {
+      const payload = buildAnswers();
+      exportOutput.value = JSON.stringify(payload, null, 2);
+      prdPreview.value = payload.prdSeed;
+    }
+
+    async function copyJson() {
+      refresh();
+      await navigator.clipboard.writeText(exportOutput.value);
+      copyExport.textContent = "Copied";
+      window.setTimeout(() => {
+        copyExport.textContent = "Copy JSON";
+      }, 1600);
+    }
+
+    function downloadJson() {
+      refresh();
+      const blob = new Blob([exportOutput.value], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      link.href = url;
+      link.download = `slim-atlas-cleanup-intake-${stamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    form.addEventListener("change", refresh);
+    form.addEventListener("input", refresh);
+    refreshExport.addEventListener("click", refresh);
+    copyExport.addEventListener("click", copyJson);
+    downloadExport.addEventListener("click", downloadJson);
+    refresh();
+  </script>
+</body>
+</html>

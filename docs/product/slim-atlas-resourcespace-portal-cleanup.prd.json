@@ -1,0 +1,180 @@
+{
+  "project": "TJC Stock Media",
+  "branchName": "codex/atlas-thin-resourcespace-portal",
+  "baseBranch": "origin/main",
+  "title": "Slim Atlas ResourceSpace Portal Cleanup",
+  "status": "accepted-canon",
+  "description": "Build a clean slim Atlas portal branch from origin/main. Atlas should match the prior prototype visual direction while acting only as a simpler UI layer on top of ResourceSpace. ResourceSpace remains the DAM/search/review/write truth. Google Shared Drive remains master-original custody.",
+  "intake": {
+    "source": "docs/planning/slim-atlas-cleanup-intake.html",
+    "approvedByUser": true,
+    "approvedAt": "2026-06-24",
+    "defaultsUsed": true
+  },
+  "referenceArtifacts": [
+    "/Users/halim4pro/Downloads/atlas_dam_10_10_full_prototype.html",
+    "Supplied Atlas DAM prototype image set from June 21-22, 2026"
+  ],
+  "productThesis": "Atlas is a thin ResourceSpace companion portal. It improves church-user interactions but does not become a second DAM.",
+  "visualTarget": {
+    "name": "Prior Atlas DAM prototype",
+    "mustKeep": [
+      "warm off-white app shell",
+      "left navigation",
+      "dense asset grid and table browsing",
+      "right inspector for selected asset",
+      "compact cards and quiet controls",
+      "upload/intake screen",
+      "review queue and review detail screen",
+      "requests screen",
+      "mobile companion behavior"
+    ],
+    "mustChange": [
+      "replace generic stock/product labels with TJC/ResourceSpace-safe domain language",
+      "remove second-DAM ownership claims",
+      "keep ResourceSpace as source of truth"
+    ]
+  },
+  "coreWorkflows": [
+    "library_search",
+    "asset_usage_detail",
+    "resourcespace_collections_open_albums",
+    "request_review",
+    "upload_intake"
+  ],
+  "outOfScope": [
+    "enterprise_dam_replacement",
+    "dashboards_and_command_center_ui",
+    "packages_and_distribution_sets_as_separate_truth",
+    "broad_governance_admin_command_center",
+    "enterprise_beta_or_production_claims",
+    "second_dam_state_stores"
+  ],
+  "resourceSpacePolicy": {
+    "boundary": "Atlas wraps ResourceSpace search, assets, collections, upload, review, and metadata fields with simpler church-user UI.",
+    "writePolicy": "ResourceSpace first, confirmed by post-write re-read.",
+    "failurePolicy": "Queue or fail closed. Never claim success when ResourceSpace did not confirm.",
+    "localQueue": "Allowed only as fallback or pending state. It is not source of truth."
+  },
+  "noTouchRules": [
+    "Do not delete, rename, move, or mutate source media.",
+    "Do not remove worktrees or folders before archive and explicit approval.",
+    "Do not force push, reset, deploy, publish, mutate hosted services, or change credentials without explicit approval.",
+    "Do not claim beta-ready or production-ready from local-only evidence.",
+    "Do not commit church media files, runtime data, secrets, private URLs, signed URLs, source paths, checksums, or original filenames."
+  ],
+  "userStories": [
+    {
+      "id": "SLIM-001",
+      "title": "Create approved PRD and slim cleanup JSON",
+      "description": "As the orchestrator, I need durable PRD artifacts that encode the slim Atlas direction before any branch cleanup begins.",
+      "priority": 1,
+      "acceptanceCriteria": [
+        "Human-readable PRD exists under docs/product.",
+        "Ralph-ready JSON exists under docs/product.",
+        "Artifacts state Atlas is a thin ResourceSpace UI layer, not a second DAM.",
+        "START_HERE, command matrix, and live surface docs name Slim Atlas ResourceSpace portal as current canon.",
+        "Artifacts reference the prior Atlas prototype and supplied image set.",
+        "Artifacts list approval gates for destructive cleanup, source media, deploys, resets, and force pushes.",
+        "Root prd.json is not overwritten while it contains unrelated dirty work unless user explicitly approves replacing it."
+      ]
+    },
+    {
+      "id": "SLIM-002",
+      "title": "Archive dirty worktree state",
+      "description": "As an operator, I need every active worktree and dirty branch captured before creating the clean slim branch.",
+      "priority": 2,
+      "acceptanceCriteria": [
+        "Archive captures main worktree, local DAM worktree, prototype worktree, and detached temp worktree status.",
+        "Archive includes branch, HEAD, status, tracked diff stat, patch bundles, and untracked file list.",
+        "Archive does not include source media, secrets, runtime data, node_modules, build artifacts, or private originals.",
+        "No worktree or folder is removed in this issue.",
+        "Git hygiene guard passes after archive artifacts are staged or explicitly ignored."
+      ]
+    },
+    {
+      "id": "SLIM-003",
+      "title": "Create clean slim branch from origin/main",
+      "description": "As an implementer, I need a clean branch from origin/main so enterprise replacement work does not leak in by default.",
+      "priority": 3,
+      "acceptanceCriteria": [
+        "Branch codex/atlas-thin-resourcespace-portal is created from origin/main.",
+        "No dirty files from codex/atlas-new are carried over automatically.",
+        "No source media, runtime data, or secrets are copied.",
+        "Branch starts with passing git diff --check.",
+        "Branch creation is recorded for handoff."
+      ]
+    },
+    {
+      "id": "SLIM-004",
+      "title": "Reapply prototype-style Atlas shell and core ResourceSpace workflows",
+      "description": "As a church media user, I need Atlas to feel like the prior prototype while reading and writing through ResourceSpace truth.",
+      "priority": 4,
+      "acceptanceCriteria": [
+        "Library/search screen uses prototype-inspired shell, grid/table browsing, filters, and selected-asset inspector.",
+        "Asset detail answers can-use, why, scope, and next action in first viewport.",
+        "ResourceSpace collections/open albums are browsable without creating a separate package/distribution truth.",
+        "Request/review routes support permission requests and reviewer decisions with ResourceSpace confirmation semantics.",
+        "Upload/intake defaults submissions to Needs Review / Do Not Publish and routes large media safely.",
+        "Normal roles do not receive source paths, checksums, private URLs, signed URLs, or admin internals."
+      ]
+    },
+    {
+      "id": "SLIM-005",
+      "title": "Remove or de-canonicalize enterprise replacement surfaces",
+      "description": "As a maintainer, I need the app surface to match slim portal scope and stop presenting Atlas as an enterprise DAM replacement.",
+      "priority": 5,
+      "acceptanceCriteria": [
+        "Dashboards and command-center UI are removed from canonical navigation or archived as non-canonical reference.",
+        "Packages/distribution sets do not remain a separate source of truth.",
+        "Broad governance/admin command center surfaces are removed or reduced to minimal diagnostics.",
+        "Enterprise beta-ready and production-ready claims are removed from canonical app/docs unless separately proven.",
+        "Tests are updated so they enforce slim portal scope rather than old enterprise readiness scope."
+      ]
+    },
+    {
+      "id": "SLIM-006",
+      "title": "Update docs, tests, and guards for thin portal",
+      "description": "As a future agent, I need docs and validation to describe and protect the actual slim Atlas architecture.",
+      "priority": 6,
+      "acceptanceCriteria": [
+        "README or START_HERE explains Atlas as a local thin ResourceSpace companion portal.",
+        "Docs state ResourceSpace remains DAM truth and Google Shared Drive remains master-original custody.",
+        "Docs avoid beta/production overclaims from local-only proof.",
+        "Validation gates include typecheck, tests, build, git hygiene, and focused core portal smoke.",
+        "Obsolete enterprise readiness guard expectations are removed or scoped to non-canonical archive docs.",
+        "Enterprise DAM, package/distribution, dashboard, command-center, beta-readiness, and production-readiness artifacts are reference evidence only unless later re-canonicalized."
+      ]
+    },
+    {
+      "id": "SLIM-007",
+      "title": "Run validation and request cleanup approval",
+      "description": "As the operator, I need proof that the slim branch is safe before any stale worktree or folder removal is requested.",
+      "priority": 7,
+      "acceptanceCriteria": [
+        "git diff --check passes.",
+        "npm --prefix frontend run typecheck passes.",
+        "npm --prefix frontend run test passes or failures are documented as blockers.",
+        "npm --prefix frontend run build passes.",
+        "node scripts/git-hygiene-guard.mjs passes.",
+        "Focused smoke covers /library, /assets/[id], collections/open album route, /requests or /review, and /upload.",
+        "Final report asks explicit approval before deleting old worktrees, pruning folders, or removing stale branches."
+      ]
+    }
+  ],
+  "validationGates": [
+    "git diff --check",
+    "npm --prefix frontend run typecheck",
+    "npm --prefix frontend run test",
+    "npm --prefix frontend run build",
+    "node scripts/git-hygiene-guard.mjs",
+    "focused core portal route smoke"
+  ],
+  "separateApprovalRequired": [
+    "delete old worktrees or folders",
+    "delete, move, rename, or mutate source media",
+    "force push, reset, or destructive Git action",
+    "hosted mutation, production deploy, public publishing, credential change, or paid external usage",
+    "replace current root prd.json while it contains unrelated dirty work"
+  ]
+}

@@ -1,9 +1,11 @@
 # Google Photos / Google Drive-Style ResourceSpace Portal PRD
 
 Version: v0.1
-Status: Draft for product planning
+Status: superseded as product canon; reference evidence only
 Repo baseline: `beta-limited-2026-06-16`
-Current decision: Beta ready with limitations
+Current decision: superseded by Slim Atlas ResourceSpace portal cleanup
+
+Superseded by `docs/product/PRD-slim-atlas-resourcespace-portal-cleanup.md` and `docs/START_HERE.md`. Use this file only for visual/workflow reference. Do not treat beta, production, package/distribution, admin/governance, or enterprise DAM language here as current Slim Atlas truth.
 
 ## 1. Product Thesis
 
@@ -222,7 +224,7 @@ Acceptance outcome: approval remains evidence-locked and auditable.
 1. DAM Admin opens Admin.
 2. Portal shows ResourceSpace connection/read status, import counts, review state counts, pending writes, audit health, and durable storage state.
 3. Admin can trace each asset to ResourceSpace/source truth.
-4. Admin can see what blocks production launch.
+4. Reviewer/support can see what blocks safe use. Production launch blocking belongs outside current Slim Atlas canon.
 
 Acceptance outcome: Admin can prove no unsafe download path, route identity regression, or source-truth claim has slipped.
 
@@ -284,7 +286,7 @@ Safety requirements:
 
 - Browse/search.
 - ResourceSpace/source-truth visibility.
-- Photo-only beta scope.
+- Historical photo-only beta scope; not current Slim Atlas readiness claim.
 - Review states.
 - Local gated download proof.
 - Protected hosted URL.

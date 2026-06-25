@@ -5,6 +5,7 @@ import { getAssetRecordById } from "@/lib/catalog";
 import { createDamRouteSession } from "@/lib/dam-route-session";
 import { createPendingReviewWrite, pendingReviewWriteSummary } from "@/lib/pending-review-writes";
 import { canReview, canSeeAsset } from "@/lib/permissions";
+import { createAuditedAssetRequestRecord } from "@/lib/request-record-store";
 import { normalizeAssetId, normalizeDisplayTextField, readJsonObject } from "@/lib/request-validation";
 import { buildReuseDecision } from "@/lib/reuse-policy";
 import { initialReviewChecklistForAsset } from "@/lib/review-evidence";
@@ -63,6 +64,44 @@ export async function POST(request: NextRequest) {
     blockers: reuse.blockers.map((item) => item.label)
   });
 
+  let requestRecord: Awaited<ReturnType<typeof createAuditedAssetRequestRecord>>;
+  try {
+    requestRecord = await createAuditedAssetRequestRecord({
+      type: "DAM review",
+      asset,
+      actor: session.identity,
+      blocker: reuse.blockers.map((item) => item.label).join(", ") || "Reviewer evidence required before reuse.",
+      requiredEvidence: ["Usage scope", "Reviewer note", "Rights and people/minors evidence"],
+      nextAction: "Reviewer follow-up required before public reuse.",
+      linkedPendingWriteId: pending.id
+    });
+  } catch (error) {
+    appendAuditEvent({
+      type: "review_pending_write_queued",
+      role,
+      actor: session.identity.id,
+      assetId,
+      resourceSpaceId,
+      status: "blocked",
+      summary: "Review request pending write queued but request ticket recording failed.",
+      details: {
+        action: "Request DAM Review",
+        pendingWriteId: pending.id,
+        reason: error instanceof Error ? error.message : "Request ticket recording failed."
+      }
+    });
+    return NextResponse.json({
+      ok: false,
+      id: assetId,
+      error: "Review request queued locally, but the request ticket could not be recorded. Ask a reviewer to inspect the review queue.",
+      pendingWriteId: pending.id,
+      pendingWrite: pendingReviewWriteSummary(pending),
+      syncState: pending.syncState,
+      requestRecorded: false,
+      ...session.sourceEnvelope(source)
+    }, { status: 503 });
+  }
+
   appendAuditEvent({
     type: "review_pending_write_queued",
     role,
@@ -90,9 +129,11 @@ export async function POST(request: NextRequest) {
     pendingWriteId: pending.id,
     pendingWrite: pendingReviewWriteSummary(pending),
     syncState: pending.syncState,
-    mode: "review-request-queue"
+    mode: "review-request-queue",
+    requestRecordId: requestRecord.id
   } : {
-    requestRecorded: true
+    requestRecorded: true,
+    requestRecordId: requestRecord.id
   };
 
   return NextResponse.json({

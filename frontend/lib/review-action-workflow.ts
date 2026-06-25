@@ -16,7 +16,7 @@ import {
 import { recordUsageEvent } from "@/lib/usage-analytics";
 import { isReviewActionBackend, reviewActions, type ReviewActionBackend } from "@/lib/workflow-policy";
 import type { NextRequest } from "next/server";
-import type { ReviewEvidenceChecklist } from "@/lib/types";
+import type { ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist } from "@/lib/types";
 
 export type ReviewActionRequestBody = {
   role?: string;
@@ -25,6 +25,7 @@ export type ReviewActionRequestBody = {
   label?: string;
   notes?: string;
   checklist?: Partial<ReviewEvidenceChecklist>;
+  evidenceDepth?: Partial<ReviewEvidenceDepthChecklist>;
   reviewerName?: string;
   reviewDate?: string;
   approvalScope?: string;
@@ -79,6 +80,7 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
     label: body.label,
     note: body.notes,
     checklist: body.checklist,
+    evidenceDepth: body.evidenceDepth,
     reviewerName: body.reviewerName,
     reviewDate: body.reviewDate,
     approvalScope: body.approvalScope
@@ -128,17 +130,22 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
   return {
     status: sync.ok ? 200 : 202,
     body: {
-      ok: true,
+      ok: sync.ok,
+      queued: true,
       id: assetId,
       action: packet.action,
       label: packet.label,
       notes: packet.note,
+      evidenceDepth: packet.evidenceDepth,
+      evidenceDepthSummary: packet.evidenceDepthSummary,
       message: sync.ok
-        ? "ResourceSpace review fields were updated through the live API."
-        : `Review decision queued for media-team follow-up. Record status remains unchanged until review is completed. ${sync.message}`,
+        ? "ResourceSpace review fields were updated through the live API and confirmed by post-write re-read."
+        : `Review decision queued for media-team follow-up. ResourceSpace remains authoritative and record status remains unchanged until sync is completed and confirmed. ${sync.message}`,
       pendingWriteId: pending.id,
       syncState: sync.ok ? "synced_to_resourcespace" : sync.record?.syncState || pending.syncState,
       sync,
+      resourceSpaceWritten: sync.ok,
+      writePolicy: "ResourceSpace-first with post-write re-read confirmation; unsafe writes stay queued/fail-closed.",
       auditRecord: {
         ...reviewEvidencePacketAuditRecord(packet, role, identity.id, pending.createdAt),
         blockers: pending.blockers
@@ -148,7 +155,7 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
         recorded: usageEvent.recorded,
         reason: usageEvent.reason
       },
-      mode: sync.ok ? "resourcespace-live-writeback" : "review-follow-up-preview"
+      mode: sync.ok ? "resourcespace-live-writeback-confirmed" : "resourcespace-write-queued-fail-closed"
     }
   };
 }

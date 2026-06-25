@@ -209,7 +209,7 @@ export function normalizeUploadIntake(form: FormData): UploadIntakePacket {
     task("Checksum processing pending", files.length > 0),
     task("Duplicate group processing pending", duplicateHints.length > 0),
     task("Derivative generation after review", files.length > 0 || Boolean(sourceLink)),
-    task("DAM sync pending; upload does not write approval truth", true),
+    task("ResourceSpace intake/import pending; upload does not write approval truth", true),
     task("Field map readiness required before live writeback", true)
   ]);
   const systemWarnings = unique([
@@ -349,11 +349,13 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     },
     defaultReviewState: "Needs Review",
     defaultUsageScope: "Do Not Publish",
+    atlasStoresOriginals: false,
+    originalsStoredByAtlas: false,
     message: storageMode === "blocked-no-durable-store"
       ? persisted?.blockedReason || "Durable storage is required before browser file intake can continue."
       : intake.largeFiles.length
         ? uploadDefaultState.largeMediaMessage
-        : "Batch submitted. Your review packet has been created. Nothing is public yet.",
+        : "Intake packet submitted for ResourceSpace/admin review. Nothing is public and no original custody moved into Atlas.",
     eventName: intake.eventName,
     fileCount: intake.files.length,
     sourceLinkCaptured: Boolean(intake.sourceLink),
@@ -366,8 +368,10 @@ export function buildUploadIntakeResponse(intake: UploadIntakePacket, persisted?
     reviewWarnings: intake.reviewWarnings,
     betaBoundaries: uploadBetaBoundaries,
     storageMode,
-    custodyMode: storageMode === "local-runtime" ? "local-private-beta-staging" : storageMode,
-    resourceSpaceWritten: false
+    custodyMode: storageMode === "local-runtime" ? "portal-intake-metadata-only" : storageMode,
+    custodyBoundary: "ResourceSpace/Shared Drive originals remain authoritative; Atlas records intake metadata only.",
+    resourceSpaceWritten: false,
+    resourceSpaceWritePolicy: "no-upload-writeback"
   };
 }
 

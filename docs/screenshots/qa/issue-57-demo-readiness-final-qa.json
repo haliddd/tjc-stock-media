@@ -1,0 +1,96 @@
+{
+  "generatedAt": "2026-06-25T12:46:24.455Z",
+  "server": "http://localhost:4875",
+  "checks": [
+    {
+      "id": "rehearsal-desktop",
+      "url": "http://localhost:4875/rehearsal",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1100
+      },
+      "assertions": {
+        "noHorizontalOverflow": true,
+        "noDangerLeaks": true,
+        "expectedText": true
+      },
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-57-rehearsal-desktop.png"
+    },
+    {
+      "id": "review-desktop",
+      "url": "http://localhost:4875/review",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1100
+      },
+      "assertions": {
+        "noHorizontalOverflow": true,
+        "noDangerLeaks": true,
+        "expectedText": true
+      },
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-57-review-desktop.png"
+    },
+    {
+      "id": "public-portal-desktop",
+      "url": "http://localhost:4875/public-portal/sabbath",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1100
+      },
+      "assertions": {
+        "noHorizontalOverflow": true,
+        "noDangerLeaks": true,
+        "expectedText": true
+      },
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-57-public-portal-desktop.png"
+    },
+    {
+      "id": "rehearsal-mobile",
+      "url": "http://localhost:4875/rehearsal",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 900
+      },
+      "assertions": {
+        "noHorizontalOverflow": true,
+        "noDangerLeaks": true,
+        "expectedText": true
+      },
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-57-rehearsal-mobile.png"
+    },
+    {
+      "id": "review-mobile",
+      "url": "http://localhost:4875/review",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 900
+      },
+      "assertions": {
+        "noHorizontalOverflow": true,
+        "noDangerLeaks": true,
+        "expectedText": true
+      },
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-57-review-mobile.png"
+    },
+    {
+      "id": "public-portal-mobile",
+      "url": "http://localhost:4875/public-portal/sabbath",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 900
+      },
+      "assertions": {
+        "noHorizontalOverflow": true,
+        "noDangerLeaks": true,
+        "expectedText": true
+      },
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-57-public-portal-mobile.png"
+    }
+  ]
+}

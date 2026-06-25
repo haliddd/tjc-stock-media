@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchDamJson, sourceFromPayload, type DamApiPayload } from "@/lib/dam-api-client";
+import { DAM_LOCAL_BETA_ROLE_HEADER, DAM_LOCAL_TRUSTED_ROLE_HEADER, fetchDamJson, sourceFromPayload, type DamApiPayload } from "@/lib/dam-api-client";
 import type { BrandKitGovernance } from "@/lib/brand-kit-governance";
 import { mediaSourceIsLive, mediaSourceKind, type MediaSourceKind } from "@/lib/media-source/truth";
 import { canReview } from "@/lib/permissions";
@@ -51,8 +51,41 @@ export type ReviewRequestResponse = {
   syncState?: string;
   mode?: string;
   requestRecorded?: boolean;
+  requestRecordId?: string;
   source?: MediaSourceStatus;
   live?: boolean;
+};
+
+export type RequestRecordPayload = {
+  id: string;
+  type: "Source access" | "Rights issue" | "Derivative request" | "DAM review" | "Upload intake";
+  relatedAssetId?: string;
+  relatedAsset: string;
+  requestedBy: string;
+  requesterRole: DemoRole;
+  status: "Waiting on me" | "Assigned" | "Blocked" | "Resolved";
+  blocker: string;
+  assignedTo: string;
+  updatedAt: string;
+  createdAt: string;
+  requiredEvidence: string[];
+  timeline: string[];
+  nextAction: string;
+  roleFit: DemoRole[];
+  resourceSpaceId?: string;
+  linkedIntakeBatchId?: string;
+  linkedPendingWriteId?: string;
+  storageMode?: "local-json";
+};
+
+export type RequestRecordsResponse = {
+  requests: RequestRecordPayload[];
+  count: number;
+  storageMode: "local-json";
+  truthBoundary: "portal-ticket-queue-only";
+  approvalTruth: false;
+  resourceSpaceWritten: false;
+  error?: string;
 };
 
 export type BrandKitResponse = {
@@ -177,6 +210,7 @@ export function useAssetsSearch({
   collection,
   intent,
   sort,
+  rightsSafe = false,
   limit = 24,
   offset = 0
 }: {
@@ -187,6 +221,7 @@ export function useAssetsSearch({
   collection?: string;
   intent?: string;
   sort?: string;
+  rightsSafe?: boolean;
   limit?: number;
   offset?: number;
 }) {
@@ -198,6 +233,7 @@ export function useAssetsSearch({
   if (collection) params.set("collection", collection);
   if (intent) params.set("intent", intent);
   if (sort) params.set("sort", sort);
+  if (rightsSafe) params.set("rightsSafe", "1");
   filters.forEach((filter) => params.append("filter", filter));
   return useJsonApi<SearchResult & { sourceStatus?: MediaSourceStatus; sourceKind?: ApiSourceKind; live?: boolean }>(`/api/assets/search?${params.toString()}`, role);
 }
@@ -213,11 +249,15 @@ export function useReviewQueue(role: DemoRole, queue = "pending") {
   return useJsonApi<ReviewQueueResponse>(url, role);
 }
 
+export function useRequestRecords(role: DemoRole) {
+  return useJsonApi<RequestRecordsResponse>("/api/requests", role);
+}
+
 export function useReviewRequest(id: string, role: DemoRole) {
   const requestReview = useCallback(async ({ notes }: { notes?: string } = {}) => {
     const response = await fetch("/api/review-request", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json", [DAM_LOCAL_BETA_ROLE_HEADER]: role, [DAM_LOCAL_TRUSTED_ROLE_HEADER]: role },
       body: JSON.stringify({ role, id, notes })
     });
     const payload = await response.json().catch(() => ({ ok: false, error: `Review request failed with ${response.status}` }));
@@ -253,7 +293,8 @@ export function useDownloadGate(id: string, role: DemoRole) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        "x-tjc-local-beta-role": role
+        [DAM_LOCAL_BETA_ROLE_HEADER]: role,
+        [DAM_LOCAL_TRUSTED_ROLE_HEADER]: role
       },
       body: JSON.stringify({ termsAccepted, usageChannel, reason, variant })
     });

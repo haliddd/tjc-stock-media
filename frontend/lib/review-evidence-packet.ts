@@ -1,8 +1,14 @@
 import { assetResourceRef } from "@/lib/asset-refs";
 import { normalizeDisplayTextField } from "@/lib/request-validation";
 import { buildReviewEvidenceDecision, normalizeReviewChecklist, queuePendingReviewDecision } from "@/lib/review-decision";
+import {
+  normalizeReviewEvidenceDepthChecklist,
+  reviewEvidenceDepthMissingFields,
+  reviewEvidenceDepthMissingLabels,
+  reviewEvidenceDepthSummary
+} from "@/lib/review-evidence-depth";
 import type { ReviewActionBackend, reviewActions } from "@/lib/workflow-policy";
-import type { DemoRole, ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
+import type { DemoRole, ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
 
 type ReviewActionDefinition = (typeof reviewActions)[number];
 type ApprovalReviewEvidence = {
@@ -22,6 +28,8 @@ export type ReviewEvidencePacket = {
   resourceSpaceId: string;
   decision: ReturnType<typeof buildReviewEvidenceDecision>;
   approvalEvidence: ApprovalReviewEvidence;
+  evidenceDepth: ReviewEvidenceDepthChecklist;
+  evidenceDepthSummary: string[];
   missingEvidence: string[];
   missingEvidenceLabels: string[];
   blocked: boolean;
@@ -38,6 +46,7 @@ export type BuildReviewEvidencePacketInput = {
   reviewerName?: unknown;
   reviewDate?: unknown;
   approvalScope?: unknown;
+  evidenceDepth?: unknown;
 };
 
 export type QueueReviewEvidencePacketInput = {
@@ -88,6 +97,7 @@ export function buildReviewEvidencePacket(input: BuildReviewEvidencePacketInput)
   const note = normalizeDisplayTextField(input.note, "", 1200);
   const label = normalizeDisplayTextField(input.label, "", 120) || input.action;
   const checklist = normalizeReviewChecklist(input.checklist);
+  const evidenceDepth = normalizeReviewEvidenceDepthChecklist(input.evidenceDepth);
   const decision = buildReviewEvidenceDecision(input.action, checklist, note, input.asset);
   const approvalEvidence: ApprovalReviewEvidence = {
     reviewerName: normalizeDisplayTextField(input.reviewerName, "", 120),
@@ -95,10 +105,16 @@ export function buildReviewEvidencePacket(input: BuildReviewEvidencePacketInput)
     approvalScope: normalizeUsageScope(input.approvalScope)
   };
   const approvalMissing = approvalEvidenceMissing(input.action, approvalEvidence);
-  const missingEvidence = Array.from(new Set([...decision.missingFields, ...approvalMissing]));
+  const depthMissing = reviewEvidenceDepthMissingFields(input.asset, evidenceDepth, input.action);
+  const missingEvidence = Array.from(new Set([
+    ...decision.missingFields,
+    ...approvalMissing,
+    ...depthMissing.map((item) => `evidenceDepth.${item}`)
+  ]));
   const missingEvidenceLabels = Array.from(new Set([
     ...decision.missingLabels,
-    ...approvalMissing.map((item) => approvalEvidenceLabels[item] || item)
+    ...approvalMissing.map((item) => approvalEvidenceLabels[item] || item),
+    ...reviewEvidenceDepthMissingLabels(input.asset, evidenceDepth, input.action)
   ]));
   const disabledReason = missingEvidenceLabels.length
     ? `Missing: ${missingEvidenceLabels.slice(0, 5).join(", ")}${missingEvidenceLabels.length > 5 ? "..." : ""}`
@@ -114,6 +130,8 @@ export function buildReviewEvidencePacket(input: BuildReviewEvidencePacketInput)
     resourceSpaceId: assetResourceRef(input.asset),
     decision,
     approvalEvidence,
+    evidenceDepth,
+    evidenceDepthSummary: reviewEvidenceDepthSummary(evidenceDepth),
     missingEvidence,
     missingEvidenceLabels,
     blocked: missingEvidence.length > 0,
@@ -132,7 +150,8 @@ export function reviewEvidencePacketBlockedAuditEvent(packet: ReviewEvidencePack
     summary: "Review decision blocked by missing evidence.",
     details: {
       action: packet.action,
-      missingEvidence: packet.missingEvidence
+      missingEvidence: packet.missingEvidence,
+      evidenceDepthSummary: packet.evidenceDepthSummary
     }
   };
 }
@@ -161,7 +180,8 @@ export function queueReviewEvidencePacketDecision(input: QueueReviewEvidencePack
     role: input.role,
     reviewerName: input.packet.approvalEvidence.reviewerName || input.reviewerName,
     note: reviewEvidenceNote,
-    checklist: input.packet.checklist
+    checklist: input.packet.checklist,
+    evidenceDepth: input.packet.evidenceDepth
   });
 }
 
@@ -180,7 +200,8 @@ export function reviewEvidencePacketQueuedAuditEvent(packet: ReviewEvidencePacke
       pendingWriteId,
       reviewerName: packet.approvalEvidence.reviewerName || null,
       reviewDate: packet.approvalEvidence.reviewDate || null,
-      approvalScope: packet.approvalEvidence.approvalScope || null
+      approvalScope: packet.approvalEvidence.approvalScope || null,
+      evidenceDepthSummary: packet.evidenceDepthSummary
     }
   };
 }
@@ -199,6 +220,7 @@ export function reviewEvidencePacketAuditRecord(packet: ReviewEvidencePacket, ro
     timestamp,
     notes: packet.note,
     checklist: packet.checklist,
+    evidenceDepth: packet.evidenceDepth,
     blockers: [] as string[]
   };
 }

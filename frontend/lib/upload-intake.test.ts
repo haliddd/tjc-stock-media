@@ -1,5 +1,25 @@
-import { describe, expect, it } from "vitest";
-import { buildUploadIntakeResponse, normalizeUploadIntake, uploadIntakeValidationError } from "@/lib/upload-intake";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { buildUploadIntakeResponse, normalizeUploadIntake, submitUploadIntakeBatch, uploadIntakeValidationError } from "@/lib/upload-intake";
+
+const originalEnv = { ...process.env };
+const tempRoots: string[] = [];
+
+afterEach(() => {
+  process.env = { ...originalEnv };
+  for (const root of tempRoots.splice(0)) {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+function useTempRuntimeRoot() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "tjc-upload-intake-"));
+  tempRoots.push(root);
+  process.env.TJC_STOCK_MEDIA_ROOT = root;
+  return root;
+}
 
 function form(entries: Array<[string, string | File]>) {
   const data = new FormData();
@@ -46,6 +66,9 @@ describe("upload intake batch validation", () => {
       publishable: false
     });
     expect(response.resourceSpaceWritten).toBe(false);
+    expect(response.atlasStoresOriginals).toBe(false);
+    expect(response.originalsStoredByAtlas).toBe(false);
+    expect(response.resourceSpaceWritePolicy).toBe("no-upload-writeback");
     expect(response.betaBoundaries.forbidden).toContain("Public approval, download enablement, or ResourceSpace approval writeback from upload");
   });
 
@@ -85,11 +108,37 @@ describe("upload intake batch validation", () => {
     expect(response.resourceSpaceWritten).toBe(false);
     expect(response.defaultReviewState).toBe("Needs Review");
     expect(response.defaultUsageScope).toBe("Do Not Publish");
+    expect(response.atlasStoresOriginals).toBe(false);
     expect(response.status).toBe("large-media-intake");
     expect(response.message).toContain("large-media/admin intake path");
     expect(response.reviewWarnings).toEqual(expect.arrayContaining([
       "Large media/admin intake required",
       "Video/audio and large files route to admin intake"
     ]));
+  });
+
+  it("persists intake manifest metadata without storing original bytes in Atlas", async () => {
+    const root = useTempRuntimeRoot();
+    const intake = normalizeUploadIntake(form([
+      ["files", photo("sabbath.jpg")],
+      ["eventName", "Sabbath Service"],
+      ["eventDate", "2026-06-06"],
+      ["ministry", "Internet Ministry"],
+      ["source", "Media Team"]
+    ]));
+
+    const result = await submitUploadIntakeBatch(intake, "Contributor", "local-beta:contributor");
+    const batchId = result.body.batchId;
+
+    expect(result.status).toBe(200);
+    expect(batchId).toBeTruthy();
+    expect(result.body).toMatchObject({
+      custodyMode: "portal-intake-metadata-only",
+      atlasStoresOriginals: false,
+      originalsStoredByAtlas: false,
+      resourceSpaceWritten: false
+    });
+    expect(fs.existsSync(path.join(root, ".runtime", "intake-batches", batchId || "", "manifest.json"))).toBe(true);
+    expect(fs.existsSync(path.join(root, ".runtime", "intake-batches", batchId || "", "originals"))).toBe(false);
   });
 });

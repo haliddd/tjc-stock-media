@@ -158,15 +158,6 @@ function manifestForFiles(files: File[]): IntakeBatchManifestItem[] {
   }));
 }
 
-async function writeOriginals(originalsDir: string, files: File[], manifest: IntakeBatchManifestItem[]) {
-  ensureRuntimeDir(originalsDir);
-  await Promise.all(files.map(async (file, index) => {
-    const stored = manifest[index]?.storedFilename || `${crypto.randomUUID().slice(0, 8)}.bin`;
-    const bytes = Buffer.from(await file.arrayBuffer());
-    fs.writeFileSync(path.join(originalsDir, stored), bytes);
-  }));
-}
-
 export async function persistIntakeBatch(input: PersistIntakeBatchInput): Promise<PersistIntakeBatchResult> {
   const batchId = safeBatchId(input.detected.eventName);
   const now = new Date().toISOString();
@@ -214,7 +205,6 @@ export async function persistIntakeBatch(input: PersistIntakeBatchInput): Promis
     ensureRuntimeDir(batchDir);
     writeRuntimeJsonFile(path.join(batchDir, "batch.json"), record);
     writeRuntimeJsonFile(manifestPath, { batchId, files: manifest });
-    if (hasFiles) await writeOriginals(path.join(batchDir, "originals"), input.files, manifest);
     return { record, batchId, storageMode: record.storageMode, manifestPath: record.manifestPath };
   } catch (error) {
     if (!hasFiles && input.sourceLinkCaptured) {

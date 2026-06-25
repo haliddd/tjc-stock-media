@@ -1,198 +1,199 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileLock2, Image as ImageIcon, Mail, Square, View } from "lucide-react";
+import { Download, FileLock2, FileText, Mail, ShieldCheck } from "lucide-react";
 import { Dialog } from "@/components/Dialog";
 import { GatedDownloadButton } from "@/components/GatedDownloadButton";
 import { ReuseRequestDialog } from "@/components/ReuseRequestDialog";
-import { toastDownloadBlocked } from "@/lib/tjc-toasts";
+import { buildDownloadCenterModel, type DownloadCenterAddonStatus, type DownloadCenterRowStatus } from "@/lib/download-center";
 import type { DemoRole, StockMediaAsset } from "@/lib/types";
-import { assetMetadataHealth } from "@/lib/asset-governance";
-import { downloadState } from "@/lib/presentation";
 import { cn } from "@/lib/ui";
-import { requestAssetMailto, type RequestMailtoKind } from "@/lib/viewer-verdict";
 
-type RequestKind = RequestMailtoKind;
+type RequestKind = "original" | "review";
+
+function rowTone(status: DownloadCenterRowStatus) {
+  if (status === "ready") return "border-[#b8d9c6] bg-[#edf8f1] text-[#22563a]";
+  if (status === "restricted") return "border-[#e5b7b5] bg-[#fff1ef] text-[#7d2d2a]";
+  return "border-[#ead6a8] bg-[#fff8e8] text-[#725216]";
+}
+
+function addonTone(status: DownloadCenterAddonStatus) {
+  return status === "available"
+    ? "border-[#c8d7e6] bg-[#f2f7fb] text-[#27435b]"
+    : "border-[#ead6a8] bg-[#fff8e8] text-[#725216]";
+}
+
+function actionLabel(status: DownloadCenterRowStatus, hasDownload: boolean) {
+  if (hasDownload) return "Download";
+  if (status === "restricted") return "Restricted";
+  return "Request";
+}
 
 export function DownloadOptionsPanel({ asset, role }: { asset: StockMediaAsset; role: DemoRole }) {
   const [requestKind, setRequestKind] = useState<RequestKind | null>(null);
-  const [blockedDialogOpen, setBlockedDialogOpen] = useState(false);
-  const state = downloadState(asset, role);
-  const health = assetMetadataHealth(asset);
+  const model = buildDownloadCenterModel(asset, role);
   const opsView = role === "Reviewer" || role === "DAM Admin";
   const adminOps = role === "DAM Admin";
-  const downloadHref = `/api/download/${asset.id}?role=${encodeURIComponent(role)}`;
-  const assetTitle = asset.title || asset.resourceSpaceId || asset.id;
-  const resourceSpaceId = asset.resourceSpaceId || asset.id;
-  const requestLinks: Record<RequestKind, string> = {
-    original: requestAssetMailto(asset, role, "original"),
-    review: requestAssetMailto(asset, role, "review", state.reuse.label),
-    coworker: requestAssetMailto(asset, role, "coworker")
-  };
-  const options = [
-    { label: "Web image", detail: "Approved web copy for websites and newsletters.", icon: ImageIcon, available: state.approvedCopy.allowed, kind: "download" as const },
-    { label: "Slide", detail: "Use approved copy in sermon slides and presentation decks.", icon: View, available: state.approvedCopy.allowed, kind: "download" as const },
-    { label: "Social", detail: "Use approved copy for social posts where policy allows.", icon: Square, available: state.approvedCopy.allowed, kind: "download" as const },
-    { label: adminOps ? "Original request" : "Source-file request", detail: adminOps ? "Original/master access stays a request, never a direct download." : "Source-file access stays a request, never a direct download.", icon: FileLock2, available: true, kind: "request" as const }
-  ];
+  const referenceCode = adminOps ? asset.resourceSpaceId || asset.id : asset.id;
+  const assetTitle = asset.title || asset.id;
 
   return (
-    <section className="min-w-0 rounded-md border border-[#d4ded7] bg-white p-4" aria-label="Download approved copy">
-      <div className="mb-3">
-        <h2 className="text-lg font-black">Download and requests</h2>
-        <p className="mt-1 text-sm font-semibold leading-snug text-tjc-muted">{state.panelLabel}</p>
-      </div>
-      {state.approvedCopy.allowed ? (
-        <GatedDownloadButton className="mb-3 flex min-h-14 items-center justify-center gap-2 rounded-md bg-tjc-evergreen px-4 text-sm font-black text-white transition hover:bg-[#062d24] active:translate-y-px" href={downloadHref} reason={`Download panel approved-copy request for ${assetTitle}`}>
-          <Download size={17} strokeWidth={1.8} aria-hidden="true" />
-          Download approved web copy
-        </GatedDownloadButton>
-      ) : (
-        <div className="mb-3 rounded-md border border-[#dfbd73] bg-[#fff8e8] p-3 text-[#6f4608]" role="status">
-          <div className="grid grid-cols-[auto_1fr] gap-3">
-            <FileLock2 size={18} strokeWidth={1.8} aria-hidden="true" />
+    <>
+      <section className="grid gap-4" aria-label="Download Center">
+        <section className="rounded-[10px] border border-[#d9dee3] bg-white p-4">
+          <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6d7265]">Controlled delivery</span>
+          <h2 className="mt-1 text-xl font-black text-tjc-ink">{model.title}</h2>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-tjc-muted">{model.summary}</p>
+          <div className="mt-3 rounded-[8px] border border-[#d9dee3] bg-[#fbfcfa] px-3 py-2 text-sm font-semibold text-[#546056]">
+            {model.truthNote}
+          </div>
+        </section>
+
+        <section className="grid gap-3">
+          <div>
+            <h3 className="text-base font-black text-tjc-ink">Approved downloads and renditions</h3>
+            <p className="mt-1 text-sm font-semibold text-tjc-muted">Only rows backed by current export, derivative, or gate truth appear as ready.</p>
+          </div>
+          {model.rows.map((row) => {
+            const facts = [
+              { label: "Permission", value: row.permissionState },
+              { label: "Intended use", value: row.intendedUse },
+              row.fileType ? { label: "File type", value: row.fileType } : null,
+              row.dimensions ? { label: "Dimensions", value: row.dimensions } : null,
+              row.fileSize ? { label: "File size", value: row.fileSize } : null
+            ].filter((fact): fact is { label: string; value: string } => Boolean(fact));
+
+            return (
+              <article className={cn("grid gap-3 rounded-[10px] border p-4", rowTone(row.status))} key={row.id}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-base font-black">{row.label}</strong>
+                      <span className="rounded-full border border-white/80 bg-white px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.08em] text-[#5a655b]">
+                        {row.routeBoundary === "approved-copy-gate" ? "Gate-backed" : row.routeBoundary === "thumbnail-preview" ? "Preview" : "Request-only"}
+                      </span>
+                    </div>
+                    <p className="mt-1 max-w-[64ch] text-sm font-semibold leading-relaxed">{row.detail}</p>
+                  </div>
+                  <span className="rounded-full border border-white/80 bg-white px-3 py-1 text-xs font-black">
+                    {actionLabel(row.status, Boolean(row.downloadHref))}
+                  </span>
+                </div>
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  {facts.map((fact) => (
+                    <div className="rounded-[8px] border border-white/70 bg-white/80 px-3 py-2" key={`${row.id}-${fact.label}`}>
+                      <dt className="text-[11px] font-black uppercase tracking-[0.08em] text-[#68756d]">{fact.label}</dt>
+                      <dd className="mt-1 text-sm font-semibold text-tjc-ink">{fact.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {row.downloadHref ? (
+                  <GatedDownloadButton
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-[#151713] px-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    href={row.downloadHref}
+                    reason={`Download Center ${row.label} request for ${assetTitle}`}
+                    usageChannel="download-center"
+                  >
+                    <Download size={16} aria-hidden="true" />
+                    Download
+                  </GatedDownloadButton>
+                ) : row.routeBoundary === "approved-copy-gate" ? (
+                  <button
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[8px] border border-[#c5d1c9] bg-white px-3 text-sm font-black text-tjc-evergreen transition hover:bg-[#eef7f1]"
+                    type="button"
+                    onClick={() => setRequestKind("review")}
+                  >
+                    <Mail size={16} aria-hidden="true" />
+                    Request export or review
+                  </button>
+                ) : null}
+              </article>
+            );
+          })}
+        </section>
+
+        <section className="grid gap-3 rounded-[10px] border border-[#ead6a8] bg-[#fff8e8] p-4">
+          <div className="flex items-start gap-3">
+            <FileLock2 size={18} aria-hidden="true" className="mt-0.5 text-[#725216]" />
             <div>
-              <strong className="block text-sm font-black">Download unavailable</strong>
-              <span className="mt-1 block text-sm font-semibold leading-snug">Request review from the decision card before using this asset.</span>
+              <h3 className="text-base font-black text-tjc-ink">{model.originalAccess.label}</h3>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#725216]">{model.originalAccess.detail}</p>
             </div>
           </div>
-        </div>
-      )}
-      {state.approvedCopy.allowed && health.missing.length ? (
-        <div className="mb-3 rounded-lg border border-[#ead6a8] bg-[#fffaf0] p-3 text-sm leading-snug text-[#725216]">
-          Download is allowed by approval status, but production use still has metadata warnings: {health.missing.join(", ")}.
-        </div>
-      ) : null}
-      {state.approvedCopy.allowed ? (
-        <div className="grid gap-2">
-          {options.map((option, index) => {
-          const Icon = option.icon;
-          const row = (
-            <>
-              <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
-              <span className="grid min-w-0 gap-0.5">
-                <strong className="font-semibold">{option.label}</strong>
-                <small className="text-sm leading-snug">{index === 0 && !state.approvedCopy.allowed ? state.panelLabel : option.detail}</small>
-              </span>
-              {option.kind === "request" ? <Mail size={16} strokeWidth={1.8} aria-hidden="true" /> : option.available ? <Download size={16} strokeWidth={1.8} aria-hidden="true" /> : <FileLock2 size={16} strokeWidth={1.8} aria-hidden="true" />}
-            </>
-          );
-          if (option.kind === "request") {
-            return (
-              <button key={option.label} className="grid min-h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-md border border-[#c5d1c9] bg-white p-3 text-left text-tjc-evergreen transition hover:bg-[#eef7f1] active:translate-y-px" type="button" onClick={() => setRequestKind("original")}>
-                {row}
-              </button>
-            );
-          }
-          return option.available ? (
-            <GatedDownloadButton key={option.label} className="grid min-h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-md border border-[#8fc9a9] bg-[#f7fbf8] p-3 text-left text-[#164d34] transition hover:bg-[#eef7f1] active:translate-y-px" href={downloadHref} reason={`${option.label} approved-copy request for ${assetTitle}`}>
-              {row}
-            </GatedDownloadButton>
-          ) : (
-            <button key={option.label} className={cn("grid min-h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-md border border-tjc-line bg-white p-3 text-left text-[#5d665f]", index === 0 && !state.approvedCopy.allowed && "border-[#dfbd73] bg-[#fffaf0] text-[#6f4608]")} type="button" disabled>
-              {row}
-            </button>
-          );
-          })}
-        </div>
-      ) : (
-        <details className="rounded-md border border-[#d6dfd8] bg-[#fbfcfa] p-3 text-sm">
-          <summary
-            className="cursor-pointer font-black text-tjc-evergreen"
-            onClick={() => {
-              if (!blockedDialogOpen) toastDownloadBlocked(state.panelLabel, { label: "View why", onClick: () => setBlockedDialogOpen(true) });
-            }}
+          <button
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[8px] border border-[#d6c18e] bg-white px-3 text-sm font-black text-[#725216] transition hover:bg-[#fffdf8]"
+            type="button"
+            onClick={() => setRequestKind("original")}
           >
-            Why can't I download?
-          </summary>
-          <div className="mt-3 grid gap-3">
-            <p className="font-semibold leading-relaxed text-tjc-muted">Approved copies stay hidden until review clears role, rights, people/minors, and copy checks.</p>
-            <button className="inline-flex min-h-10 items-center justify-center rounded-md border border-[#c5d1c9] bg-white px-3 text-sm font-black text-tjc-evergreen transition hover:bg-[#eef7f1] active:translate-y-px" type="button" onClick={() => setBlockedDialogOpen(true)}>
-              View blocker details
-            </button>
+            <Mail size={16} aria-hidden="true" />
+            Request source-file access
+          </button>
+        </section>
+
+        <section className="grid gap-3">
+          <div>
+            <h3 className="text-base font-black text-tjc-ink">Add-ons and supporting notes</h3>
+            <p className="mt-1 text-sm font-semibold text-tjc-muted">Only backed notes show as available. Everything else stays request-needed.</p>
           </div>
-        </details>
-      )}
-      {(state.approvedCopy.allowed || role !== "Viewer") ? <div className="mt-3 grid grid-cols-[auto_1fr] gap-3 rounded-md border border-[#dfbd73] bg-[#fffaf0] p-3 text-[#6f4608]">
-        <FileLock2 size={18} strokeWidth={1.8} aria-hidden="true" />
-        <div>
-          <strong className="block font-semibold">{adminOps ? "Original/master restricted" : "Source file restricted"}</strong>
-          <span className="mt-1 block text-sm leading-snug">
-            {adminOps ? "Master files stay in the source library. Normal users receive approved copies only." : "Use approved copies. Source files require a separate access request."}
-          </span>
-        </div>
-      </div> : null}
+          <div className="grid gap-2">
+            {model.addons.map((addon) => (
+              <article className={cn("grid gap-1 rounded-[10px] border px-3 py-3", addonTone(addon.status))} key={addon.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm font-black">{addon.label}</strong>
+                  <span className="rounded-full border border-white/80 bg-white px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.08em] text-[#596052]">
+                    {addon.status === "available" ? "Available" : "Request needed"}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold leading-relaxed">{addon.detail}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      </section>
+
       {requestKind ? (
         <ReuseRequestDialog
           open={Boolean(requestKind)}
           kind={requestKind}
           assetTitle={assetTitle}
-          resourceSpaceId={resourceSpaceId}
+          resourceSpaceId={String(referenceCode)}
           rawStatus={asset.status}
-          portalReuseState={state.reuse.label}
-          blockers={state.reuse.blockers.map((blocker) => blocker.label)}
-          mailtoHref={requestLinks[requestKind]}
+          portalReuseState={asset.reuseDecision?.label || asset.status}
+          blockers={(asset.reuseDecision?.blockers || []).map((blocker) => blocker.label)}
+          mailtoHref={requestKind === "original" ? model.originalAccess.requestHref : model.reviewRequestHref}
           opsView={opsView}
           adminOps={adminOps}
           onCancel={() => setRequestKind(null)}
         />
       ) : null}
-      <Dialog
-        open={blockedDialogOpen}
-        title="Download unavailable"
-        description={opsView ? "This asset cannot be downloaded until portal reuse checks pass. Library approval alone is not portal permission." : "This media cannot be downloaded until review clears reuse checks."}
-        onClose={() => setBlockedDialogOpen(false)}
-        maxWidthClassName="max-w-xl"
-        tone="warning"
-        footer={(
-          <>
-            <button className="inline-flex min-h-10 items-center rounded-md border border-tjc-line bg-white px-4 text-sm font-semibold text-tjc-evergreen transition hover:bg-[#eef7f1]" type="button" onClick={() => setBlockedDialogOpen(false)}>
-              Close
-            </button>
-            <button className="inline-flex min-h-10 items-center gap-2 rounded-md bg-tjc-evergreen px-4 text-sm font-semibold text-white transition hover:bg-tjc-evergreen-2" type="button" onClick={() => {
-              setBlockedDialogOpen(false);
-              setRequestKind("review");
-            }}>
-              <Mail size={16} strokeWidth={1.8} aria-hidden="true" />
-              Request review
-            </button>
-          </>
-        )}
-      >
-        <div className="grid gap-3">
-          <div className="grid gap-2 rounded-md border border-tjc-line bg-[#fbfcfa] p-3 sm:grid-cols-2">
-            <div>
-              <span className="text-xs font-semibold text-tjc-muted">Asset</span>
-              <strong className="mt-1 block text-sm text-tjc-ink">{assetTitle}</strong>
-              <span className="mt-1 block text-xs font-semibold text-tjc-muted">{adminOps ? `ResourceSpace ID ${resourceSpaceId}` : `Reference code ${resourceSpaceId}`}</span>
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-tjc-muted">{opsView ? "Current state" : "Use state"}</span>
-              <strong className="mt-1 block text-sm text-tjc-ink">{opsView ? asset.status : state.reuse.label}</strong>
-              {opsView ? <span className="mt-1 block text-xs font-semibold text-tjc-muted">{state.reuse.label}</span> : null}
-            </div>
-          </div>
-          <div className="grid grid-cols-[auto_1fr] gap-3 rounded-md border border-[#ead6a8] bg-[#fff8e8] p-3 text-[#725216]" data-dialog-safety-panel="true">
-            <FileLock2 size={18} strokeWidth={1.8} aria-hidden="true" />
-            <div>
-              <strong className="block text-sm">No active download was exposed</strong>
-              <span className="mt-1 block text-sm leading-relaxed">
-                {opsView ? "Viewer download remains blocked by source, rights, people/minors, reviewer/date, approved-copy, and role checks. Original/master files stay restricted." : "Download remains blocked by source, rights, people/youth, review, safe-copy, and role checks. Source files stay restricted."}
-              </span>
-            </div>
-          </div>
-          <section className="rounded-md border border-tjc-line bg-white p-3" aria-label="Download blocker reasons">
-            <h3 className="text-sm font-semibold text-tjc-evergreen">Blocking reasons</h3>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {state.reuse.blockers.length ? state.reuse.blockers.slice(0, 8).map((blocker) => (
-                <span className="rounded-md border border-[#ead6a8] bg-[#fff8e8] px-2 py-1 text-xs font-semibold text-[#725216]" key={blocker.code}>{blocker.label}</span>
-              )) : (
-                <span className="rounded-md border border-[#b8d9c6] bg-[#edf8f1] px-2 py-1 text-xs font-semibold text-[#22563a]">No current portal blockers</span>
-              )}
-            </div>
-          </section>
-        </div>
-      </Dialog>
-    </section>
+    </>
+  );
+}
+
+export function DownloadCenterDrawer({
+  open,
+  onClose,
+  asset,
+  role,
+  description
+}: {
+  open: boolean;
+  onClose: () => void;
+  asset: StockMediaAsset;
+  role: DemoRole;
+  description?: string;
+}) {
+  return (
+    <Dialog
+      open={open}
+      title="Download Center"
+      description={description || "Approved downloads, rendition truth, source-file separation, and request-needed states for this record."}
+      onClose={onClose}
+      placement="right"
+      maxWidthClassName="max-w-[34rem]"
+      closeLabel="Close Download Center"
+    >
+      <DownloadOptionsPanel asset={asset} role={role} />
+    </Dialog>
   );
 }

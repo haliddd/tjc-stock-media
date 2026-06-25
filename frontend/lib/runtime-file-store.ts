@@ -10,6 +10,7 @@ export type RuntimeStateCategory =
   | "beta-feedback"
   | "package-drafts"
   | "intake-batches"
+  | "request-records"
   | "saved-searches"
   | "usage-events"
   | "runtime";
@@ -97,9 +98,18 @@ export function runtimeStateTruthMatrix(): RuntimeStateTruthRow[] {
       label: "Intake batches",
       category: "intake-batches",
       state: genericState,
-      storage: "Runtime intake batch JSON and local originals staging",
+      storage: "Runtime intake batch JSON and file manifest metadata",
       productionTruth: genericProductionTruth,
-      blocker: "Browser file intake is blocked in production without durable storage or admin/Drive intake."
+      blocker: "Browser intake is blocked in production without durable storage or ResourceSpace/Shared Drive intake."
+    },
+    {
+      id: "request-records",
+      label: "Request records",
+      category: "request-records",
+      state: genericState,
+      storage: "Local JSON request ticket records",
+      productionTruth: genericProductionTruth,
+      blocker: "Needs durable request queue storage, assignee workflow, notifications, and close/reopen audit proof."
     },
     {
       id: "saved-searches",
@@ -142,6 +152,7 @@ function categoryForPath(filePath: string): RuntimeStateCategory {
   if (filePath.includes("beta-feedback")) return "beta-feedback";
   if (filePath.includes("package-drafts")) return "package-drafts";
   if (filePath.includes("intake-batches")) return "intake-batches";
+  if (filePath.includes("request-records")) return "request-records";
   if (filePath.includes("saved-searches")) return "saved-searches";
   if (filePath.includes("usage")) return "usage-events";
   return "runtime";
@@ -162,7 +173,7 @@ export function runtimeStoreDiagnostics() {
     stateMatrix: runtimeStateTruthMatrix(),
     detail: production && !durable
       ? requestedDurableMode
-        ? "Production stateful features are blocked because generic runtime writes still use the local filesystem adapter. Vercel KV is implemented for beta feedback only, not audit logs, tickets, package drafts, saved searches, or pending write queues."
+        ? "Production stateful features are blocked because generic runtime writes still use the local filesystem adapter. Vercel KV is implemented for beta feedback only, not audit logs, tickets, package drafts, request records, saved searches, or pending write queues."
         : "Production stateful features require a configured durable runtime store. Local filesystem state is blocked."
       : durable
         ? "Durable runtime store is configured for production readiness checks."

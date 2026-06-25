@@ -13,7 +13,8 @@ const stamp = new Date().toISOString().replace(/[:.]/g, "").replace("T", "T").re
 const logPath = path.join(logDir, `${stamp}.log`);
 const latestLogPath = path.join(logDir, "latest.log");
 const nextBin = path.join(frontendDir, "node_modules", "next", "dist", "bin", "next");
-const hasProductionBuild = fs.existsSync(path.join(frontendDir, ".next", "BUILD_ID"));
+const forceDevServer = process.env.PORTAL_BROWSER_QA_SERVER_MODE === "dev";
+const hasProductionBuild = !forceDevServer && fs.existsSync(path.join(frontendDir, ".next", "BUILD_ID"));
 const serverArgs = hasProductionBuild
   ? [nextBin, "start", "--port", String(port)]
   : [nextBin, "dev", "--port", String(port)];
