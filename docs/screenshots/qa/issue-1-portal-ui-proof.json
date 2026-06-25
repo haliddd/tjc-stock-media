@@ -1,0 +1,83 @@
+{
+  "checkedAt": "2026-06-25T13:40:56.326Z",
+  "baseUrl": "http://localhost:4881",
+  "method": "Playwright Chromium fallback; Browser/IAB tool not available in active tools.",
+  "boundary": "Local UI proof only; no deploy; no ResourceSpace writeback; no public launch; no fake approvals/links/downloads.",
+  "captures": [
+    {
+      "name": "desktop",
+      "role": "Reviewer",
+      "viewport": {
+        "width": 1440,
+        "height": 980
+      },
+      "file": "issue-1-portal-ui-desktop.png",
+      "url": "http://localhost:4881/library?role=Reviewer",
+      "screenshot": "docs/screenshots/qa/issue-1-portal-ui-desktop.png",
+      "consoleMessages": [],
+      "failedRequests": [],
+      "ignoredFailedRequests": [],
+      "checks": {
+        "title": "True Jesus Church Media Library",
+        "bodyTextSample": "Skip to content\nTrue Jesus Church Media Library\nResourceSpace portal\nLIBRARY\nLibrary\nCollections\nUploads\nWORKFLOW\nRehearsal\nReview\nRequests\nRE\nBeta persona\nReviewer\nInternal beta\nTrue Jesus Church Media Library\n181 role-safe records / approval gates active\nNot production SSO\nResourceSpace source truth\nGoogle Drive originals\nReviewer lane\nApproved-copy only\nBlocked until clear\nMedia Library\n181 records / Reviewer\n⌘K\nBrowse\nReview list\nCleared use only\nSave search\nFilters\nShare photos\nCan I use this?\nVerdict on every record\nSource truth\nResourceSpace first\nUnsafe actions\nBlocked by default\n0 selected\nCheck download gate\nShare locked\nCollection locked\nMore\nShowing 1-24 of 181 / Page 1 of 8\nPrev\nNext\nSort: Newest\nBrowse mode\nImage-first discovery. Select an asset to open the safe inspector.\nSearch intelligence\n\nBrowsing 181 visible assets.\n\nDiscovery suggestions are search hints only. Item-level rights, people, review, and download gates remain permission truth.\nQueue shortcuts\nNo people · 95\nConsent review · 86\nFellowship · 60\nLandscape · 12\nDefault order balances approval state, curation signals, and visual diversity.\nVisual similarity\n\nNot configured for this source.\n\nDo not infer l",
+        "hasInternalBeta": true,
+        "hasCanIUseThis": true,
+        "hasTrueJesusChurch": true,
+        "hasResourceSpaceTruth": true,
+        "hasBlockedCopy": true,
+        "hasFakePublicLinks": false,
+        "visibleRole": "Reviewer",
+        "overflowX": 0,
+        "customerStatusHeight": 77,
+        "customerStatusTop": 254,
+        "searchIntelTop": 486,
+        "headerActionsHeight": 44,
+        "betaFloatingVisible": true
+      }
+    },
+    {
+      "name": "mobile",
+      "role": "Viewer",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "file": "issue-1-portal-ui-mobile.png",
+      "url": "http://localhost:4881/library?role=Viewer",
+      "screenshot": "docs/screenshots/qa/issue-1-portal-ui-mobile.png",
+      "consoleMessages": [],
+      "failedRequests": [],
+      "ignoredFailedRequests": [
+        {
+          "url": "http://localhost:4881/library?role=Viewer&sort=Newest&limit=24&offset=0&_rsc=YHA1CXcChyyfq5xb",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "checks": {
+        "title": "True Jesus Church Media Library",
+        "bodyTextSample": "Skip to content\nInternal beta\nTrue Jesus Church Media Library\n0 role-safe records / approval gates active\nNot production SSO\nResourceSpace source truth\nGoogle Drive originals\nViewer lane\nApproved-copy only\nBlocked until clear\nMedia Library\n0 records / Viewer\n⌘K\nBrowse\nList\nUsable only\nSave search\nFilters\nRequest media\nCan I use this?\nVerdict on every record\n\nApproved-copy, blocker, and next action stay visible before reuse.\n\nSource truth\nResourceSpace first\n\nRequests queue locally; no fake approval or writeback success.\n\nUnsafe actions\nBlocked by default\n\nPublic links, ZIP export, originals, and unclear media stay unavailable.\n\nBrowse mode\nImage-first discovery. Select an asset to open the safe inspector.\nSearch intelligence\n\nBrowsing 0 visible assets.\n\nDiscovery suggestions are search hints only. Item-level rights, people, review, and download gates remain permission truth.\nQueue shortcuts\nDefault order balances approval state, curation signals, and visual diversity.\nVisual similarity\n\nNot configured for this source.\n\nDo not infer lookalikes or AI clusters until backed by real similarity data.\nAI tags\n\nNot configured for this source.\n\nOnly exported tags, TJC terms, and rights-safe",
+        "hasInternalBeta": true,
+        "hasCanIUseThis": true,
+        "hasTrueJesusChurch": true,
+        "hasResourceSpaceTruth": true,
+        "hasBlockedCopy": true,
+        "hasFakePublicLinks": false,
+        "visibleRole": "Viewer",
+        "overflowX": 0,
+        "customerStatusHeight": 106,
+        "customerStatusTop": 549,
+        "searchIntelTop": 732,
+        "headerActionsHeight": 148,
+        "betaFloatingVisible": false
+      }
+    }
+  ],
+  "summary": {
+    "consoleErrors": 0,
+    "consoleWarnings": 0,
+    "failedRequests": 0,
+    "ignoredAbortedRscRequests": 1,
+    "maxOverflowX": 0,
+    "textChecksPass": true
+  }
+}

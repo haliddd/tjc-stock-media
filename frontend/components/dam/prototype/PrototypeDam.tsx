@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Database,
   Download,
   Eye,
   FileUp,
@@ -103,9 +104,13 @@ function readBooleanUrlFlag(value: string | null) {
 }
 
 function rightsSafeToggleLabel(role: DemoRole, mode: LibraryMode) {
-  if (role === "Reviewer") return "Show assets cleared for use";
-  if (role === "DAM Admin" || mode === "ops") return "Show rights-safe assets only";
-  return "Only show assets I can use";
+  if (role === "Reviewer") return "Cleared use only";
+  if (role === "DAM Admin" || mode === "ops") return "Rights-safe only";
+  return "Usable only";
+}
+
+function listModeLabel(role: DemoRole) {
+  return canReview(role) ? "Review list" : "List";
 }
 
 function assetUseState(asset: StockMediaAsset) {
@@ -369,14 +374,17 @@ function PortalSafeStrip({ role, total }: { role: DemoRole; total: number }) {
   return (
     <section className="proto-portal-strip" aria-label="Public-use portal status">
       <div className="proto-portal-strip-copy">
-        <span className="proto-portal-eyebrow">Atlas media portal</span>
-        <strong>TJC Media Portal</strong>
-          <small>{total.toLocaleString()} role-safe records / source originals locked</small>
+        <span className="proto-portal-eyebrow">Internal beta</span>
+        <strong>True Jesus Church Media Library</strong>
+        <small>{total.toLocaleString()} role-safe records / approval gates active</small>
       </div>
       <div className="proto-portal-chip-row" aria-label="Portal guardrails">
+        <span><ShieldCheck size={14} aria-hidden="true" />Not production SSO</span>
+        <span><Database size={14} aria-hidden="true" />ResourceSpace source truth</span>
+        <span><Folder size={14} aria-hidden="true" />Google Drive originals</span>
         <span><ShieldCheck size={14} aria-hidden="true" />{summary.title}</span>
-        <span><Download size={14} aria-hidden="true" />Approved copies</span>
-        <span><LockKeyhole size={14} aria-hidden="true" />No source files</span>
+        <span><Download size={14} aria-hidden="true" />Approved-copy only</span>
+        <span><LockKeyhole size={14} aria-hidden="true" />Blocked until clear</span>
       </div>
       <PortalRoleControls compact />
     </section>
@@ -448,8 +456,8 @@ function PrototypeSidebar() {
           <span />
         </Link>
         <div className="proto-sidebar-brand">
-          <strong>Atlas DAM</strong>
-          <small>Media portal</small>
+          <strong>True Jesus Church Media Library</strong>
+          <small>ResourceSpace portal</small>
         </div>
         <button type="button" className="proto-collapse" aria-label="Collapse sidebar"><PanelLeftClose size={15} /></button>
       </div>
@@ -475,8 +483,8 @@ function PrototypeSidebar() {
         })}
       </nav>
       <div className="proto-user-card">
-        <span className="proto-avatar">TM</span>
-        <span><strong>Taylor Morgan</strong><small>{role}</small></span>
+        <span className="proto-avatar">{role === "DAM Admin" ? "DA" : role.slice(0, 2).toUpperCase()}</span>
+        <span><strong>Beta persona</strong><small>{role}</small></span>
         <ChevronDown size={14} />
       </div>
     </aside>
@@ -639,7 +647,7 @@ function PrototypeAssetInspector({ asset, index, total, onClose }: { asset?: Sto
     setMessage("Sending review request...");
     try {
       const payload = await reviewRequest.requestReview({
-        notes: `Atlas portal request for ${displayTitle(displayAsset)}. Reason: ${displayAsset.reuseDecision?.summary || displayAsset.status || "Usage decision requires reviewer confirmation."}`
+        notes: `Media Library portal request for ${displayTitle(displayAsset)}. Reason: ${displayAsset.reuseDecision?.summary || displayAsset.status || "Usage decision requires reviewer confirmation."}`
       });
       setMessage(reviewRequestMessage(payload, elevatedRole));
       if (payload.ok) detail.refresh();
@@ -672,15 +680,34 @@ function PrototypeAssetInspector({ asset, index, total, onClose }: { asset?: Sto
           <small>Uploaded {displayAsset.importDate || displayAsset.capturedDate || "date pending"} by {displayAsset.sourceAccount || displayAsset.reviewer || "media team"}</small>
         </div>
       </div>
-      {detail.loading ? <p className="proto-gate-note">Loading asset details from Atlas library...</p> : null}
+      {detail.loading ? <p className="proto-gate-note">Loading asset details from Media Library...</p> : null}
       {detail.error ? <p className="proto-gate-note">Asset detail unavailable: {detail.error}</p> : null}
+      <section className={`proto-inspector-verdict is-${reuseState?.tone || "review"}`} aria-label="Selected asset reuse verdict">
+        <span>Can I use this?</span>
+        <strong>{reuseState?.label || "Needs review"}</strong>
+        <p>{reuseState?.detail || "Reviewer evidence required before reuse."}</p>
+        <div className="proto-verdict-ledger">
+          <div>
+            <small>Approved copy</small>
+            <b>{reuseState?.tone === "ready" || reuseState?.tone === "internal" ? "Gate available" : "Request needed"}</b>
+          </div>
+          <div>
+            <small>Original/master</small>
+            <b>Restricted</b>
+          </div>
+          <div>
+            <small>Next action</small>
+            <b>{reuseState?.actionLabel || "Request review"}</b>
+          </div>
+        </div>
+      </section>
       <div className="proto-action-row">
-        <button type="button" onClick={() => void download()} disabled={actionPending}><Download size={16} /><span>{reuseState?.actionLabel || "Check use gate"}</span></button>
+        <button type="button" className={reuseState?.tone === "ready" || reuseState?.tone === "internal" ? "is-ready" : "is-blocked"} onClick={() => void download()} disabled={actionPending}><Download size={16} /><span>{reuseState?.tone === "ready" || reuseState?.tone === "internal" ? "Approved copy" : "Download blocked"}</span></button>
         <button type="button" onClick={() => void requestReview()} disabled={actionPending}><Share2 size={16} /><span>{reuseState?.tone === "ready" ? "Request usage" : "Request review"}</span></button>
         <Link href={routeWithRole(`/assets/${displayAsset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
         <button type="button" onClick={() => setDownloadCenterOpen(true)}>
           <Download size={16} />
-          <span>Download Center</span>
+          <span>Gate details</span>
         </button>
       </div>
       <Button className="w-full justify-start" onClick={() => setRightsExplanationOpen(true)}><ShieldCheck size={14} />Why can I use this?</Button>
@@ -693,7 +720,7 @@ function PrototypeAssetInspector({ asset, index, total, onClose }: { asset?: Sto
       </div>
       {tab === "details" ? (
         <div className="proto-detail-stack">
-          <section><h3>Description</h3><p>{displayAsset.usageGuidance || displayAsset.rightsNotes || "Review-safe Atlas library record."}</p></section>
+          <section><h3>Description</h3><p>{displayAsset.usageGuidance || displayAsset.rightsNotes || "Review-safe Media Library record."}</p></section>
           <section><h3>Tags</h3><div className="proto-tag-row">{(displayAsset.tags || displayAsset.tjcTerms || ["review", "media"]).slice(0, 5).map((tag) => <span key={tag}>{tag}</span>)}{elevatedRole ? <span>+ Add tag</span> : null}</div></section>
           <section><h3>Rights & Usage</h3><p>{reuseState?.label || "Needs review"}. {reuseState?.detail || "Reviewer evidence required before public use."}</p></section>
           <section><h3>Collections</h3><div className="proto-tag-row"><span>{displayAsset.collection}</span>{displayAsset.eventName ? <span>{displayAsset.eventName}</span> : null}</div></section>
@@ -704,7 +731,7 @@ function PrototypeAssetInspector({ asset, index, total, onClose }: { asset?: Sto
       ) : tab === "metadata" ? (
         <dl className="proto-dl">
           <div><dt>{elevatedRole ? "Source record" : "Portal ref"}</dt><dd>{elevatedRole ? displayAsset.resourceSpaceId || assetRecordRef(displayAsset) : portalAssetRef(displayAsset)}</dd></div>
-          <div><dt>Source</dt><dd>{elevatedRole ? displayAsset.sourceSystem || displayAsset.sourcePlatform || "Atlas library" : "Portal safe lane"}</dd></div>
+          <div><dt>Source</dt><dd>{elevatedRole ? displayAsset.sourceSystem || displayAsset.sourcePlatform || "Media Library" : "Portal safe lane"}</dd></div>
           <div><dt>People</dt><dd>{displayAsset.peopleRisk || "Unknown"}</dd></div>
           <div><dt>Review</dt><dd>{displayAsset.reviewedDate || "Pending"}</dd></div>
         </dl>
@@ -754,7 +781,7 @@ export function PrototypeLibraryPage() {
   const searchDiscovery = results.data?.discovery;
   const visibleAssetIds = useMemo(() => assets.map((asset) => asset.id), [assets]);
   const visibleAssetIdSet = useMemo(() => new Set(visibleAssetIds), [visibleAssetIds]);
-  const activeAsset = results.loading ? undefined : assets.find((asset) => asset.id === activeId) || (mode === "ops" ? assets[0] : undefined);
+  const activeAsset = results.loading ? undefined : assets.find((asset) => asset.id === activeId) || assets[0];
   const total = results.data?.total ?? 0;
   const pagination = results.data?.pagination;
   const pageLimit = pagination?.limit ?? limit;
@@ -870,16 +897,17 @@ export function PrototypeLibraryPage() {
   return (
     <div className={`proto-library-page is-${mode}${activeAsset ? " has-inspector" : ""}`}>
       <section className="proto-library-workspace">
+        <PortalSafeStrip role={role} total={total} />
         <header className="proto-library-header">
           <div className="proto-title-row">
-            <h1>Library</h1>
-            <span>{results.loading ? "Loading assets" : `${total.toLocaleString()} assets`}</span>
+            <h1>Media Library</h1>
+            <span>{results.loading ? "Loading assets" : `${total.toLocaleString()} records`} / {role}</span>
           </div>
           <ToolbarSearch value={query} onChange={updateQuery} />
           <div className="proto-header-actions">
             <div className="proto-mode-toggle" aria-label="Library mode">
               <button type="button" className={mode === "browse" ? "is-active" : ""} onClick={() => updateMode("browse")}>Browse</button>
-              <button type="button" className={mode === "ops" ? "is-active" : ""} onClick={() => updateMode("ops")}>Ops</button>
+              <button type="button" className={mode === "ops" ? "is-active" : ""} onClick={() => updateMode("ops")}>{listModeLabel(role)}</button>
             </div>
             <label className={`proto-rights-safe-toggle${rightsSafe ? " is-active" : ""}`}>
               <input type="checkbox" checked={rightsSafe} onChange={(event) => updateRightsSafe(event.target.checked)} />
@@ -890,16 +918,33 @@ export function PrototypeLibraryPage() {
             <LinkButton href={routeWithRole(canUpload(role) ? "/upload" : "/requests", role)} tone="primary">{publicPortalActionLabel(role)} <ChevronDown size={14} /></LinkButton>
           </div>
         </header>
+        <section className="proto-customer-status" aria-label="Customer reuse status">
+          <article className="is-ready">
+            <span>Can I use this?</span>
+            <strong>Verdict on every record</strong>
+            <p>Approved-copy, blocker, and next action stay visible before reuse.</p>
+          </article>
+          <article className="is-source">
+            <span>Source truth</span>
+            <strong>ResourceSpace first</strong>
+            <p>Requests queue locally; no fake approval or writeback success.</p>
+          </article>
+          <article className="is-blocked">
+            <span>Unsafe actions</span>
+            <strong>Blocked by default</strong>
+            <p>Public links, ZIP export, originals, and unclear media stay unavailable.</p>
+          </article>
+        </section>
         <div className="proto-toolbar">
           <label className="proto-checkbox-label"><input type="checkbox" checked={selected.size > 0 && selected.size === assets.length} onChange={() => setSelected(selected.size === assets.length ? new Set() : new Set(visibleAssetIds))} /> <span>{selected.size} selected</span></label>
           <Button onClick={() => {
             const firstSelected = Array.from(selected)[0];
             if (firstSelected) setActiveId(firstSelected);
             toast.message(firstSelected ? "Open asset inspector to run the approved-copy gate." : "Select an asset to run the approved-copy gate.");
-          }}>Download</Button>
-          <Button onClick={() => toast.message("Share links require item approval. Open an asset to request review or approved-copy access.")}>Share</Button>
+          }}>Check download gate</Button>
+          <Button onClick={() => toast.message("Share/public link is locked in this beta. Item approval and distribution backend are required first.")}>Share locked</Button>
           {canReview(role)
-            ? <Button onClick={() => toast.message("Collection writes are not enabled in this local demo yet.")}>Add to collection</Button>
+            ? <Button onClick={() => toast.message("Collection writes are not enabled in this local demo yet.")}>Collection locked</Button>
             : <Button onClick={() => {
               const firstSelected = Array.from(selected)[0];
               if (firstSelected) setActiveId(firstSelected);
@@ -928,8 +973,8 @@ export function PrototypeLibraryPage() {
             </>
           ) : (
             <>
-              <strong>Ops mode</strong>
-              <span>Management view with filenames, rights, ownership, expiration, and batch gates.</span>
+              <strong>{listModeLabel(role)} mode</strong>
+              <span>{canReview(role) ? "Reviewer view with rights, ownership, expiration, and batch gates." : "Compact list for scanning approved-copy and review-needed states."}</span>
             </>
           )}
         </div>
@@ -1014,7 +1059,7 @@ export function PrototypeLibraryPage() {
           ) : (
             <div className="proto-empty-state is-quiet">
               <strong>{searchDiscovery?.noResultHelp?.title || "No matching assets"}</strong>
-              <span>{rightsSafe ? "No assets are cleared for current use from these results. Turn off rights-safe mode to inspect review-gated records, or request reviewer help." : searchDiscovery?.noResultHelp?.guidance || "Atlas library search returned no records for this query."}</span>
+              <span>{rightsSafe ? "No assets are cleared for current use from these results. Turn off rights-safe mode to inspect review-gated records, or request reviewer help." : searchDiscovery?.noResultHelp?.guidance || "Media Library search returned no records for this query."}</span>
               <div className="proto-tag-row">
                 {(searchDiscovery?.noResultHelp?.querySuggestions || []).slice(0, 3).map((suggestion) => (
                   <button key={suggestion} type="button" onClick={() => updateQuery(suggestion)}>{suggestion}</button>
@@ -1066,7 +1111,7 @@ function MobileAssetSheet({ asset }: { asset: StockMediaAsset }) {
     setMessage("Sending review request...");
     try {
       const payload = await reviewRequest.requestReview({
-        notes: `Atlas mobile portal request for ${displayTitle(displayAsset)}. Reason: ${displayAsset.reuseDecision?.summary || displayAsset.status || "Usage decision requires reviewer confirmation."}`
+        notes: `Media Library mobile portal request for ${displayTitle(displayAsset)}. Reason: ${displayAsset.reuseDecision?.summary || displayAsset.status || "Usage decision requires reviewer confirmation."}`
       });
       setMessage(reviewRequestMessage(payload, elevatedRole));
       if (payload.ok) detail.refresh();
@@ -1254,7 +1299,7 @@ export function PrototypeUploadIntake() {
             <div className="proto-upload-readiness">
               <article><span>Missing context</span><strong>{missingContext.length ? missingContext.join(", ") : "Ready for intake ticket"}</strong></article>
               <article><span>Review routing</span><strong>{intakeWarnings.slice(0, 3).join(" / ")}</strong></article>
-              <article><span>Custody boundary</span><strong>Atlas records intake metadata only; originals stay with source custody.</strong></article>
+              <article><span>Custody boundary</span><strong>Media Library records intake metadata only; originals stay with source custody.</strong></article>
             </div>
             <div className="proto-upload-actions">
               <Button type="button" onClick={() => setMessage("Draft is only in this browser until you submit intake.")}>Save draft</Button>
@@ -1529,7 +1574,7 @@ export function PrototypeReviewApprove() {
             <aside className="proto-comments-panel">
               <div className="proto-tabs"><button className="is-active">Evidence</button><button>Details</button></div>
               <div className="proto-comment-list">
-                <p><strong>Queue source</strong><small>{queue.live ? "Live source" : "Local demo"}</small><span>{queue.data?.source?.detail || "Review queue uses Atlas backend policy."}</span></p>
+                <p><strong>Queue source</strong><small>{queue.live ? "Live source" : "Local demo"}</small><span>{queue.data?.source?.detail || "Review queue uses Media Library backend policy."}</span></p>
                 <p><strong>Pending write</strong><small>{pendingWriteLabel(selectedPendingWrite)}</small><span>{selectedPendingWrite ? `State: ${selectedPendingWrite.syncState}. Source library remains unchanged until sync confirms.` : "No queued decision for this item yet."}</span></p>
                 <p><strong>Reviewer note</strong><small>Required</small><span>{comment.trim() || "Add evidence notes before approving public use."}</span></p>
                 <p><strong>Lifecycle</strong><small>{selected?.status || "No asset selected"}</small><span>{selected?.usageScope || "Usage scope pending"} / {selectedUseState?.label || "Reuse state pending"}</span></p>
@@ -1886,7 +1931,7 @@ export function PrototypeAssetDetailPage({ id }: { id: string }) {
                 {(presentation?.summaryFacts || []).map((fact) => <span key={fact}>{fact}</span>)}
               </div>
               <div className="proto-action-row">
-                <button type="button" onClick={() => setDownloadCenterOpen(true)}><Download size={16} /><span>Download Center</span></button>
+                <button type="button" onClick={() => setDownloadCenterOpen(true)}><Download size={16} /><span>Gate details</span></button>
                 <button type="button" onClick={() => setRightsExplanationOpen(true)}><ShieldCheck size={16} /><span>Why can I use this?</span></button>
               </div>
             </div>

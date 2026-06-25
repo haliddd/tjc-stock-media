@@ -1,0 +1,458 @@
+{
+  "project": "TJC Stock Media",
+  "branchName": "ralph/premium-enterprise-dam-architecture",
+  "description": "Premium Enterprise DAM Architecture - deepen reuse safety, review evidence, route session truth, legacy UI locality, and beta readiness without changing accepted DAM operating decisions.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Deepen Portal reuse decision",
+      "description": "As a DAM maintainer, I want one reuse decision module so that Viewer, Reviewer, detail, thumbnail, and download surfaces agree on reuse safety.",
+      "acceptanceCriteria": [
+        "Add one portal reuse decision module that returns role-aware reuse, preview, download, original request, blocker, and viewer verdict facts.",
+        "Existing reuse-policy, access-decisions, and viewer-verdict callers continue to compile through compatibility exports.",
+        "Download and thumbnail routes still block unsafe access.",
+        "Typecheck passes.",
+        "Build passes."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented frontend/lib/portal-reuse-decision.ts with compatibility exports through reuse-policy, access-decisions, and viewer-verdict. Verified by typecheck, build, frontend-check, API smoke, and browser QA."
+    },
+    {
+      "id": "US-002",
+      "title": "Deepen Review evidence",
+      "description": "As a rights reviewer, I want UI checklist locks and backend review evidence checks to use the same rules so that decisions do not drift.",
+      "acceptanceCriteria": [
+        "Add one review evidence module that owns checklist items, labels, defaults, required fields, missing labels, completion rows, and disabled reason.",
+        "Existing review-decision and review-decision-presenter callers continue to compile through compatibility exports.",
+        "Approve Public still requires source, rights, people/minors, usage scope, derivative, sensitive context, credit, attribution, expiration/re-review, proof link, and review note.",
+        "Typecheck passes.",
+        "Build passes."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Implemented frontend/lib/review-evidence.ts with compatibility exports through review-decision and review-decision-presenter. Verified by typecheck, build, frontend-check, API smoke, and browser QA."
+    },
+    {
+      "id": "US-003",
+      "title": "Deepen route session response",
+      "description": "As a portal maintainer, I want route modules to share request identity, media source session, role-safe payload, audit, and usage helpers so that source truth and redaction stay consistent.",
+      "acceptanceCriteria": [
+        "Add a request/session response module without changing ADR-0005 media source session.",
+        "At least asset detail, search, thumbnail, download, and review routes use the shared module for source envelope or role-safe response helpers.",
+        "Viewer payloads still hide original/master metadata.",
+        "Typecheck passes.",
+        "Build passes."
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Implemented frontend/lib/dam-route-session.ts and adopted it in asset detail, search, thumbnail, download, review, and admin readiness routes. Verified by typecheck, build, frontend-check, API smoke, and browser QA."
+    },
+    {
+      "id": "US-004",
+      "title": "Quarantine legacy DAM page family",
+      "description": "As a developer or agent, I want the live enterprise DAM page family to be obvious so that future work does not edit stale modules.",
+      "acceptanceCriteria": [
+        "Audit route imports and live imports for legacy page modules.",
+        "Extract any still-live primitives out of legacy modules before quarantine.",
+        "Add a codemap or deprecation note if deletion is not yet safe.",
+        "No live route imports a quarantined page.",
+        "Typecheck passes.",
+        "Build passes."
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Removed the live DamOperations dependency on legacy DamExperience and added docs/architecture/live-dam-surface-2026-06-10.md. Import audit shows no live imports from legacy page modules. Verified by typecheck, build, frontend-check, API smoke, and browser QA."
+    },
+    {
+      "id": "US-005",
+      "title": "Deepen beta readiness facts",
+      "description": "As a beta operator, I want one readiness truth packet feeding shell, Admin, and docs so that teammate invite decisions stay honest.",
+      "acceptanceCriteria": [
+        "Produce one machine-readable readiness output covering SSO, ResourceSpace writeback, derivatives, private URL, seed data, env warnings, allowlists, browser QA, and Viewer/Reviewer dry-run status.",
+        "make launch-readiness uses or validates the same facts.",
+        "Admin readiness route exposes the same go/no-go fields.",
+        "Typecheck passes.",
+        "Build passes."
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Implemented frontend/lib/beta-readiness-facts.ts, exposed betaReadiness on Admin readiness, and extended launch-readiness to validate beta command center, facts module, and browser QA report. Verified by frontend-check, launch-readiness, API smoke, and browser QA."
+    },
+    {
+      "id": "US-006",
+      "title": "Add smart discovery search intelligence",
+      "description": "As a church media user, I want search to understand ministry language, synonyms, and useful follow-up filters so that I can find reusable assets like a premium DAM without knowing exact metadata terms.",
+      "acceptanceCriteria": [
+        "Search expands common ministry/DAM terms such as hero, banner, sermon, slides, youth, social, newsletter, and background without calling paid AI.",
+        "Search results include discovery metadata: summary, expanded terms, suggested filters, and ranking explanation.",
+        "Library displays smart discovery without hiding source/reuse safety.",
+        "Suggested filters are clickable and update the search result set.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Implemented frontend/lib/catalog-discovery.ts, added SearchResult.discovery, ranked query results by deterministic synonym/metadata scoring, and surfaced smart discovery plus clickable suggested filters in Enterprise Library. Verified by frontend-check, API smoke, browser QA, launch-readiness, and diff check."
+    },
+    {
+      "id": "US-007",
+      "title": "Deepen package governance",
+      "description": "As a ministry comms teammate, I want package preview, share, and publish readiness to use the same portal reuse policy as downloads so that a toolkit cannot become a shortcut around rights review.",
+      "acceptanceCriteria": [
+        "Add one package governance module that returns can-preview, can-share, can-publish, counts, section blockers, and an audit message.",
+        "Package Builder uses portal reuse decisions instead of raw Approved status for seeded refs and Portal Ready filtering.",
+        "Publish requires all refs to be Portal Ready; internal-only and review-required refs stay visible as blockers.",
+        "Package UI exposes governance command readiness inline.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Viewer and Reviewer browser QA still pass."
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Implemented frontend/lib/package-governance.ts, wired Package Builder to portal reuse decisions for seeded refs and Portal Ready filtering, restored refs-only safety copy including 0 Copied assets, and exposed preview/share/publish readiness inline. Verified by frontend-check, API smoke, browser QA, launch-readiness, and diff check."
+    },
+    {
+      "id": "US-008",
+      "title": "Add enterprise insights command center",
+      "description": "As a DAM operator, I want analytics to recommend next actions rather than only show charts so that review debt, metadata health, usage maturity, and search gaps translate into operating priorities.",
+      "acceptanceCriteria": [
+        "Add one insights command-center module that returns score, summary, signals, and prioritized actions from current SearchResult facts.",
+        "Insights Admin/Reviewer view shows command center without exposing operational diagnostics to Viewer.",
+        "Signals cover portal readiness, metadata health, analytics maturity, and unresolved warnings.",
+        "Actions route to review/admin/search surfaces without mutating ResourceSpace.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Browser QA still passes across Insights/Admin/Viewer routes."
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Implemented frontend/lib/insights-command-center.ts, wired Admin/Reviewer Insights to show score, signals, and prioritized actions, and kept Viewer role-safe Insights free of operational diagnostics. Verified by frontend-check, API smoke, browser QA, targeted Insights role/viewport check, launch-readiness, and diff check."
+    },
+    {
+      "id": "US-009",
+      "title": "Deepen Brand Kit governance",
+      "description": "As a ministry brand owner, I want Brand Hub share/download readiness to use ResourceSpace mapping and portal reuse policy so that brand kits cannot bypass DAM review.",
+      "acceptanceCriteria": [
+        "Add one brand kit governance module that returns preview/share/download readiness, counts, blockers, and command rows.",
+        "Brand kit API returns the governance packet with existing kit/source facts.",
+        "Brand Hub disables or explains Share Kit and Download Kit when mapped assets are missing or not Portal Ready.",
+        "Viewer-facing Brand Hub avoids source-file mutation and fake ZIP claims.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Browser QA and targeted Brand Hub role checks pass."
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Implemented frontend/lib/brand-kit-governance.ts, returned governance from the Brand Kit API, wired Brand Hub share/download readiness to policy-backed command rows, and kept fake ZIP/source mutation claims blocked. Verified by frontend-check, API smoke, browser QA, targeted Brand Hub role/viewport/API checks, launch-readiness, and diff check."
+    },
+    {
+      "id": "US-010",
+      "title": "Add governed package draft persistence",
+      "description": "As a ministry communications teammate, I want package drafts to save through a governed portal store so that curated toolkit work survives a browser session without copying ResourceSpace originals or bypassing review.",
+      "acceptanceCriteria": [
+        "Add one package draft store module that persists sanitized ResourceSpace refs only.",
+        "Add POST /api/packages for Contributor/Reviewer/DAM Admin saves and GET /api/packages for Reviewer/DAM Admin listing.",
+        "Server recomputes package governance from current media source session before saving.",
+        "Package Builder Save draft calls the API and reports storage mode/ref count.",
+        "Viewer save/list attempts are denied and audited.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Browser QA and targeted package API/UI checks pass."
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Implemented frontend/lib/package-store.ts, added POST/GET /api/packages with role gates and audit events, wired Package Builder Save draft to local-json persistence, and kept stored payloads to sanitized ResourceSpace refs plus server recomputed governance. Verified by frontend-check, API smoke, browser QA, targeted package API/UI checks, launch-readiness, and diff check."
+    },
+    {
+      "id": "US-011",
+      "title": "Standardize enterprise identity on mutation routes",
+      "description": "As a DAM admin, I want upload, batch, and collection mutation previews to resolve role/actor through the same request identity seam as package, review, and admin routes so that trusted SSO headers can govern unsafe actions when enabled.",
+      "acceptanceCriteria": [
+        "Upload intake uses requestIdentity instead of trusting only form role.",
+        "Batch action preview uses requestIdentity instead of trusting only body role.",
+        "Collection draft preview uses requestIdentity instead of trusting only body role.",
+        "Audit events include resolved actor identity.",
+        "Local beta role fallback still works when trusted SSO headers are disabled.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Browser QA and targeted trusted-header route checks pass."
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "Converted upload, batch, and collection routes to requestIdentity with audit actor capture. Verified local beta fallback still ignores trusted headers when SSO_TRUSTED_HEADERS is disabled, trusted headers override body/form role when enabled, frontend-check passes, API smoke passes, and browser QA passes with 0 failures, 0 console errors, 0 network failures, and 0 warnings."
+    },
+    {
+      "id": "US-012",
+      "title": "Add actor parity to download audits",
+      "description": "As a DAM operator, I want approved-copy downloads and download-gate decisions to include the same resolved actor identity as review, upload, batch, package, and admin events so that SSO-backed audit trails remain coherent.",
+      "acceptanceCriteria": [
+        "Download route audit events include resolved actor identity.",
+        "Download gate audit events include resolved actor identity.",
+        "Admin readiness recent audit summaries include actor identity.",
+        "Trusted SSO identity still resolves through the shared route session.",
+        "Typecheck passes.",
+        "Build passes.",
+        "API smoke passes."
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "Added resolved actor capture to approved download, denied download, and download-gate audit events, and preserved actor identity in Admin readiness recent audit summaries. Verified trusted SSO header actor persisted as sso:reviewer-download@example.test on a download-gate denial, frontend-check passes, and API smoke passes on a clean post-build dev server."
+    },
+    {
+      "id": "US-013",
+      "title": "Harden beta readiness coverage gates",
+      "description": "As a beta operator, I want launch readiness and Admin beta readiness to require concrete browser QA coverage and actor-backed audit rehearsal evidence so teammate invite decisions are based on mechanical proof, not stale checklist copy.",
+      "acceptanceCriteria": [
+        "Launch readiness verifies browser QA has required page, viewport, and proof screenshot coverage.",
+        "Launch readiness checks actor-backed Viewer, Reviewer, and DAM Admin audit rehearsal evidence.",
+        "Admin beta readiness audit fact reports actor-backed audit evidence and covered roles.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Launch readiness passes with only explicit environment warnings."
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "Tightened launch-readiness browser QA coverage checks for required pages, widths, and proof screenshots, added actor-backed Viewer/Reviewer/DAM Admin audit rehearsal checks, and expanded Admin beta readiness audit evidence to report actor-backed role coverage from recent audit rows. Verified by frontend-check, launch-readiness, post-build API smoke, targeted Admin beta audit fact check, JSON parse, and diff check."
+    },
+    {
+      "id": "US-014",
+      "title": "Add trusted-header SSO rehearsal smoke",
+      "description": "As a DAM operator, I want one repeatable command that proves production-style trusted identity headers override beta role inputs across sensitive portal routes while unsafe downloads remain blocked.",
+      "acceptanceCriteria": [
+        "Add a portal-sso-smoke command that expects a server running with trusted SSO headers enabled.",
+        "SSO smoke proves Reviewer headers override role=Viewer for review, package, batch, and download-gate routes.",
+        "SSO smoke proves Contributor headers override role=Viewer for collection and upload routes.",
+        "SSO smoke proves DAM Admin headers override role=Viewer for readiness and feedback inbox routes.",
+        "Unsafe download gate remains blocked under trusted Reviewer identity.",
+        "Launch readiness validates the SSO smoke script exists.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Launch readiness and SSO smoke pass."
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "Added scripts/portal-sso-smoke.sh, Make target, launch-readiness file check, and beta/SSO docs. The smoke proves trusted Reviewer, Contributor, and DAM Admin headers override beta role=Viewer inputs across review, package, batch, collection, upload, feedback, readiness, and download-gate routes while unsafe downloads remain blocked. Verified by bash syntax check, frontend-check, launch-readiness, post-build API smoke, post-build SSO smoke with SSO_TRUSTED_HEADERS=1, JSON parse, and diff check."
+    },
+    {
+      "id": "US-015",
+      "title": "Add durable usage analytics rehearsal smoke",
+      "description": "As a DAM operator, I want one repeatable command that proves portal usage analytics records real SQLite events for search, asset view, download gate, review action, and Brand Hub usage before Insights claims analytics maturity.",
+      "acceptanceCriteria": [
+        "Add a portal-usage-smoke command that expects a server running with PORTAL_USAGE_LOGGING=1.",
+        "Usage smoke records and verifies search events with a unique query marker.",
+        "Usage smoke records and verifies asset view, download gate, review action, and Brand Hub events.",
+        "Usage smoke verifies recorded usage events include actor identity.",
+        "Launch readiness validates the usage smoke script exists.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Launch readiness and usage smoke pass."
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "Added scripts/portal-usage-smoke.sh, Make target, launch-readiness file check, and beta/analytics docs. The smoke records search, asset view, download gate, review action, and Brand Hub events, then verifies SQLite contains those event types with actor identity and a unique search marker. Verified by bash syntax check, frontend-check, launch-readiness, post-build API smoke, post-build usage smoke with PORTAL_USAGE_LOGGING=1, targeted Admin usage readiness check, JSON parse, and diff check."
+    },
+    {
+      "id": "US-016",
+      "title": "Add delivery privacy smoke rehearsal",
+      "description": "As a DAM operator, I want one repeatable command that proves Viewer/Contributor payloads and blocked download gates do not leak private storage, source custody, or unfinished S3 delivery details before teammate beta.",
+      "acceptanceCriteria": [
+        "Add a portal-delivery-smoke command that can run against any local beta server without S3 credentials.",
+        "Delivery smoke verifies Viewer/Contributor search and asset payloads do not expose S3 paths, private URLs, source paths, master-drive paths, checksums, or original filenames.",
+        "Delivery smoke verifies blocked Viewer and Reviewer download-gate responses do not expose download, signed, original, or private storage URLs.",
+        "Admin readiness keeps S3 delivery honest and does not claim production signed delivery.",
+        "Launch readiness validates the delivery smoke script exists.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Launch readiness and delivery smoke pass."
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "Added scripts/portal-delivery-smoke.sh, Make target, launch-readiness file check, honest S3 readiness copy, and beta/integration docs. The smoke proves Viewer/Contributor delivery payloads and blocked download gates do not leak private storage/source custody details while Admin readiness avoids claiming production signed delivery. Verified by bash syntax check, frontend-check, launch-readiness, post-build API smoke, post-build delivery smoke, JSON parse, and diff check."
+    },
+    {
+      "id": "US-017",
+      "title": "Add private beta rehearsal evidence",
+      "description": "As a beta operator, I want one repeatable dry-run command that records Viewer, Reviewer, and DAM Admin proof before teammate invites so the decision uses evidence instead of memory.",
+      "acceptanceCriteria": [
+        "Add a portal-beta-rehearsal command that runs against a local beta server.",
+        "Rehearsal proves Viewer search/detail works, unsafe download blocks, and Viewer cannot review.",
+        "Rehearsal proves Reviewer queue loads, incomplete approval blocks, and complete evidence returns honest pending-write/writeback state.",
+        "Rehearsal proves DAM Admin readiness opens and S3 readiness stays honest.",
+        "Rehearsal writes a JSON summary under .runtime/beta-rehearsals/.",
+        "Launch readiness validates the rehearsal script exists.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Launch readiness and beta rehearsal pass."
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "Added scripts/portal-beta-rehearsal.sh, Make target, launch-readiness file check, and beta command-center docs. The rehearsal proves Viewer, Reviewer, and DAM Admin dry-run paths and writes machine-readable evidence under .runtime/beta-rehearsals/. Verified by bash syntax check, frontend-check, launch-readiness, post-build API smoke, delivery smoke, beta rehearsal, JSON parse, and diff check."
+    },
+    {
+      "id": "US-018",
+      "title": "Add hosted private beta smoke",
+      "description": "As a beta operator, I want one post-deploy smoke command for the stable Vercel beta URL so route availability, feedback triage, and blocked downloads can be tested after each deployment.",
+      "acceptanceCriteria": [
+        "Add a portal-hosted-smoke command that defaults to the stable hosted URL and allows BASE_URL override.",
+        "Hosted smoke checks Viewer, Contributor, Reviewer, DAM Admin, and Guide pages.",
+        "Hosted smoke checks feedback submission, Viewer feedback inbox denial, and DAM Admin feedback inbox visibility.",
+        "Hosted smoke selects a currently blocked asset before proving Viewer download remains blocked without private URLs.",
+        "Add teammate invite docs with trusted beta session/SSO entry paths, missions, safety copy, and feedback expectations.",
+        "Launch readiness validates the hosted smoke script exists.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Launch readiness and hosted smoke pass against the stable Vercel beta URL."
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "Added scripts/portal-hosted-smoke.sh, Make/launch-readiness coverage, and docs/teammate-beta-invite-pack.md. June 15 safety update keeps hosted mutating smoke approval-gated and current invite docs draft-only; hosted role access must come from trusted beta session/SSO, not query-role links. Verified by bash syntax check, frontend-check, launch-readiness, hosted read-only probe guard, evidence-packet guard, JSON parse, and diff check."
+    },
+    {
+      "id": "US-019",
+      "title": "Add beta feedback operations smoke",
+      "description": "As a beta operator, I want one repeatable command and readiness row for feedback intake, admin triage, storage mode, and actor-backed audit so teammate feedback can become an actionable DAM operating loop.",
+      "acceptanceCriteria": [
+        "Add a portal-feedback-smoke command.",
+        "Feedback smoke submits Viewer feedback and verifies DAM Admin can list it.",
+        "Feedback smoke verifies Viewer cannot open the feedback inbox.",
+        "Feedback smoke patches severity/status/notes through the DAM Admin route.",
+        "Feedback records include actor identity.",
+        "Admin readiness reports beta feedback storage state and record counts.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Feedback smoke passes against a local production server."
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Added scripts/portal-feedback-smoke.sh, Make target, feedback storage diagnostics, actor-backed feedback records/audit, and Admin readiness beta-feedback-storage row. The smoke submits feedback, verifies Viewer denial, lists and patches via DAM Admin, and checks readiness storage detail. Verified by bash syntax check, frontend-check, local production API smoke, feedback smoke, JSON parse, and diff check."
+    },
+    {
+      "id": "US-020",
+      "title": "Add ResourceSpace writeback guard smoke",
+      "description": "As a DAM operator, I want one repeatable no-live-writeback smoke that proves reviewer decisions queue pending writes instead of faking ResourceSpace sync before a staging field map is approved.",
+      "acceptanceCriteria": [
+        "Add a portal-writeback-guard-smoke command for no-live-writeback local servers.",
+        "The smoke verifies Admin readiness reports ResourceSpace review writeback as non-operational.",
+        "The smoke verifies incomplete reviewer evidence is blocked without sync language.",
+        "The smoke verifies complete reviewer evidence returns 202 queued pending-write truth, not live ResourceSpace success.",
+        "Launch readiness validates the writeback guard smoke script exists.",
+        "Beta readiness docs include the writeback guard command.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Writeback guard smoke passes against a local no-live-writeback server."
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": "Added scripts/portal-writeback-guard-smoke.sh, Make target, launch-readiness file check, and beta/ResourceSpace docs. The smoke proves review writeback remains non-operational without approved live config, blocks incomplete evidence, and returns 202 queued pending-write truth for complete reviewer evidence. Verified by bash syntax check, frontend-check, launch-readiness, local API smoke, writeback guard smoke, JSON parse, and diff check."
+    },
+    {
+      "id": "US-021",
+      "title": "Harden beta safety readiness facts",
+      "description": "As a beta operator, I want role-switch and stop-test safety rules to be mechanically visible in readiness so teammate testing cannot confuse beta QA controls with production access.",
+      "acceptanceCriteria": [
+        "Admin beta readiness includes a beta-only role-switch copy fact.",
+        "Admin beta readiness includes a P0/Critical stop-test policy fact.",
+        "Launch readiness fails if simulated role-switch copy is missing from app or teammate docs.",
+        "Launch readiness fails if stop-test policy or forbidden media categories are missing from teammate docs.",
+        "Task Mode beta limits mention simulated QA role switch and Critical/P0 stop-testing.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Launch readiness passes with only explicit environment warnings."
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": "Added beta-role-switch-copy and beta-stop-test-policy readiness facts, launch-readiness grep gates, clearer Task Mode/account copy, and teammate docs updates. Verified by typecheck, frontend-check, launch-readiness, targeted Admin readiness fact check, JSON parse, and diff check."
+    },
+    {
+      "id": "US-022",
+      "title": "Add beta feedback export packet",
+      "description": "As a DAM Admin, I want a server-generated feedback export packet with filters and counts so agent-ready teammate feedback can be handed to implementation agents without relying on browser-local state.",
+      "acceptanceCriteria": [
+        "Add a DAM Admin-only beta feedback export API.",
+        "Export packet includes schema, exportedAt, filters, counts, and records.",
+        "Export supports status, severity, feedback role, and route filters.",
+        "Viewer cannot export feedback.",
+        "Admin Feedback Inbox Export JSON uses the server export packet.",
+        "Feedback smoke verifies Viewer export denial and agent-ready export contents.",
+        "Launch readiness validates the export route exists.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Feedback smoke passes against a local server."
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": "Added /api/beta-feedback/export with DAM Admin gate, filter/count packet builder, Admin export wiring, launch-readiness file check, docs, and feedback smoke coverage for Viewer denial plus agent-ready export contents. Verified by typecheck, frontend-check, launch-readiness, API smoke, feedback smoke, JSON parse, and diff check."
+    },
+    {
+      "id": "US-023",
+      "title": "Add package draft storage readiness smoke",
+      "description": "As a DAM operator, I want package draft persistence to have role-gate, sanitization, and readiness proof so ministry package work does not appear more durable or permissive than it is.",
+      "acceptanceCriteria": [
+        "Add package draft storage diagnostics to Admin integration readiness.",
+        "Readiness states package drafts are local-json/private beta only until durable backend storage exists.",
+        "Add a portal-package-smoke command.",
+        "Package smoke verifies Viewer cannot list or save package drafts.",
+        "Package smoke verifies Contributor save sanitizes and dedupes ResourceSpace refs.",
+        "Package smoke verifies Reviewer can list saved drafts.",
+        "Launch readiness validates the package smoke script exists.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Package smoke passes against a local server."
+      ],
+      "priority": 23,
+      "passes": true,
+      "notes": "Added packageDraftDiagnostics, Admin package-draft-storage readiness row, portal-package-smoke, Make/launch-readiness coverage, and beta command-center docs. The smoke proves package role gates, sanitized refs-only persistence, Reviewer listing, and local-json wider-rollout warning. Verified by typecheck, frontend-check, launch-readiness, API smoke, package smoke, JSON parse, and diff check."
+    },
+    {
+      "id": "US-024",
+      "title": "Add saved search persistence readiness smoke",
+      "description": "As a ministry user, I want saved searches to persist through a governed portal store so recurring DAM discovery work is reusable without implying durable team profile storage is complete.",
+      "acceptanceCriteria": [
+        "Add a local-json saved search store and API.",
+        "Viewer cannot list or save saved searches.",
+        "Contributor, Reviewer, and DAM Admin can save/list saved searches.",
+        "Saved search payloads sanitize ids, view, collection, filters, and sort.",
+        "Library Save this search uses the server saved search API.",
+        "Admin readiness reports saved-search storage as local/private beta only.",
+        "Add a portal-saved-search-smoke command.",
+        "Launch readiness validates the saved-search route and smoke script exist.",
+        "Typecheck passes.",
+        "Build passes.",
+        "Saved search smoke passes against a local server."
+      ],
+      "priority": 24,
+      "passes": true,
+      "notes": "Added saved-search-store, /api/saved-searches, Library Save this search API wiring, saved-search-storage readiness row, Make/launch-readiness coverage, beta docs, and portal-saved-search-smoke. The smoke proves role gates, empty-search rejection, sanitization/deduping, Reviewer listing, and local-json wider-rollout warning. Verified by typecheck, frontend-check, launch-readiness, API smoke, saved-search smoke, JSON parse, and diff check."
+    },
+    {
+      "id": "US-025",
+      "title": "Fix query-role trust before premium UI proof",
+      "description": "As a beta safety operator, I want API routes to ignore query/body role elevation unless a trusted beta session, trusted SSO identity, or explicit server-only local override exists, so local and hosted proof cannot be faked by ?role=Reviewer.",
+      "acceptanceCriteria": [
+        "Create and use an isolated worktree for the safe 30-40h lane while sibling sessions are active.",
+        "Patch request identity/session resolution so production/hosted query role is never trusted.",
+        "Default unauthenticated local smoke callers to Viewer unless trusted identity/session or explicit server-only local override exists.",
+        "Add or extend guard coverage so localhost query-role trust cannot return.",
+        "Add or extend smoke coverage for reviewer query role, admin query role, Viewer/Contributor redaction, and blocked download behavior.",
+        "Run guard, typecheck, test, build, portal-api-smoke, and portal-download-ticket-smoke against explicit BASE_URL.",
+        "Update evidence docs 00 through 12 plus daily checkpoint with honest NO-GO posture.",
+        "Add safe lane guard so isolated worktree path, branch, ledger, BASE_URL, sibling sessions, and forbidden surfaces stay machine-checked.",
+        "Add runtime isolation guard so .runtime, frontend/.next, screenshots, hosted summary, and evidence packet proof paths stay inside the isolated worktree.",
+        "Make launch readiness fail if protected local smokes regress to query-role-only curl paths.",
+        "Add repeatable hosted read-only probe command that does not POST, mutate hosted data, or store raw response bodies.",
+        "Require beta role/marker headers to come from a trusted beta session, not caller-supplied headers.",
+        "Add hosted read-only probe guard, hosted smoke mutation guard, and evidence packet guard so proof cannot drift into mutation or false-GO wording.",
+        "Make launch readiness require current Team Beta NO-GO signoff after the June 15 P0 until renewed approval exists.",
+        "Make user-facing invite/demo packets draft-only and block stale hosted query-role links or send-ready claims.",
+        "Make evidence docs record backup/restore as blocked when real .env, ResourceSpace config, or backups are absent instead of faking proof.",
+        "Make hosted read-only probe evidence timestamped and guard the docs against stale hosted summary results.",
+        "Make API identity guard fail if route-level searchParams.get(\"role\") reads do not feed the identity/session seam directly."
+      ],
+      "priority": 25,
+      "passes": true,
+      "notes": "Completed in isolated worktree codex/safe-ui-beta-proof-2026-06-15 at /Users/halim4pro/Desktop/MVP/tjc-stock-media-safe-ui-beta-run. Removed implicit localhost query-role trust, confined local overrides to server-only env, added trusted-header role hydration, required beta role/marker headers to come from a trusted beta session, strengthened api-identity-guard and portal-api-smoke, made legacy local smokes use scripts/portal-smoke-trusted-identity.sh, added safe lane guard, added runtime isolation guard, added make portal-hosted-readonly-probe for non-mutating hosted probes, added hosted read-only probe guard, hosted smoke mutation guard, and evidence packet guard, and reran guards, typecheck, 86 tests, build, API smoke, download-ticket smoke, broader local smokes, browser QA, launch-readiness, and hosted read-only probe. Latest hosted read-only summary is timestamped at 2026-06-16T14:22:04.520Z and docs are guarded against stale summary drift. Current self-owned browser QA is PASS at 2026-06-16T13:37:58.461Z with 20 pages, six viewports, 32 screenshots, 0 failures, 0 console errors, 0 network failures, and 0 warnings. Client privileged GET paths no longer append query-role authority for asset detail, review queue, admin readiness, brand kit, or search reads. Evidence docs 00 through 12 plus daily checkpoint now record local safety PASS, current browser QA PASS, partial hosted read-only PASS, mutating hosted smoke approval gating, current Team Beta NO-GO signoff after the June 15 P0, draft-only invite packets, trusted beta session/SSO hosted entry paths instead of query-role invite links, backup/restore blocked because real .env/resourcespace config/backups are absent, route-level searchParams.get(\"role\") identity-seam guard coverage, and broader NO-GO until canonical/ResourceSpace/Drive/durable/authenticated-hosted gates pass."
+    }
+  ]
+}
