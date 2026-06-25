@@ -798,6 +798,7 @@ export function PrototypeLibraryPage() {
   const rangeEnd = pagination?.rangeEnd ?? 0;
   const currentPage = total ? Math.floor(pageOffset / Math.max(1, pageLimit)) + 1 : 1;
   const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageLimit)));
+  const showSearchInspector = !activeAsset && Boolean(query.trim());
   const pageSummary = results.loading
     ? "Loading results"
     : total
@@ -908,7 +909,7 @@ export function PrototypeLibraryPage() {
   }, []);
 
   return (
-    <div className={`proto-library-page is-${mode}${activeAsset ? " has-inspector" : ""}`}>
+    <div className={`proto-library-page is-${mode}${activeAsset || showSearchInspector ? " has-inspector" : ""}`}>
       <section className="proto-library-workspace">
         <header className="proto-library-header">
           <div className="proto-title-row">
@@ -1080,6 +1081,48 @@ export function PrototypeLibraryPage() {
             setInspectorClosed(true);
           }}
         />
+      ) : showSearchInspector ? (
+        <aside className="proto-inspector" aria-label="Search intelligence inspector">
+          <div className="proto-inspector-nav">
+            <div>
+              <strong>Search intelligence</strong>
+              <span>Query / rights-safe / suggestions</span>
+            </div>
+          </div>
+          <div className="proto-inspector-body">
+            <div className="proto-detail-stack">
+              <section>
+                <h3>Query</h3>
+                <p>{query}</p>
+              </section>
+              <section>
+                <h3>Result summary</h3>
+                <p>{searchDiscovery?.summary || `Found ${total.toLocaleString()} matching assets from current metadata.`}</p>
+              </section>
+              <section>
+                <h3>Rights-safe layer</h3>
+                <div className="proto-tag-row">
+                  <span>{rightsSafe ? "Rights-safe only" : "All visible records"}</span>
+                  <span>{(rightsSafeSummary?.totalAfter ?? total).toLocaleString()} shown</span>
+                  <span>{(rightsSafeSummary?.hidden ?? 0).toLocaleString()} hidden</span>
+                </div>
+                <p>{rightsSafeSummary?.explanation || searchDiscovery?.safetyNote || "Search does not override item-level rights, people, source, or approved-copy gates."}</p>
+              </section>
+              <section>
+                <h3>Matched because</h3>
+                <div className="proto-tag-row">
+                  {(searchDiscovery?.expandedTerms?.length ? searchDiscovery.expandedTerms : ["outdoor", "hero", "approved", "web", "social"]).slice(0, 6).map((term) => <span key={term}>{term}</span>)}
+                </div>
+              </section>
+              <section>
+                <h3>Suggestions</h3>
+                <div className="proto-tag-row">
+                  {(searchDiscovery?.noResultHelp?.querySuggestions || ["spring campaign hero", "web-safe outdoor lifestyle", "expiring soon"]).slice(0, 4).map((suggestion) => <button key={suggestion} type="button" onClick={() => updateQuery(suggestion)}>{suggestion}</button>)}
+                </div>
+              </section>
+            </div>
+          </div>
+        </aside>
       ) : null}
       {activeAsset ? <MobileAssetSheet asset={activeAsset} /> : null}
     </div>
@@ -1697,57 +1740,92 @@ export function PrototypeCollectionsDistribute({ distribution: _distribution = f
   }
 
   return (
-    <section className="proto-flow-page proto-collections-page">
-      <div className="proto-flow-card proto-collection-card">
-        <div className="proto-collection-main">
-          <header className="proto-collection-head">
-            <div className="proto-collection-cover">{assets[0] ? <AssetImage asset={assets[0]} /> : <div className="proto-inspector-placeholder"><Folder size={18} /></div>}</div>
-            <div>
-              <h1>{publicMode ? "Public collection portal" : "Collections / Open albums"}</h1>
-              <h2>{selected?.name || "No collections visible"}</h2>
-              <span>{selectedCountLabel}</span>
-              <p>{selected?.description || "No role-visible collections are available from the current source."}</p>
-              <div className="proto-collection-readiness-pills">
-                <span>{portalReadyCount.toLocaleString()} ready</span>
-                <span>{gatedCount.toLocaleString()} gated</span>
-                <span>No collection-level approval</span>
-              </div>
-            </div>
-          </header>
-          {!publicMode ? <div className="proto-review-queue-tabs" aria-label="Collections">
-            {collections.slice(0, 6).map((collection) => (
-              <Link key={collection.id} className={selected?.id === collection.id ? "is-active" : ""} href={routeWithRole(`/collections/${collection.id}`, role)}>
-                <span>{collection.name}</span>
-                <strong>{collection.count}</strong>
-              </Link>
-            ))}
-          </div> : null}
-          {!publicMode ? <div className="proto-tabs"><button className="is-active">Assets</button><button>Readiness</button><button>Requests</button></div> : null}
-          <div className="proto-collection-assets">
-            {collectionAssets.loading ? <PrototypeLoadingState label="Loading collection assets..." /> : collectionAssets.error ? <div className="proto-error">{collectionAssets.error}</div> : assets.length ? assets.slice(0, 7).map((asset) => (
-              <Link key={asset.id} href={routeWithRole(`/assets/${asset.id}`, role)}>
-                <AssetImage asset={asset} />
-                <span>{displayTitle(asset)}</span>
-                <small>{assetUseState(asset).label} / {asset.status}</small>
-              </Link>
-            )) : <div className="proto-request-empty"><strong>No role-visible assets</strong><span>This collection has no assets available for this role from the current source.</span></div>}
+    <section className={`proto-collections-page${selected ? " has-inspector" : ""}`}>
+      <div className="proto-collections-workspace">
+        <header className="proto-library-header">
+          <div className="proto-title-row">
+            <h1>{publicMode ? "Portal" : "Collections"}</h1>
+            <span>{collections.length.toLocaleString()} collections</span>
           </div>
+          <ToolbarSearch value="" onChange={() => setMessage("Collection search follows the library metadata index in the next slice.")} />
+          <div className="proto-header-actions">
+            <Button onClick={() => setMessage("Filters use exported collection metadata only.")}><SlidersHorizontal size={15} />Filters</Button>
+            <Button onClick={() => setMessage("Saved views stay in the sidebar for this prototype pass.")}>Saved views <ChevronDown size={14} /></Button>
+            <label className="proto-rights-safe-toggle is-active">
+              <input type="checkbox" checked readOnly />
+              <span><ShieldCheck size={14} aria-hidden="true" />Rights-safe only</span>
+            </label>
+          </div>
+        </header>
+
+        <div className="proto-collections-filterbar" aria-label="Collection filters">
+          <button type="button">Brand <strong>All brands</strong><ChevronDown size={13} /></button>
+          <button type="button">Owner <strong>All owners</strong><ChevronDown size={13} /></button>
+          <button type="button">Rights-safe <strong>All</strong><ChevronDown size={13} /></button>
+          <span />
+          <button type="button">Sort <strong>Newest</strong><ChevronDown size={13} /></button>
+          <button type="button" aria-label="Grid layout"><LayoutGrid size={15} /></button>
+          <button type="button" aria-label="List layout"><List size={15} /></button>
         </div>
-        <aside className="proto-share-panel">
-          <h2>{publicMode ? "Public access" : "Collection sharing"}</h2>
-          <p className="proto-muted">{publicMode ? "This public-style view only shows role-safe, usable assets from the current source. Internal readiness controls stay hidden." : "Collection membership never approves assets. Each item keeps its own rights, people/youth, source, and approved-copy gate."}</p>
+
+        <div className="proto-collection-grid" aria-label="Collections">
+          {search.loading ? <PrototypeLoadingState label="Loading collections..." /> : search.error ? <div className="proto-error">{search.error}</div> : collections.length ? collections.map((collection, index) => {
+            const active = selected?.id === collection.id;
+            const cover = active ? assets[0] : assets[index % Math.max(1, assets.length)];
+            const statusTone = active && !gatedCount ? "approved" : index % 4 === 1 ? "review" : "approved";
+            const statusLabel = active && gatedCount ? "Shared" : index % 4 === 1 ? "Internal" : "Published";
+            return (
+              <Link key={collection.id} className={`proto-collection-tile${active ? " is-active" : ""}`} href={routeWithRole(`/collections/${collection.id}`, role)}>
+                <div className="proto-collection-tile-cover">
+                  {cover ? <AssetImage asset={cover} /> : <div className="proto-inspector-placeholder"><Folder size={18} /></div>}
+                  <span className="proto-card-check is-checked"><Check size={13} /></span>
+                  <button type="button" aria-label={`More actions for ${collection.name}`}><MoreHorizontal size={16} /></button>
+                </div>
+                <div className="proto-collection-tile-copy">
+                  <strong>{collection.name}</strong>
+                  <small>{collection.countLabel} / {collection.dateRange}</small>
+                  <span>{collection.description || "Rights-aware DAM collection."}</span>
+                  <StatusPill label={statusLabel} tone={statusTone} />
+                </div>
+              </Link>
+            );
+          }) : <div className="proto-empty-state"><strong>No collections visible</strong><span>No role-visible collections are available from the current source.</span></div>}
+        </div>
+      </div>
+
+      <aside className="proto-collection-inspector" aria-label="Collection detail">
+        <div className="proto-inspector-nav">
+          <div>
+            <strong>{selected?.name || "Collection detail"}</strong>
+            <span>{selectedCountLabel}</span>
+          </div>
+          <button type="button" aria-label="Close collection inspector"><X size={15} /></button>
+        </div>
+        <div className="proto-inspector-body">
+          <div className="proto-inspector-thumb">{assets[0] ? <AssetImage asset={assets[0]} /> : <div className="proto-inspector-placeholder"><Folder size={18} /></div>}</div>
+          <div className="proto-inspector-head">
+            <div>
+              <h2>{selected?.name || "No collections visible"}</h2>
+              <p>{selected?.description || "No role-visible collections are available from the current source."}</p>
+            </div>
+            <StatusPill label={gatedCount ? "Shared" : "Published"} tone={gatedCount ? "review" : "approved"} />
+          </div>
           <div className="proto-detail-stack">
+            <section><h3>Permissions</h3><p>{publicMode ? "External-safe assets only." : "Collection membership never approves assets. Item gates still apply."}</p></section>
+            <section><h3>Collaborators</h3><div className="proto-tag-row"><span>Taylor Morgan</span><span>Jordan Kim</span><span>Riley Anderson</span></div></section>
+            <section><h3>Item readiness</h3><div className="proto-tag-row"><span>{portalReadyCount.toLocaleString()} ready</span><span>{gatedCount.toLocaleString()} gated</span></div><p>{shareReadinessLabel}.</p></section>
             <section><h3>Source</h3><p>{search.data?.source?.detail || "Reading collection summaries from the current media source."}</p></section>
-            <section><h3>Selected collection</h3><p>{selected ? `${selected.countLabel}. ${selected.dateRange}.` : "No collection selected."}</p></section>
-            <section><h3>Item readiness</h3><div className="proto-tag-row"><span>{portalReadyCount.toLocaleString()} available for use</span><span>{gatedCount.toLocaleString()} still gated</span></div><p>{shareReadinessLabel}.</p></section>
-            <section><h3>Public link</h3><p>No public collection link exists in this local demo. Use item-level approved-copy requests until sharing is configured.</p></section>
             {!publicMode && canReview(role) && selected ? <section><h3>Reviewer reference</h3><p>{selected.id}</p></section> : null}
           </div>
-          <Button onClick={() => setMessage("No public collection link exists in this local demo. No link was copied.")}>Public link unavailable</Button>
-          {!publicMode ? <Button tone="primary" onClick={() => void checkShareReadiness()} disabled={actionPending || !selected}>{canCreateDraft ? "Check share readiness" : "Request item review"}</Button> : null}
+          <div className="proto-collection-inspector-actions">
+            <LinkButton href={routeWithRole(selected ? `/collections/${selected.id}` : "/collections", role)} tone="primary">Open collection</LinkButton>
+            <Button onClick={() => setMessage("No public collection link exists in this local demo. No link was copied.")}><Share2 size={15} />Share collection</Button>
+            <Button onClick={() => setMessage("Package download is disabled until all item-level gates pass.")}><Download size={15} />Download package</Button>
+            <Button onClick={() => void checkShareReadiness()} disabled={actionPending || !selected}>{canCreateDraft ? "Check readiness" : "Request review"}</Button>
+          </div>
           {message ? <p className="proto-gate-note">{message}</p> : null}
-        </aside>
-      </div>
+        </div>
+      </aside>
     </section>
   );
 }

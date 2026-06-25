@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-06-25T14:28:40.144Z",
+  "library": {
+    "url": "http://localhost:4871/library?q=outdoor+hero+images&rightsSafe=1&sort=Newest&limit=24&offset=0",
+    "bodyScrollWidth": 1448,
+    "viewportWidth": 1448,
+    "horizontalOverflow": false,
+    "app": {
+      "x": 22,
+      "y": 22,
+      "width": 1404,
+      "height": 1042
+    },
+    "sidebar": {
+      "x": 23,
+      "y": 23,
+      "width": 214,
+      "height": 1040
+    },
+    "topbar": {
+      "x": 237,
+      "y": 23,
+      "width": 831,
+      "height": 76
+    },
+    "libraryGrid": {
+      "x": 237,
+      "y": 633,
+      "width": 831,
+      "height": 430
+    },
+    "collectionGrid": null,
+    "inspector": {
+      "x": 1069,
+      "y": 23,
+      "width": 356,
+      "height": 1040
+    },
+    "assetCards": 0,
+    "collectionCards": 0,
+    "trustStripPresent": false,
+    "diagnosticCardTextPresent": false,
+    "consoleErrors": []
+  },
+  "collections": {
+    "url": "http://localhost:4871/collections",
+    "bodyScrollWidth": 1448,
+    "viewportWidth": 1448,
+    "horizontalOverflow": false,
+    "app": {
+      "x": 22,
+      "y": 22,
+      "width": 1404,
+      "height": 1042
+    },
+    "sidebar": {
+      "x": 23,
+      "y": 23,
+      "width": 214,
+      "height": 1040
+    },
+    "topbar": {
+      "x": 237,
+      "y": 23,
+      "width": 831,
+      "height": 76
+    },
+    "libraryGrid": null,
+    "collectionGrid": {
+      "x": 237,
+      "y": 157,
+      "width": 831,
+      "height": 906
+    },
+    "inspector": {
+      "x": 1069,
+      "y": 23,
+      "width": 356,
+      "height": 1040
+    },
+    "assetCards": 0,
+    "collectionCards": 18,
+    "trustStripPresent": false,
+    "diagnosticCardTextPresent": false,
+    "consoleErrors": []
+  },
+  "mobile": {
+    "url": "http://localhost:4871/collections",
+    "bodyScrollWidth": 390,
+    "viewportWidth": 390,
+    "horizontalOverflow": false,
+    "app": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 6169
+    },
+    "sidebar": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0
+    },
+    "topbar": {
+      "x": 0,
+      "y": 56,
+      "width": 390,
+      "height": 242
+    },
+    "libraryGrid": null,
+    "collectionGrid": {
+      "x": 0,
+      "y": 440,
+      "width": 390,
+      "height": 5633
+    },
+    "inspector": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0
+    },
+    "assetCards": 0,
+    "collectionCards": 18,
+    "trustStripPresent": false,
+    "diagnosticCardTextPresent": false,
+    "consoleErrors": []
+  }
+}
