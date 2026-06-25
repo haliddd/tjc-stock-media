@@ -1,0 +1,29 @@
+{
+  "issue": 68,
+  "url": "http://localhost:4871/",
+  "capturedAt": "2026-06-25T15:42:24Z",
+  "screenshots": [
+    "docs/screenshots/qa/issue-68-landing-desktop.png",
+    "docs/screenshots/qa/issue-68-landing-mobile.png"
+  ],
+  "checks": {
+    "desktop": {
+      "hasMarketingPage": true,
+      "hasAppShell": false,
+      "headline": "A beautiful DAM for teams that need control.",
+      "roleCards": 4,
+      "featureCards": 5,
+      "hasRightsSafeToggle": true,
+      "hasMockInspector": true,
+      "bodyWidth": 1512,
+      "viewportWidth": 1512,
+      "horizontalOverflow": false
+    },
+    "mobile": {
+      "hasMarketingPage": true,
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false
+    }
+  }
+}
