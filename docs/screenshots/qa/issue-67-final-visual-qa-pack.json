@@ -1,0 +1,595 @@
+{
+  "issue": 67,
+  "capturedAt": "2026-06-25T15:53:08.080Z",
+  "baseUrl": "http://127.0.0.1:4871",
+  "method": "Playwright Chromium fallback; Browser/IAB unavailable in current toolset",
+  "routes": [
+    {
+      "key": "png2-library-shell",
+      "png": 2,
+      "url": "/library",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (2).png",
+      "mobile": true,
+      "required": [
+        "Library",
+        "Asset inspector"
+      ]
+    },
+    {
+      "key": "png2-collections",
+      "png": 2,
+      "url": "/collections",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (2).png",
+      "mobile": true,
+      "required": [
+        "Collections",
+        "Collection inspector"
+      ]
+    },
+    {
+      "key": "png3-public-portal",
+      "png": 3,
+      "url": "/public-portal/spring-campaign-2024",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (3).png",
+      "mobile": true,
+      "required": [
+        "Spring Campaign 2024"
+      ]
+    },
+    {
+      "key": "png4-search-intelligence",
+      "png": 4,
+      "url": "/library",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (4).png",
+      "search": "outdoor hero images",
+      "required": [
+        "Search Intelligence",
+        "Matched because"
+      ]
+    },
+    {
+      "key": "png5-asset-detail",
+      "png": 5,
+      "url": "/assets/1",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (5).png",
+      "mobile": true,
+      "required": [
+        "Asset detail",
+        "Download renditions"
+      ]
+    },
+    {
+      "key": "png5-download-drawer",
+      "png": 5,
+      "url": "/assets/1",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (5).png",
+      "openDownload": true,
+      "required": [
+        "Download Center"
+      ]
+    },
+    {
+      "key": "png6-asset-rights-record",
+      "png": 6,
+      "url": "/assets/1",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (6).png",
+      "required": [
+        "Rights & Releases",
+        "Compliance status"
+      ]
+    },
+    {
+      "key": "png7-brand-kit",
+      "png": 7,
+      "url": "/brand-hub",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (7).png",
+      "mobile": true,
+      "required": [
+        "Acme Corporate Brand Kit",
+        "Brand rules"
+      ]
+    },
+    {
+      "key": "png8-audit-compliance",
+      "png": 8,
+      "url": "/governance/audit-log",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (8).png",
+      "required": [
+        "Audit Log & Compliance",
+        "Compliance posture"
+      ]
+    },
+    {
+      "key": "png9-distribution-sets",
+      "png": 9,
+      "url": "/distribution-sets",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_11 AM (9).png",
+      "required": [
+        "Distribution Sets",
+        "Spring Campaign 2024"
+      ]
+    },
+    {
+      "key": "png10-integrations-settings",
+      "png": 10,
+      "url": "/governance/integrations",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_11 AM (10).png",
+      "required": [
+        "Integrations & Settings",
+        "ResourceSpace Connection"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "key": "png2-library-shell",
+      "png": 2,
+      "viewport": "desktop-1448",
+      "url": "/library",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png2-library-shell-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (2).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 63,
+      "ignoredNavigationAborts": [
+        {
+          "url": "http://127.0.0.1:4871/library?sort=Newest&limit=24&offset=0&_rsc=YHA1CXcChyyfq5xb",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "literalTextProbe": {
+        "Library": true,
+        "Asset inspector": true
+      }
+    },
+    {
+      "key": "png2-library-shell",
+      "png": 2,
+      "viewport": "mobile-390",
+      "url": "/library",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png2-library-shell-mobile-390.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (2).png",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 63,
+      "ignoredNavigationAborts": [
+        {
+          "url": "http://127.0.0.1:4871/library?sort=Newest&limit=24&offset=0&_rsc=YHA1CXcChyyfq5xb",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "literalTextProbe": {
+        "Library": true,
+        "Asset inspector": false
+      }
+    },
+    {
+      "key": "png2-collections",
+      "png": 2,
+      "viewport": "desktop-1448",
+      "url": "/collections",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png2-collections-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (2).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 79,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Collections": true,
+        "Collection inspector": false
+      }
+    },
+    {
+      "key": "png2-collections",
+      "png": 2,
+      "viewport": "mobile-390",
+      "url": "/collections",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png2-collections-mobile-390.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (2).png",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 79,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Collections": true,
+        "Collection inspector": false
+      }
+    },
+    {
+      "key": "png3-public-portal",
+      "png": 3,
+      "viewport": "desktop-1448",
+      "url": "/public-portal/spring-campaign-2024",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png3-public-portal-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (3).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 6,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Spring Campaign 2024": true
+      }
+    },
+    {
+      "key": "png3-public-portal",
+      "png": 3,
+      "viewport": "mobile-390",
+      "url": "/public-portal/spring-campaign-2024",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png3-public-portal-mobile-390.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_09 AM (3).png",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 6,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Spring Campaign 2024": true
+      }
+    },
+    {
+      "key": "png4-search-intelligence",
+      "png": 4,
+      "viewport": "desktop-1448",
+      "url": "/library",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png4-search-intelligence-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (4).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 55,
+      "ignoredNavigationAborts": [
+        {
+          "url": "http://127.0.0.1:4871/library?sort=Newest&limit=24&offset=0&_rsc=YHA1CXcChyyfq5xb",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:4871/library?sort=Newest&limit=24&offset=0&_rsc=YHA1CXcChyyfq5xb",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:4871/library?sort=Newest&limit=24&offset=0&q=outdoor+hero+images&_rsc=YHA1CXcChyyfq5xb",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "literalTextProbe": {
+        "Search Intelligence": true,
+        "Matched because": true
+      }
+    },
+    {
+      "key": "png5-asset-detail",
+      "png": 5,
+      "viewport": "desktop-1448",
+      "url": "/assets/1",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png5-asset-detail-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (5).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 48,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Asset detail": false,
+        "Download renditions": false
+      }
+    },
+    {
+      "key": "png5-asset-detail",
+      "png": 5,
+      "viewport": "mobile-390",
+      "url": "/assets/1",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png5-asset-detail-mobile-390.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (5).png",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 48,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Asset detail": false,
+        "Download renditions": false
+      }
+    },
+    {
+      "key": "png5-download-drawer",
+      "png": 5,
+      "viewport": "desktop-1448",
+      "url": "/assets/1",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png5-download-drawer-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (5).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 53,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Download Center": true
+      }
+    },
+    {
+      "key": "png6-asset-rights-record",
+      "png": 6,
+      "viewport": "desktop-1448",
+      "url": "/assets/1",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png6-asset-rights-record-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (6).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 48,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Rights & Releases": true,
+        "Compliance status": true
+      }
+    },
+    {
+      "key": "png7-brand-kit",
+      "png": 7,
+      "viewport": "desktop-1448",
+      "url": "/brand-hub",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png7-brand-kit-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (7).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 46,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Acme Corporate Brand Kit": true,
+        "Brand rules": true
+      }
+    },
+    {
+      "key": "png7-brand-kit",
+      "png": 7,
+      "viewport": "mobile-390",
+      "url": "/brand-hub",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png7-brand-kit-mobile-390.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (7).png",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 46,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Acme Corporate Brand Kit": true,
+        "Brand rules": true
+      }
+    },
+    {
+      "key": "png8-audit-compliance",
+      "png": 8,
+      "viewport": "desktop-1448",
+      "url": "/governance/audit-log",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png8-audit-compliance-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_10 AM (8).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 40,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Audit Log & Compliance": true,
+        "Compliance posture": true
+      }
+    },
+    {
+      "key": "png9-distribution-sets",
+      "png": 9,
+      "viewport": "desktop-1448",
+      "url": "/distribution-sets",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png9-distribution-sets-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_11 AM (9).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 45,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Distribution Sets": true,
+        "Spring Campaign 2024": true
+      }
+    },
+    {
+      "key": "png10-integrations-settings",
+      "png": 10,
+      "viewport": "desktop-1448",
+      "url": "/governance/integrations",
+      "status": 200,
+      "screenshot": "docs/screenshots/qa/issue-67-png10-integrations-settings-desktop-1448.png",
+      "reference": "/Users/halim4pro/Downloads/ChatGPT Image Jun 25, 2026 at 12_57_11 AM (10).png",
+      "bodyWidth": 1448,
+      "viewportWidth": 1448,
+      "horizontalOverflow": false,
+      "consoleMessages": [],
+      "failedRequests": [],
+      "appShellCount": 1,
+      "primaryControls": 46,
+      "ignoredNavigationAborts": [],
+      "literalTextProbe": {
+        "Integrations & Settings": true,
+        "ResourceSpace Connection": true
+      }
+    }
+  ],
+  "aggregate": {
+    "totalCaptures": 16,
+    "horizontalOverflowFailures": [],
+    "consoleIssueCaptures": [],
+    "failedRequestCaptures": [],
+    "selectorProofFailures": [],
+    "ignoredNavigationAbortCaptures": [
+      "png2-library-shell/desktop-1448",
+      "png2-library-shell/mobile-390",
+      "png4-search-intelligence/desktop-1448"
+    ]
+  },
+  "selectorProof": [
+    {
+      "key": "png2-library-shell",
+      "url": "/library",
+      "checks": {
+        "appShell": true,
+        "topbarSearch": true,
+        "inspector": true,
+        "cards": true
+      }
+    },
+    {
+      "key": "png2-collections",
+      "url": "/collections",
+      "checks": {
+        "appShell": true,
+        "collectionCards": true,
+        "rightRail": true,
+        "collectionTilesClass": ".proto-collection-tile"
+      }
+    },
+    {
+      "key": "png3-public-portal",
+      "url": "/public-portal/spring-campaign-2024",
+      "checks": {
+        "portalShell": true,
+        "accessCard": true,
+        "assetGrid": true
+      }
+    },
+    {
+      "key": "png4-search-intelligence",
+      "url": "/library",
+      "checks": {
+        "searchIntel": true,
+        "matchedBecause": true
+      }
+    },
+    {
+      "key": "png5-asset-detail",
+      "url": "/assets/1",
+      "checks": {
+        "detailPage": true,
+        "downloads": true,
+        "rightsRail": true
+      }
+    },
+    {
+      "key": "png5-download-drawer",
+      "url": "/assets/1",
+      "checks": {
+        "drawer": true,
+        "renditionRows": true,
+        "loggedNote": true
+      }
+    },
+    {
+      "key": "png6-asset-rights-record",
+      "url": "/assets/1",
+      "checks": {
+        "rightsTab": true,
+        "regionMatrix": true,
+        "compliance": true
+      }
+    },
+    {
+      "key": "png7-brand-kit",
+      "url": "/brand-hub",
+      "checks": {
+        "brandKit": true,
+        "tabs": true,
+        "brandRules": true
+      }
+    },
+    {
+      "key": "png8-audit-compliance",
+      "url": "/governance/audit-log",
+      "checks": {
+        "audit": true,
+        "kpis": true,
+        "posture": true
+      }
+    },
+    {
+      "key": "png9-distribution-sets",
+      "url": "/distribution-sets",
+      "checks": {
+        "distribution": true,
+        "list": true,
+        "detail": true
+      }
+    },
+    {
+      "key": "png10-integrations-settings",
+      "url": "/governance/integrations",
+      "checks": {
+        "settings": true,
+        "cards": true,
+        "resourceSpace": true
+      }
+    }
+  ]
+}
