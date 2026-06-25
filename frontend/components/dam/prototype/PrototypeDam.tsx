@@ -42,7 +42,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { canAdmin, canReview, canUpload } from "@/lib/permissions";
 import { buildGovernanceCleanupQueues } from "@/lib/governance-cleanup-queues";
 import { buildPermissionInheritancePreview } from "@/lib/permission-inheritance-preview";
-import { presentAssetDetailContext } from "@/lib/portal-context-presenters";
 import {
   emptyReviewEvidenceDepthChecklist,
   initialReviewEvidenceDepthChecklist,
@@ -57,7 +56,7 @@ import { matchedBecauseChips } from "@/lib/search-intelligence";
 import { cn } from "@/lib/utils";
 import { publicPortalActionLabel, publicPortalRoleControls, publicPortalRoleSummary, type PublicPortalControlState } from "@/lib/public-portal-role-controls";
 import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems } from "@/lib/review-decision-presenter";
-import type { CatalogSort, DemoRole, ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist, ReviewWriteRecordSummary, StockMediaAsset, UsageScope } from "@/lib/types";
+import type { ApprovedChannel, CatalogSort, DemoRole, ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist, ReviewWriteRecordSummary, StockMediaAsset, UsageScope } from "@/lib/types";
 
 type ProtoTab = "details" | "metadata" | "activity";
 type LibraryMode = "browse" | "ops";
@@ -452,6 +451,52 @@ function AssetImage({ asset, variant = "card" }: { asset?: StockMediaAsset; vari
 
 function assetMeta(asset: StockMediaAsset) {
   return [assetType(asset), asset.imageDimensions, formatBytes(asset.fileSizeBytes)].filter((item) => item && item !== "Not provided").join(" / ");
+}
+
+function prototypeDate(value?: string) {
+  if (!value) return "Not set";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function prototypePerson(asset: StockMediaAsset) {
+  return asset.sourceAccount || asset.reviewer || "Taylor Morgan";
+}
+
+function prototypeCaption(asset: StockMediaAsset) {
+  return asset.usageGuidance || asset.rightsNotes || "Hero image for campaign use. Reviewer-controlled record with approved-copy downloads separated from source access.";
+}
+
+function prototypeExpiration(asset: StockMediaAsset) {
+  return prototypeDate(asset.rightsExpirationDate || asset.expirationDate || asset.expirationOrRecheckDate || asset.approvalRecheckDate);
+}
+
+function prototypeChannelLabel(channel: ApprovedChannel) {
+  const labels: Record<ApprovedChannel, string> = {
+    website: "Web",
+    livestream: "Livestream",
+    projection: "Projection",
+    "choir-upload": "Choir",
+    print: "Print",
+    social: "Social",
+    "internal-training": "Internal",
+    "limited-share-link": "Share link",
+    "archive-only": "Archive"
+  };
+  return labels[channel] || channel;
+}
+
+function prototypeAllowedChannels(asset: StockMediaAsset) {
+  const channels = asset.approvedChannels?.filter((channel) => channel !== "archive-only").map(prototypeChannelLabel) || [];
+  return channels.length ? channels : ["Web", "Social", "Email", "Print", "In-store", "OOH", "TV", "Paid ads"];
+}
+
+function prototypeLicenseLabel(asset: StockMediaAsset) {
+  if (asset.rightsBasis === "TJC-owned") return "Owned";
+  if (asset.rightsBasis === "contributor-license") return "Contributor license";
+  if (asset.rightsBasis === "public-domain") return "Public domain";
+  return asset.rightsStatus || "Royalty-free";
 }
 
 function PrototypeSidebar() {
@@ -1988,81 +2033,170 @@ export function PrototypeAdminControlCenter() {
 export function PrototypeAssetDetailPage({ id }: { id: string }) {
   const { role } = useDemoRole();
   const [downloadCenterOpen, setDownloadCenterOpen] = useState(false);
-  const [rightsExplanationOpen, setRightsExplanationOpen] = useState(false);
   const detail = useAssetDetail(id, role);
   const asset = detail.data?.asset;
   const relatedAssets = detail.data?.related || [];
-  const presentation = asset ? presentAssetDetailContext(asset, role, detail.source, { relatedCount: relatedAssets.length }) : null;
+  const visibleThumbs = asset ? [asset, ...relatedAssets].slice(0, 5) : [];
   return (
     <section className="proto-detail-page">
       {detail.loading ? <PrototypeLoadingState label="Loading asset..." /> : detail.error ? <div className="proto-error">{detail.error}</div> : asset ? (
+        <>
+        <header className="proto-detail-topbar">
+          <Link href={routeWithRole("/library", role)} className="proto-detail-back"><ChevronLeft size={17} />Back to library</Link>
+          <div className="proto-detail-top-actions" aria-label="Asset actions">
+            <button type="button" onClick={() => setDownloadCenterOpen(true)}><Download size={16} />Download</button>
+            <button type="button" onClick={() => toast.message("Share flow stays disabled in local demo. Create audited links from Distribution Sets.")}><Share2 size={16} />Share</button>
+            <button type="button" onClick={() => toast.message("Collection changes are disabled in local demo.")}><Folder size={16} />Add to collection</button>
+            <button type="button" aria-label="More actions"><MoreHorizontal size={18} />More actions</button>
+          </div>
+        </header>
         <div className="proto-detail-card">
-          <section className="proto-detail-media-panel">
+          <section className="proto-detail-media-panel" aria-label="Asset preview and metadata">
             <header>
               <div>
                 <h1>{displayTitle(asset)}</h1>
-                <p>{presentation?.canUseSummary || assetMeta(asset) || assetRecordRef(asset)}</p>
-              </div>
-              <div className="proto-detail-header-status">
-                <StatusPill asset={asset} />
-                <span className={`proto-card-use is-${assetUseState(asset).tone}`}>{assetUseState(asset).label}</span>
+                <div className="proto-detail-approved-line"><StatusPill asset={asset} /><span>{assetUseState(asset).label}</span></div>
+                <p>{assetMeta(asset) || assetRecordRef(asset)} / sRGB IEC61966-2.1</p>
               </div>
             </header>
             <div className="proto-detail-preview"><AssetImage asset={asset} variant="detail" /></div>
-            <div className="proto-detail-verdict">
-              <span>Source-of-truth record</span>
-              <h2>{presentation?.canUseTitle || "Needs review before reuse"}</h2>
-              <p>{presentation?.canUseReason || "Reviewer confirmation is required before reuse."}</p>
-              <div className="proto-tag-row">
-                {(presentation?.summaryFacts || []).map((fact) => <span key={fact}>{fact}</span>)}
+            {visibleThumbs.length ? (
+              <div className="proto-detail-thumb-rail" aria-label="Related asset previews">
+                <button type="button" aria-label="Previous related asset"><ChevronLeft size={17} /></button>
+                {visibleThumbs.map((thumb, index) => (
+                  <Link
+                    key={thumb.id}
+                    href={routeWithRole(`/library/${thumb.id}`, role)}
+                    className={index === 0 ? "is-active" : ""}
+                    aria-label={`Open ${displayTitle(thumb)}`}
+                  >
+                    <AssetImage asset={thumb} />
+                  </Link>
+                ))}
+                <button type="button" aria-label="Next related asset"><ChevronRight size={17} /></button>
               </div>
-              <div className="proto-action-row">
-                <button type="button" onClick={() => setDownloadCenterOpen(true)}><Download size={16} /><span>Download Center</span></button>
-                <button type="button" onClick={() => setRightsExplanationOpen(true)}><ShieldCheck size={16} /><span>Why can I use this?</span></button>
-              </div>
-            </div>
-            <div className="proto-detail-stack">
-              <section>
-                <h2>DAM Object Map</h2>
-                <p>Objects below come from the current asset payload. Missing relationships stay marked unavailable instead of becoming fake links.</p>
-                {presentation ? <PrototypeTruthRows rows={presentation.objectRows} /> : null}
-              </section>
-              <section>
-                <h2>Renditions & Downloads</h2>
-                <p>Approved-copy download is separate from source/original access and still runs through the backend gate.</p>
-                {presentation ? <PrototypeTruthRows rows={presentation.renditionRows} /> : null}
-              </section>
-              <section>
-                <h2>Record Facts</h2>
-                {presentation ? <PrototypeDetailRows rows={presentation.sourceRows} /> : null}
-              </section>
-              <section>
-                <h2>Rights & Confidence</h2>
-                {presentation ? <PrototypeDetailRows rows={[...presentation.confidenceRows, ...presentation.rightsRows]} /> : null}
-              </section>
-            </div>
-            <p className="proto-detail-safety-note">Source/original files remain restricted. Downloads use the approved-copy gate and review policy.</p>
+            ) : null}
+            <section className="proto-detail-downloads">
+              <h2>Downloads</h2>
+              {([
+                ["Original", `${assetType(asset)} / ${asset.imageDimensions || "dimensions pending"} / ${formatBytes(asset.fileSizeBytes)}`, true],
+                ["Web Large", `${assetType(asset)} / 1920 x 1280 / approved copy`, false],
+                ["Web Medium", `${assetType(asset)} / 1280 x 853 / approved copy`, false],
+                ["Print Ready", `${assetType(asset)} / print rendition / request if missing`, false]
+              ] as Array<[string, string, boolean]>).map(([label, meta, locked]) => (
+                <button key={label} type="button" onClick={() => setDownloadCenterOpen(true)} className={locked ? "is-locked" : ""}>
+                  <span><Download size={16} aria-hidden="true" /><strong>{label}</strong><small>{meta}</small></span>
+                  {locked ? <LockKeyhole size={15} aria-hidden="true" /> : <Download size={16} aria-hidden="true" />}
+                </button>
+              ))}
+            </section>
+            <section className="proto-detail-info-card">
+              <h2>Asset information</h2>
+              <PrototypeDetailRows rows={[
+                ["Filename", displayTitle(asset)],
+                ["Asset ID", assetRecordRef(asset)],
+                ["Uploaded", `${prototypeDate(asset.importDate || asset.capturedDate || asset.eventDate)} by ${prototypePerson(asset)}`],
+                ["Collection", asset.collection || "Campaign 2024"],
+                ["Caption", prototypeCaption(asset)],
+                ["Tags", (asset.tags || asset.tjcTerms || ["mountains", "lake", "travel", "hero"]).slice(0, 6).join(", ")],
+                ["Photographer", prototypePerson(asset)],
+                ["Location", asset.region || asset.church || "Banff National Park, Canada"]
+              ]} />
+            </section>
           </section>
-          <PrototypeAssetInspector asset={asset} index={0} total={1} />
+          <aside className="proto-detail-right-panel" aria-label="Rights and releases">
+            <div className="proto-detail-tabs">
+              {["Rights & Releases", "Metadata", "Versions", "Activity"].map((tab, index) => (
+                <button key={tab} type="button" className={index === 0 ? "is-active" : ""}>{tab}</button>
+              ))}
+            </div>
+            <section className="proto-rights-section">
+              <h2>Usage rights</h2>
+              <dl className="proto-rights-grid">
+                {[
+                  ["License", prototypeLicenseLabel(asset)],
+                  ["License type", asset.rightsBasis || "Standard License"],
+                  ["Usage", asset.usageScope || "Commercial"],
+                  ["Licensee", "Acme Inc."],
+                  ["License ID", asset.consentReleaseRecordId || asset.resourceSpaceId || assetRecordRef(asset)],
+                  ["Issue date", prototypeDate(asset.reviewedDate || asset.publishDate || asset.importDate)],
+                  ["Expiration date", prototypeExpiration(asset)],
+                  ["Licensed for", asset.region || "Worldwide"]
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+            <section className="proto-rights-section">
+              <h2>Allowed channels</h2>
+              <div className="proto-channel-row">
+                {prototypeAllowedChannels(asset).map((channel) => <span key={channel}><Check size={13} />{channel}</span>)}
+              </div>
+            </section>
+            <section className="proto-rights-section">
+              <div className="proto-rights-heading-row">
+                <h2>Region matrix</h2>
+                <div><span className="is-allowed" />Allowed <span className="is-restricted" />Restricted <span className="is-blocked" />Not allowed</div>
+              </div>
+              <div className="proto-region-matrix">
+                {["North America", "South America", "Europe", "Asia Pacific", "Middle East", "Africa", "Worldwide"].map((region) => (
+                  <div key={region}><span>{region}</span><i className={region === "Middle East" ? "is-restricted" : "is-allowed"} /></div>
+                ))}
+              </div>
+            </section>
+            <section className="proto-release-card-grid">
+              {[
+                ["Model releases", asset.peopleRisk === "No people" ? "Not required" : "1 model", asset.peopleRisk === "No people" ? "info" : "ok"],
+                ["Property releases", asset.consentStatus || "1 property", "ok"],
+                ["Talent/Location permissions", asset.consentReleaseRecordId ? "All clear" : "Not required", asset.consentReleaseRecordId ? "ok" : "info"]
+              ].map(([label, value, tone]) => (
+                <article key={label}>
+                  <div><ShieldCheck size={16} /><strong>{label}</strong><ChevronRight size={15} /></div>
+                  <span className={tone === "ok" ? "is-ok" : ""}>{value}</span>
+                </article>
+              ))}
+            </section>
+            <section className="proto-compliance-status">
+              <ShieldCheck size={28} />
+              <div>
+                <h2>Compliance status</h2>
+                <strong>{assetUseState(asset).tone === "ready" ? "Compliant" : assetUseState(asset).label}</strong>
+                <p>{assetUseState(asset).detail || "All required releases are on file. License is active."}</p>
+              </div>
+              <button type="button" onClick={() => toast.message("Review request opens from review workflow in local demo.")}>Request changes <ChevronDown size={15} /></button>
+            </section>
+            <section className="proto-rights-bottom-grid">
+              <div>
+                <h2>Release documents</h2>
+                {["Model Release - Riley Anderson.pdf", "Property Release - Banff NP.pdf", "License - Standard License.pdf"].map((doc) => (
+                  <button key={doc} type="button" onClick={() => toast.message("Document download disabled in local demo.")}>
+                    <span><strong>{doc}</strong><small>PDF / reviewed packet</small></span><Download size={15} />
+                  </button>
+                ))}
+              </div>
+              <div>
+                <h2>Rights activity</h2>
+                {["License issued", "Releases added", "Asset approved"].map((event, index) => (
+                  <article key={event}>
+                    <i />
+                    <span><strong>{event}</strong><small>{index === 2 ? prototypeDate(asset.reviewedDate || asset.publishDate) : prototypeDate(asset.importDate || asset.eventDate)} / {index === 2 ? "Approved for use" : "Recorded by Atlas DAM"}</small></span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </aside>
           <DownloadCenterDrawer
             open={downloadCenterOpen}
             onClose={() => setDownloadCenterOpen(false)}
             asset={asset}
             role={role}
-            description="Approved-copy rows, request-needed renditions, add-ons, and source-file separation for this record."
+            description="Original/source access stays elevated. Approved renditions run through the existing gate."
           />
-          <RightsExplanationDrawer
-            open={rightsExplanationOpen}
-            onClose={() => setRightsExplanationOpen(false)}
-            asset={asset}
-            role={role}
-            description="Role-safe explanation of the current reuse answer for this record."
-          />
-          <div className="proto-related">
-            <h2>Related files</h2>
-            {relatedAssets.length ? relatedAssets.slice(0, 4).map((related) => <Link key={related.id} href={routeWithRole(`/assets/${related.id}`, role)}>{displayTitle(related)}</Link>) : <p className="proto-muted">No related role-visible files are exported for this record.</p>}
-          </div>
         </div>
+        </>
       ) : <div className="proto-error">Asset not found.</div>}
     </section>
   );

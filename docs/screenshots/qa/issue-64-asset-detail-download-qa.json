@@ -1,0 +1,61 @@
+{
+  "issue": 64,
+  "url": "http://localhost:4871/library/1?role=Viewer",
+  "capturedAt": "2026-06-25T14:47:46.713Z",
+  "screenshots": [
+    "docs/screenshots/qa/issue-64-asset-detail-desktop-1448.png",
+    "docs/screenshots/qa/issue-64-download-drawer-desktop-1448.png",
+    "docs/screenshots/qa/issue-64-asset-detail-mobile-390.png"
+  ],
+  "checks": {
+    "desktop": {
+      "title": "01 Sabbath Worship Sample",
+      "cardColumns": "460.016px 661.984px",
+      "leftWidth": 460,
+      "rightWidth": 662,
+      "hasVerdictSlab": false,
+      "topActions": [
+        "Download",
+        "Share",
+        "Add to collection",
+        "More actions"
+      ],
+      "tabs": [
+        "Rights & Releases",
+        "Metadata",
+        "Versions",
+        "Activity"
+      ],
+      "downloads": [
+        "OriginalJPG / 1400x900 / Not provided",
+        "Web LargeJPG / 1920 x 1280 / approved copy",
+        "Web MediumJPG / 1280 x 853 / approved copy",
+        "Print ReadyJPG / print rendition / request if missing"
+      ],
+      "regionColumns": 7,
+      "releaseCards": 3,
+      "thumbnailHref": "/library/1?role=Viewer"
+    },
+    "drawer": {
+      "dialogTitle": "Download Center",
+      "dialogWidth": 544,
+      "renditionRows": [
+        "Preview derivativeAvailableJPG · 1400x900Role-safe preview derivative can render for inspection.Available",
+        "Approved web copyRequestJPG · 1400x900Approved web copy is missing or not cleared for public delivery.Request",
+        "Approved print copyRequestBulletin, poster, or handout once print export is configuredPrint-approved derivative factory is not configured; request reviewer approval for print use.Request",
+        "Metadata sidecar",
+        "Release summary",
+        "License / rights terms"
+      ],
+      "hasFakeMultiFileCta": false,
+      "hasOriginalAccessNotice": true
+    },
+    "mobile": {
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "cardColumns": "362px",
+      "topbarHeight": 98
+    }
+  }
+}
