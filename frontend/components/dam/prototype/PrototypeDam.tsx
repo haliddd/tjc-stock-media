@@ -172,8 +172,17 @@ const navGroups = [
     label: "GOVERNANCE",
     items: [
       { label: "Metadata & Brand Governance", href: "/governance/metadata-health", icon: UserCog },
+      { label: "Audit Log & Compliance", href: "/governance/audit-log", icon: ShieldCheck, guard: canAdmin },
       { label: "Review", href: "/review", icon: ShieldCheck, guard: canReview },
       { label: "Requests", href: "/requests", icon: Inbox }
+    ]
+  },
+  {
+    label: "DISTRIBUTIONS",
+    items: [
+      { label: "Distribution Sets", href: "/distribution-sets", icon: Send },
+      { label: "Share Links", href: "/distribution-sets?view=links", icon: Share2 },
+      { label: "Published Portals", href: "/public-portal/spring-campaign-2024", icon: LayoutGrid }
     ]
   },
   {
@@ -191,7 +200,11 @@ const navGroups = [
   {
     label: "SETTINGS",
     items: [
-      { label: "Admin", href: "/admin", icon: Settings, guard: canAdmin }
+      { label: "General", href: "/admin/settings", icon: Settings, guard: canAdmin },
+      { label: "Integrations", href: "/governance/integrations", icon: Settings, guard: canAdmin },
+      { label: "Security", href: "/admin/settings?section=security", icon: LockKeyhole, guard: canAdmin },
+      { label: "Roles & Access", href: "/admin/roles", icon: UserCog, guard: canAdmin },
+      { label: "API & Webhooks", href: "/governance/integrations?section=api", icon: Send, guard: canAdmin }
     ]
   }
 ] satisfies Array<{

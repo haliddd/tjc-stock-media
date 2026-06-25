@@ -6,6 +6,12 @@ import {
   PrototypeReviewApprove,
   PrototypeUploadIntake
 } from "./prototype/PrototypeDam";
+import {
+  PrototypeAuditCompliancePage,
+  PrototypeBrandKitPage,
+  PrototypeDistributionSetsPage,
+  PrototypeIntegrationsSettingsPage
+} from "./prototype/PrototypeAdminSurfaces";
 
 export function AtlasLibraryPage() {
   return <PrototypeLibraryPage />;
@@ -44,11 +50,11 @@ type LegacyAdminProps = {
 };
 
 export function EnterprisePackageBuilderPage() {
-  return <AtlasCollectionsPage />;
+  return <PrototypeDistributionSetsPage />;
 }
 
 export function EnterpriseBrandHubPage() {
-  return <AtlasCollectionsPage />;
+  return <PrototypeBrandKitPage />;
 }
 
 export function EnterpriseDashboardPage() {
@@ -82,6 +88,8 @@ function NonCanonicalSurface({ title }: { title: string }) {
   );
 }
 
-export function EnterpriseAdminPage(_props: LegacyAdminProps = {}) {
+export function EnterpriseAdminPage(props: LegacyAdminProps = {}) {
+  if (props.initialModule === "audit") return <PrototypeAuditCompliancePage />;
+  if (props.initialModule === "integrations") return <PrototypeIntegrationsSettingsPage />;
   return <NonCanonicalSurface title="Admin" />;
 }
