@@ -6,8 +6,9 @@ import { newestByTimestamp, safeEnumValue, safeIsoTimestamp, safeIsoTimestampIdP
 import { normalizeReviewRoleWithFallback } from "@/lib/permissions";
 import { normalizePersistedDisplayText, normalizePersistedSlugText } from "@/lib/request-validation";
 import { normalizeReviewChecklist } from "@/lib/review-evidence";
+import { normalizeReviewEvidenceDepthChecklist } from "@/lib/review-evidence-depth";
 import { listRuntimeFiles, readRuntimeJsonFile, writeRuntimeJsonFile } from "@/lib/runtime-file-store";
-import type { ReviewEvidenceChecklist, ReviewWriteRecord, ReviewWriteRecordSummary, StockMediaAsset } from "@/lib/types";
+import type { ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist, ReviewWriteRecord, ReviewWriteRecordSummary, StockMediaAsset } from "@/lib/types";
 
 const pendingDirName = "pending-review-writes";
 export const maxPendingReviewWrites = 200;
@@ -56,6 +57,7 @@ function normalizePendingReviewWrite(input: unknown): ReviewWriteRecord | null {
     updatedAt,
     note: normalizePersistedDisplayText(raw.note, 1200),
     checklist: normalizeReviewChecklist(raw.checklist),
+    evidenceDepth: raw.evidenceDepth ? normalizeReviewEvidenceDepthChecklist(raw.evidenceDepth) : undefined,
     blockers: Array.isArray(raw.blockers) ? raw.blockers.map((item) => normalizePersistedDisplayText(item, 120)).filter(Boolean).slice(0, 24) : [],
     syncState: safeSyncState(raw.syncState),
     retryCount: safeNonNegativeInt(raw.retryCount),
@@ -89,7 +91,8 @@ export function pendingReviewWriteSummary(record: ReviewWriteRecord): ReviewWrit
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     syncState: record.syncState,
-    lastError: record.lastError
+    lastError: record.lastError,
+    evidenceDepth: record.evidenceDepth
   };
 }
 
@@ -117,6 +120,7 @@ export function createPendingReviewWrite({
   reviewerName,
   note,
   checklist,
+  evidenceDepth,
   blockers
 }: {
   asset: StockMediaAsset;
@@ -125,6 +129,7 @@ export function createPendingReviewWrite({
   reviewerName?: string;
   note: string;
   checklist: ReviewEvidenceChecklist;
+  evidenceDepth?: ReviewEvidenceDepthChecklist;
   blockers: string[];
 }) {
   const now = new Date().toISOString();
@@ -141,6 +146,7 @@ export function createPendingReviewWrite({
     updatedAt: now,
     note: normalizePersistedDisplayText(note, 1200),
     checklist,
+    evidenceDepth,
     blockers: blockers.map((item) => normalizePersistedDisplayText(item, 120)).filter(Boolean).slice(0, 24),
     syncState: "queued",
     retryCount: 0

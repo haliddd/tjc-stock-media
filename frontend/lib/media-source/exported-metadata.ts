@@ -8,7 +8,9 @@ export const exportedMetadataStatus: MediaSourceStatus = {
   adapter: "exported-metadata",
   label: "ResourceSpace metadata export",
   detail: "Reading latest local ResourceSpace CSV export. UI remains read-only for approval writes until API credentials are configured.",
-  readOnly: true
+  readOnly: true,
+  live: false,
+  sourceKind: "resourcespace"
 };
 
 function parseCsv(input: string) {

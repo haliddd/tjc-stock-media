@@ -1089,7 +1089,7 @@ describe("launch readiness facts", () => {
     const integrations: IntegrationReadinessItem[] = [
       { id: "auth", label: "Auth", ready: true, detail: "Configured", owner: "Identity Provider", state: "Operational" },
       { id: "review-writes", label: "Review writes", ready: false, detail: "Not configured", owner: "ResourceSpace", state: "Not configured" },
-      { id: "approved-copy-delivery", label: "Approved copies", ready: true, detail: "Configured", owner: "Amazon S3", state: "Operational" }
+      { id: "approved-copy-delivery", label: "Approved copies", ready: true, detail: "Configured", owner: "Delivery provider", state: "Operational" }
     ];
 
     const readiness = buildBetaReadiness({ integrations, assetCount: 1, portalReady: 1, auditRecent: [] });

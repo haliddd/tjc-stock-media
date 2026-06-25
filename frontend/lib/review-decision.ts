@@ -1,7 +1,7 @@
 import { buildReuseDecision } from "@/lib/reuse-policy";
 import { createPendingReviewWrite } from "@/lib/pending-review-writes";
 import { normalizeReviewRoleWithFallback } from "@/lib/permissions";
-import type { DemoRole, ReviewEvidenceChecklist, StockMediaAsset } from "@/lib/types";
+import type { DemoRole, ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist, StockMediaAsset } from "@/lib/types";
 
 export {
   buildReviewEvidenceDecision,
@@ -16,7 +16,8 @@ export function queuePendingReviewDecision({
   role,
   reviewerName,
   note,
-  checklist
+  checklist,
+  evidenceDepth
 }: {
   asset: StockMediaAsset;
   requestedStatus: string;
@@ -24,6 +25,7 @@ export function queuePendingReviewDecision({
   reviewerName?: string;
   note: string;
   checklist: ReviewEvidenceChecklist;
+  evidenceDepth?: ReviewEvidenceDepthChecklist;
 }) {
   const reuse = buildReuseDecision(asset);
   return createPendingReviewWrite({
@@ -33,6 +35,7 @@ export function queuePendingReviewDecision({
     reviewerName,
     note,
     checklist,
+    evidenceDepth,
     blockers: reuse.blockers.map((item) => item.label)
   });
 }

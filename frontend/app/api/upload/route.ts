@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { appendAuditEvent } from "@/lib/audit-log";
+import { appendAuditEvent, appendRequiredAuditEvent } from "@/lib/audit-log";
 import { canUpload } from "@/lib/permissions";
+import { createAuditedRequestRecord } from "@/lib/request-record-store";
 import { requestIdentity } from "@/lib/request-identity";
 import { readFormData } from "@/lib/request-validation";
+import { runtimeWriteBlockedRouteError } from "@/lib/runtime-file-store";
 import {
   normalizeUploadIntake,
   submitUploadIntakeBatch,
@@ -30,7 +32,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(validationError.body, { status: validationError.status });
   }
 
-  appendAuditEvent(uploadIntakeSubmittedAuditEvent(intake, role, identity.id));
   const submitted = await submitUploadIntakeBatch(intake, role, identity.id);
-  return NextResponse.json(submitted.body, { status: submitted.status });
+  if (submitted.status !== 200) {
+    return NextResponse.json(submitted.body, { status: submitted.status });
+  }
+  let requestRecord: Awaited<ReturnType<typeof createAuditedRequestRecord>>;
+  try {
+    requestRecord = await createAuditedRequestRecord({
+      type: "Upload intake",
+      relatedAsset: intake.eventName || "Upload intake batch",
+      blocker: intake.reviewWarnings[0] || "Reviewer intake packet pending.",
+      requiredEvidence: ["Uploader declaration", "Event context", "People visibility", "Rights notes"],
+      nextAction: "Reviewer intake triage required before any media becomes reusable.",
+      linkedIntakeBatchId: submitted.body.batchId
+    }, identity);
+  } catch (error) {
+    const blocked = runtimeWriteBlockedRouteError("request-records", error);
+    return NextResponse.json({
+      ...blocked.body,
+      error: "Upload intake was saved but request ticket recording failed; fail closed.",
+      reasonCode: "required-request-record-failed-after-intake-save",
+      partialFailure: true,
+      batchId: submitted.body.batchId,
+      custodyBoundary: submitted.body.custodyBoundary,
+      resourceSpaceWritten: false
+    }, { status: blocked.status });
+  }
+  try {
+    appendRequiredAuditEvent(uploadIntakeSubmittedAuditEvent(intake, role, identity.id));
+  } catch (error) {
+    const blocked = runtimeWriteBlockedRouteError("audit-log", error);
+    return NextResponse.json({
+      ...blocked.body,
+      error: "Upload intake was saved but required audit failed; fail closed.",
+      reasonCode: "required-audit-failed-after-intake-save",
+      partialFailure: true,
+      batchId: submitted.body.batchId,
+      custodyBoundary: submitted.body.custodyBoundary,
+      resourceSpaceWritten: false
+    }, { status: blocked.status });
+  }
+  return NextResponse.json({ ...submitted.body, requestRecordId: requestRecord.id }, { status: submitted.status });
 }

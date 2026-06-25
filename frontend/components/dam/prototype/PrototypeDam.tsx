@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -13,11 +13,10 @@ import {
   Eye,
   FileUp,
   Folder,
-  Grid2X2,
   Inbox,
   LayoutGrid,
   List,
-  MoreHorizontal,
+  LockKeyhole,
   PanelLeftClose,
   Search,
   Send,
@@ -25,24 +24,137 @@ import {
   Share2,
   ShieldCheck,
   SlidersHorizontal,
-  Tag,
   Upload,
-  Users,
+  MoreHorizontal,
+  UserCog,
   X
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { BetaPrototypeTools } from "@/components/BetaPrototypeTools";
+import { CommandPalette } from "@/components/CommandPalette";
+import { DownloadCenterDrawer } from "@/components/DownloadOptionsPanel";
+import { RightsExplanationDrawer } from "@/components/RightsExplanationDrawer";
 import { useDemoRole } from "@/components/RoleProvider";
-import { useAdminReadiness, useAssetDetail, useAssetsSearch, useDownloadGate, useReviewQueue } from "@/components/dam/useDamApi";
+import { useAdminReadiness, useAssetDetail, useAssetsSearch, useDownloadGate, useRequestRecords, useReviewQueue, useReviewRequest, type DownloadGateResponse, type RequestRecordPayload, type ReviewRequestResponse } from "@/components/dam/useDamApi";
+import { Badge } from "@/components/ui/badge";
+import { Button as ShadcnButton, buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { canAdmin, canReview, canUpload } from "@/lib/permissions";
+import { buildGovernanceCleanupQueues } from "@/lib/governance-cleanup-queues";
+import { buildPermissionInheritancePreview } from "@/lib/permission-inheritance-preview";
+import {
+  emptyReviewEvidenceDepthChecklist,
+  initialReviewEvidenceDepthChecklist,
+  reviewEvidenceDepthDisabledReason,
+  reviewEvidenceDepthItems
+} from "@/lib/review-evidence-depth";
 import { routeWithRole } from "@/lib/role-routes";
-import { assetRecordRef, assetType, displayTitle, formatBytes, sourceLabel } from "@/lib/enterprise-display";
+import { DAM_LOCAL_BETA_ROLE_HEADER, DAM_LOCAL_TRUSTED_ROLE_HEADER } from "@/lib/dam-api-client";
+import { assetRecordRef, assetType, displayTitle, formatBytes } from "@/lib/enterprise-display";
 import { assetEnterpriseStatus } from "@/lib/enterprise-status";
+import { matchedBecauseChips } from "@/lib/search-intelligence";
+import { cn } from "@/lib/utils";
+import { publicPortalActionLabel, publicPortalRoleControls, publicPortalRoleSummary, type PublicPortalControlState } from "@/lib/public-portal-role-controls";
 import { emptyReviewChecklist, initialReviewChecklistForAsset, reviewActionDisabledReason, reviewChecklistItems } from "@/lib/review-decision-presenter";
-import type { DemoRole, ReviewEvidenceChecklist, StockMediaAsset, UsageScope } from "@/lib/types";
+import type { ApprovedChannel, CatalogSort, DemoRole, ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist, ReviewWriteRecordSummary, StockMediaAsset, UsageScope } from "@/lib/types";
 
 type ProtoTab = "details" | "metadata" | "activity";
-type UploadListItem = { name: string; size: number };
+type LibraryMode = "browse" | "ops";
+type IngestStageTone = "approved" | "review" | "danger" | "draft";
+type RequestFilter = "open" | "waiting" | "closed";
+type ReviewDecisionPayload = {
+  ok?: boolean;
+  queued?: boolean;
+  error?: string;
+  message?: string;
+  pendingWriteId?: string;
+  syncState?: string;
+  resourceSpaceWritten?: boolean;
+  mode?: string;
+};
+
+const prototypeSortOptions: CatalogSort[] = ["Approved first", "Recently approved", "Newest", "A-Z"];
+const defaultPrototypeSort: CatalogSort = "Newest";
+const defaultPrototypePageLimit = 24;
+
+function normalizePrototypeSort(value: string | null): CatalogSort {
+  return prototypeSortOptions.includes(value as CatalogSort) ? value as CatalogSort : defaultPrototypeSort;
+}
+
+function readPrototypePageLimit(value: string | null) {
+  const parsed = Number.parseInt(value || "", 10);
+  if (!Number.isFinite(parsed)) return defaultPrototypePageLimit;
+  return Math.max(1, Math.min(120, parsed));
+}
+
+function readPrototypeOffset(value: string | null) {
+  const parsed = Number.parseInt(value || "", 10);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, parsed);
+}
+
+function readLibraryMode(value: string | null): LibraryMode {
+  return value === "ops" ? "ops" : "browse";
+}
+
+function readBooleanUrlFlag(value: string | null) {
+  return value === "1" || value === "true" || value === "yes";
+}
+
+function rightsSafeToggleLabel(role: DemoRole, mode: LibraryMode) {
+  if (role === "Reviewer") return "Show assets cleared for use";
+  if (role === "DAM Admin" || mode === "ops") return "Show rights-safe assets only";
+  return "Only show assets I can use";
+}
+
+function assetUseState(asset: StockMediaAsset) {
+  const decision = asset.reuseDecision;
+  if (decision?.state === "portal-ready") {
+    return {
+      tone: "ready",
+      label: "Available for use",
+      actionLabel: "Download approved copy",
+      detail: decision.summary
+    };
+  }
+  if (decision?.state === "internal-ready") {
+    return {
+      tone: "internal",
+      label: "Internal use only",
+      actionLabel: "Check internal gate",
+      detail: decision.summary
+    };
+  }
+  if (decision?.state === "blocked-do-not-use") {
+    return { tone: "blocked", label: "Restricted", actionLabel: "Request review", detail: decision.summary };
+  }
+  if (decision?.state === "blocked-archive") {
+    return { tone: "restricted", label: "Reference only", actionLabel: "Request review", detail: decision.summary };
+  }
+  if (decision?.state === "blocked-rights") {
+    return { tone: "review", label: "Rights review needed", actionLabel: "Request rights review", detail: decision.summary };
+  }
+  if (decision?.state === "blocked-people-minors") {
+    return { tone: "review", label: "People/youth review", actionLabel: "Request review", detail: decision.summary };
+  }
+  if (decision?.state === "blocked-reviewer-date") {
+    return { tone: "review", label: "Review evidence needed", actionLabel: "Request review", detail: decision.summary };
+  }
+  if (decision?.state === "blocked-derivative") {
+    return { tone: "review", label: "Approved copy missing", actionLabel: "Request approved copy", detail: decision.summary };
+  }
+  if (decision?.state === "blocked-source") {
+    return { tone: "review", label: "Source check needed", actionLabel: "Request review", detail: decision.summary };
+  }
+  if (decision?.state === "blocked-sensitive") {
+    return { tone: "review", label: "Sensitive review", actionLabel: "Request review", detail: decision.summary };
+  }
+  if (asset.status === "Approved Public" && asset.usageScope === "Public") {
+    return { tone: "review", label: "Needs evidence", actionLabel: "Check use gate", detail: "Approval exists, but reuse evidence is incomplete." };
+  }
+  return { tone: "review", label: "Needs review", actionLabel: "Request review", detail: decision?.summary || "Reviewer confirmation is required before reuse." };
+}
 
 const navGroups = [
   {
@@ -50,25 +162,50 @@ const navGroups = [
     items: [
       { label: "Library", href: "/library", icon: LayoutGrid },
       { label: "Collections", href: "/collections", icon: Folder },
-      { label: "Uploads", href: "/upload", icon: FileUp, guard: canUpload }
+      { label: "Brand Kits", href: "/brand-hub", icon: Folder },
+      { label: "Shared with me", href: "/library?view=shared", icon: Share2 },
+      { label: "Favorites", href: "/library?view=favorites", icon: Check },
+      { label: "Recent", href: "/recent-uploads", icon: Inbox },
+      { label: "Trash", href: "/requests?filter=trash", icon: X }
     ]
   },
   {
-    label: "WORKFLOW",
+    label: "GOVERNANCE",
     items: [
+      { label: "Metadata & Brand Governance", href: "/governance/metadata-health", icon: UserCog },
+      { label: "Audit Log & Compliance", href: "/governance/audit-log", icon: ShieldCheck, guard: canAdmin },
       { label: "Review", href: "/review", icon: ShieldCheck, guard: canReview },
       { label: "Requests", href: "/requests", icon: Inbox }
     ]
   },
   {
-    label: "ADMIN",
+    label: "DISTRIBUTIONS",
     items: [
-      { label: "Users", href: "/admin/users", icon: Users, guard: canAdmin },
-      { label: "Groups", href: "/admin/roles", icon: Users, guard: canAdmin },
-      { label: "Metadata", href: "/admin/taxonomy", icon: Tag, guard: canAdmin },
-      { label: "Brand kits", href: "/brand-hub", icon: Grid2X2, guard: canAdmin },
-      { label: "Reports", href: "/insights", icon: List, guard: canAdmin },
-      { label: "Settings", href: "/admin/settings", icon: Settings, guard: canAdmin }
+      { label: "Distribution Sets", href: "/distribution-sets", icon: Send },
+      { label: "Share Links", href: "/distribution-sets?view=links", icon: Share2 },
+      { label: "Published Portals", href: "/public-portal/spring-campaign-2024", icon: LayoutGrid }
+    ]
+  },
+  {
+    label: "SAVED VIEWS",
+    items: [
+      { label: "Worship services", href: "/library?view=worship-services", icon: Folder },
+      { label: "Website ready", href: "/library?view=website-ready", icon: Folder },
+      { label: "Event photos", href: "/library?view=event-photos", icon: Folder },
+      { label: "Need review", href: "/library?view=need-review", icon: Folder },
+      { label: "Expiring soon", href: "/library?view=expiring-soon", icon: Folder },
+      { label: "Rights issues", href: "/library?view=rights-issues", icon: Folder },
+      { label: "External sharing", href: "/library?view=external-sharing", icon: Folder }
+    ]
+  },
+  {
+    label: "SETTINGS",
+    items: [
+      { label: "General", href: "/admin/settings", icon: Settings, guard: canAdmin },
+      { label: "Integrations", href: "/governance/integrations", icon: Settings, guard: canAdmin },
+      { label: "Security", href: "/admin/settings?section=security", icon: LockKeyhole, guard: canAdmin },
+      { label: "Roles & Access", href: "/admin/roles", icon: UserCog, guard: canAdmin },
+      { label: "API & Webhooks", href: "/governance/integrations?section=api", icon: Send, guard: canAdmin }
     ]
   }
 ] satisfies Array<{
@@ -79,10 +216,12 @@ const navGroups = [
 const mobileNav = [
   { label: "Library", href: "/library", icon: LayoutGrid },
   { label: "Collections", href: "/collections", icon: Folder },
-  { label: "Uploads", href: "/upload", icon: Upload },
-  { label: "Review", href: "/review", icon: ShieldCheck },
-  { label: "More", href: "/admin", icon: MoreHorizontal }
-];
+  { label: "Uploads", href: "/upload", icon: Upload, guard: canUpload },
+  { label: "Roles", href: "/rehearsal", icon: UserCog },
+  { label: "Review", href: "/review", icon: ShieldCheck, guard: canReview },
+  { label: "Requests", href: "/requests", icon: Inbox },
+  { label: "Admin", href: "/admin", icon: Settings, guard: canAdmin }
+] satisfies Array<{ label: string; href: string; icon: typeof LayoutGrid; guard?: (role: DemoRole) => boolean }>;
 
 function pathActive(pathname: string, href: string) {
   if (href === "/library") return pathname === "/" || pathname === "/library" || pathname.startsWith("/library/");
@@ -95,73 +234,25 @@ function Button({
   className = "",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "primary" | "secondary" | "ghost" }) {
+  const variant = tone === "primary" ? "default" : tone === "ghost" ? "ghost" : "secondary";
   return (
-    <button {...props} className={`proto-button is-${tone} ${className}`}>
+    <ShadcnButton {...props} variant={variant} size="sm" className={cn(`proto-button is-${tone}`, className)}>
       {children}
-    </button>
+    </ShadcnButton>
   );
 }
 
 function LinkButton({ children, href, tone = "secondary" }: { children: ReactNode; href: string; tone?: "primary" | "secondary" }) {
-  return <Link className={`proto-button is-${tone}`} href={href}>{children}</Link>;
+  const variant = tone === "primary" ? "default" : "secondary";
+  return <Link className={cn(buttonVariants({ variant, size: "sm" }), `proto-button is-${tone}`)} href={href}>{children}</Link>;
 }
 
 function IconButton({ label, children, onClick }: { label: string; children: ReactNode; onClick?: () => void }) {
   return <button type="button" className="proto-icon-button" aria-label={label} title={label} onClick={onClick}>{children}</button>;
 }
 
-const photoPreviewFallbacks = {
-  bible: [
-    "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1200&q=85"
-  ],
-  nature: [
-    "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=85"
-  ],
-  water: [
-    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=85"
-  ],
-  church: [
-    "https://images.unsplash.com/photo-1438032005730-c779502df39b?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1200&q=85"
-  ],
-  facility: [
-    "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85"
-  ]
-};
-
 function localThumbnailRoute(src: string) {
   return src.startsWith("/api/assets/thumbnail/");
-}
-
-function fallbackPhotoForAsset(asset: StockMediaAsset) {
-  const title = `${asset.title} ${asset.tags?.join(" ") || ""} ${asset.tjcTerms?.join(" ") || ""}`.toLowerCase();
-  if (/mvp archive photo|church life photo/.test(title)) {
-    return `https://picsum.photos/seed/tjc-dam-${encodeURIComponent(asset.id)}/1200/800`;
-  }
-  const bucket =
-    /bible|study|sermon|scripture/.test(title) ? photoPreviewFallbacks.bible :
-    /plant|flower|bee|butterfly|bird|squirrel|spider/.test(title) ? photoPreviewFallbacks.nature :
-    /fountain|pond|water|beach|sky/.test(title) ? photoPreviewFallbacks.water :
-    /church|archive|mvp monday|fellowship/.test(title) ? photoPreviewFallbacks.church :
-    photoPreviewFallbacks.facility;
-  const numericId = Number.parseInt(asset.id, 10);
-  const index = Number.isFinite(numericId) ? numericId % bucket.length : displayTitle(asset).length % bucket.length;
-  return bucket[index];
 }
 
 function assetImage(asset?: StockMediaAsset, variant: "card" | "detail" = "card") {
@@ -173,45 +264,194 @@ function assetImage(asset?: StockMediaAsset, variant: "card" | "detail" = "card"
 }
 
 function protoStatus(asset?: StockMediaAsset) {
+  if (!asset) return { label: "Draft", tone: "draft" };
+  if (asset.status === "Approved Public" || asset.status === "Approved Internal") return { label: "Approved", tone: "approved" };
+  if (asset.status === "Do Not Use") return { label: "Restricted", tone: "danger" };
+  if (asset.status === "Searchable Archive") return { label: "Archive", tone: "draft" };
   const status = assetEnterpriseStatus(asset);
-  if (status === "Approved") return { label: "Approved", tone: "approved" };
-  if (status === "Restricted" || status === "Missing Consent") return { label: status === "Restricted" ? "Restricted" : "In Review", tone: status === "Restricted" ? "danger" : "review" };
   if (status === "Draft") return { label: "Draft", tone: "draft" };
   return { label: "In Review", tone: "review" };
 }
 
+function downloadGateMessage(result: DownloadGateResponse) {
+  if (result.allowed) {
+    return `Approved-copy gate allowed. Audit ${result.auditId || "recorded"}${result.ticketExpiresAt ? `. Ticket expires ${result.ticketExpiresAt}` : ""}.`;
+  }
+  const reason = result.message || result.reason || result.requiredAction || "Approved copy is not available.";
+  const nextStep = result.requiredAction || "request review";
+  return `Approved-copy gate blocked: ${reason}. Next step: ${nextStep}.`;
+}
+
+function reviewRequestMessage(result: ReviewRequestResponse, showQueueReference: boolean) {
+  if (!result.ok) return `Review request failed: ${result.error || "Reviewer queue did not accept this request."}`;
+  const queueReference = result.pendingWriteId || result.pendingWrite?.id;
+  const base = result.message || (result.requestRecorded ? "Review request sent to the media team." : "Review request queued for reviewer follow-up.");
+  return `${base}${queueReference && showQueueReference ? ` Queue id: ${queueReference}.` : ""}`;
+}
+
+function reviewDecisionMessage(result: ReviewDecisionPayload) {
+  if (result.error) return `Review blocked: ${result.error}`;
+  const syncState = result.syncState || (result.resourceSpaceWritten ? "synced_to_resourcespace" : "queued");
+  if (result.resourceSpaceWritten || syncState === "synced_to_resourcespace") {
+    return `Source sync confirmed. Decision recorded and verified. State: ${syncState}.`;
+  }
+  if (result.queued || result.pendingWriteId) {
+    return `Decision queued for media-team follow-up. Source library remains unchanged until sync is confirmed. State: ${syncState}${result.pendingWriteId ? ` · Queue id: ${result.pendingWriteId}` : ""}.`;
+  }
+  return result.message || "Review decision response received.";
+}
+
+function pendingWriteLabel(pending?: ReviewWriteRecordSummary) {
+  if (!pending) return "No pending decision";
+  if (pending.syncState === "synced_to_resourcespace") return "Synced";
+  if (pending.syncState === "sync_failed" || pending.syncState === "conflict_detected") return "Needs follow-up";
+  return "Queued";
+}
+
 function StatusPill({ asset, label, tone }: { asset?: StockMediaAsset; label?: string; tone?: string }) {
   const mapped = asset ? protoStatus(asset) : { label: label || "Draft", tone: tone || "draft" };
-  return <span className={`proto-status is-${mapped.tone}`}>{mapped.label}</span>;
+  const variant = mapped.tone === "danger" ? "destructive" : mapped.tone === "approved" ? "default" : "secondary";
+  return <Badge variant={variant} className={`proto-status is-${mapped.tone}`}>{mapped.label}</Badge>;
+}
+
+function PrototypeLoadingState({ label }: { label: string }) {
+  return (
+    <div className="proto-loading" aria-busy="true" aria-live="polite">
+      <Skeleton className="proto-loading-skeleton" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function PrototypeDetailRows({ rows }: { rows: Array<[string, string | number]> }) {
+  return (
+    <dl className="proto-detail-fact-list">
+      {rows.map(([label, value], index) => (
+        <div key={`${label}-${index}`}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function PrototypeTruthRows({
+  rows
+}: {
+  rows: Array<{ id: string; label: string; value: string; detail: string; tone: "ready" | "review" | "restricted" | "info" }>;
+}) {
+  return (
+    <div className="proto-truth-row-list">
+      {rows.map((row) => (
+        <article className={`proto-truth-row is-${row.tone}`} key={row.id}>
+          <span>{row.label}</span>
+          <strong>{row.value}</strong>
+          <p>{row.detail}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function controlStateLabel(state: PublicPortalControlState) {
+  if (state === "available") return "Allowed";
+  if (state === "gated") return "Gate";
+  return "Locked";
+}
+
+function portalAssetRef(asset: StockMediaAsset) {
+  return `MEDIA-${asset.id}`;
+}
+
+function PortalRoleControls({ compact = false }: { compact?: boolean }) {
+  const { role } = useDemoRole();
+  const summary = publicPortalRoleSummary(role);
+  const controls = publicPortalRoleControls(role);
+  const visibleControls = compact ? controls.slice(0, 4) : controls;
+
+  return (
+    <section className={`proto-role-controls${compact ? " is-compact" : ""}`} aria-label="Role controls">
+      <div className="proto-role-controls-head">
+        <ShieldCheck size={16} aria-hidden="true" />
+        <span>
+          <strong>{summary.title}</strong>
+          <small>{summary.subtitle}</small>
+        </span>
+      </div>
+      <div className="proto-role-control-list">
+        {visibleControls.map((control) => (
+          <div className={`proto-role-control is-${control.state}`} key={control.id}>
+            <span>{control.label}</span>
+            <strong>{controlStateLabel(control.state)}</strong>
+            {!compact ? <small>{control.detail}</small> : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PortalSafeStrip({ role, total }: { role: DemoRole; total: number }) {
+  const summary = publicPortalRoleSummary(role);
+
+  return (
+    <section className="proto-portal-strip" aria-label="Public-use portal status">
+      <div className="proto-portal-strip-copy">
+        <span className="proto-portal-eyebrow">TJC media portal</span>
+        <strong>TJC Media Portal</strong>
+          <small>{total.toLocaleString()} role-safe records / source originals locked</small>
+      </div>
+      <div className="proto-portal-chip-row" aria-label="Portal guardrails">
+        <span><ShieldCheck size={14} aria-hidden="true" />{summary.title}</span>
+        <span><Download size={14} aria-hidden="true" />Approved copies</span>
+        <span><LockKeyhole size={14} aria-hidden="true" />No source files</span>
+      </div>
+      <PortalRoleControls compact />
+    </section>
+  );
+}
+
+function PortalGuardrailRow({ role }: { role: DemoRole }) {
+  const summary = publicPortalRoleSummary(role);
+
+  return (
+    <div className="proto-guardrail-row" aria-label="Role controls">
+      <span><ShieldCheck size={13} aria-hidden="true" />{summary.title}</span>
+      <span><Download size={13} aria-hidden="true" />Approved-copy gate</span>
+      <span><LockKeyhole size={13} aria-hidden="true" />Source locked</span>
+    </div>
+  );
 }
 
 function AssetImage({ asset, variant = "card" }: { asset?: StockMediaAsset; variant?: "card" | "detail" }) {
   const src = assetImage(asset, variant);
   const [resolvedSrc, setResolvedSrc] = useState(src);
+  const [previewAvailable, setPreviewAvailable] = useState(Boolean(src));
 
   useEffect(() => {
     let cancelled = false;
     setResolvedSrc(src);
-    if (!asset || !src || !localThumbnailRoute(src)) return;
+    setPreviewAvailable(Boolean(src));
+    if (!src || !localThumbnailRoute(src)) return;
 
     fetch(src, { headers: { Accept: "image/*" } })
       .then((response) => {
         if (cancelled) return;
-        const previewMode = response.headers.get("X-TJC-Preview-Mode");
-        if (!response.ok || previewMode === "generated-local-beta") {
-          setResolvedSrc(fallbackPhotoForAsset(asset));
+        if (!response.ok) {
+          setPreviewAvailable(false);
         }
       })
       .catch(() => {
-        if (!cancelled) setResolvedSrc(fallbackPhotoForAsset(asset));
+        if (!cancelled) setPreviewAvailable(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [asset, src]);
+  }, [src]);
 
-  if (!src) {
+  if (!src || !previewAvailable) {
     return (
       <div className="proto-image-fallback">
         <Eye size={18} />
@@ -219,11 +459,57 @@ function AssetImage({ asset, variant = "card" }: { asset?: StockMediaAsset; vari
       </div>
     );
   }
-  return <img src={resolvedSrc} alt={asset?.thumbnailAlt || displayTitle(asset)} loading="lazy" onError={() => asset && setResolvedSrc(fallbackPhotoForAsset(asset))} />;
+  return <img src={resolvedSrc} alt={asset?.thumbnailAlt || displayTitle(asset)} loading="lazy" onError={() => setPreviewAvailable(false)} />;
 }
 
 function assetMeta(asset: StockMediaAsset) {
-  return [assetType(asset), asset.imageDimensions, formatBytes(asset.fileSizeBytes)].filter((item) => item && item !== "Not provided").join("  ·  ");
+  return [assetType(asset), asset.imageDimensions, formatBytes(asset.fileSizeBytes)].filter((item) => item && item !== "Not provided").join(" / ");
+}
+
+function prototypeDate(value?: string) {
+  if (!value) return "Not set";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function prototypePerson(asset: StockMediaAsset) {
+  return asset.sourceAccount || asset.reviewer || "Media Team";
+}
+
+function prototypeCaption(asset: StockMediaAsset) {
+  return asset.usageGuidance || asset.rightsNotes || "Hero image for campaign use. Reviewer-controlled record with approved-copy downloads separated from source access.";
+}
+
+function prototypeExpiration(asset: StockMediaAsset) {
+  return prototypeDate(asset.rightsExpirationDate || asset.expirationDate || asset.expirationOrRecheckDate || asset.approvalRecheckDate);
+}
+
+function prototypeChannelLabel(channel: ApprovedChannel) {
+  const labels: Record<ApprovedChannel, string> = {
+    website: "Web",
+    livestream: "Livestream",
+    projection: "Projection",
+    "choir-upload": "Choir",
+    print: "Print",
+    social: "Social",
+    "internal-training": "Internal",
+    "limited-share-link": "Share link",
+    "archive-only": "Archive"
+  };
+  return labels[channel] || channel;
+}
+
+function prototypeAllowedChannels(asset: StockMediaAsset) {
+  const channels = asset.approvedChannels?.filter((channel) => channel !== "archive-only").map(prototypeChannelLabel) || [];
+  return channels.length ? channels : ["Web", "Social", "Email", "Print", "In-store", "OOH", "TV", "Paid ads"];
+}
+
+function prototypeLicenseLabel(asset: StockMediaAsset) {
+  if (asset.rightsBasis === "TJC-owned") return "Owned";
+  if (asset.rightsBasis === "contributor-license") return "Contributor license";
+  if (asset.rightsBasis === "public-domain") return "Public domain";
+  return asset.rightsStatus || "Royalty-free";
 }
 
 function PrototypeSidebar() {
@@ -235,6 +521,10 @@ function PrototypeSidebar() {
         <Link href={routeWithRole("/library", role)} className="proto-mark" aria-label="Library home">
           <span />
         </Link>
+        <div className="proto-sidebar-brand">
+          <strong>TJC Media Library</strong>
+          <small>Church media portal</small>
+        </div>
         <button type="button" className="proto-collapse" aria-label="Collapse sidebar"><PanelLeftClose size={15} /></button>
       </div>
       <nav className="proto-sidebar-nav">
@@ -259,8 +549,8 @@ function PrototypeSidebar() {
         })}
       </nav>
       <div className="proto-user-card">
-        <span className="proto-avatar">TM</span>
-        <span><strong>Taylor Morgan</strong><small>{role}</small></span>
+        <span className="proto-avatar">MT</span>
+        <span><strong>Media Team</strong><small>{role}</small></span>
         <ChevronDown size={14} />
       </div>
     </aside>
@@ -270,26 +560,26 @@ function PrototypeSidebar() {
 function PrototypeMobileBars() {
   const pathname = usePathname();
   const { role } = useDemoRole();
+  const visibleMobileNav = mobileNav.filter((item) => !item.guard || item.guard(role));
   return (
     <>
       <header className="proto-mobile-top">
-        <strong>{pathname.startsWith("/upload") ? "Uploads" : pathname.startsWith("/review") ? "Review" : pathname.startsWith("/collections") ? "Collections" : "Library"}</strong>
+        <strong>{pathname.startsWith("/upload") ? "Upload" : pathname.startsWith("/review") ? "Review" : pathname.startsWith("/requests") ? "Requests" : pathname.startsWith("/collections") ? "Open albums" : "Library"}</strong>
         <IconButton label="Notifications"><Bell size={17} /></IconButton>
       </header>
-      <nav className="proto-mobile-bottom" aria-label="Mobile navigation">
-        {mobileNav.map((item) => {
+      <nav
+        className="proto-mobile-bottom"
+        style={{ gridTemplateColumns: `repeat(${visibleMobileNav.length}, minmax(0, 1fr))` }}
+        aria-label="Mobile navigation"
+      >
+        {visibleMobileNav.map((item) => {
           const Icon = item.icon;
           const active = pathActive(pathname, item.href);
-          const disabled =
-            (item.href === "/upload" && !canUpload(role)) ||
-            (item.href === "/review" && !canReview(role)) ||
-            (item.href === "/admin" && !canAdmin(role));
           return (
             <Link
               key={item.href}
-              href={disabled ? routeWithRole("/library", role) : routeWithRole(item.href, role)}
-              className={`${active ? "is-active" : ""}${disabled ? " is-disabled" : ""}`}
-              aria-disabled={disabled}
+              href={routeWithRole(item.href, role)}
+              className={active ? "is-active" : ""}
             >
               <Icon size={18} />
               <span>{item.label}</span>
@@ -310,6 +600,7 @@ export function PrototypeDamShell({ children }: { children: ReactNode }) {
         <main id="main-content" className="proto-main">{children}</main>
       </div>
       <PrototypeMobileBars />
+      <CommandPalette variant="headless" />
       <BetaPrototypeTools />
       <Toaster position="bottom-center" toastOptions={{ className: "proto-toast" }} />
     </div>
@@ -331,16 +622,34 @@ function PrototypeAssetCard({
   selected,
   onSelect,
   active,
-  onInspect
+  onInspect,
+  mode,
+  matchedBecause = []
 }: {
   asset: StockMediaAsset;
   selected: boolean;
   onSelect: () => void;
   active: boolean;
   onInspect: () => void;
+  mode: LibraryMode;
+  matchedBecause?: string[];
 }) {
+  const reuseState = assetUseState(asset);
   return (
-    <article className={`proto-asset-card ${active ? "is-active" : ""}`} onClick={onInspect}>
+    <article
+      className={`proto-asset-card is-${mode} ${active ? "is-active" : ""}`}
+      onClick={onInspect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onInspect();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={active}
+      aria-label={`Open inspector for ${displayTitle(asset)}`}
+    >
       <div className="proto-asset-image">
         <AssetImage asset={asset} />
         <button
@@ -359,6 +668,23 @@ function PrototypeAssetCard({
       <div className="proto-asset-copy">
         <strong>{displayTitle(asset)}</strong>
         <span>{assetMeta(asset) || `${assetType(asset)} · ${asset.collection}`}</span>
+        <span className={`proto-card-use is-${reuseState.tone}`}>{reuseState.label}</span>
+        {matchedBecause.length ? (
+          <div className="proto-match-chips">
+            <small>Matched because</small>
+            <div>
+              {matchedBecause.map((chip) => <span key={`${asset.id}-${chip}`}>{chip}</span>)}
+            </div>
+          </div>
+        ) : null}
+        {mode === "ops" ? (
+          <dl className="proto-card-ops-meta">
+            <div><dt>Status</dt><dd>{asset.status}</dd></div>
+            <div><dt>Use gate</dt><dd>{reuseState.label}</dd></div>
+            <div><dt>Owner</dt><dd>{asset.sourceAccount || asset.reviewer || "Media team"}</dd></div>
+            <div><dt>Expires</dt><dd>{asset.rightsExpirationDate || asset.expirationDate || "Not set"}</dd></div>
+          </dl>
+        ) : null}
       </div>
     </article>
   );
@@ -368,94 +694,252 @@ function PrototypeAssetInspector({ asset, index, total, onClose }: { asset?: Sto
   const { role } = useDemoRole();
   const [tab, setTab] = useState<ProtoTab>("details");
   const [message, setMessage] = useState("");
+  const [actionPending, setActionPending] = useState(false);
+  const [downloadCenterOpen, setDownloadCenterOpen] = useState(false);
+  const [rightsExplanationOpen, setRightsExplanationOpen] = useState(false);
   const gate = useDownloadGate(asset?.id || "", role);
+  const reviewRequest = useReviewRequest(asset?.id || "", role);
+  const detail = useAssetDetail(asset?.id || "", role);
+  const displayAsset = detail.data?.asset || asset;
+  const elevatedRole = canReview(role);
+  const reuseState = displayAsset ? assetUseState(displayAsset) : undefined;
 
   async function download() {
-    if (!asset) return;
-    const payload = await gate.requestDownload({ reason: `Approved-copy request for ${displayTitle(asset)}` });
-    if (payload.allowed && payload.downloadUrl) {
-      setMessage("Approved-copy gate passed. Opening derivative.");
-      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
-    } else {
-      setMessage(payload.message || payload.reason || "Download blocked by policy gate.");
+    if (!displayAsset || actionPending) return;
+    setActionPending(true);
+    setMessage("Checking approved-copy gate...");
+    try {
+      const payload = await gate.requestDownload({ reason: `Approved-copy request for ${displayTitle(displayAsset)}` });
+      setMessage(downloadGateMessage(payload));
+      if (payload.allowed && payload.downloadUrl) {
+        window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (error) {
+      setMessage(`Approved-copy gate failed: ${error instanceof Error ? error.message : "request failed"}.`);
+    } finally {
+      setActionPending(false);
     }
   }
 
-  if (!asset) {
-    return <aside className="proto-inspector"><p className="proto-muted">Select an asset.</p></aside>;
+  async function requestReview() {
+    if (!displayAsset || actionPending) return;
+    setActionPending(true);
+    setMessage("Sending review request...");
+    try {
+      const payload = await reviewRequest.requestReview({
+        notes: `TJC portal request for ${displayTitle(displayAsset)}. Reason: ${displayAsset.reuseDecision?.summary || displayAsset.status || "Usage decision requires reviewer confirmation."}`
+      });
+      setMessage(reviewRequestMessage(payload, elevatedRole));
+      if (payload.ok) detail.refresh();
+    } catch (error) {
+      setMessage(`Review request failed: ${error instanceof Error ? error.message : "request failed"}.`);
+    } finally {
+      setActionPending(false);
+    }
+  }
+
+  if (!displayAsset) {
+    return (
+      <aside className="proto-inspector" aria-label="Asset inspector">
+        <div className="proto-inspector-nav">
+          <div>
+            <strong>Asset inspector</strong>
+            <span>Metadata / rights / activity</span>
+          </div>
+        </div>
+        <div className="proto-inspector-body">
+          <p className="proto-muted">Select an asset.</p>
+        </div>
+      </aside>
+    );
   }
 
   return (
     <aside className="proto-inspector" aria-label="Asset inspector">
       <div className="proto-inspector-nav">
-        <ChevronLeft size={15} />
-        <span>{index + 1} of {total.toLocaleString()}</span>
-        <ChevronRight size={15} />
-        <button type="button" onClick={onClose} aria-label="Close inspector"><X size={15} /></button>
-      </div>
-      <div className="proto-inspector-head">
-        <div className="proto-inspector-thumb"><AssetImage asset={asset} /></div>
         <div>
-          <h2>{displayTitle(asset)}</h2>
-          <StatusPill asset={asset} />
-          <p>{assetMeta(asset) || assetRecordRef(asset)}</p>
-          <small>Uploaded {asset.importDate || asset.capturedDate || "date pending"} by {asset.sourceAccount || asset.reviewer || "media team"}</small>
+          <strong>Asset inspector</strong>
+          <span>{index + 1} of {total.toLocaleString()} / metadata / rights / activity</span>
+        </div>
+        <div className="proto-inspector-nav-controls">
+          <ChevronLeft size={15} />
+          <ChevronRight size={15} />
+          <button type="button" onClick={onClose} aria-label="Close inspector"><X size={15} /></button>
         </div>
       </div>
-      <div className="proto-action-row">
-        <button type="button" onClick={download}><Download size={16} /><span>Download</span></button>
-        <button type="button" onClick={() => setMessage("Share stays gated by item approval and role.")}><Share2 size={16} /><span>Share</span></button>
-        <Link href={routeWithRole(`/assets/${asset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
-        <button type="button" onClick={() => setMessage("Original/source files remain restricted.")}><MoreHorizontal size={16} /><span>More</span></button>
-      </div>
-      <div className="proto-tabs">
-        {(["details", "metadata", "activity"] as ProtoTab[]).map((item) => (
-          <button key={item} className={tab === item ? "is-active" : ""} type="button" onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}</button>
-        ))}
-      </div>
-      {tab === "details" ? (
-        <div className="proto-detail-stack">
-          <section><h3>Description</h3><p>{asset.usageGuidance || asset.rightsNotes || "Review-safe media record with ResourceSpace as source of truth."}</p></section>
-          <section><h3>Tags</h3><div className="proto-tag-row">{(asset.tags || asset.tjcTerms || ["review", "media"]).slice(0, 5).map((tag) => <span key={tag}>{tag}</span>)}<span>+ Add tag</span></div></section>
-          <section><h3>Rights & Usage</h3><p>{asset.usageScope}. {asset.rightsExpirationDate ? `Expires ${asset.rightsExpirationDate}` : "Reviewer evidence required before public use."}</p></section>
-          <section><h3>Collections</h3><div className="proto-tag-row"><span>{asset.collection}</span>{asset.eventName ? <span>{asset.eventName}</span> : null}</div></section>
-          <section><h3>Versions</h3><p>v2 · Current approved derivative</p><p>v1 · Prior review copy</p></section>
-          <section><h3>Related files</h3><p>{asset.originalFilename || displayTitle(asset)} · source restricted</p></section>
+      <div className="proto-inspector-body">
+        <div className="proto-inspector-thumb"><AssetImage asset={displayAsset} /></div>
+        <div className="proto-inspector-head">
+          <div>
+            <h2>{displayTitle(displayAsset)}</h2>
+            <p>{assetMeta(displayAsset) || assetRecordRef(displayAsset)}</p>
+          </div>
+          <StatusPill asset={displayAsset} />
         </div>
-      ) : tab === "metadata" ? (
-        <dl className="proto-dl">
-          <div><dt>ResourceSpace ID</dt><dd>{asset.resourceSpaceId || assetRecordRef(asset)}</dd></div>
-          <div><dt>Source</dt><dd>{asset.sourceSystem || asset.sourcePlatform || "ResourceSpace"}</dd></div>
-          <div><dt>People</dt><dd>{asset.peopleRisk || "Unknown"}</dd></div>
-          <div><dt>Review</dt><dd>{asset.reviewedDate || "Pending"}</dd></div>
-        </dl>
-      ) : (
-        <div className="proto-detail-stack">
-          <p>Import recorded. Review evidence and writeback state remain governed by ResourceSpace policy.</p>
-          <p>{asset.pendingReviewWrite ? `Pending sync: ${asset.pendingReviewWrite.syncState}` : "No pending ResourceSpace write."}</p>
+        <span className={`proto-card-use is-${reuseState?.tone || "review"}`}>{reuseState?.label || "Needs review"}</span>
+        <p>Uploaded {displayAsset.importDate || displayAsset.capturedDate || "date pending"} by {displayAsset.sourceAccount || displayAsset.reviewer || "media team"}</p>
+        {detail.loading ? <p className="proto-gate-note">Loading asset details from TJC media library...</p> : null}
+        {detail.error ? <p className="proto-gate-note">Asset detail unavailable: {detail.error}</p> : null}
+        <div className="proto-action-row">
+          <button type="button" onClick={() => void download()} disabled={actionPending}><Download size={16} /><span>{reuseState?.actionLabel || "Check use gate"}</span></button>
+          <button type="button" onClick={() => void requestReview()} disabled={actionPending}><Share2 size={16} /><span>{reuseState?.tone === "ready" ? "Request usage" : "Request review"}</span></button>
+          <Link href={routeWithRole(`/assets/${displayAsset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
+          <button type="button" onClick={() => setDownloadCenterOpen(true)}>
+            <Download size={16} />
+            <span>Download Center</span>
+          </button>
         </div>
-      )}
-      {message ? <p className="proto-gate-note">{message}</p> : null}
+        <Button className="w-full justify-start" onClick={() => setRightsExplanationOpen(true)}><ShieldCheck size={14} />Why can I use this?</Button>
+        <PortalGuardrailRow role={role} />
+        <Separator className="proto-separator" />
+        <div className="proto-tabs">
+          {(["details", "metadata", "activity"] as ProtoTab[]).map((item) => (
+            <button key={item} className={tab === item ? "is-active" : ""} type="button" onClick={() => setTab(item)}>{item[0].toUpperCase() + item.slice(1)}</button>
+          ))}
+        </div>
+        {tab === "details" ? (
+          <div className="proto-detail-stack">
+            <section><h3>Description</h3><p>{displayAsset.usageGuidance || displayAsset.rightsNotes || "Review-safe TJC media record."}</p></section>
+            <section><h3>Tags</h3><div className="proto-tag-row">{(displayAsset.tags || displayAsset.tjcTerms || ["review", "media"]).slice(0, 5).map((tag) => <span key={tag}>{tag}</span>)}{elevatedRole ? <span>+ Add tag</span> : null}</div></section>
+            <section><h3>Rights & Usage</h3><p>{reuseState?.label || "Needs review"}. {reuseState?.detail || "Reviewer evidence required before public use."}</p></section>
+            <section><h3>Collections</h3><div className="proto-tag-row"><span>{displayAsset.collection}</span>{displayAsset.eventName ? <span>{displayAsset.eventName}</span> : null}</div></section>
+            <section><h3>Version</h3><p>{displayAsset.pendingReviewWrite ? `Pending review sync: ${displayAsset.pendingReviewWrite.syncState}` : "Current record. Version history is not exported in this local detail payload."}</p></section>
+            <section><h3>Source file</h3><p>{elevatedRole && displayAsset.originalFilename ? displayAsset.originalFilename : "Restricted source/master"} / source access stays audited</p></section>
+            <section><h3>Related files</h3><p>{detail.data?.related?.length ? `${detail.data.related.length} role-visible related file${detail.data.related.length === 1 ? "" : "s"}` : "No related role-visible files exported for this record."}</p></section>
+          </div>
+        ) : tab === "metadata" ? (
+          <dl className="proto-dl">
+            <div><dt>{elevatedRole ? "Source record" : "Portal ref"}</dt><dd>{elevatedRole ? displayAsset.resourceSpaceId || assetRecordRef(displayAsset) : portalAssetRef(displayAsset)}</dd></div>
+            <div><dt>Source</dt><dd>{elevatedRole ? displayAsset.sourceSystem || displayAsset.sourcePlatform || "TJC media library" : "Portal safe lane"}</dd></div>
+            <div><dt>People</dt><dd>{displayAsset.peopleRisk || "Unknown"}</dd></div>
+            <div><dt>Review</dt><dd>{displayAsset.reviewedDate || "Pending"}</dd></div>
+          </dl>
+        ) : (
+          <div className="proto-detail-stack">
+            <p>Import recorded. Review evidence and sync state remain governed by library policy.</p>
+            <p>{displayAsset.pendingReviewWrite ? `Pending sync: ${displayAsset.pendingReviewWrite.syncState}` : "No pending review sync."}</p>
+            {detail.data?.related?.length ? <p>{detail.data.related.length} related library item{detail.data.related.length === 1 ? "" : "s"} available.</p> : null}
+          </div>
+        )}
+        {message ? <p className="proto-gate-note">{message}</p> : null}
+      </div>
+      <DownloadCenterDrawer
+        open={downloadCenterOpen}
+        onClose={() => setDownloadCenterOpen(false)}
+        asset={displayAsset}
+        role={role}
+        description="Approved-copy rows, request-needed renditions, add-ons, and source-file separation for this record."
+      />
+      <RightsExplanationDrawer
+        open={rightsExplanationOpen}
+        onClose={() => setRightsExplanationOpen(false)}
+        asset={displayAsset}
+        role={role}
+        description="Role-safe explanation of the current reuse answer for this record."
+      />
     </aside>
   );
 }
-
 export function PrototypeLibraryPage() {
   const { role } = useDemoRole();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [sort, setSort] = useState("Newest");
+  const searchParamString = searchParams.toString();
+  const [query, setQuery] = useState(() => searchParams.get("q") || "");
+  const [sort, setSort] = useState<CatalogSort>(() => normalizePrototypeSort(searchParams.get("sort")));
+  const [limit, setLimit] = useState(() => readPrototypePageLimit(searchParams.get("limit")));
+  const [offset, setOffset] = useState(() => readPrototypeOffset(searchParams.get("offset")));
+  const [mode, setMode] = useState<LibraryMode>(() => readLibraryMode(searchParams.get("mode")));
+  const [rightsSafe, setRightsSafe] = useState(() => readBooleanUrlFlag(searchParams.get("rightsSafe")));
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
-  const results = useAssetsSearch({ role, query, sort, limit: 24 });
+  const [inspectorClosed, setInspectorClosed] = useState(false);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [savedViewsOpen, setSavedViewsOpen] = useState(false);
+  const [sharePanelOpen, setSharePanelOpen] = useState(false);
+  const [selectedSavedView, setSelectedSavedView] = useState("All media");
+  const results = useAssetsSearch({ role, query, sort, limit, offset, rightsSafe });
   const assets = results.data?.assets || [];
-  const activeAsset = assets.find((asset) => asset.id === activeId) || assets[1] || assets[0];
-  const total = results.data?.total || results.data?.counts?.visibleToRole || assets.length;
+  const rightsSafeSummary = results.data?.rightsSafe;
+  const searchDiscovery = results.data?.discovery;
+  const visibleAssetIds = useMemo(() => assets.map((asset) => asset.id), [assets]);
+  const visibleAssetIdSet = useMemo(() => new Set(visibleAssetIds), [visibleAssetIds]);
+  const activeAsset = results.loading || inspectorClosed ? undefined : assets.find((asset) => asset.id === activeId) || assets[0];
+  const total = results.data?.total ?? 0;
+  const pagination = results.data?.pagination;
+  const pageLimit = pagination?.limit ?? limit;
+  const pageOffset = pagination?.offset ?? offset;
+  const rangeStart = pagination?.rangeStart ?? 0;
+  const rangeEnd = pagination?.rangeEnd ?? 0;
+  const currentPage = total ? Math.floor(pageOffset / Math.max(1, pageLimit)) + 1 : 1;
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageLimit)));
+  const showSearchInspector = !activeAsset && Boolean(query.trim());
+  const pageSummary = results.loading
+    ? "Loading results"
+    : total
+      ? `Showing ${rangeStart.toLocaleString()}-${rangeEnd.toLocaleString()} of ${total.toLocaleString()} / Page ${currentPage.toLocaleString()} of ${totalPages.toLocaleString()}`
+      : "No matching assets";
 
   useEffect(() => {
-    if (!activeId && assets.length) setActiveId(assets[1]?.id || assets[0].id);
-  }, [activeId, assets]);
+    const params = new URLSearchParams(searchParamString);
+    const nextQuery = params.get("q") || "";
+    const nextSort = normalizePrototypeSort(params.get("sort"));
+    const nextLimit = readPrototypePageLimit(params.get("limit"));
+    const nextOffset = readPrototypeOffset(params.get("offset"));
+    const nextMode = readLibraryMode(params.get("mode"));
+    const nextRightsSafe = readBooleanUrlFlag(params.get("rightsSafe"));
+
+    setQuery((current) => current === nextQuery ? current : nextQuery);
+    setSort((current) => current === nextSort ? current : nextSort);
+    setLimit((current) => current === nextLimit ? current : nextLimit);
+    setOffset((current) => current === nextOffset ? current : nextOffset);
+    setMode((current) => current === nextMode ? current : nextMode);
+    setRightsSafe((current) => current === nextRightsSafe ? current : nextRightsSafe);
+  }, [searchParamString]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParamString);
+    if (query.trim()) params.set("q", query);
+    else params.delete("q");
+    params.set("sort", sort);
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    if (mode === "ops") params.set("mode", "ops");
+    else params.delete("mode");
+    if (rightsSafe) params.set("rightsSafe", "1");
+    else params.delete("rightsSafe");
+
+    const nextSearch = params.toString();
+    if (nextSearch !== searchParamString) {
+      router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, { scroll: false });
+    }
+  }, [limit, mode, offset, pathname, query, rightsSafe, router, searchParamString, sort]);
+
+  useEffect(() => {
+    if (results.loading) return;
+    if (!assets.length) {
+      if (activeId) setActiveId(null);
+      return;
+    }
+    if (mode === "ops" && (!activeId || !visibleAssetIdSet.has(activeId))) setActiveId(assets[0].id);
+    if (mode === "browse" && activeId && !visibleAssetIdSet.has(activeId)) setActiveId(null);
+  }, [activeId, assets, mode, results.loading, visibleAssetIdSet]);
+
+  useEffect(() => {
+    if (results.loading) return;
+    setSelected((current) => {
+      if (!current.size) return current;
+      const next = new Set(Array.from(current).filter((id) => visibleAssetIdSet.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [results.loading, visibleAssetIdSet]);
+
+  useEffect(() => {
+    if (results.loading || !pagination || total <= 0) return;
+    const lastOffset = Math.max(0, Math.floor((total - 1) / Math.max(1, pageLimit)) * pageLimit);
+    if (pageOffset > lastOffset) setOffset(lastOffset);
+  }, [pageLimit, pageOffset, pagination, results.loading, total]);
 
   const toggle = useCallback((id: string) => {
     setSelected((current) => {
@@ -466,48 +950,341 @@ export function PrototypeLibraryPage() {
     });
   }, []);
 
+  const updateQuery = useCallback((value: string) => {
+    setQuery(value);
+    setOffset(0);
+    setActiveId(null);
+    setInspectorClosed(false);
+  }, []);
+
+  const updateSort = useCallback((value: CatalogSort) => {
+    setSort(value);
+    setOffset(0);
+    setActiveId(null);
+    setInspectorClosed(false);
+  }, []);
+
+  const updateMode = useCallback((value: LibraryMode) => {
+    setMode(value);
+    setActiveId(null);
+    setInspectorClosed(false);
+  }, []);
+
+  const updateRightsSafe = useCallback((checked: boolean) => {
+    setRightsSafe(checked);
+    setOffset(0);
+    setActiveId(null);
+    setSelected(new Set<string>());
+    setInspectorClosed(false);
+  }, []);
+
+  const goToOffset = useCallback((nextOffset: number) => {
+    setOffset(Math.max(0, nextOffset));
+    setActiveId(null);
+    setInspectorClosed(false);
+  }, []);
+
   return (
-    <div className="proto-library-page">
+    <div className={`proto-library-page is-${mode}${activeAsset || showSearchInspector ? " has-inspector" : ""}`}>
       <section className="proto-library-workspace">
         <header className="proto-library-header">
           <div className="proto-title-row">
             <h1>Library</h1>
-            <span>{total.toLocaleString()} assets</span>
+            <span>{results.loading ? "Loading assets" : `${total.toLocaleString()} assets`}</span>
           </div>
-          <ToolbarSearch value={query} onChange={setQuery} />
+          <ToolbarSearch value={query} onChange={updateQuery} />
           <div className="proto-header-actions">
-            <Button onClick={() => toast.message("Saved view stays local to current query.")}>Saved views <ChevronDown size={14} /></Button>
-            <Button onClick={() => toast.message("Filters use current ResourceSpace search facets.")}><SlidersHorizontal size={15} />Filters</Button>
-            <LinkButton href={routeWithRole("/upload", role)} tone="primary">Upload <ChevronDown size={14} /></LinkButton>
+            <div className="proto-mode-toggle" aria-label="Library mode">
+              <button type="button" className={mode === "browse" ? "is-active" : ""} onClick={() => updateMode("browse")}>Browse</button>
+              <button type="button" className={mode === "ops" ? "is-active" : ""} onClick={() => updateMode("ops")}>Ops</button>
+            </div>
+            <label className={`proto-rights-safe-toggle${rightsSafe ? " is-active" : ""}`}>
+              <input type="checkbox" checked={rightsSafe} onChange={(event) => updateRightsSafe(event.target.checked)} />
+              <span><ShieldCheck size={14} aria-hidden="true" />{rightsSafeToggleLabel(role, mode)}</span>
+            </label>
+            <Button onClick={() => setSavedViewsOpen((open) => !open)}>Saved views <ChevronDown size={14} /></Button>
+            <Button onClick={() => setFilterPanelOpen((open) => !open)}><SlidersHorizontal size={15} />Filters</Button>
+            <LinkButton href={routeWithRole(canUpload(role) ? "/upload" : "/requests", role)} tone="primary">{publicPortalActionLabel(role)} <ChevronDown size={14} /></LinkButton>
+          </div>
+          <div className="proto-mobile-companion-panel" aria-label="Mobile companion viewer status">
+            <div>
+              <span>Companion viewer</span>
+              <strong>{role}</strong>
+            </div>
+            <div>
+              <span>{rightsSafe ? "Rights-safe on" : "Rights-safe off"}</span>
+              <strong>{(rightsSafeSummary?.totalAfter ?? total).toLocaleString()} visible</strong>
+            </div>
+            <button type="button" onClick={() => setSavedViewsOpen((open) => !open)}>Saved views</button>
           </div>
         </header>
         <div className="proto-toolbar">
-          <label className="proto-checkbox-label"><input type="checkbox" checked={selected.size > 0 && selected.size === assets.length} onChange={() => setSelected(selected.size === assets.length ? new Set() : new Set(assets.map((asset) => asset.id)))} /> <span>{selected.size} selected</span></label>
-          <Button onClick={() => toast.message("Download checks each selected asset gate.")}>Download</Button>
-          <Button onClick={() => toast.message("Share links require item approval.")}>Share</Button>
-          <Button onClick={() => toast.message("Collection add queued for selected assets.")}>Add to collection</Button>
-          <Button>More <ChevronDown size={14} /></Button>
+          <label className="proto-checkbox-label"><input type="checkbox" checked={selected.size > 0 && selected.size === assets.length} onChange={() => setSelected(selected.size === assets.length ? new Set() : new Set(visibleAssetIds))} /> <span>{selected.size} selected</span></label>
+          <Button onClick={() => {
+            const firstSelected = Array.from(selected)[0];
+            if (firstSelected) setActiveId(firstSelected);
+            toast.message(firstSelected ? "Open asset inspector to run the approved-copy gate." : "Select an asset to run the approved-copy gate.");
+          }}>Download</Button>
+          <Button onClick={() => setSharePanelOpen((open) => !open)}>Share</Button>
+          {canReview(role)
+            ? <Button onClick={() => toast.message("Collection writes are not enabled in this local demo yet.")}>Add to collection</Button>
+            : <Button onClick={() => {
+              const firstSelected = Array.from(selected)[0];
+              if (firstSelected) setActiveId(firstSelected);
+              toast.message(firstSelected ? "Open asset inspector to send the review request." : "Select an asset to send a review request.");
+            }}>Request review</Button>}
+          {canReview(role) ? <Button>More <ChevronDown size={14} /></Button> : null}
           <div className="proto-toolbar-spacer" />
-          <button type="button" className="proto-sort" onClick={() => setSort(sort === "Newest" ? "Approved first" : "Newest")}>Sort by: {sort} <ChevronDown size={14} /></button>
+          <span className="proto-sort" aria-live="polite">{pageSummary}</span>
+          <Button className="proto-desktop-page-button" disabled={results.loading || !pagination?.hasPrevious} onClick={() => goToOffset(pagination?.previousOffset ?? Math.max(offset - limit, 0))}><ChevronLeft size={14} />Prev</Button>
+          <Button className="proto-desktop-page-button" disabled={results.loading || !pagination?.hasNext} onClick={() => goToOffset(pagination?.nextOffset ?? offset + limit)}>Next <ChevronRight size={14} /></Button>
+          <Button
+            className="proto-sort"
+            aria-label="Sort assets"
+            onClick={() => updateSort(prototypeSortOptions[(prototypeSortOptions.indexOf(sort) + 1) % prototypeSortOptions.length])}
+          >
+            Sort: {sort} <ChevronDown size={14} />
+          </Button>
           <IconButton label="Grid view"><LayoutGrid size={16} /></IconButton>
           <IconButton label="List view"><List size={16} /></IconButton>
         </div>
-        {results.loading ? <div className="proto-loading">Loading library...</div> : results.error ? <div className="proto-error">{results.error}</div> : (
-          <div className="proto-asset-grid">
-            {assets.map((asset) => (
+        {sharePanelOpen ? (
+          <section className="proto-share-flow" aria-label="Library distribution share request">
+            <header>
+              <div>
+                <h2>Distribution request</h2>
+                <p>Draft only. Share links require item approval, recipient controls, and reviewer evidence before anything leaves the local demo.</p>
+              </div>
+              <StatusPill label="Local draft" tone="review" />
+            </header>
+            <div className="proto-share-flow-grid">
+              {[
+                ["Assets", selected.size ? `${selected.size} selected` : activeAsset ? displayTitle(activeAsset) : "Select assets first"],
+                ["Access", "Reviewer-gated request"],
+                ["Expiration", "Required before public link"],
+                ["Watermark", "Required until approved-copy gate passes"],
+                ["Password", "Required for external recipients"],
+                ["Recipients", "No recipients notified"]
+              ].map(([label, value]) => (
+                <label key={label}>
+                  <span>{label}</span>
+                  <input readOnly value={value} />
+                </label>
+              ))}
+            </div>
+            <div className="proto-share-flow-actions">
+              <button type="button" onClick={() => toast.message("Distribution request saved locally as draft only. No public URL was created.")}>Save draft</button>
+              <button type="button" onClick={() => toast.message("Share readiness blocked: item-level rights and approved-copy gates still apply.")}>Check readiness</button>
+              <Link href={routeWithRole("/distribution-sets", role)}>Open Distribution Sets</Link>
+              <button type="button" onClick={() => setSharePanelOpen(false)}>Close</button>
+            </div>
+          </section>
+        ) : null}
+        <div className="proto-library-mode-note">
+          {mode === "browse" ? (
+            <>
+              <strong>Browse mode</strong>
+              <span>Image-first discovery. Select an asset to open the safe inspector.</span>
+            </>
+          ) : (
+            <>
+              <strong>Ops mode</strong>
+              <span>Management view with filenames, rights, ownership, expiration, and batch gates.</span>
+            </>
+          )}
+        </div>
+        {savedViewsOpen ? (
+          <div className="proto-inline-panel" aria-label="Saved views">
+            {[
+              ["All media", ""],
+              ["Sabbath service", "sabbath service"],
+              ["Website ready", "website stock-safe"],
+              ["Need review", "needs review"],
+              ["Rights issues", "rights review"],
+              ["Recent uploads", "mvp 2024"]
+            ].map(([label, nextQuery]) => (
+              <button
+                type="button"
+                className={selectedSavedView === label ? "is-active" : ""}
+                key={label}
+                onClick={() => {
+                  setSelectedSavedView(label);
+                  updateQuery(nextQuery);
+                  setSavedViewsOpen(false);
+                }}
+              >
+                <Folder size={14} />{label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {filterPanelOpen ? (
+          <div className="proto-inline-panel is-filters" aria-label="Library filters">
+            {[
+              ["Rights-safe", () => updateRightsSafe(true)],
+              ["Needs review", () => updateQuery("needs review")],
+              ["No people", () => updateQuery("no people")],
+              ["Website", () => updateQuery("website")],
+              ["Internal", () => updateQuery("internal")],
+              ["Clear", () => { updateQuery(""); updateRightsSafe(false); }]
+            ].map(([label, action]) => (
+              <button type="button" key={label as string} onClick={action as () => void}>
+                <SlidersHorizontal size={14} />{label as string}
+              </button>
+            ))}
+            <span>Active view: {selectedSavedView} / Rights-safe {rightsSafe ? "on" : "off"}</span>
+          </div>
+        ) : null}
+        {rightsSafe ? (
+          <div className="proto-rights-safe-summary" role="status" aria-live="polite">
+            <div>
+              <strong>{rightsSafeToggleLabel(role, mode)}</strong>
+              <span>{rightsSafeSummary?.explanation || "Filtering results to assets cleared for normal public reuse."}</span>
+            </div>
+            <div className="proto-rights-safe-counts">
+              <span>{(rightsSafeSummary?.totalAfter ?? total).toLocaleString()} shown</span>
+              <span>{(rightsSafeSummary?.hidden ?? 0).toLocaleString()} hidden</span>
+            </div>
+            {rightsSafeSummary?.hiddenReasons?.length ? (
+              <div className="proto-rights-safe-reasons">
+                {rightsSafeSummary.hiddenReasons.slice(0, 4).map((reason) => <span key={reason.label}>{reason.count} {reason.label}</span>)}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {results.data ? (
+          <section className="proto-search-intelligence" aria-label="Search intelligence">
+            <div className="proto-search-summary-card">
+              <strong>Search intelligence</strong>
+              <p>{searchDiscovery?.summary || "Search uses current metadata and rights-safe ranking."}</p>
+              <small>{rightsSafeSummary?.explanation || searchDiscovery?.safetyNote || "Search suggestions never override item-level permission truth."}</small>
+              {searchDiscovery?.expandedTerms?.length ? (
+                <div className="proto-tag-row">
+                  {searchDiscovery.expandedTerms.slice(0, 5).map((term) => <span key={`expanded-${term}`}>{term}</span>)}
+                </div>
+              ) : null}
+            </div>
+            <div className="proto-search-summary-card">
+              <strong>Queue shortcuts</strong>
+              <div className="proto-tag-row">
+                {(searchDiscovery?.suggestedFilters || []).slice(0, 4).map((item) => <span key={`filter-${item.filter}`}>{item.label} · {item.count}</span>)}
+              </div>
+              {searchDiscovery?.noResultHelp ? <small>{searchDiscovery.noResultHelp.guidance}</small> : <small>{searchDiscovery?.scoreHint || "Ranking prefers metadata matches, ready assets, and preview-safe records."}</small>}
+            </div>
+            <div className="proto-search-summary-card">
+              <strong>Visual similarity</strong>
+              <p>Not configured for this source.</p>
+              <small>Do not infer lookalikes or AI clusters until backed by real similarity data.</small>
+            </div>
+            <div className="proto-search-summary-card">
+              <strong>AI tags</strong>
+              <p>Not configured for this source.</p>
+              <small>Only exported tags, TJC terms, and rights-safe decisions are used right now.</small>
+            </div>
+          </section>
+        ) : null}
+        <div className="proto-mobile-pagination" aria-label="Library pagination">
+          <span>{pageSummary}</span>
+          <div>
+            <Button disabled={results.loading || !pagination?.hasPrevious} onClick={() => goToOffset(pagination?.previousOffset ?? Math.max(offset - limit, 0))}><ChevronLeft size={14} />Prev</Button>
+            <Button disabled={results.loading || !pagination?.hasNext} onClick={() => goToOffset(pagination?.nextOffset ?? offset + limit)}>Next <ChevronRight size={14} /></Button>
+          </div>
+        </div>
+        <div className="proto-asset-grid">
+          {results.loading ? <PrototypeLoadingState label="Loading library..." /> : results.error ? <div className="proto-error">{results.error}</div> : assets.length ? (
+            assets.map((asset) => (
               <PrototypeAssetCard
                 key={asset.id}
                 asset={asset}
                 selected={selected.has(asset.id)}
                 active={activeAsset?.id === asset.id}
                 onSelect={() => toggle(asset.id)}
-                onInspect={() => setActiveId(asset.id)}
+                onInspect={() => {
+                  setActiveId(asset.id);
+                  setInspectorClosed(false);
+                }}
+                mode={mode}
+                matchedBecause={mode === "browse" ? matchedBecauseChips(asset, query, searchDiscovery || {
+                  mode: "browse",
+                  summary: "",
+                  expandedTerms: [],
+                  intentPresets: [],
+                  suggestedFilters: [],
+                  scoreHint: "",
+                  rankingExplanation: [],
+                  safetyNote: ""
+                }, rightsSafe) : []}
               />
-            ))}
-          </div>
-        )}
+            ))
+          ) : (
+            <div className="proto-empty-state is-quiet">
+              <strong>{searchDiscovery?.noResultHelp?.title || "No matching assets"}</strong>
+              <span>{rightsSafe ? "No assets are cleared for current use from these results. Turn off rights-safe mode to inspect review-gated records, or request reviewer help." : searchDiscovery?.noResultHelp?.guidance || "TJC media library search returned no records for this query."}</span>
+              <div className="proto-tag-row">
+                {(searchDiscovery?.noResultHelp?.querySuggestions || []).slice(0, 3).map((suggestion) => (
+                  <button key={suggestion} type="button" onClick={() => updateQuery(suggestion)}>{suggestion}</button>
+                ))}
+                {(searchDiscovery?.noResultHelp?.savedViews || []).slice(0, 2).map((view) => (
+                  <Link key={view.id} href={routeWithRole(`/?view=${view.id}`, role)}>{view.label}</Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </section>
-      <PrototypeAssetInspector asset={activeAsset} index={Math.max(0, assets.findIndex((asset) => asset.id === activeAsset?.id))} total={total} onClose={() => setActiveId(null)} />
+      {activeAsset ? (
+        <PrototypeAssetInspector
+          asset={activeAsset}
+          index={Math.max(0, assets.findIndex((asset) => asset.id === activeAsset?.id))}
+          total={total}
+          onClose={() => {
+            setActiveId(null);
+            setInspectorClosed(true);
+          }}
+        />
+      ) : showSearchInspector ? (
+        <aside className="proto-inspector" aria-label="Search intelligence inspector">
+          <div className="proto-inspector-nav">
+            <div>
+              <strong>Search intelligence</strong>
+              <span>Query / rights-safe / suggestions</span>
+            </div>
+          </div>
+          <div className="proto-inspector-body">
+            <div className="proto-detail-stack">
+              <section>
+                <h3>Query</h3>
+                <p>{query}</p>
+              </section>
+              <section>
+                <h3>Result summary</h3>
+                <p>{searchDiscovery?.summary || `Found ${total.toLocaleString()} matching assets from current metadata.`}</p>
+              </section>
+              <section>
+                <h3>Rights-safe layer</h3>
+                <div className="proto-tag-row">
+                  <span>{rightsSafe ? "Rights-safe only" : "All visible records"}</span>
+                  <span>{(rightsSafeSummary?.totalAfter ?? total).toLocaleString()} shown</span>
+                  <span>{(rightsSafeSummary?.hidden ?? 0).toLocaleString()} hidden</span>
+                </div>
+                <p>{rightsSafeSummary?.explanation || searchDiscovery?.safetyNote || "Search does not override item-level rights, people, source, or approved-copy gates."}</p>
+              </section>
+              <section>
+                <h3>Matched because</h3>
+                <div className="proto-tag-row">
+                  {(searchDiscovery?.expandedTerms?.length ? searchDiscovery.expandedTerms : ["outdoor", "hero", "approved", "web", "social"]).slice(0, 6).map((term) => <span key={term}>{term}</span>)}
+                </div>
+              </section>
+              <section>
+                <h3>Suggestions</h3>
+                <div className="proto-tag-row">
+                  {(searchDiscovery?.noResultHelp?.querySuggestions || ["spring campaign hero", "web-safe outdoor lifestyle", "expiring soon"]).slice(0, 4).map((suggestion) => <button key={suggestion} type="button" onClick={() => updateQuery(suggestion)}>{suggestion}</button>)}
+                </div>
+              </section>
+            </div>
+          </div>
+        </aside>
+      ) : null}
       {activeAsset ? <MobileAssetSheet asset={activeAsset} /> : null}
     </div>
   );
@@ -516,31 +1293,68 @@ export function PrototypeLibraryPage() {
 function MobileAssetSheet({ asset }: { asset: StockMediaAsset }) {
   const { role } = useDemoRole();
   const gate = useDownloadGate(asset.id, role);
+  const reviewRequest = useReviewRequest(asset.id, role);
+  const detail = useAssetDetail(asset.id, role);
+  const displayAsset = detail.data?.asset || asset;
   const [message, setMessage] = useState("");
+  const [actionPending, setActionPending] = useState(false);
+  const elevatedRole = canReview(role);
 
   async function download() {
-    const payload = await gate.requestDownload({ reason: `Approved-copy request for ${displayTitle(asset)}` });
-    if (payload.allowed && payload.downloadUrl) {
-      setMessage("Approved-copy gate passed. Opening derivative.");
-      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
-    } else {
-      setMessage(payload.message || payload.reason || "Download blocked by policy gate.");
+    if (actionPending) return;
+    setActionPending(true);
+    setMessage("Checking approved-copy gate...");
+    try {
+      const payload = await gate.requestDownload({ reason: `Approved-copy request for ${displayTitle(displayAsset)}` });
+      setMessage(downloadGateMessage(payload));
+      if (payload.allowed && payload.downloadUrl) {
+        window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (error) {
+      setMessage(`Approved-copy gate failed: ${error instanceof Error ? error.message : "request failed"}.`);
+    } finally {
+      setActionPending(false);
+    }
+  }
+
+  async function requestReview() {
+    if (actionPending) return;
+    setActionPending(true);
+    setMessage("Sending review request...");
+    try {
+      const payload = await reviewRequest.requestReview({
+        notes: `TJC mobile portal request for ${displayTitle(displayAsset)}. Reason: ${displayAsset.reuseDecision?.summary || displayAsset.status || "Usage decision requires reviewer confirmation."}`
+      });
+      setMessage(reviewRequestMessage(payload, elevatedRole));
+      if (payload.ok) detail.refresh();
+    } catch (error) {
+      setMessage(`Review request failed: ${error instanceof Error ? error.message : "request failed"}.`);
+    } finally {
+      setActionPending(false);
     }
   }
 
   return (
     <aside className="proto-mobile-sheet">
       <div className="proto-mobile-sheet-head">
-        <div className="proto-mobile-thumb"><AssetImage asset={asset} /></div>
-        <div><strong>{displayTitle(asset)}</strong><StatusPill asset={asset} /><span>{assetMeta(asset)}</span>{message ? <em className="proto-mobile-sheet-note">{message}</em> : null}</div>
+        <div className="proto-mobile-thumb"><AssetImage asset={displayAsset} /></div>
+        <div><strong>{displayTitle(displayAsset)}</strong><StatusPill asset={displayAsset} /><span>{assetMeta(displayAsset)}</span>{detail.loading ? <em className="proto-mobile-sheet-note">Loading details...</em> : null}{message ? <em className="proto-mobile-sheet-note">{message}</em> : null}</div>
         <button type="button" className="proto-mobile-sheet-icon" onClick={() => setMessage("Share stays gated by item approval and role.")} aria-label="Share selected asset"><Share2 size={16} /></button>
       </div>
+      <div className="proto-mobile-rights-row" aria-label="Mobile rights-safe gate">
+        <span><ShieldCheck size={13} />{displayAsset.reuseDecision?.label || displayAsset.status}</span>
+        <span>{displayAsset.downloadPolicy === "approved-copy-allowed" ? "Approved copy" : "Gate required"}</span>
+      </div>
+      <Separator className="proto-separator" />
       <div className="proto-tabs"><button className="is-active">Details</button><button>Activity</button></div>
       <div className="proto-action-row">
-        <button type="button" onClick={() => void download()}><Download size={16} /><span>Download</span></button>
-        <button type="button" onClick={() => setMessage("Share stays gated by item approval and role.")}><Share2 size={16} /><span>Share</span></button>
-        <Link href={routeWithRole(`/assets/${asset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
-        <button type="button" onClick={() => setMessage("Original/source files remain restricted.")}><MoreHorizontal size={16} /><span>More</span></button>
+        <button type="button" onClick={() => void download()} disabled={actionPending}><Download size={16} /><span>Download approved copy</span></button>
+        <button type="button" onClick={() => void requestReview()} disabled={actionPending}><Share2 size={16} /><span>Request</span></button>
+        <Link href={routeWithRole(`/assets/${displayAsset.id}`, role)}><Eye size={16} /><span>Preview</span></Link>
+        <button type="button" onClick={() => setMessage(elevatedRole ? "Source access remains audited and scoped." : "Source/original files remain restricted.")}>
+          {elevatedRole ? <MoreHorizontal size={16} /> : <LockKeyhole size={16} />}
+          <span>{elevatedRole ? "More" : "Locked"}</span>
+        </button>
       </div>
     </aside>
   );
@@ -549,79 +1363,283 @@ function MobileAssetSheet({ asset }: { asset: StockMediaAsset }) {
 export function PrototypeUploadIntake() {
   const { role } = useDemoRole();
   const [files, setFiles] = useState<File[]>([]);
+  const [topSearch, setTopSearch] = useState("");
   const [form, setForm] = useState({
-    collection: "Spring Campaign 2024",
-    brand: "Acme Home",
-    usageRights: "Commercial use",
-    credit: "Media team",
-    eventDate: new Date().toISOString().slice(0, 10),
-    tags: "campaign, spring, outdoor"
+    eventName: "",
+    sourceLink: "",
+    ministry: "",
+    source: "",
+    location: "",
+    usageRights: "Unknown - reviewer verifies",
+    eventDate: "",
+    tags: "",
+    peopleVisible: "Unknown",
+    minorsVisible: "Unknown",
+    doctrineSacramentSensitive: "Unknown",
+    hymnMusicPresent: "Unknown",
+    notes: ""
   });
   const [message, setMessage] = useState("");
   const canSend = canUpload(role);
+  const hasMedia = files.length > 0 || Boolean(form.sourceLink.trim());
+  const canSubmit = canSend && hasMedia;
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  const largeOrMediaFiles = files.filter((file) => {
+    const name = file.name.toLowerCase();
+    return file.size > 100 * 1024 * 1024 || /^video\//i.test(file.type) || /^audio\//i.test(file.type) || /\.(mov|mp4|m4v|avi|mkv|mp3|wav|m4a|aac|flac)$/i.test(name);
+  });
+  const missingContext = [
+    !hasMedia && "files or source link",
+    !form.eventName.trim() && "event name",
+    !form.eventDate.trim() && "event date",
+    !form.ministry.trim() && "ministry/team",
+    !form.source.trim() && "source/photographer"
+  ].filter((item): item is string => Boolean(item));
+  const intakeWarnings = [
+    form.peopleVisible === "Unknown" && "People visibility reviewer confirmation",
+    (form.minorsVisible === "Unknown" || form.minorsVisible === "Yes") && "Children/youth visibility reviewer confirmation",
+    /unknown|needs review|reviewer verifies/i.test(form.usageRights) && "Rights reviewer verifies ownership/license",
+    largeOrMediaFiles.length > 0 && "Large video/audio routes to admin intake",
+    !form.tags.trim() && "Taxonomy reviewer maps tags",
+    "ResourceSpace import/approval writeback remains pending"
+  ].filter((item): item is string => Boolean(item));
+  const detectedCampaign = form.eventName.trim() || (form.sourceLink.trim() ? "Source-link intake" : "Not detected yet");
+  const suggestedCollection = form.eventName.trim() ? `${form.eventName.trim()} / Needs Review` : "Review Intake";
+  const suggestedTags = (form.tags || "service, worship, community, ministry").split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 6);
+  const recommendedApprovers = [
+    form.minorsVisible === "Yes" || form.minorsVisible === "Unknown" ? "Youth safety reviewer" : "",
+    /unknown|reviewer verifies|needs review/i.test(form.usageRights) ? "Rights reviewer" : "",
+    form.doctrineSacramentSensitive === "Yes" || form.doctrineSacramentSensitive === "Unknown" ? "Ministry lead" : "",
+    "Metadata steward"
+  ].filter(Boolean);
+  const duplicateCandidates = hasMedia
+    ? ["Local DAM Sample Assets / visual match pending", "Recent Uploads / checksum unavailable until upload"]
+    : ["Duplicate detection waits for real files or source link"];
+  const queueRows = files.length
+    ? files.slice(0, 6).map((file, index) => ({
+      name: file.name,
+      detail: `${formatBytes(file.size)} / ${file.type || "type pending"}`,
+      status: (["Uploading", "Processing", "Metadata extracted", "Rights check", "Needs review", "Needs review"] as const)[Math.min(index, 5)],
+      tone: (["review", "draft", "approved", "review", "review", "review"] as IngestStageTone[])[Math.min(index, 5)]
+    }))
+    : form.sourceLink.trim()
+      ? [{ name: "Source link intake", detail: form.sourceLink.trim(), status: "Metadata extracted", tone: "approved" as IngestStageTone }]
+      : [];
+  const pipelineStages: Array<{ label: string; detail: string; tone: IngestStageTone }> = [
+    { label: "Uploading", detail: hasMedia ? "Ready to create intake ticket" : "Waiting for files or source link", tone: hasMedia ? "review" : "draft" },
+    { label: "Processing", detail: "Derivative extraction starts after intake is accepted", tone: "draft" },
+    { label: "Metadata extracted", detail: hasMedia ? "Filename/source context ready for reviewer" : "No source selected", tone: hasMedia ? "approved" : "draft" },
+    { label: "Rights check", detail: intakeWarnings.length ? intakeWarnings.slice(0, 2).join(" / ") : "Reviewer still verifies rights", tone: "review" },
+    { label: "Needs review", detail: "Default state for every imported asset", tone: "review" },
+    { label: "Approved", detail: "Blocked until reviewer evidence approves use", tone: "danger" }
+  ];
+
+  if (!canSend) {
+    return (
+      <section className="proto-flow-page">
+        <div className="proto-flow-card">
+          <h1>Upload / Intake</h1>
+          <p>Sharing photos requires Contributor access.</p>
+          <p className="proto-muted">Every imported asset defaults to Needs Review / Do Not Publish after contributor intake.</p>
+        </div>
+      </section>
+    );
+  }
+
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    const dropped = Array.from(event.dataTransfer.files || []);
+    if (dropped.length) setFiles(dropped);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const data = new FormData();
+    const data = new FormData(event.currentTarget);
     data.set("role", role);
-    data.set("collection", form.collection);
-    data.set("eventName", form.collection);
-    data.set("ministry", form.brand);
+    data.set("collection", form.eventName);
+    data.set("eventName", form.eventName);
+    data.set("sourceLink", form.sourceLink);
+    data.set("ministry", form.ministry);
     data.set("usageRights", form.usageRights);
-    data.set("source", form.credit);
+    data.set("source", form.source);
+    data.set("location", form.location);
     data.set("eventDate", form.eventDate);
     data.set("tags", form.tags);
-    data.set("peopleVisible", "Unknown");
-    data.set("minorsVisible", "Unknown");
+    data.set("notes", form.notes);
+    data.set("intakeNotes", form.notes);
+    data.set("peopleVisible", form.peopleVisible);
+    data.set("minorsVisible", form.minorsVisible);
+    data.set("doctrineSacramentSensitive", form.doctrineSacramentSensitive);
+    data.set("hymnMusicPresent", form.hymnMusicPresent);
     data.set("approvalSuggestion", "Needs Review");
     files.forEach((file) => data.append("files", file));
-    const response = await fetch("/api/upload", { method: "POST", body: data });
-    const payload = await response.json().catch(() => ({}));
-    setMessage(payload.message || payload.error || (response.ok ? "Upload intake sent to media team. Not public until review." : "Upload blocked."));
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: {
+          [DAM_LOCAL_BETA_ROLE_HEADER]: role,
+          [DAM_LOCAL_TRUSTED_ROLE_HEADER]: role
+        },
+        body: data
+      });
+      const payload = await response.json().catch(() => ({}));
+      setMessage(response.ok
+        ? `Intake ticket ${payload.requestRecordId || "recorded"} queued. Default state: ${payload.defaultReviewState || "Needs Review"} / ${payload.defaultUsageScope || "Do Not Publish"}. ResourceSpace written: ${payload.resourceSpaceWritten ? "yes" : "no"}.`
+        : payload.message || payload.error || "Upload blocked.");
+    } catch (error) {
+      setMessage(`Upload intake failed: ${error instanceof Error ? error.message : "request failed"}.`);
+    }
   }
 
   return (
     <form className="proto-flow-page" onSubmit={submit}>
+      <header className="proto-library-header proto-upload-commandbar">
+        <div className="proto-title-row">
+          <h1>Upload</h1>
+          <span>Contributor intake</span>
+        </div>
+        <ToolbarSearch value={topSearch} onChange={setTopSearch} />
+        <div className="proto-header-actions">
+          <Button type="button" onClick={() => toast.message("Upload filters stay local to this intake draft.")}><SlidersHorizontal size={15} />Filters</Button>
+          <Button type="button" onClick={() => toast.message("Saved intake views are not durable in this local demo.")}>Saved views <ChevronDown size={14} /></Button>
+          <label className="proto-rights-safe-toggle is-active">
+            <input type="checkbox" checked readOnly />
+            <span><ShieldCheck size={14} aria-hidden="true" />Rights-safe only</span>
+          </label>
+          <IconButton label="System notifications"><Bell size={17} /></IconButton>
+        </div>
+      </header>
       <section className="proto-flow-card proto-upload-card">
-        <header><h1>Upload / Intake</h1></header>
-        <div className="proto-upload-layout">
-          <div>
-            <label className="proto-dropzone">
+        <header>
+          <h1>Upload / Intake</h1>
+          <h2>Share photos with the media team</h2>
+          <p>Guided contributor intake. Media team reviews source, rights, people/youth, and metadata before anything becomes public.</p>
+        </header>
+        <div className="proto-upload-layout is-ingest">
+          <div className="proto-upload-primary">
+            <label
+              className="proto-dropzone damx-upload-card"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleDrop}
+            >
               <Upload size={24} />
-              <span>Drag & drop files or folders or browse</span>
-              <input type="file" multiple onChange={(event) => setFiles(Array.from(event.target.files || []))} />
+              <span>Upload photos from computer</span>
+              <small>Drag and drop files, or browse. Every item enters review first.</small>
+              <input aria-label="Upload photos from computer" type="file" multiple onChange={(event) => setFiles(Array.from(event.target.files || []))} />
             </label>
-            <div className="proto-file-list">
-              <p>{files.length || 23} files selected · {files.length ? formatBytes(files.reduce((sum, file) => sum + file.size, 0)) : "1.2 GB"}</p>
-              {((files.length ? files : [
-                { name: "Product-Set-016.jpg", size: 4_100_000 },
-                { name: "Lifestyle-Outdoor-07.jpg", size: 5_100_000 },
-                { name: "Architecture-15.jpg", size: 6_800_000 },
-                { name: "Portrait-Urban-046.jpg", size: 2_700_000 }
-              ]) as UploadListItem[]).slice(0, 5).map((file, index) => (
-                <div key={`${file.name}-${index}`}><span>{file.name}</span><small>{file.size ? formatBytes(file.size) : ["4.2 MB", "5.1 MB", "6.8 MB", "3.7 MB"][index]}</small><Check size={14} /></div>
-              ))}
+            <div className="proto-file-list" aria-label="Selected photos and links">
+              <p>{files.length ? `${files.length} files selected / ${formatBytes(totalBytes)}` : form.sourceLink.trim() ? "Source link ready for reviewer intake" : "No files or source link selected"}</p>
+              {files.length ? <button type="button" className="proto-inline-action" onClick={() => setFiles([])}>Remove all</button> : null}
+              {queueRows.length ? queueRows.map((row) => (
+                <div className="proto-upload-queue-row" key={row.name}><span>{row.name}</span><small>{row.detail}</small><StatusPill label={row.status} tone={row.tone} /></div>
+              )) : <span>Add files or paste a source link to create a real intake ticket.</span>}
             </div>
+            <section className="proto-ingest-card" aria-label="Ingest pipeline states">
+              <header><h2>Upload queue</h2><span>{queueRows.length ? `${queueRows.length} queued` : "Empty"}</span></header>
+              <div className="proto-ingest-state-grid">
+                {pipelineStages.map((stage) => <article key={stage.label}><StatusPill label={stage.label} tone={stage.tone} /><strong>{stage.detail}</strong></article>)}
+              </div>
+            </section>
+            <section className="proto-ingest-card" aria-label="Duplicate and conflict warnings">
+              <header><h2>Duplicate detection</h2><span>{hasMedia ? "Review required" : "Idle"}</span></header>
+              {duplicateCandidates.map((candidate) => <p key={candidate}><ShieldCheck size={14} />{candidate}</p>)}
+              <p><LockKeyhole size={14} />Checksum comparison runs only after intake; source media is not mutated.</p>
+            </section>
           </div>
-          <div className="proto-field-panel">
-            <h2>Assign metadata</h2>
+          <div className="proto-field-panel" aria-label="Photo details">
+            <h2>Required context</h2>
             {[
-              ["collection", "Collection"],
-              ["brand", "Brand"],
+              ["sourceLink", "Paste Google Drive link"],
+              ["eventName", "Event name"],
+              ["eventDate", "Date"],
+              ["ministry", "Ministry / team"],
+              ["source", "Photographer / source"],
+              ["location", "Location"],
               ["usageRights", "Usage rights"],
-              ["credit", "Credit"],
-              ["eventDate", "Review date"],
-              ["tags", "Tags"]
+              ["tags", "Suggested tags"],
+              ["notes", "Notes for reviewers"]
             ].map(([key, label]) => (
               <label key={key} className="proto-field">
                 <span>{label}</span>
-                <input type={key === "eventDate" ? "date" : "text"} value={form[key as keyof typeof form]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
+                <input
+                  name={key}
+                  type={key === "eventDate" ? "text" : "text"}
+                  inputMode={key === "eventDate" ? "numeric" : undefined}
+                  placeholder={key === "eventDate" ? "YYYY-MM-DD" : undefined}
+                  pattern={key === "eventDate" ? "\\d{4}-\\d{2}-\\d{2}" : undefined}
+                  value={form[key as keyof typeof form]}
+                  onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
+                />
               </label>
             ))}
-            <Button type="submit" tone="primary" disabled={!canSend}>{canSend ? "Start upload" : "Contributor access required"}</Button>
+            <div className="proto-review-fields">
+              <label className="proto-field"><span>People visible</span><select value={form.peopleVisible} onChange={(event) => setForm((current) => ({ ...current, peopleVisible: event.target.value }))}><option>Unknown</option><option>No</option><option>Yes</option></select></label>
+              <label className="proto-field"><span>Minors visible</span><select value={form.minorsVisible} onChange={(event) => setForm((current) => ({ ...current, minorsVisible: event.target.value }))}><option>Unknown</option><option>No</option><option>Yes</option></select></label>
+              <label className="proto-field"><span>Sacrament/doctrine</span><select value={form.doctrineSacramentSensitive} onChange={(event) => setForm((current) => ({ ...current, doctrineSacramentSensitive: event.target.value }))}><option>Unknown</option><option>No</option><option>Yes</option></select></label>
+            </div>
+            <div className="proto-upload-readiness">
+              <article><span>Missing context</span><strong>{missingContext.length ? missingContext.join(", ") : "Ready for intake ticket"}</strong></article>
+              <article><span>Review routing</span><strong>{intakeWarnings.slice(0, 3).join(" / ")}</strong></article>
+              <article><span>Custody boundary</span><strong>Portal records intake metadata only; originals stay with source custody.</strong></article>
+            </div>
+            <section className="proto-ingest-card" aria-label="Metadata extraction">
+              <header><h2>Metadata extraction</h2><span>{hasMedia ? "Draft" : "Waiting"}</span></header>
+              <PrototypeDetailRows rows={[
+                ["Detected campaign", detectedCampaign],
+                ["Suggested collection", suggestedCollection],
+                ["Brand kit match", form.ministry.trim() ? `${form.ministry.trim()} / review` : "TJC media guidance / possible"],
+                ["Approval routing", recommendedApprovers.slice(0, 3).join(" / ")]
+              ]} />
+            </section>
+            <section className="proto-ingest-card" aria-label="Rights and release checklist">
+              <header><h2>Rights / release checklist</h2><span>Needs review</span></header>
+              {[
+                ["Usage rights", /unknown|reviewer verifies/i.test(form.usageRights) ? "Reviewer verifies" : form.usageRights],
+                ["People visible", form.peopleVisible],
+                ["Minors visible", form.minorsVisible],
+                ["Sacrament/doctrine", form.doctrineSacramentSensitive],
+                ["Metadata complete", missingContext.length ? "Missing fields" : "Ready for review"]
+              ].map(([label, value]) => <p key={label}><Check size={14} /><strong>{label}</strong><span>{value}</span></p>)}
+            </section>
+            <div className="proto-upload-actions">
+              <Button type="button" onClick={() => setMessage("Draft is only in this browser until you submit intake.")}>Save draft</Button>
+              <Button
+                type="submit"
+                tone="primary"
+                disabled={!canSubmit}
+                title={!hasMedia ? "Add photos or a link first." : undefined}
+              >
+                Send to media team
+              </Button>
+            </div>
+            <p className="proto-muted"><strong>How review works</strong>: rights, people/youth visibility, and usage are reviewed before anything is published.</p>
             <p className="proto-muted">Every imported asset defaults to Needs Review / Do Not Publish.</p>
           </div>
+          <aside className="proto-ingest-rail" aria-label="Ingest Intelligence">
+            <header><h2>Ingest Intelligence</h2><StatusPill label="Local draft" tone="draft" /></header>
+            <PrototypeDetailRows rows={[
+              ["Detected campaign", detectedCampaign],
+              ["Suggested collection", suggestedCollection],
+              ["Missing fields", missingContext.length ? missingContext.slice(0, 4).join(", ") : "None before reviewer check"],
+              ["Potential duplicates", duplicateCandidates[0]],
+              ["Recommended approvers", recommendedApprovers.slice(0, 4).join(", ")],
+              ["Default status", "Needs Review / Do Not Publish"]
+            ]} />
+            <section>
+              <h3>AI tag suggestions</h3>
+              <div className="proto-tag-row">{suggestedTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+              <small>Suggestions are not approved metadata until a human reviewer accepts them.</small>
+            </section>
+            <section>
+              <h3>Conflict warnings</h3>
+              {intakeWarnings.slice(0, 5).map((warning) => <p key={warning}><ShieldCheck size={14} />{warning}</p>)}
+            </section>
+            <section>
+              <h3>State coverage</h3>
+              {["Empty", "Loading", "Error", "Permission denied"].map((state) => <p key={state}><LockKeyhole size={14} />{state} state stays local and role-gated.</p>)}
+            </section>
+          </aside>
         </div>
         {message ? <p className="proto-gate-note">{message}</p> : null}
       </section>
@@ -629,85 +1647,394 @@ export function PrototypeUploadIntake() {
   );
 }
 
+function requestMatchesFilter(request: RequestRecordPayload, filter: RequestFilter) {
+  if (filter === "closed") return request.status === "Resolved";
+  if (filter === "waiting") return request.status === "Waiting on me";
+  return request.status !== "Resolved";
+}
+
+function requestStatusTone(status: RequestRecordPayload["status"]) {
+  if (status === "Resolved") return "approved";
+  if (status === "Blocked") return "danger";
+  if (status === "Waiting on me") return "review";
+  return "draft";
+}
+
+function formatAdminDate(value?: string) {
+  if (!value) return "No events yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date unavailable";
+  return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+export function PrototypeRequestsPage() {
+  const { role } = useDemoRole();
+  const requestRecords = useRequestRecords(role);
+  const requests = requestRecords.data?.requests || [];
+  const [filter, setFilter] = useState<RequestFilter>("open");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const filteredRequests = useMemo(() => requests.filter((request) => requestMatchesFilter(request, filter)), [filter, requests]);
+  const selected = filteredRequests.find((request) => request.id === selectedId) || filteredRequests[0] || requests[0];
+  const selectedIndex = Math.max(0, filteredRequests.findIndex((request) => request.id === selected?.id));
+  const assetDetail = useAssetDetail(selected?.relatedAssetId || "", role);
+  const selectedAsset = assetDetail.data?.asset;
+  const openCount = requests.filter((request) => request.status !== "Resolved").length;
+  const waitingCount = requests.filter((request) => request.status === "Waiting on me").length;
+  const closedCount = requests.filter((request) => request.status === "Resolved").length;
+  const canOpenReview = canReview(role);
+  const canOpenUpload = canUpload(role);
+
+  useEffect(() => {
+    if (!selectedId && filteredRequests[0]) setSelectedId(filteredRequests[0].id);
+    if (selectedId && requests.length && !requests.some((request) => request.id === selectedId)) {
+      setSelectedId(filteredRequests[0]?.id || requests[0]?.id || null);
+    }
+  }, [filteredRequests, requests, selectedId]);
+
+  return (
+    <section className="proto-flow-page">
+      <div className="proto-flow-card proto-review-card" data-primary-section="requests-table">
+        <header className="proto-review-head">
+          <div>
+            <h1>Requests</h1>
+            <p>{selected ? selected.relatedAsset : "Portal request tickets from real local actions."}</p>
+          </div>
+          <StatusPill label={requestRecords.data?.truthBoundary === "portal-ticket-queue-only" ? "Local queue" : "Requests"} tone="draft" />
+          <span>{selected ? selectedIndex + 1 : 0} of {filteredRequests.length || requests.length || 0}</span>
+          <LinkButton href={routeWithRole(canOpenUpload ? "/upload" : "/library", role)}>{canOpenUpload ? "New intake" : "Browse library"}</LinkButton>
+          {canOpenReview ? <LinkButton href={routeWithRole("/review", role)} tone="primary">Open review</LinkButton> : null}
+        </header>
+        {requestRecords.loading ? <PrototypeLoadingState label="Loading requests..." /> : requestRecords.error ? <div className="proto-error">{requestRecords.error}</div> : (
+          <div className="proto-review-layout">
+            <div className="proto-comments-panel">
+              <div className="proto-tabs" role="tablist" aria-label="Request filters">
+                <button type="button" className={filter === "open" ? "is-active" : ""} onClick={() => setFilter("open")}>Open ({openCount})</button>
+                <button type="button" className={filter === "waiting" ? "is-active" : ""} onClick={() => setFilter("waiting")}>Waiting ({waitingCount})</button>
+                <button type="button" className={filter === "closed" ? "is-active" : ""} onClick={() => setFilter("closed")}>Closed ({closedCount})</button>
+              </div>
+              <div className="proto-comment-list">
+                {filteredRequests.length ? filteredRequests.map((request) => (
+                  <button
+                    key={request.id}
+                    type="button"
+                    className={`proto-request-row${selected?.id === request.id ? " is-active" : ""}`}
+                    onClick={() => setSelectedId(request.id)}
+                  >
+                    <strong>{request.type}</strong>
+                    <small>{request.status} / {request.assignedTo}</small>
+                    <span>{request.relatedAsset}</span>
+                  </button>
+                )) : (
+                  <div className="proto-request-empty">
+                    <strong>No {filter === "open" ? "open" : filter} request tickets</strong>
+                    <span>{requests.length ? "Try another filter." : "Open an asset and request review or approved-copy access to create one."}</span>
+                    <Link href={routeWithRole("/library", role)}>Browse library</Link>
+                  </div>
+                )}
+              </div>
+            </div>
+            <aside className="proto-inspector" aria-label="Request detail">
+              {selected ? (
+                <>
+                  <div className="proto-inspector-head">
+                    <div className="proto-inspector-thumb">
+                      {selectedAsset ? <AssetImage asset={selectedAsset} /> : <div className="proto-inspector-placeholder"><Inbox size={18} /></div>}
+                    </div>
+                    <div>
+                      <h2>{selected.relatedAsset}</h2>
+                      <StatusPill label={selected.status} tone={requestStatusTone(selected.status)} />
+                      <p>{selected.type} / {selected.assignedTo}</p>
+                      <small>{requestRecords.data?.approvalTruth === false ? "Portal ticket. Approval still requires reviewer evidence." : "Request context"}</small>
+                    </div>
+                  </div>
+                  <div className="proto-detail-stack">
+                    <section><h3>Truth boundary</h3><p>{requestRecords.data?.approvalTruth === false ? "This queue tracks portal requests only. It does not approve assets or write source truth." : "Request truth loaded from backend."}</p></section>
+                    <section><h3>Blocker</h3><p>{selected.blocker}</p></section>
+                    <section><h3>Next action</h3><p>{selected.nextAction}</p></section>
+                    <section><h3>Required evidence</h3><div className="proto-tag-row">{selected.requiredEvidence.map((item) => <span key={item}>{item}</span>)}</div></section>
+                    <section><h3>Timeline</h3><div className="proto-tag-row">{selected.timeline.map((item) => <span key={item}>{item}</span>)}</div></section>
+                  </div>
+                  <div className="proto-action-row">
+                    {selected.relatedAssetId ? <Link href={routeWithRole(`/assets/${selected.relatedAssetId}`, role)}><Eye size={16} /><span>Asset</span></Link> : null}
+                    {canOpenReview ? <Link href={routeWithRole("/review", role)}><ShieldCheck size={16} /><span>Review</span></Link> : null}
+                    <button type="button" onClick={() => toast.message("Reply updates are not writable in this local demo yet.")}><Send size={16} /><span>Ask info</span></button>
+                  </div>
+                </>
+              ) : <p className="proto-muted">No requests available.</p>}
+            </aside>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function PrototypeReviewApprove() {
   const { role } = useDemoRole();
-  const queue = useReviewQueue(role, "pending");
+  const [activeQueue, setActiveQueue] = useState("pending");
+  const queue = useReviewQueue(role, activeQueue);
+  const requestRecords = useRequestRecords(role);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
+  const [reviewerName, setReviewerName] = useState("");
+  const [reviewDate, setReviewDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [approvalScope, setApprovalScope] = useState<UsageScope>("Public");
   const [checklist, setChecklist] = useState<ReviewEvidenceChecklist>(emptyReviewChecklist);
+  const [depthChecklist, setDepthChecklist] = useState<ReviewEvidenceDepthChecklist>(emptyReviewEvidenceDepthChecklist);
   const [message, setMessage] = useState("");
+  const [actionPending, setActionPending] = useState(false);
   const assets = queue.data?.assets || [];
+  const intakeRequests = (requestRecords.data?.requests || []).filter((request) => request.type === "Upload intake" && request.status !== "Resolved");
+  const selectedIntake = intakeRequests.find((request) => request.id === selectedIntakeId);
   const selected = assets.find((asset) => asset.id === selectedId) || assets[0];
   const selectedIndex = Math.max(0, assets.findIndex((asset) => asset.id === selected?.id));
+  const selectedPendingWrite = selected ? queue.data?.pendingWrites?.[selected.id] || selected.pendingReviewWrite : undefined;
+  const reviewerNameForPayload = reviewerName.trim() || "Local reviewer";
+  const selectedUseState = selected ? assetUseState(selected) : null;
+  const approveDepthItems = selected ? reviewEvidenceDepthItems(selected, depthChecklist, "Approve Public") : [];
+  const approveDepthMissing = selected ? reviewEvidenceDepthItems(selected, depthChecklist, "Approve Public").filter((item) => item.required && !item.checked) : [];
+  const selectedTitle = selectedIntake ? selectedIntake.relatedAsset : selected ? displayTitle(selected) : "No selected review item";
+  const reviewSlaItems = [
+    { label: "First response", value: selectedIntake ? "Due today" : selected?.status === "Needs Review" ? "Due today" : "Met", tone: selectedIntake || selected?.status === "Needs Review" ? "review" : "approved" },
+    { label: "Rights decision", value: approveDepthMissing.length ? `${approveDepthMissing.length} checks` : "Ready", tone: approveDepthMissing.length ? "review" : "approved" },
+    { label: "ResourceSpace sync", value: selectedPendingWrite ? selectedPendingWrite.syncState : "Pending mapping", tone: selectedPendingWrite ? "review" : "draft" }
+  ];
+  const annotationPoints = selectedIntake
+    ? [
+        { label: "1", top: "34%", left: "42%", text: "Request evidence before asset review" },
+        { label: "2", top: "58%", left: "62%", text: "Confirm source custody" }
+      ]
+    : [
+        { label: "1", top: "30%", left: "38%", text: selected?.peopleRisk === "No people" ? "No visible people noted" : "Check people/youth visibility" },
+        { label: "2", top: "56%", left: "67%", text: selected?.rightsStatus || "Verify usage rights" },
+        { label: "3", top: "71%", left: "28%", text: selected?.downloadPolicy || "Confirm approved copy" }
+      ];
+  const versionCompareRows = [
+    ["Current record", selected?.reviewedDate || selectedIntake?.createdAt?.slice(0, 10) || "Pending"],
+    ["Previous decision", selected?.reviewer ? `${selected.reviewer} / ${selected.reviewedDate || "date pending"}` : "No prior approved decision exported"],
+    ["Renditions", selected?.downloadPolicy || "Approved-copy generation pending"],
+    ["Source truth", selectedPendingWrite ? `Queued ${selectedPendingWrite.syncState}` : "ResourceSpace writeback pending"]
+  ];
+
+  function combinedDisabledReason(action: "Approve Public" | "Request More Info" | "Searchable Archive" | "Do Not Use") {
+    if (selectedIntake) return "Open request detail; upload intake must become a reviewed asset before approval.";
+    if (!selected) return "Select an asset";
+    const base = reviewActionDisabledReason({ asset: selected, action, checklist, note: comment });
+    const depth = reviewEvidenceDepthDisabledReason(selected, depthChecklist, action);
+    const missing = [base.replace(/^Missing:\s*/, ""), depth.replace(/^Missing:\s*/, "")].filter(Boolean).join(", ");
+    return missing ? `Missing: ${missing}` : "";
+  }
+
+  const requestChangesDisabled = combinedDisabledReason("Request More Info");
+  const archiveDisabled = combinedDisabledReason("Searchable Archive");
+  const blockDisabled = combinedDisabledReason("Do Not Use");
+  const approveDisabled = combinedDisabledReason("Approve Public");
+  const decisionHistoryRows = [
+    ["Submitted", selectedIntake ? selectedIntake.createdAt.slice(0, 10) : selected?.importDate || selected?.capturedDate || "Date pending"],
+    ["Triage", selectedIntake ? selectedIntake.assignedTo : selected?.status || "Needs review"],
+    ["Evidence", approveDisabled ? "Missing required proof" : "Reviewer evidence complete"],
+    ["Next", selectedIntake ? "Open request before approval" : selectedPendingWrite ? "Confirm sync readback" : "Record decision locally"]
+  ];
 
   useEffect(() => {
     if (!selectedId && assets[0]) setSelectedId(assets[0].id);
+    if (selectedId && assets.length && !assets.some((asset) => asset.id === selectedId)) setSelectedId(assets[0]?.id || null);
   }, [assets, selectedId]);
 
   useEffect(() => {
     setChecklist(initialReviewChecklistForAsset(selected));
+    setDepthChecklist(initialReviewEvidenceDepthChecklist(selected));
     setComment("");
   }, [selected?.id]);
 
+  useEffect(() => {
+    setSelectedId(null);
+    setMessage("");
+  }, [activeQueue]);
+
   if (!canReview(role)) {
-    return <section className="proto-flow-page"><div className="proto-flow-card"><h1>Review & Approve</h1><p>Reviewer access required.</p></div></section>;
+    return <section className="proto-flow-page"><div className="proto-flow-card"><h1>Review & Approve</h1><p>Review inbox requires reviewer access.</p></div></section>;
   }
 
-  async function decide(action: "Approve Public" | "Request More Info") {
-    if (!selected) return;
-    const disabled = reviewActionDisabledReason({ asset: selected, action, checklist, note: comment });
+  async function decide(action: "Approve Public" | "Request More Info" | "Searchable Archive" | "Do Not Use") {
+    if (selectedIntake) {
+      setMessage("Open the intake request detail first. Upload tickets do not approve or mutate ResourceSpace records.");
+      return;
+    }
+    if (!selected || actionPending) return;
+    const disabled = combinedDisabledReason(action);
     if (disabled) {
       setMessage(`Review blocked. ${disabled}.`);
       return;
     }
-    const response = await fetch("/api/review", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        role,
-        id: selected.id,
-        action,
-        notes: comment,
-        checklist,
-        reviewerName: "Taylor Morgan",
-        reviewDate: new Date().toISOString().slice(0, 10),
-        approvalScope: "Public" satisfies UsageScope
-      })
-    });
-    const payload = await response.json().catch(() => ({}));
-    setMessage(payload.message || payload.error || "Decision queued for pending ResourceSpace sync.");
+    setActionPending(true);
+    setMessage("Sending review decision...");
+    try {
+      const response = await fetch("/api/review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [DAM_LOCAL_BETA_ROLE_HEADER]: role,
+          [DAM_LOCAL_TRUSTED_ROLE_HEADER]: role
+        },
+        body: JSON.stringify({
+          role,
+          id: selected.id,
+          action,
+          notes: comment.trim(),
+          checklist,
+          evidenceDepth: depthChecklist,
+          reviewerName: reviewerNameForPayload,
+          reviewDate,
+          approvalScope
+        })
+      });
+      const payload = await response.json().catch(() => ({ error: `Review API returned ${response.status}.` })) as ReviewDecisionPayload;
+      setMessage(reviewDecisionMessage(payload));
+      if (payload.queued || payload.pendingWriteId || payload.resourceSpaceWritten) queue.refresh();
+    } catch (error) {
+      setMessage(`Review decision failed: ${error instanceof Error ? error.message : "request failed"}.`);
+    } finally {
+      setActionPending(false);
+    }
   }
 
   return (
     <section className="proto-flow-page">
       <div className="proto-flow-card proto-review-card">
         <header className="proto-review-head">
-          <div><h1>Review & Approve</h1><p>{selected ? displayTitle(selected) : "Loading queue..."}</p></div>
-          <StatusPill asset={selected} />
+          <div><h1>Review & Approve</h1><p>{selectedTitle}</p></div>
+          {selectedIntake ? <StatusPill label={selectedIntake.status} tone={requestStatusTone(selectedIntake.status)} /> : <StatusPill asset={selected} />}
+          {selectedIntake ? <span className="proto-card-use is-review">Intake ticket</span> : selectedUseState ? <span className={`proto-card-use is-${selectedUseState.tone}`}>{selectedUseState.label}</span> : null}
           <span>{selectedIndex + 1} of {assets.length || 1}</span>
-          <Button onClick={() => void decide("Request More Info")}>Request changes</Button>
-          <Button tone="primary" onClick={() => void decide("Approve Public")}>Approve</Button>
+          <Button onClick={() => setMessage("Assigned to Rights Reviewer in local demo. ResourceSpace owner is unchanged.")}>Assign reviewer</Button>
+          <Button onClick={() => setMessage("Escalation noted locally for ministry/risk follow-up. No approval state changed.")}>Escalate</Button>
+          <Button onClick={() => void decide("Request More Info")} disabled={!selected || actionPending || Boolean(requestChangesDisabled)} title={requestChangesDisabled || undefined}>Request changes</Button>
+          <Button tone="primary" onClick={() => void decide("Approve Public")} disabled={!selected || actionPending || Boolean(approveDisabled)} title={approveDisabled || undefined}>Approve public</Button>
         </header>
-        {queue.loading ? <div className="proto-loading">Loading review queue...</div> : (
+        {queue.loading ? <PrototypeLoadingState label="Loading review queue..." /> : queue.error ? <div className="proto-error">{queue.error}</div> : (
           <div className="proto-review-layout">
-            <div className="proto-review-preview"><AssetImage asset={selected} variant="detail" /></div>
-            <aside className="proto-comments-panel">
-              <div className="proto-tabs"><button className="is-active">Comments</button><button>Details</button></div>
-              <div className="proto-comment-list">
-                <p><strong>Taylor Morgan</strong><small>9:15 AM</small><span>Can we brighten the shadow slightly?</span></p>
-                <p><strong>Jordan Lee</strong><small>10:02 AM</small><span>Updated the shadows.</span></p>
-                <p><strong>Taylor Morgan</strong><small>10:15 AM</small><span>Much better, approved?</span></p>
+            <div className="proto-review-workbench">
+              <div className="proto-review-preview">
+                {selectedIntake ? <div className="proto-inspector-placeholder"><Inbox size={22} /><span>{selectedIntake.type}</span></div> : <AssetImage asset={selected} variant="detail" />}
+                <div className="proto-annotation-layer" aria-label="Review annotation pins">
+                  {annotationPoints.map((point) => (
+                    <button
+                      key={point.label}
+                      type="button"
+                      style={{ top: point.top, left: point.left }}
+                      onClick={() => setMessage(`Annotation ${point.label}: ${point.text}`)}
+                      aria-label={`Annotation ${point.label}: ${point.text}`}
+                    >
+                      {point.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <div className="proto-review-proof-grid">
+                <section>
+                  <header><strong>Version comparison</strong><span>Local record</span></header>
+                  {versionCompareRows.map(([label, value]) => <p key={label}><span>{label}</span><strong>{value}</strong></p>)}
+                </section>
+                <section>
+                  <header><strong>Reviewer SLA</strong><span>Queue health</span></header>
+                  {reviewSlaItems.map((item) => <p key={item.label}><span>{item.label}</span><strong className={`is-${item.tone}`}>{item.value}</strong></p>)}
+                </section>
+                <section>
+                  <header><strong>Decision history</strong><span>No source mutation</span></header>
+                  {decisionHistoryRows.map(([label, value]) => <p key={label}><span>{label}</span><strong>{value}</strong></p>)}
+                </section>
+              </div>
+              <div className="proto-review-queue-tabs" aria-label="Review queues">
+                {(queue.data?.queues || []).slice(0, 6).map((item) => (
+                  <button key={item.id} type="button" className={activeQueue === item.id ? "is-active" : ""} onClick={() => setActiveQueue(item.id)}>
+                    <span>{item.label}</span>
+                    <strong>{item.count}</strong>
+                  </button>
+                ))}
+              </div>
+              <div className="proto-review-asset-list" aria-label="Review assets">
+                {intakeRequests.length ? (
+                  <div className="proto-review-intake-list" aria-label="Submitted intake tickets">
+                    <strong>Submitted intake</strong>
+                    {intakeRequests.slice(0, 4).map((request) => (
+                      <button
+                        key={request.id}
+                        type="button"
+                        className={selectedIntake?.id === request.id ? "is-active" : ""}
+                        onClick={() => {
+                          setSelectedIntakeId(request.id);
+                          setSelectedId(null);
+                        }}
+                      >
+                        <span>{request.relatedAsset}</span>
+                        <small>{request.status} / {request.assignedTo}</small>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {assets.slice(0, 8).map((asset) => (
+                  <button key={asset.id} type="button" className={!selectedIntake && selected?.id === asset.id ? "is-active" : ""} onClick={() => { setSelectedIntakeId(null); setSelectedId(asset.id); }}>
+                    <strong>{displayTitle(asset)}</strong>
+                    <small>{asset.status} / {asset.peopleRisk || "People unknown"}</small>
+                  </button>
+                ))}
+                {!assets.length ? <p className="proto-muted">No records in this queue.</p> : null}
+              </div>
+            </div>
+            <aside className="proto-comments-panel">
+              <div className="proto-tabs"><button className="is-active">Evidence</button><button>Details</button></div>
+              <div className="proto-comment-list">
+                <p><strong>Queue source</strong><small>{queue.live ? "Live source" : "Local demo"}</small><span>{queue.data?.source?.detail || "Review queue uses TJC media policy."}</span></p>
+                <p><strong>Submitted intake</strong><small>{intakeRequests.length ? `${intakeRequests.length} open` : "None"}</small><span>{selectedIntake ? `${selectedIntake.relatedAsset} / ${selectedIntake.nextAction}` : intakeRequests[0] ? `${intakeRequests[0].relatedAsset} / ${intakeRequests[0].nextAction}` : "Upload submissions appear here after contributor intake."}</span></p>
+                {selectedIntake ? <p><strong>Intake blocker</strong><small>{selectedIntake.assignedTo}</small><span>{selectedIntake.blocker}. Open Requests to add missing context before reviewer approval.</span></p> : null}
+                <p><strong>Pending write</strong><small>{pendingWriteLabel(selectedPendingWrite)}</small><span>{selectedPendingWrite ? `State: ${selectedPendingWrite.syncState}. Source library remains unchanged until sync confirms.` : "No queued decision for this item yet."}</span></p>
+                <p><strong>Reviewer note</strong><small>Required</small><span>{comment.trim() || "Add evidence notes before approving public use."}</span></p>
+                <p><strong>Lifecycle</strong><small>{selected?.status || "No asset selected"}</small><span>{selected?.usageScope || "Usage scope pending"} / {selectedUseState?.label || "Reuse state pending"}</span></p>
+                <p><strong>Decision guard</strong><small>{approveDisabled ? "Approval blocked" : "Approval evidence complete"}</small><span>{approveDisabled || "Approve queues a public decision; ResourceSpace/source sync must still confirm before truth changes."}</span></p>
+                <p><strong>Restrict vs block</strong><small>Consequence</small><span>Request evidence keeps item out of public reuse. Blocking or source-file actions require admin/reviewer follow-up outside this button.</span></p>
+                <p><strong>Usage rights</strong><small>{selected?.rightsStatus || "Needs review"}</small><span>{selected?.rightsNotes || "Usage rights evidence should be recorded before any public approval."}</span></p>
+                <p><strong>Allowed channels</strong><small>{selected?.approvedChannels?.length ? selected.approvedChannels.join(", ") : "Not exported"}</small><span>{selected?.region || "Region not exported"}{selected?.expirationOrRecheckDate || selected?.approvalRecheckDate || selected?.expirationDate ? ` · review by ${selected.expirationOrRecheckDate || selected.approvalRecheckDate || selected.expirationDate}` : ""}</span></p>
+                <p><strong>Release evidence</strong><small>{selected?.consentStatus || "Needs review"}</small><span>{selected?.peopleRisk === "No people" ? "Model/talent release may be not required, but reviewer still records that decision." : selected?.peopleRisk || "People visibility unresolved."}</span></p>
+                <p><strong>Compliance status</strong><small>{approveDepthMissing.length ? "Blocked" : "Ready for public review"}</small><span>{approveDepthMissing.length ? approveDepthMissing.slice(0, 3).map((item) => item.label).join(", ") : "Expanded evidence checks are complete for public approval."}</span></p>
+              </div>
+              <div className="proto-review-fields">
+                <label className="proto-field"><span>Reviewer name</span><input value={reviewerName} onChange={(event) => setReviewerName(event.target.value)} placeholder="Local reviewer" /></label>
+                <label className="proto-field"><span>Review date</span><input type="date" value={reviewDate} onChange={(event) => setReviewDate(event.target.value)} /></label>
+                <label className="proto-field"><span>Approval scope</span><select value={approvalScope} onChange={(event) => setApprovalScope(event.target.value as UsageScope)}><option value="Public">Public</option><option value="Public and Internal">Public and Internal</option><option value="Internal">Internal</option><option value="Archive Only">Archive Only</option><option value="Do Not Publish">Do Not Publish</option></select></label>
+              </div>
+              <details className="proto-evidence" open>
+                <summary>Review evidence depth</summary>
+                {approveDepthItems.map((item) => (
+                  <label key={item.field}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(depthChecklist[item.field])}
+                      onChange={() => setDepthChecklist((current) => ({ ...current, [item.field]: !current[item.field] }))}
+                    />
+                    <span>{item.label}</span>
+                    <small>{item.required ? item.hint : `${item.hint} Not required for this record/action.`}</small>
+                  </label>
+                ))}
+              </details>
               <details className="proto-evidence">
-                <summary>Evidence checklist</summary>
+                <summary>Workflow checklist</summary>
                 {reviewChecklistItems.map((item) => (
                   <label key={item.field}><input type="checkbox" checked={Boolean(checklist[item.field])} onChange={() => setChecklist((current) => ({ ...current, [item.field]: !current[item.field] }))} />{item.label}</label>
                 ))}
               </details>
               <label className="proto-comment-box">
                 <input value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Add a comment..." />
-                <button type="button" onClick={() => setMessage("Comment staged with review decision.")}><Send size={16} /></button>
+                <button type="button" onClick={() => setMessage("Review note will be sent with the next backend decision.")}><Send size={16} /></button>
               </label>
+              <div className="proto-action-row">
+                {selectedIntake ? <Link href={routeWithRole(`/requests/${selectedIntake.id}`, role)}><Inbox size={16} /><span>Open request</span></Link> : null}
+                <button type="button" onClick={() => void decide("Request More Info")} disabled={!selected || actionPending || Boolean(requestChangesDisabled)} title={requestChangesDisabled || undefined}><Share2 size={16} /><span>Request changes</span></button>
+                <button type="button" onClick={() => void decide("Searchable Archive")} disabled={!selected || actionPending || Boolean(archiveDisabled)} title={archiveDisabled || undefined}><Folder size={16} /><span>Archive only</span></button>
+                <button type="button" onClick={() => void decide("Do Not Use")} disabled={!selected || actionPending || Boolean(blockDisabled)} title={blockDisabled || undefined}><ShieldCheck size={16} /><span>Block public use</span></button>
+                <button type="button" onClick={() => void decide("Approve Public")} disabled={!selected || actionPending || Boolean(approveDisabled)} title={approveDisabled || undefined}><ShieldCheck size={16} /><span>Approve public</span></button>
+              </div>
             </aside>
           </div>
         )}
@@ -717,40 +2044,306 @@ export function PrototypeReviewApprove() {
   );
 }
 
-export function PrototypeCollectionsDistribute({ distribution = false }: { distribution?: boolean }) {
+export function PrototypeCollectionsDistribute({ distribution: _distribution = false }: { distribution?: boolean }) {
   const { role } = useDemoRole();
+  const publicMode = _distribution;
   const search = useAssetsSearch({ role, sort: "Approved first", limit: 12 });
+  const pathname = usePathname();
   const collections = search.data?.collections || [];
-  const assets = search.data?.assets || [];
-  const selected = collections[0];
+  const pathCollectionId = pathname.startsWith("/collections/") ? decodeURIComponent(pathname.split("/").filter(Boolean)[1] || "") : "";
+  const selected = collections.find((collection) => collection.id === pathCollectionId) || collections.find((collection) => collection.count > 0) || collections[0];
+  const collectionAssets = useAssetsSearch({ role, sort: "Approved first", limit: 12, collection: selected?.id, rightsSafe: publicMode });
+  const assets = selected ? collectionAssets.data?.assets || [] : [];
+  const [message, setMessage] = useState("");
+  const [actionPending, setActionPending] = useState(false);
+  const canCreateDraft = canUpload(role);
+  const portalReadyCount = assets.filter((asset) => assetUseState(asset).tone === "ready").length;
+  const gatedCount = Math.max(0, assets.length - portalReadyCount);
+  const selectedCountLabel = collectionAssets.loading ? "Loading assets" : selected?.countLabel || "0 assets";
+  const shareReadinessLabel = assets.length
+    ? gatedCount
+      ? `${gatedCount.toLocaleString()} item${gatedCount === 1 ? "" : "s"} still gated`
+      : "All visible items clear item-level reuse checks"
+    : "No visible items to share";
+
+  async function checkShareReadiness() {
+    if (!selected) return;
+    if (!canCreateDraft) {
+      setMessage("Collection sharing is unavailable for Viewer. Open an item to request review or approved-copy access.");
+      return;
+    }
+    if (!assets.length) {
+      setMessage("No role-visible assets in this collection. Nothing can be shared from this view.");
+      return;
+    }
+    setActionPending(true);
+    setMessage("Checking item-level share readiness...");
+    try {
+      const response = await fetch("/api/collections", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [DAM_LOCAL_BETA_ROLE_HEADER]: role,
+          [DAM_LOCAL_TRUSTED_ROLE_HEADER]: role
+        },
+        body: JSON.stringify({
+          role,
+          assetIds: assets.map((asset) => asset.id),
+          title: selected.name,
+          audience: "Public-approved portal",
+          owner: role
+        })
+      });
+      const payload = await response.json().catch(() => ({ error: `Collection readiness returned ${response.status}.` }));
+      setMessage(payload.message || payload.error || "Collection readiness checked. Sharing remains gated per item.");
+    } catch (error) {
+      setMessage(`Collection readiness check failed: ${error instanceof Error ? error.message : "request failed"}.`);
+    } finally {
+      setActionPending(false);
+    }
+  }
+
   return (
-    <section className="proto-flow-page proto-collections-page">
-      <div className="proto-flow-card proto-collection-card">
-        <div className="proto-collection-main">
-          <header className="proto-collection-head">
-            <div className="proto-collection-cover"><AssetImage asset={assets[0]} /></div>
+    <section className={`proto-collections-page${selected ? " has-inspector" : ""}`}>
+      <div className="proto-collections-workspace">
+        <header className="proto-library-header">
+          <div className="proto-title-row">
+            <h1>{publicMode ? "Portal" : "Collections"}</h1>
+            <span>{collections.length.toLocaleString()} collections</span>
+          </div>
+          <ToolbarSearch value="" onChange={() => setMessage("Collection search follows the library metadata index in the next slice.")} />
+          <div className="proto-header-actions">
+            <Button onClick={() => setMessage("Filters use exported collection metadata only.")}><SlidersHorizontal size={15} />Filters</Button>
+            <Button onClick={() => setMessage("Saved views stay in the sidebar for this prototype pass.")}>Saved views <ChevronDown size={14} /></Button>
+            <label className="proto-rights-safe-toggle is-active">
+              <input type="checkbox" checked readOnly />
+              <span><ShieldCheck size={14} aria-hidden="true" />Rights-safe only</span>
+            </label>
+          </div>
+        </header>
+
+        <div className="proto-collections-filterbar" aria-label="Collection filters">
+          <button type="button">Brand <strong>All brands</strong><ChevronDown size={13} /></button>
+          <button type="button">Owner <strong>All owners</strong><ChevronDown size={13} /></button>
+          <button type="button">Rights-safe <strong>All</strong><ChevronDown size={13} /></button>
+          <span />
+          <button type="button">Sort <strong>Newest</strong><ChevronDown size={13} /></button>
+          <button type="button" aria-label="Grid layout"><LayoutGrid size={15} /></button>
+          <button type="button" aria-label="List layout"><List size={15} /></button>
+        </div>
+
+        <div className="proto-collection-grid" aria-label="Collections">
+          {search.loading ? <PrototypeLoadingState label="Loading collections..." /> : search.error ? <div className="proto-error">{search.error}</div> : collections.length ? collections.map((collection, index) => {
+            const active = selected?.id === collection.id;
+            const cover = active ? assets[0] : assets[index % Math.max(1, assets.length)];
+            const statusTone = active && !gatedCount ? "approved" : index % 4 === 1 ? "review" : "approved";
+            const statusLabel = active && gatedCount ? "Shared" : index % 4 === 1 ? "Internal" : "Published";
+            return (
+              <Link key={collection.id} className={`proto-collection-tile${active ? " is-active" : ""}`} href={routeWithRole(`/collections/${collection.id}`, role)}>
+                <div className="proto-collection-tile-cover">
+                  {cover ? <AssetImage asset={cover} /> : <div className={`proto-photo-tile ${["is-mountain", "is-portrait", "is-ceramic", "is-peaks", "is-architecture"][index % 5]}`} />}
+                  <span className="proto-card-check is-checked"><Check size={13} /></span>
+                  <button type="button" aria-label={`More actions for ${collection.name}`}><MoreHorizontal size={16} /></button>
+                </div>
+                <div className="proto-collection-tile-copy">
+                  <strong>{collection.name}</strong>
+                  <small>{collection.countLabel} / {collection.dateRange}</small>
+                  <span>{collection.description || "Rights-aware DAM collection."}</span>
+                  <StatusPill label={statusLabel} tone={statusTone} />
+                </div>
+              </Link>
+            );
+          }) : <div className="proto-empty-state"><strong>No collections visible</strong><span>No role-visible collections are available from the current source.</span></div>}
+        </div>
+      </div>
+
+      <aside className="proto-collection-inspector" aria-label="Collection detail">
+        <div className="proto-inspector-nav">
+          <div>
+            <strong>{selected?.name || "Collection detail"}</strong>
+            <span>{selectedCountLabel}</span>
+          </div>
+          <button type="button" aria-label="Close collection inspector"><X size={15} /></button>
+        </div>
+        <div className="proto-inspector-body">
+          <div className="proto-inspector-thumb">{assets[0] ? <AssetImage asset={assets[0]} /> : <div className="proto-photo-tile is-mountain" />}</div>
+          <div className="proto-inspector-head">
             <div>
-              <h1>{distribution ? "Distribution Sets" : "Collections / Distribute"}</h1>
-              <h2>{selected?.name || "Spring Campaign 2024"}</h2>
-              <span>{selected?.countLabel || "12 assets"}</span>
-              <p>{selected?.description || "Campaign assets for web, social, and print."}</p>
+              <h2>{selected?.name || "No collections visible"}</h2>
+              <p>{selected?.description || "No role-visible collections are available from the current source."}</p>
             </div>
+            <StatusPill label={gatedCount ? "Shared" : "Published"} tone={gatedCount ? "review" : "approved"} />
+          </div>
+          <div className="proto-detail-stack">
+            <section><h3>Permissions</h3><p>{publicMode ? "External-safe assets only." : "Collection membership never approves assets. Item gates still apply."}</p></section>
+            <section><h3>Collaborators</h3><div className="proto-tag-row"><span>Media Team</span><span>Ministry Reviewer</span><span>Rights Reviewer</span></div></section>
+            <section><h3>Item readiness</h3><div className="proto-tag-row"><span>{portalReadyCount.toLocaleString()} ready</span><span>{gatedCount.toLocaleString()} gated</span></div><p>{shareReadinessLabel}.</p></section>
+            <section><h3>Source</h3><p>{search.data?.source?.detail || "Reading collection summaries from the current media source."}</p></section>
+            {!publicMode && canReview(role) && selected ? <section><h3>Reviewer reference</h3><p>{selected.id}</p></section> : null}
+          </div>
+          <div className="proto-collection-inspector-actions">
+            <LinkButton href={routeWithRole(selected ? `/collections/${selected.id}` : "/collections", role)} tone="primary">Open collection</LinkButton>
+            <Button onClick={() => setMessage("No public collection link exists in this local demo. No link was copied.")}><Share2 size={15} />Share collection</Button>
+            <Button onClick={() => setMessage("Package download is disabled until all item-level gates pass.")}><Download size={15} />Download package</Button>
+            <Button onClick={() => void checkShareReadiness()} disabled={actionPending || !selected}>{canCreateDraft ? "Check readiness" : "Request review"}</Button>
+          </div>
+          {message ? <p className="proto-gate-note">{message}</p> : null}
+        </div>
+      </aside>
+    </section>
+  );
+}
+
+export function PrototypeAdminControlCenter() {
+  const { role, ready } = useDemoRole();
+  const adminAllowed = ready && canAdmin(role);
+  const readiness = useAdminReadiness(role);
+  const data = readiness.data;
+  const metrics = data?.metrics;
+  const permissionPreview = buildPermissionInheritancePreview();
+  const cleanupQueues = data ? buildGovernanceCleanupQueues(data) : [];
+  const totalBlockers = metrics
+    ? metrics.needsReview + metrics.rightsReview + metrics.missingSource + metrics.childrenYouth + metrics.renditionGaps
+    : 0;
+
+  if (!ready) {
+    return <section className="proto-admin-page"><PrototypeLoadingState label="Checking role..." /></section>;
+  }
+
+  if (!adminAllowed) {
+    return (
+      <section className="proto-admin-page">
+        <div className="proto-flow-card">
+          <header className="proto-admin-header">
+            <h1>Admin</h1>
+            <p>DAM Admin access is required for source health, audit, policy, and integration controls.</p>
           </header>
-          <div className="proto-tabs"><button className="is-active">Assets</button><button>Details</button><button>Activity</button><button>Distribution</button></div>
-          <div className="proto-collection-assets">
-            {assets.slice(0, 7).map((asset) => <div key={asset.id}><AssetImage asset={asset} /></div>)}
-            <button type="button">+ Add assets</button>
+          <div className="proto-admin-grid is-wide">
+            <article><span>Current role</span><strong>{role}</strong><p>Viewer, Contributor, and Reviewer roles cannot open admin controls.</p></article>
+            <article><span>Protected controls</span><strong>Locked</strong><p>Source health, audit logs, role policy, and sync controls stay hidden.</p></article>
+            <article><span>Next step</span><strong>Use Library</strong><p>Find approved media or send requests through role-safe workflows.</p></article>
+          </div>
+          <div className="proto-action-row">
+            <Link href={routeWithRole("/library", role)}><Search size={16} /><span>Library</span></Link>
+            {canUpload(role) ? <Link href={routeWithRole("/upload", role)}><Upload size={16} /><span>Upload</span></Link> : null}
           </div>
         </div>
-        <aside className="proto-share-panel">
-          <h2>Share collection</h2>
-          <label className="proto-toggle-row"><span>Share link</span><input type="checkbox" defaultChecked /></label>
-          <label className="proto-field"><span>URL</span><input readOnly value="https://dam.local/c/campaign2024" /></label>
-          <Button onClick={() => toast.message("Share link copied. Asset gates still apply.")}>Copy link</Button>
-          <label className="proto-field"><span>Permission</span><select defaultValue="view"><option value="view">People with the link can view</option><option value="request">Request access required</option></select></label>
-          <Button onClick={() => toast.message("Download all checks each item approval before packaging.")}>Download all</Button>
-          <p className="proto-muted">Source/original files stay restricted. Per-asset approval is never bypassed.</p>
-        </aside>
+      </section>
+    );
+  }
+
+  return (
+    <section className="proto-admin-page">
+      <div className="proto-flow-card">
+        <header className="proto-admin-header">
+          <div>
+            <h1>Admin</h1>
+            <p>{data ? `${data.assetCount.toLocaleString()} assets from ${data.source.label}. Latest audit: ${formatAdminDate(data.auditLog.latestAt)}.` : "Reading source health, audit, and policy readiness."}</p>
+          </div>
+          <Button onClick={() => readiness.refresh()} disabled={readiness.loading}>Refresh</Button>
+        </header>
+
+        {readiness.loading ? <PrototypeLoadingState label="Loading admin readiness..." /> : readiness.error ? <div className="proto-error">{readiness.error}</div> : data && metrics ? (
+          <>
+            <div className="proto-admin-grid">
+              <article><span>Launch score</span><strong>{data.score}/100</strong><p>Search, trust, review, share, and governance pillars.</p></article>
+              <article><span>Assets in scope</span><strong>{data.assetCount.toLocaleString()}</strong><p>Current backend/export records, not a fake catalog count.</p></article>
+              <article><span>Portal ready</span><strong>{metrics.portalReady.toLocaleString()}</strong><p>Approved copies that pass portal reuse policy.</p></article>
+              <article><span>Open blockers</span><strong>{totalBlockers.toLocaleString()}</strong><p>Review, rights, source, people/youth, and rendition gaps.</p></article>
+            </div>
+
+            <div className="proto-admin-ops-grid">
+              <article><div><span>Source truth</span><strong>{data.source.label}</strong></div><StatusPill label={data.source.live ? "Live" : "Local"} tone={data.source.live ? "approved" : "draft"} /><p>{data.source.detail}</p></article>
+              <article><div><span>Audit events</span><strong>{data.auditLog.count.toLocaleString()}</strong></div><StatusPill label={data.auditLog.storage?.durable ? "Durable" : "Local"} tone={data.auditLog.storage?.durable ? "approved" : "review"} /><p>{data.auditLog.storage?.detail || "Audit log status is reported by runtime diagnostics."}</p></article>
+              <article><div><span>Beta readiness</span><strong>{data.betaReadiness.ready ? "Ready" : "Blocked"}</strong></div><StatusPill label={data.betaReadiness.ready ? "Ready" : "Needs work"} tone={data.betaReadiness.ready ? "approved" : "review"} /><p>{data.betaReadiness.score}/100. {data.betaReadiness.facts.find((fact) => !fact.ready)?.detail || "All tracked beta readiness facts are passing."}</p></article>
+            </div>
+
+            <section className="proto-admin-table" aria-label="Integration readiness">
+              <header>
+                <h2>Integration Readiness</h2>
+                <span>Status</span>
+                <span>Evidence</span>
+              </header>
+              {data.integrationReadiness.slice(0, 8).map((item) => (
+                <div key={item.id}>
+                  <strong>{item.label}</strong>
+                  <span>{item.owner}</span>
+                  <StatusPill label={item.state || (item.ready ? "Ready" : "Needs work")} tone={item.ready ? "approved" : "review"} />
+                  <p>{item.detail}</p>
+                </div>
+              ))}
+            </section>
+
+            <section className="proto-admin-table" aria-label="Action backlog">
+              <header>
+                <h2>Action Backlog</h2>
+                <span>Owner</span>
+                <span>Count</span>
+              </header>
+              {data.actionBacklog.slice(0, 8).map((item) => (
+                <div key={item.id}>
+                  <strong>{item.label}</strong>
+                  <span>{item.owner}</span>
+                  <StatusPill label={item.severity} tone={item.severity === "low" ? "approved" : item.severity === "critical" || item.severity === "high" ? "danger" : "review"} />
+                  <p>{item.count.toLocaleString()} records. {item.action}</p>
+                </div>
+              ))}
+            </section>
+
+            <section className="proto-admin-grid is-wide" aria-label="Governance cleanup queues">
+              {cleanupQueues.map((item) => (
+                <article key={item.id}>
+                  <span>{item.label}</span>
+                  <strong>{item.count === null ? "Unavailable" : item.count.toLocaleString()}</strong>
+                  <p>{item.detail}</p>
+                  {item.href ? <Link href={item.href}>{item.status === "sample-only" ? "Sample view" : "Open queue"}</Link> : <small>Unavailable in current source</small>}
+                </article>
+              ))}
+            </section>
+
+            <section className="proto-admin-table" aria-label="Permission inheritance preview">
+              <header>
+                <h2>Permission inheritance preview</h2>
+                <span>Inheritance</span>
+                <span>Exception</span>
+              </header>
+              {permissionPreview.rows.map((row) => (
+                <div key={row.id}>
+                  <strong>{row.label}</strong>
+                  <span>{row.inheritance}</span>
+                  <StatusPill label="Read-only preview" tone="draft" />
+                  <p>{row.detail}</p>
+                  <div className="proto-permission-role-grid">
+                    <span>Viewer: {row.viewer}</span>
+                    <span>Contributor: {row.contributor}</span>
+                    <span>Reviewer: {row.reviewer}</span>
+                    <span>DAM Admin: {row.admin}</span>
+                  </div>
+                  <small>{row.exception}</small>
+                </div>
+              ))}
+            </section>
+
+            <section className="proto-admin-table" aria-label="Inheritance assignments preview">
+              <header>
+                <h2>Inheritance assignments</h2>
+                <span>Inherited from</span>
+                <span>Exception</span>
+              </header>
+              {permissionPreview.assignments.map((assignment) => (
+                <div key={assignment.scope}>
+                  <strong>{assignment.scope}</strong>
+                  <span>{assignment.inheritedFrom}</span>
+                  <StatusPill label="Preview" tone="review" />
+                  <p>{assignment.effect}</p>
+                  <small>{assignment.exceptionState}</small>
+                </div>
+              ))}
+            </section>
+          </>
+        ) : (
+          <p className="proto-muted">Admin readiness is unavailable.</p>
+        )}
       </div>
     </section>
   );
@@ -758,86 +2351,172 @@ export function PrototypeCollectionsDistribute({ distribution = false }: { distr
 
 export function PrototypeAssetDetailPage({ id }: { id: string }) {
   const { role } = useDemoRole();
+  const [downloadCenterOpen, setDownloadCenterOpen] = useState(false);
   const detail = useAssetDetail(id, role);
   const asset = detail.data?.asset;
+  const relatedAssets = detail.data?.related || [];
+  const visibleThumbs = asset ? [asset, ...relatedAssets].slice(0, 5) : [];
   return (
     <section className="proto-detail-page">
-      {detail.loading ? <div className="proto-loading">Loading asset...</div> : detail.error ? <div className="proto-error">{detail.error}</div> : asset ? (
+      {detail.loading ? <PrototypeLoadingState label="Loading asset..." /> : detail.error ? <div className="proto-error">{detail.error}</div> : asset ? (
+        <>
+        <header className="proto-detail-topbar">
+          <Link href={routeWithRole("/library", role)} className="proto-detail-back"><ChevronLeft size={17} />Back to library</Link>
+          <div className="proto-detail-top-actions" aria-label="Asset actions">
+            <button type="button" onClick={() => setDownloadCenterOpen(true)}><Download size={16} />Download</button>
+            <button type="button" onClick={() => toast.message("Share flow stays disabled in local demo. Create audited links from Distribution Sets.")}><Share2 size={16} />Share</button>
+            <button type="button" onClick={() => toast.message("Collection changes are disabled in local demo.")}><Folder size={16} />Add to collection</button>
+            <button type="button" aria-label="More actions"><MoreHorizontal size={18} />More actions</button>
+          </div>
+        </header>
         <div className="proto-detail-card">
-          <section className="proto-detail-media-panel">
+          <section className="proto-detail-media-panel" aria-label="Asset preview and metadata">
             <header>
               <div>
                 <h1>{displayTitle(asset)}</h1>
-                <p>{assetMeta(asset) || assetRecordRef(asset)}</p>
+                <div className="proto-detail-approved-line"><StatusPill asset={asset} /><span>{assetUseState(asset).label}</span></div>
+                <p>{assetMeta(asset) || assetRecordRef(asset)} / sRGB IEC61966-2.1</p>
               </div>
-              <StatusPill asset={asset} />
             </header>
             <div className="proto-detail-preview"><AssetImage asset={asset} variant="detail" /></div>
-            <p className="proto-detail-safety-note">Source/original files remain restricted. Downloads use the approved-copy gate and review policy.</p>
+            {visibleThumbs.length ? (
+              <div className="proto-detail-thumb-rail" aria-label="Related asset previews">
+                <button type="button" aria-label="Previous related asset"><ChevronLeft size={17} /></button>
+                {visibleThumbs.map((thumb, index) => (
+                  <Link
+                    key={thumb.id}
+                    href={routeWithRole(`/library/${thumb.id}`, role)}
+                    className={index === 0 ? "is-active" : ""}
+                    aria-label={`Open ${displayTitle(thumb)}`}
+                  >
+                    <AssetImage asset={thumb} />
+                  </Link>
+                ))}
+                <button type="button" aria-label="Next related asset"><ChevronRight size={17} /></button>
+              </div>
+            ) : null}
+            <section className="proto-detail-downloads">
+              <h2>Downloads</h2>
+              {([
+                ["Original", `${assetType(asset)} / ${asset.imageDimensions || "dimensions pending"} / ${formatBytes(asset.fileSizeBytes)}`, true],
+                ["Web Large", `${assetType(asset)} / 1920 x 1280 / approved copy`, false],
+                ["Web Medium", `${assetType(asset)} / 1280 x 853 / approved copy`, false],
+                ["Print Ready", `${assetType(asset)} / print rendition / request if missing`, false]
+              ] as Array<[string, string, boolean]>).map(([label, meta, locked]) => (
+                <button key={label} type="button" onClick={() => setDownloadCenterOpen(true)} className={locked ? "is-locked" : ""}>
+                  <span><Download size={16} aria-hidden="true" /><strong>{label}</strong><small>{meta}</small></span>
+                  {locked ? <LockKeyhole size={15} aria-hidden="true" /> : <Download size={16} aria-hidden="true" />}
+                </button>
+              ))}
+            </section>
+            <section className="proto-detail-info-card">
+              <h2>Asset information</h2>
+              <PrototypeDetailRows rows={[
+                ["Filename", displayTitle(asset)],
+                ["Asset ID", assetRecordRef(asset)],
+                ["Uploaded", `${prototypeDate(asset.importDate || asset.capturedDate || asset.eventDate)} by ${prototypePerson(asset)}`],
+                ["Collection", asset.collection || "TJC media intake"],
+                ["Caption", prototypeCaption(asset)],
+                ["Tags", (asset.tags || asset.tjcTerms || ["mountains", "lake", "travel", "hero"]).slice(0, 6).join(", ")],
+                ["Photographer", prototypePerson(asset)],
+                ["Location", asset.region || asset.church || "Local church / ministry location"]
+              ]} />
+            </section>
           </section>
-          <PrototypeAssetInspector asset={asset} index={0} total={1} />
-          <div className="proto-related">
-            <h2>Related files</h2>
-            {(detail.data?.related || []).slice(0, 4).map((related) => <Link key={related.id} href={routeWithRole(`/assets/${related.id}`, role)}>{displayTitle(related)}</Link>)}
-          </div>
-        </div>
-      ) : <div className="proto-error">Asset not found.</div>}
-    </section>
-  );
-}
-
-export function PrototypeAdminPage({ initialModule, adminOnly: _adminOnly }: { initialModule?: string; adminOnly?: boolean } = {}) {
-  const { role } = useDemoRole();
-  const readiness = useAdminReadiness(role);
-  const review = useReviewQueue(role, "pending");
-  if (!canAdmin(role)) return <section className="proto-flow-page"><div className="proto-flow-card"><h1>Admin</h1><p>DAM Admin access required.</p></div></section>;
-  const metrics = readiness.data?.metrics;
-  const pendingWrites = Object.values(review.data?.pendingWrites || {});
-  const sourceState = readiness.source?.detail || "ResourceSpace connection status unavailable in this environment.";
-  const adminRows = [
-    { label: "Source health", value: sourceLabel(readiness.source), detail: sourceState, tone: readiness.live ? "approved" : "review" },
-    { label: "Review queues", value: `${review.data?.assets?.length ?? metrics?.needsReview ?? 0} active`, detail: "Reviewer and DAM Admin queues preserve required evidence checks.", tone: (review.data?.assets?.length || metrics?.needsReview) ? "review" : "approved" },
-    { label: "Pending writes", value: `${pendingWrites.length} queued`, detail: "ResourceSpace remains unchanged until live writeback or media team sync completes.", tone: pendingWrites.length ? "review" : "draft" },
-    { label: "Users / Roles", value: "4 roles", detail: "Viewer, Contributor, Reviewer, and DAM Admin gates stay enforced.", tone: "approved" },
-    { label: "Metadata health", value: `${metrics?.rightsReview ?? 0} rights`, detail: `${metrics?.renditionGaps ?? 0} rendition gaps, ${metrics?.missingSource ?? 0} missing source records.`, tone: (metrics?.rightsReview || metrics?.renditionGaps || metrics?.missingSource) ? "review" : "approved" },
-    { label: "Launch blockers", value: `${readiness.data?.readiness?.filter((item) => item.tone !== "ok" || item.score < 80).length ?? 0} open`, detail: "Launch readiness tracks integrations, audit evidence, metadata, and safe delivery gates.", tone: (readiness.data?.score ?? 0) >= 80 ? "approved" : "review" }
-  ];
-  const integrationRows = readiness.data?.integrationReadiness?.length
-    ? readiness.data.integrationReadiness
-    : [
-      { id: "resourcespace", owner: "ResourceSpace", label: "Source connection", ready: Boolean(readiness.live), detail: sourceState, state: readiness.live ? "Operational" as const : "Read-only" as const },
-      { id: "writeback", owner: "Portal", label: "Pending write semantics", ready: pendingWrites.length === 0, detail: "Review decisions queue safely when ResourceSpace writeback is unavailable.", state: pendingWrites.length ? "Pending setup" as const : "Operational" as const },
-      { id: "delivery", owner: "Portal", label: "Safe downloads", ready: true, detail: "Approved-copy gates protect source/original files and audit every request.", state: "Operational" as const }
-    ];
-  return (
-    <section className="proto-admin-page">
-      <div className="proto-admin-header">
-        <h1>{initialModule ? "Admin" : "Admin"}</h1>
-        <p>{sourceLabel(readiness.source)}. ResourceSpace remains source of truth.</p>
-      </div>
-      <div className="proto-admin-ops-grid">
-        {adminRows.map((row) => (
-          <article key={row.label}>
-            <div>
-              <span>{row.label}</span>
-              <strong>{row.value}</strong>
+          <aside className="proto-detail-right-panel" aria-label="Rights and releases">
+            <div className="proto-detail-tabs">
+              {["Rights & Releases", "Metadata", "Versions", "Activity"].map((tab, index) => (
+                <button key={tab} type="button" className={index === 0 ? "is-active" : ""}>{tab}</button>
+              ))}
             </div>
-            <StatusPill label={row.tone === "approved" ? "Operational" : row.tone === "draft" ? "Draft" : "In Review"} tone={row.tone} />
-            <p>{row.detail}</p>
-          </article>
-        ))}
-      </div>
-      <div className="proto-admin-table">
-        <header><h2>Operations modules</h2><span>Compact status</span></header>
-        {integrationRows.slice(0, 8).map((item) => (
-          <div key={item.id}>
-            <span>{item.owner}</span>
-            <strong>{item.label}</strong>
-            <p>{item.detail}</p>
-            <StatusPill label={item.state || (item.ready ? "Operational" : "Not configured")} tone={item.ready ? "approved" : "review"} />
-          </div>
-        ))}
-      </div>
+            <section className="proto-rights-section">
+              <h2>Usage rights</h2>
+              <dl className="proto-rights-grid">
+                {[
+                  ["License", prototypeLicenseLabel(asset)],
+                  ["License type", asset.rightsBasis || "Standard License"],
+                  ["Usage", asset.usageScope || "Commercial"],
+                  ["Licensee", "True Jesus Church"],
+                  ["License ID", asset.consentReleaseRecordId || asset.resourceSpaceId || assetRecordRef(asset)],
+                  ["Issue date", prototypeDate(asset.reviewedDate || asset.publishDate || asset.importDate)],
+                  ["Expiration date", prototypeExpiration(asset)],
+                  ["Licensed for", asset.region || "Worldwide"]
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+            <section className="proto-rights-section">
+              <h2>Allowed channels</h2>
+              <div className="proto-channel-row">
+                {prototypeAllowedChannels(asset).map((channel) => <span key={channel}><Check size={13} />{channel}</span>)}
+              </div>
+            </section>
+            <section className="proto-rights-section">
+              <div className="proto-rights-heading-row">
+                <h2>Region matrix</h2>
+                <div><span className="is-allowed" />Allowed <span className="is-restricted" />Restricted <span className="is-blocked" />Not allowed</div>
+              </div>
+              <div className="proto-region-matrix">
+                {["North America", "South America", "Europe", "Asia Pacific", "Middle East", "Africa", "Worldwide"].map((region) => (
+                  <div key={region}><span>{region}</span><i className={region === "Middle East" ? "is-restricted" : "is-allowed"} /></div>
+                ))}
+              </div>
+            </section>
+            <section className="proto-release-card-grid">
+              {[
+                ["Model releases", asset.peopleRisk === "No people" ? "Not required" : "1 model", asset.peopleRisk === "No people" ? "info" : "ok"],
+                ["Property releases", asset.consentStatus || "1 property", "ok"],
+                ["Talent/Location permissions", asset.consentReleaseRecordId ? "All clear" : "Not required", asset.consentReleaseRecordId ? "ok" : "info"]
+              ].map(([label, value, tone]) => (
+                <article key={label}>
+                  <div><ShieldCheck size={16} /><strong>{label}</strong><ChevronRight size={15} /></div>
+                  <span className={tone === "ok" ? "is-ok" : ""}>{value}</span>
+                </article>
+              ))}
+            </section>
+            <section className="proto-compliance-status">
+              <ShieldCheck size={28} />
+              <div>
+                <h2>Compliance status</h2>
+                <strong>{assetUseState(asset).tone === "ready" ? "Compliant" : assetUseState(asset).label}</strong>
+                <p>{assetUseState(asset).detail || "All required releases are on file. License is active."}</p>
+              </div>
+              <button type="button" onClick={() => toast.message("Review request opens from review workflow in local demo.")}>Request changes <ChevronDown size={15} /></button>
+            </section>
+            <section className="proto-rights-bottom-grid">
+              <div>
+                <h2>Release documents</h2>
+                {["People visibility review.pdf", "Location permission review.pdf", "Usage guidance packet.pdf"].map((doc) => (
+                  <button key={doc} type="button" onClick={() => toast.message("Document download disabled in local demo.")}>
+                    <span><strong>{doc}</strong><small>PDF / reviewed packet</small></span><Download size={15} />
+                  </button>
+                ))}
+              </div>
+              <div>
+                <h2>Rights activity</h2>
+                {["License issued", "Releases added", "Asset approved"].map((event, index) => (
+                  <article key={event}>
+                    <i />
+                    <span><strong>{event}</strong><small>{index === 2 ? prototypeDate(asset.reviewedDate || asset.publishDate) : prototypeDate(asset.importDate || asset.eventDate)} / {index === 2 ? "Approved for use" : "Recorded by TJC portal"}</small></span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </aside>
+          <DownloadCenterDrawer
+            open={downloadCenterOpen}
+            onClose={() => setDownloadCenterOpen(false)}
+            asset={asset}
+            role={role}
+            description="Original/source access stays elevated. Approved renditions run through the existing gate."
+          />
+        </div>
+        </>
+      ) : <div className="proto-error">Asset not found.</div>}
     </section>
   );
 }

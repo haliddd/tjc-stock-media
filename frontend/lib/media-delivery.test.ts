@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   hasApprovedCopyDerivative,
   readApprovedCopyDelivery,
-  supportedImageContentType
+  supportedImageContentType,
+  thumbnailImageResponse
 } from "@/lib/media-delivery";
 import type { MediaSourceStatus } from "@/lib/types";
 
@@ -49,5 +50,29 @@ describe("media delivery", () => {
     expect(supportedImageContentType(Buffer.from("<svg><script>alert(1)</script></svg>"))).toBeNull();
     expect(supportedImageContentType(Buffer.from("https://private.example/download.jpg"))).toBeNull();
     expect(supportedImageContentType(Buffer.from("file:///Volumes/Shared Drive/original.jpg"))).toBeNull();
+  });
+
+  it("renders generated local preview art without pretending to be approved media", () => {
+    const response = thumbnailImageResponse({
+      status: "missing-derivative",
+      placeholderLabel: "Local beta preview",
+      asset: {
+        id: "9987",
+        title: "Sabbath service intake",
+        mediaType: "photo",
+        imageDimensions: "4000x6000",
+        resourceSpaceId: "185"
+      }
+    });
+
+    expect(response.headers["Content-Type"]).toContain("image/svg+xml");
+    expect(response.headers["X-TJC-Preview-Mode"]).toBe("generated-local-beta");
+    expect(String(response.body)).toContain("GENERATED PREVIEW");
+    expect(String(response.body)).toContain("Generated local beta preview. Original/source remains restricted.");
+    expect(String(response.body)).toContain("Reference code 185");
+    expect(String(response.body)).toContain("<feGaussianBlur");
+    expect(String(response.body)).toContain('filter="url(#shadow)"');
+    expect(String(response.body)).not.toContain("Approved");
+    expect(String(response.body)).not.toContain("Download");
   });
 });

@@ -34,6 +34,7 @@ function searchResultForRole(session: ReturnType<typeof createDamRouteSession>, 
     },
     appliedIntent: result.appliedIntent,
     discovery: result.discovery,
+    rightsSafe: result.rightsSafe,
     savedViews: session.savedViewsPayload(result.savedViews),
     collections: result.collections
   };

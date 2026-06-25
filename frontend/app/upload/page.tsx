@@ -1,5 +1,5 @@
-import { EnterpriseUploadPage } from "@/components/dam/EnterpriseDamPages";
+import { TjcDamUploadPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <EnterpriseUploadPage />;
+  return <TjcDamUploadPage />;
 }

@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-06-25T12:39:42.801Z",
+  "headers": [
+    "x-tjc-role: Reviewer"
+  ],
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1100
+      },
+      "hasEvidenceDepth": true,
+      "hasPendingWriteTruth": true,
+      "noHorizontalOverflow": true,
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-55-review-evidence-persistence-desktop.png"
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "hasEvidenceDepth": true,
+      "hasPendingWriteTruth": true,
+      "noHorizontalOverflow": true,
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-55-review-evidence-persistence-mobile.png"
+    }
+  ]
+}

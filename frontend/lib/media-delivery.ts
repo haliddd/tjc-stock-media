@@ -144,13 +144,51 @@ function previewSeed(value: string) {
 
 function localBetaPreviewPalette(seed: number) {
   const palettes = [
-    ["#d8efe7", "#f6f1d6", "#1f5f52"],
-    ["#e6eef8", "#f3dfd3", "#284d7a"],
-    ["#f1e7d8", "#d8ebef", "#6f4a21"],
-    ["#e8ead6", "#f7e1ec", "#56621f"],
-    ["#e3e1f4", "#d8efe2", "#4b4478"]
+    ["#d8efe7", "#f6f1d6", "#1f5f52", "#7fb6a7", "#f2c787"],
+    ["#e6eef8", "#f3dfd3", "#284d7a", "#8ba8ce", "#c89078"],
+    ["#f1e7d8", "#d8ebef", "#6f4a21", "#b79a6b", "#73a3ad"],
+    ["#e8ead6", "#f7e1ec", "#56621f", "#a7ad6b", "#d6a2b8"],
+    ["#e3e1f4", "#d8efe2", "#4b4478", "#9c97c9", "#8fc4aa"]
   ];
   return palettes[seed % palettes.length];
+}
+
+function localBetaPreviewScene(seed: number, colors: string[]) {
+  const [, secondary, ink, mid, warm] = colors;
+  const sunX = 112 + (seed % 360);
+  const sunY = 74 + (seed % 70);
+  const ridgeA = 164 + (seed % 54);
+  const ridgeB = 220 + ((seed >> 3) % 72);
+  const objectX = 196 + ((seed >> 5) % 110);
+  const objectY = 224 + ((seed >> 7) % 34);
+  const composition = seed % 3;
+
+  if (composition === 0) {
+    return `
+  <circle cx="${sunX}" cy="${sunY}" r="42" fill="${warm}" opacity=".62"/>
+  <path d="M74 ${ridgeB} C146 ${ridgeA} 218 ${ridgeA + 38} 296 ${ridgeA + 8} S432 ${ridgeA - 20} 566 ${ridgeA + 28} V302 H74 Z" fill="${mid}" opacity=".54"/>
+  <path d="M74 292 C162 252 244 326 330 280 S496 238 566 288 V332 H74 Z" fill="${ink}" opacity=".28"/>
+  <path d="M74 332 C174 304 272 354 386 322 S500 300 566 326 V350 H74 Z" fill="#ffffff" opacity=".44"/>
+  <rect x="112" y="350" width="416" height="2" fill="${ink}" opacity=".18"/>`;
+  }
+
+  if (composition === 1) {
+    return `
+  <rect x="98" y="132" width="444" height="178" rx="24" fill="#fffdf7" opacity=".56"/>
+  <ellipse cx="${objectX}" cy="${objectY}" rx="76" ry="92" fill="${warm}" opacity=".55"/>
+  <ellipse cx="${objectX + 116}" cy="${objectY + 22}" rx="58" ry="70" fill="${mid}" opacity=".48"/>
+  <path d="M168 308 C238 264 312 356 386 294 S494 268 548 316" fill="none" stroke="${ink}" stroke-width="14" stroke-linecap="round" opacity=".23"/>
+  <path d="M210 148 C252 202 282 246 314 314" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round" opacity=".32"/>
+  <circle cx="${objectX + 210}" cy="${objectY - 76}" r="26" fill="${ink}" opacity=".2"/>`;
+  }
+
+  return `
+  <rect x="74" y="126" width="492" height="224" rx="26" fill="${secondary}" opacity=".52"/>
+  <path d="M112 304 C168 208 220 214 266 298 S364 388 428 270 S520 218 568 308" fill="${mid}" opacity=".44"/>
+  <path d="M102 336 C186 294 240 348 312 322 S454 292 552 336" fill="none" stroke="${ink}" stroke-width="18" stroke-linecap="round" opacity=".22"/>
+  <rect x="144" y="156" width="104" height="142" rx="20" fill="#ffffff" opacity=".44"/>
+  <rect x="270" y="142" width="142" height="166" rx="24" fill="#ffffff" opacity=".34"/>
+  <circle cx="${sunX + 80}" cy="${sunY + 38}" r="32" fill="${warm}" opacity=".52"/>`;
 }
 
 function wrapSvgLines(value: string, maxChars = 24, maxLines = 3) {
@@ -175,7 +213,9 @@ function generatedLocalBetaPreviewSvg(asset: Pick<StockMediaAsset, "id" | "title
   const ref = svgText(String(asset.resourceSpaceId || asset.id));
   const type = svgText((asset.mediaType || "media").toUpperCase());
   const dimensions = svgText(asset.imageDimensions || "local beta preview");
-  const [primary, secondary, ink] = localBetaPreviewPalette(previewSeed(`${asset.id}:${asset.title}`));
+  const seed = previewSeed(`${asset.id}:${asset.title}`);
+  const colors = localBetaPreviewPalette(seed);
+  const [primary, secondary, ink, mid, warm] = colors;
   const titleLines = wrapSvgLines(title);
   const lineStart = 236 - ((titleLines.length - 1) * 22);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" role="img" aria-label="${title}">
@@ -187,16 +227,21 @@ function generatedLocalBetaPreviewSvg(asset: Pick<StockMediaAsset, "id" | "title
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#18362f" flood-opacity=".18"/>
     </filter>
+    <filter id="soften" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation=".35"/>
+    </filter>
   </defs>
   <rect width="640" height="480" fill="url(#bg)"/>
-  <circle cx="108" cy="96" r="76" fill="#ffffff" opacity=".42"/>
-  <circle cx="548" cy="382" r="118" fill="#ffffff" opacity=".32"/>
-  <path d="M0 360 C130 300 210 420 340 350 S520 250 640 310 V480 H0 Z" fill="#ffffff" opacity=".32"/>
-  <rect x="96" y="86" width="448" height="308" rx="22" fill="#fbfcfa" opacity=".9" filter="url(#shadow)"/>
-  <rect x="122" y="116" width="396" height="170" rx="18" fill="${primary}" opacity=".72"/>
-  <path d="M122 286 L222 190 L296 248 L352 202 L518 286 Z" fill="${ink}" opacity=".28"/>
-  <circle cx="428" cy="164" r="34" fill="${ink}" opacity=".24"/>
-  <text x="320" y="330" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="800" fill="${ink}" letter-spacing="1.5">${type} PREVIEW</text>
+  <circle cx="108" cy="96" r="76" fill="#ffffff" opacity=".38"/>
+  <circle cx="548" cy="382" r="118" fill="#ffffff" opacity=".28"/>
+  <path d="M0 360 C130 300 210 420 340 350 S520 250 640 310 V480 H0 Z" fill="#ffffff" opacity=".26"/>
+  <rect x="82" y="66" width="476" height="344" rx="28" fill="#fbfcfa" opacity=".88" filter="url(#shadow)"/>
+  <rect x="106" y="94" width="428" height="270" rx="24" fill="${primary}" opacity=".48" filter="url(#soften)"/>
+  ${localBetaPreviewScene(seed, colors)}
+  <rect x="106" y="94" width="428" height="270" rx="24" fill="none" stroke="#ffffff" stroke-width="8" opacity=".42"/>
+  <rect x="132" y="112" width="88" height="26" rx="13" fill="#ffffff" opacity=".68"/>
+  <text x="176" y="130" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="900" fill="${ink}" letter-spacing="1.2">${type}</text>
+  <text x="320" y="330" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="850" fill="${ink}" letter-spacing="1.6">GENERATED PREVIEW</text>
   ${titleLines.map((line, index) => `<text x="320" y="${lineStart + index * 42}" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="800" fill="#10251f">${svgText(line)}</text>`).join("\n  ")}
   <text x="320" y="360" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700" fill="#43564f">Reference code ${ref} · ${dimensions}</text>
   <text x="320" y="386" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" fill="#6b766f">Generated local beta preview. Original/source remains restricted.</text>

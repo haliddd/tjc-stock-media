@@ -7,7 +7,7 @@ import {
   reviewEvidencePacketQueuedAuditEvent
 } from "@/lib/review-evidence-packet";
 import { reviewActions } from "@/lib/workflow-policy";
-import type { StockMediaAsset } from "@/lib/types";
+import type { ReviewEvidenceDepthChecklist, StockMediaAsset } from "@/lib/types";
 
 function asset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsset {
   return {
@@ -44,6 +44,16 @@ function asset(overrides: Partial<StockMediaAsset> = {}): StockMediaAsset {
     ...overrides
   };
 }
+
+const completeDepth: ReviewEvidenceDepthChecklist = {
+  brandGuidelinesChecked: true,
+  modelReleaseChecked: true,
+  propertyReleaseChecked: true,
+  usageRightsChecked: true,
+  locationTalentPermissionChecked: true,
+  legalReviewChecked: true,
+  altTextChecked: true
+};
 
 describe("review evidence packet", () => {
   it("normalizes checklist/note and collapses checklist plus domain blockers into one packet", () => {
@@ -84,13 +94,19 @@ describe("review evidence packet", () => {
       "reviewNote",
       "consentReleaseRecord",
       "domainReviewer:RE/minors",
-      "approvedDerivativeEvidence"
+      "approvedDerivativeEvidence",
+      "evidenceDepth.brandGuidelinesChecked",
+      "evidenceDepth.usageRightsChecked",
+      "evidenceDepth.legalReviewChecked"
     ]));
     expect(packet.missingEvidenceLabels).toEqual(expect.arrayContaining([
       "Owner/license evidence missing",
       "Children/youth review required",
       "Review note missing",
-      "Consent/release record missing"
+      "Consent/release record missing",
+      "Brand guidelines not reviewed",
+      "Usage rights not reviewed",
+      "Legal review not confirmed"
     ]));
     expect(packet.disabledReason).toContain("Missing:");
   });
@@ -139,7 +155,8 @@ describe("review evidence packet", () => {
         peopleVisibilityConfirmed: true,
         childrenYouthChecked: true,
         usageScopeSelected: true
-      }
+      },
+      evidenceDepth: completeDepth
     });
 
     const queued = reviewEvidencePacketQueuedAuditEvent(packet, "Reviewer", "reviewer@example.test", "pending-1");
@@ -156,8 +173,10 @@ describe("review evidence packet", () => {
       previousStatus: "Approved Internal",
       requestedStatus: "Needs Review",
       actor: "reviewer@example.test",
-      reviewerRole: "Reviewer"
+      reviewerRole: "Reviewer",
+      evidenceDepth: completeDepth
     });
+    expect(queued.details.evidenceDepthSummary).toEqual(expect.arrayContaining(["Brand guidelines", "Usage rights", "Legal review"]));
   });
 
   it("blocks public approval without reviewer, review date, and matching approval scope", () => {
@@ -188,7 +207,8 @@ describe("review evidence packet", () => {
         creditRequirementChecked: true,
         expirationRereviewSet: true,
         proofLinkAttached: true
-      }
+      },
+      evidenceDepth: completeDepth
     });
 
     expect(packet.blocked).toBe(true);
@@ -230,6 +250,7 @@ describe("review evidence packet", () => {
         expirationRereviewSet: true,
         proofLinkAttached: true
       },
+      evidenceDepth: completeDepth,
       reviewerName: "Reviewer One",
       reviewDate: today,
       approvalScope: "Public"

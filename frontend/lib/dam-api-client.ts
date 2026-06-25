@@ -2,6 +2,7 @@ import type { DemoRole, MediaSourceStatus } from "@/lib/types";
 
 export const DAM_API_TIMEOUT_MS = 15_000;
 export const DAM_LOCAL_BETA_ROLE_HEADER = "x-tjc-local-beta-role";
+export const DAM_LOCAL_TRUSTED_ROLE_HEADER = "x-tjc-role";
 
 export type DamApiPayload = {
   source?: MediaSourceStatus;
@@ -49,7 +50,7 @@ export async function fetchDamJson<T extends DamApiPayload>(url: string, options
     const response = await fetch(url, {
       headers: {
         Accept: "application/json",
-        ...(role ? { [DAM_LOCAL_BETA_ROLE_HEADER]: role } : {})
+        ...(role ? { [DAM_LOCAL_BETA_ROLE_HEADER]: role, [DAM_LOCAL_TRUSTED_ROLE_HEADER]: role } : {})
       },
       signal: controller.signal
     });

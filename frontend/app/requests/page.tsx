@@ -1,5 +1,5 @@
-import { RequestsPage } from "@/components/dam/EnterpriseDamPages";
+import { TjcDamRequestsPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <RequestsPage />;
+  return <TjcDamRequestsPage />;
 }

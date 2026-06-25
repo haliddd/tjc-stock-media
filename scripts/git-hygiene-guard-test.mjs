@@ -111,6 +111,14 @@ expectPass("allowed-screenshot-png", (repo) => {
   track(repo, "docs/screenshots/free-internal-beta-2026-06-12/library.png", "png\n");
 });
 
+expectPass("allowed-qa-issue-proof-screenshot-png", (repo) => {
+  track(repo, "docs/screenshots/qa/issue-67-png2-library-shell-desktop-1448.png", "png\n");
+});
+
+expectPass("allowed-product-wide-parity-proof-screenshot-png", (repo) => {
+  track(repo, "docs/screenshots/qa/product-wide-parity-2026-06-25/library-admin.png", "png\n");
+});
+
 expectPass("allowed-env-example", (repo) => {
   track(repo, ".env.example", "PORTAL_SAMPLE_ONLY=true\n");
   track(repo, ".env.production.example", "PORTAL_SAMPLE_ONLY=true\n");

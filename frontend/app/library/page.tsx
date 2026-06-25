@@ -1,5 +1,5 @@
-import { EnterpriseLibraryPage } from "@/components/dam/EnterpriseDamPages";
+import { TjcDamLibraryPage } from "@/components/dam/EnterpriseDamPages";
 
 export default function Page() {
-  return <EnterpriseLibraryPage />;
+  return <TjcDamLibraryPage />;
 }

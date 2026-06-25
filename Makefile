@@ -1,4 +1,4 @@
-.PHONY: init up down restart logs smoke tag-search-static-smoke import-audit import-mvp-batch approve-mvp-batch heic-derivatives polish-mvp-ui lm-photos-zip-inventory lm-photos-stream-run lm-photos-run-report video-manifest export-metadata backup restore-test launch-readiness live-dam-surface-guard live-dam-surface-guard-test api-identity-guard api-identity-guard-test api-audit-guard api-audit-guard-test api-payload-guard api-payload-guard-test private-source-guard private-source-guard-test public-env-guard public-env-guard-test git-hygiene-guard git-hygiene-guard-test storage-honesty-guard storage-honesty-guard-test ui-maturity-guard ui-maturity-guard-test completion-audit-guard completion-audit-guard-test safe-lane-guard safe-lane-guard-test runtime-isolation-guard runtime-isolation-guard-test safe-lane-disk-report safe-lane-disk-report-test safe-lane-headroom-guard safe-lane-headroom-guard-test dev-server-build-guard dev-server-build-guard-test hosted-readonly-probe-guard hosted-readonly-probe-guard-test hosted-smoke-mutation-guard hosted-smoke-mutation-guard-test open-blockers-guard open-blockers-guard-test small-team-beta-readiness-guard small-team-beta-readiness-guard-test evidence-packet-guard evidence-packet-guard-test external-proof-contract-guard external-proof-contract-guard-test team-beta-signoff-guard team-beta-signoff-guard-test portal-browser-qa-with-server-test portal-writeback-guard-smoke-test portal-download-ticket-smoke-test portal-sso-smoke-test portal-delivery-smoke-test portal-package-smoke-test frontend-dev frontend-check demo-check portal-api-smoke portal-sso-smoke portal-usage-smoke portal-delivery-smoke portal-download-ticket-smoke portal-writeback-guard-smoke portal-package-smoke portal-saved-search-smoke portal-feedback-smoke portal-beta-rehearsal portal-hosted-readonly-probe portal-hosted-smoke portal-browser-qa
+.PHONY: init up down restart logs smoke tag-search-static-smoke import-audit import-mvp-batch approve-mvp-batch heic-derivatives polish-mvp-ui lm-photos-zip-inventory lm-photos-stream-run lm-photos-run-report video-manifest export-metadata backup restore-test launch-readiness slim-hygiene core-four-smoke live-dam-surface-guard live-dam-surface-guard-test product-wide-parity-proof-test api-identity-guard api-identity-guard-test api-audit-guard api-audit-guard-test api-payload-guard api-payload-guard-test private-source-guard private-source-guard-test public-env-guard public-env-guard-test git-hygiene-guard git-hygiene-guard-test storage-honesty-guard storage-honesty-guard-test ui-maturity-guard ui-maturity-guard-test completion-audit-guard completion-audit-guard-test safe-lane-guard safe-lane-guard-test runtime-isolation-guard runtime-isolation-guard-test safe-lane-disk-report safe-lane-disk-report-test safe-lane-headroom-guard safe-lane-headroom-guard-test dev-server-build-guard dev-server-build-guard-test hosted-readonly-probe-guard hosted-readonly-probe-guard-test hosted-smoke-mutation-guard hosted-smoke-mutation-guard-test open-blockers-guard open-blockers-guard-test small-team-beta-readiness-guard small-team-beta-readiness-guard-test evidence-packet-guard evidence-packet-guard-test external-proof-contract-guard external-proof-contract-guard-test team-beta-signoff-guard team-beta-signoff-guard-test portal-browser-qa-with-server-test portal-writeback-guard-smoke-test portal-download-ticket-smoke-test portal-sso-smoke-test portal-delivery-smoke-test portal-package-smoke-test frontend-dev frontend-check demo-check portal-api-smoke portal-sso-smoke portal-usage-smoke portal-delivery-smoke portal-download-ticket-smoke portal-writeback-guard-smoke portal-package-smoke portal-saved-search-smoke portal-feedback-smoke portal-beta-rehearsal portal-hosted-readonly-probe portal-hosted-smoke portal-browser-qa
 .PHONY: photo-only-resourcespace-readiness portal-redaction-crawler
 
 IMPORT_DIR ?= /Users/halim4pro/Desktop/MVP/Stock Media/01_Source Exports/Photos/Imported/MVP 2024
@@ -80,6 +80,20 @@ restore-test:
 launch-readiness:
 	./scripts/launch-readiness.sh
 
+slim-hygiene:
+	node scripts/live-dam-surface-guard.mjs
+	node scripts/product-wide-parity-proof-test.mjs
+	node scripts/api-identity-guard.mjs
+	node scripts/api-audit-guard.mjs
+	node scripts/api-payload-guard.mjs
+	node scripts/private-source-guard.mjs
+	node scripts/public-env-guard.mjs
+	node scripts/git-hygiene-guard.mjs
+
+core-four-smoke:
+	SAFE_LANE_HEADROOM_CONTEXT=core-four-smoke node scripts/safe-lane-headroom-guard.mjs
+	PORTAL_BROWSER_QA_SERVER_MODE=dev node scripts/portal-browser-qa-with-server.mjs
+
 photo-only-resourcespace-readiness:
 	node scripts/photo-only-resourcespace-readiness.mjs
 
@@ -88,6 +102,9 @@ live-dam-surface-guard:
 
 live-dam-surface-guard-test:
 	node scripts/live-dam-surface-guard-test.mjs
+
+product-wide-parity-proof-test:
+	node scripts/product-wide-parity-proof-test.mjs
 
 api-identity-guard:
 	./scripts/api-identity-guard.mjs

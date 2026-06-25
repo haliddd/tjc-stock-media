@@ -1,0 +1,50 @@
+{
+  "issue": 65,
+  "capturedAt": "2026-06-25T15:05:56.154Z",
+  "screenshots": [
+    "docs/screenshots/qa/issue-65-brand-kit-desktop-1448.png",
+    "docs/screenshots/qa/issue-65-audit-compliance-desktop-1448.png",
+    "docs/screenshots/qa/issue-65-distribution-sets-desktop-1448.png",
+    "docs/screenshots/qa/issue-65-integrations-settings-desktop-1448.png",
+    "docs/screenshots/qa/issue-65-brand-kit-mobile-390.png"
+  ],
+  "checks": {
+    "brand": {
+      "title": "Acme Corporate Brand Kit",
+      "titleMatches": true,
+      "cardCount": 9,
+      "hasNonCanonicalCopy": false,
+      "bodyWidth": 1448,
+      "viewportWidth": 1448
+    },
+    "audit": {
+      "title": "Audit Log & Compliance",
+      "titleMatches": true,
+      "cardCount": 5,
+      "hasNonCanonicalCopy": false,
+      "bodyWidth": 1448,
+      "viewportWidth": 1448
+    },
+    "distribution": {
+      "title": "Distribution Sets",
+      "titleMatches": true,
+      "cardCount": 5,
+      "hasNonCanonicalCopy": false,
+      "bodyWidth": 1448,
+      "viewportWidth": 1448
+    },
+    "integrations": {
+      "title": "Integrations & Settings",
+      "titleMatches": true,
+      "cardCount": 7,
+      "hasNonCanonicalCopy": false,
+      "bodyWidth": 1448,
+      "viewportWidth": 1448
+    },
+    "mobileBrand": {
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false
+    }
+  }
+}
