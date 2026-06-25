@@ -1,0 +1,104 @@
+{
+  "project": "True Jesus Church Media Library",
+  "description": "Demo readiness follow-up after the completed 10/10 DAM depth run. Three product-app slices close local role rehearsal truth, pending review evidence persistence, and public portal readiness diagnostics without weakening ResourceSpace/source-truth guardrails.",
+  "prd": "tasks/prd-true-jesus-church-media-library-demo-readiness-follow-up.md",
+  "previousParentIssue": 45,
+  "guardrails": [
+    "ResourceSpace remains DAM/source truth.",
+    "Google Shared Drive remains master-original custody.",
+    "Product-app work only; no marketing landing page.",
+    "No source media deletion, rename, move, or mutation.",
+    "No fake assets, counts, approvals, metadata, AI tags, duplicate scans, public links, analytics, download success, or rendition truth.",
+    "No ResourceSpace internals exposed to normal users.",
+    "No credentials, paid service, production deploy, public publish, destructive migrations, or source-media mutation."
+  ],
+  "runModel": {
+    "orchestrator": "Owns source edits, validation, GitHub evidence, tracker updates, and checkpoints.",
+    "helpers": "Read-only unless docs/tests are explicitly disjoint.",
+    "validation": "Focused validation per issue: git diff --check, frontend typecheck, targeted tests when helper/source logic changes, one desktop/mobile browser proof when UI changes."
+  },
+  "issues": [
+    {
+      "id": "DRF-001",
+      "title": "Role rehearsal entry and truth labels",
+      "anticipatedGithubIssue": 54,
+      "githubIssue": 54,
+      "githubIssueUrl": "https://github.com/haliddd/tjc-stock-media/issues/54",
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented visible `/rehearsal` product-app entry surface using existing local role-switch mechanics. Viewer remains default when role switch is disabled; role copy labels rehearsal-only, not production auth or SSO; route cards continue to reflect backend access decisions. Updated local demo runbook to use visible role rehearsal path for Reviewer proof where possible.",
+      "evidence": [
+        "docs/screenshots/qa/issue-54-role-rehearsal-proof.json",
+        "docs/screenshots/qa/issue-54-role-rehearsal-desktop.png",
+        "docs/screenshots/qa/issue-54-role-rehearsal-mobile.png"
+      ],
+      "validation": [
+        "git diff --check",
+        "npm --prefix frontend run typecheck",
+        "Playwright desktop/mobile proof at /rehearsal on port 4875"
+      ]
+    },
+    {
+      "id": "DRF-002",
+      "title": "Review evidence field persistence",
+      "anticipatedGithubIssue": 55,
+      "githubIssue": 55,
+      "githubIssueUrl": "https://github.com/haliddd/tjc-stock-media/issues/55",
+      "priority": 2,
+      "passes": true,
+      "notes": "Persisted separate review evidence-depth fields through review packet, API request body, pending review write records, audit response records, and UI payload. Existing base checklist/note requirements remain; missing depth fields now block API packets fail-closed. Pending-write copy still says ResourceSpace remains unchanged until sync confirms.",
+      "evidence": [
+        "docs/screenshots/qa/issue-55-review-evidence-persistence-proof.json",
+        "docs/screenshots/qa/issue-55-review-evidence-persistence-desktop.png",
+        "docs/screenshots/qa/issue-55-review-evidence-persistence-mobile.png"
+      ],
+      "validation": [
+        "git diff --check",
+        "npm --prefix frontend run typecheck",
+        "npm --prefix frontend run test -- review-evidence-depth.test.ts review-evidence-packet.test.ts",
+        "Playwright desktop/mobile proof at /review on port 4875 with x-tjc-role: Reviewer"
+      ]
+    },
+    {
+      "id": "DRF-003",
+      "title": "Public portal readiness diagnostics",
+      "anticipatedGithubIssue": 56,
+      "githubIssue": 56,
+      "githubIssueUrl": "https://github.com/haliddd/tjc-stock-media/issues/56",
+      "priority": 3,
+      "passes": true,
+      "notes": "Added public portal readiness diagnostics for zero Portal Ready collections. Diagnostics count safe categories from existing export/backend fields: reviewer/date, rights/consent, people/minors, approved-copy derivative, usage scope, and publish state. Public page renders safe review-queue links without exposing ResourceSpace internals or inventing public link/share/download truth.",
+      "evidence": [
+        "docs/screenshots/qa/issue-56-public-portal-readiness-proof.json",
+        "docs/screenshots/qa/issue-56-public-portal-readiness-desktop.png",
+        "docs/screenshots/qa/issue-56-public-portal-readiness-mobile.png"
+      ],
+      "validation": [
+        "git diff --check",
+        "npm --prefix frontend run typecheck",
+        "npm --prefix frontend run test -- public-portal-preview.test.ts",
+        "Playwright desktop/mobile proof at /public-portal/sabbath on port 4875"
+      ]
+    },
+    {
+      "id": "DRF-004",
+      "title": "Final focused QA and evidence pack",
+      "anticipatedGithubIssue": 57,
+      "githubIssue": 57,
+      "githubIssueUrl": "https://github.com/haliddd/tjc-stock-media/issues/57",
+      "priority": 4,
+      "passes": true,
+      "notes": "Ran separate focused final QA after build issues #54-#56. Consolidated desktop/mobile proof for role rehearsal, review evidence persistence, and public portal readiness diagnostics. Wrote final runbook/known-limits note.",
+      "evidence": [
+        "docs/screenshots/qa/issue-57-demo-readiness-final-qa.json",
+        "docs/demo-readiness-follow-up-final-qa-2026-06-25.md"
+      ],
+      "validation": [
+        "git diff --check",
+        "npm --prefix frontend run typecheck",
+        "npm --prefix frontend run test -- public-portal-preview.test.ts review-evidence-depth.test.ts review-evidence-packet.test.ts",
+        "Playwright desktop/mobile proof for /rehearsal, /review, and /public-portal/sabbath on port 4875"
+      ]
+    }
+  ]
+}

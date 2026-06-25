@@ -241,6 +241,16 @@ export type ReviewEvidenceChecklist = {
   proofLinkAttached: boolean;
 };
 
+export type ReviewEvidenceDepthChecklist = {
+  brandGuidelinesChecked: boolean;
+  modelReleaseChecked: boolean;
+  propertyReleaseChecked: boolean;
+  usageRightsChecked: boolean;
+  locationTalentPermissionChecked: boolean;
+  legalReviewChecked: boolean;
+  altTextChecked: boolean;
+};
+
 export type ReviewWriteSyncState =
   | "queued"
   | "ready_to_sync"
@@ -262,6 +272,7 @@ export type ReviewWriteRecord = {
   updatedAt: string;
   note: string;
   checklist: ReviewEvidenceChecklist;
+  evidenceDepth?: ReviewEvidenceDepthChecklist;
   blockers: string[];
   syncState: ReviewWriteSyncState;
   retryCount: number;
@@ -270,7 +281,7 @@ export type ReviewWriteRecord = {
 
 export type ReviewWriteRecordSummary = Pick<
   ReviewWriteRecord,
-  "id" | "resourceId" | "requestedStatus" | "createdAt" | "updatedAt" | "syncState" | "lastError"
+  "id" | "resourceId" | "requestedStatus" | "createdAt" | "updatedAt" | "syncState" | "lastError" | "evidenceDepth"
 >;
 
 export type DamAssetStatus =
@@ -641,6 +652,17 @@ export type SearchResult = {
     nextOffset: number;
   };
   source: MediaSourceStatus;
+  rightsSafe?: {
+    active: boolean;
+    contextLabel: string;
+    safeLabel: string;
+    totalBefore: number;
+    totalAfter: number;
+    hidden: number;
+    criteria: string[];
+    hiddenReasons: Array<{ label: string; count: number }>;
+    explanation: string;
+  };
   counts: {
     rawTotal: number;
     visibleToRole: number;

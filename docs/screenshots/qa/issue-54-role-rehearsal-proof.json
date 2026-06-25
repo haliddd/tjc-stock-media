@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-06-25T12:33:44.053Z",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1100
+      },
+      "activeRole": "Reviewer",
+      "hasTruthCopy": true,
+      "hasReviewerProof": true,
+      "hasBlockedAdminForReviewer": true,
+      "noHorizontalOverflow": true,
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-54-role-rehearsal-desktop.png"
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "activeRole": "Reviewer",
+      "hasTruthCopy": true,
+      "hasReviewerProof": true,
+      "hasBlockedAdminForReviewer": true,
+      "noHorizontalOverflow": true,
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-54-role-rehearsal-mobile.png"
+    }
+  ]
+}

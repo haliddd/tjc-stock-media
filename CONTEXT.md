@@ -15,9 +15,12 @@ A TJC user can find a rights-safe asset for a real communication need in under 6
 - **Master warehouse**: `TJC Stock Media Library` Google Shared Drive. It stores selected master originals by year/source album.
 - **Approved delivery copy**: curated output copy, shortcut, or derivative placed in Approved Public/Internal folders after review. It is not the only master record.
 - **DAM**: Digital Asset Management system. ResourceSpace is the DAM layer for tags, search, previews, rights review, and approved downloads.
+- **True Jesus Church Media Library**: user-facing portal name for the church media library experience. It is the friendly front door over ResourceSpace-backed DAM truth. New or touched user-facing UI copy should use this name, but code symbols and old documents do not need a repo-wide rename.
+  _Avoid_: Archive One, Atlas
 - **Hosted DAM instance**: cloud-hosted ResourceSpace runtime for metadata, previews, review workflow, and approved-copy delivery during controlled beta. It is not master-original custody; Google Shared Drive remains the master warehouse.
 - **Operational DAM behavior**: user-facing DAM workflow behavior such as search, asset inspection, review request, intake, review, and visible safety gates against a current photo sample. It does not imply production readiness, public launch, or live writeback.
 - **Demo rehearsal**: presenter-led walkthrough used to prove product behavior before users receive access. It may use local fallback and is not a team beta.
+- **Role rehearsal**: local demo rehearsal mode for switching simulated roles with an explicit local flag or trusted local header. It is not production authentication, SSO, real user impersonation, or permission delegation.
 - **Controlled team beta**: named internal users performing role-specific DAM tasks against a hosted portal and Hosted DAM instance after access, source-truth, and safety gates pass. Local supervised use remains a demo rehearsal, not a controlled team beta.
 - **Admin observer**: beta participant allowed to view governance readiness, blockers, and redacted operational status. Admin observer access does not grant configuration, secret access, source custody, or mutation authority.
 - **Beta operator**: named person allowed to configure hosted beta operations and DAM integration settings. Beta operator authority is narrower than production ownership and does not grant source media mutation or public launch approval.
@@ -31,6 +34,11 @@ A TJC user can find a rights-safe asset for a real communication need in under 6
 - **Saved view**: named portal search perspective for a recurring media job, such as website heroes, no-people assets, or children/youth review. It is a workflow shortcut, not a separate collection.
 - **Brand kit**: curated ministry guidance and downloadable ResourceSpace collection mapping for one campaign or identity use case. Editorial copy can live in the portal; downloadable media remains ResourceSpace-backed.
 - **Package draft**: portal-local curation object for assembling a ministry toolkit. It stores section names and ResourceSpace references only; asset records, approval state, and rights truth remain in ResourceSpace.
+- **Public portal preview**: local demo view that renders a collection as an external-style page using Portal Ready assets only. It is not a persisted share link, access token, public URL, analytics record, or distribution artifact.
+  _Avoid_: Public share link, live portal, distribution link
+- **Portal readiness diagnostics**: local/operator-facing explanation of why a collection has zero or fewer Portal Ready assets, derived from existing source/export fields. It guides review work only and does not approve assets, create public links, send recipients, or grant downloads.
+- **10/10 DAM depth run**: autonomous maturity pass after the visual redesign issues are already passing. It closes product-depth gaps such as public portal preview, download center, rights-safe explanations, review evidence, permission inheritance, governance cleanup, search intelligence, and final demo evidence.
+  _Avoid_: Visual redesign redo
 - **Import batch**: a selected group of files imported into ResourceSpace for review.
 - **Rights reviewer**: person allowed to approve public/internal/restricted use.
 - **Quality status**: whether an asset is useful for stock media, such as `Hero Candidate`, `Useful`, `Context Only`, `Low Use`, or `Reject`.
@@ -41,6 +49,7 @@ A TJC user can find a rights-safe asset for a real communication need in under 6
 - **Portal Ready**: computed portal state where source, rights/consent, people/minors, reviewer/date, usage scope, and derivative checks all pass.
 - **Portal reuse state**: computed user-facing answer to whether an asset can be reused now, previewed only, or blocked for source/rights/people/derivative reasons. It does not replace ResourceSpace approval fields.
 - **Batch Approved With Blockers**: raw ResourceSpace-approved asset that still lacks one or more portal reuse requirements. User-facing label: `Needs portal review`.
+- **Review evidence depth**: structured reviewer evidence fields for rights, consent, releases, usage scope, legal/brand review, and alt text that can be queued with a Pending Review Write. It is review evidence, not ResourceSpace source truth until confirmed writeback exists.
 - **Pending Review Write**: local queued review decision that has not yet been written to ResourceSpace; audit evidence and retry state, not source of truth.
 - **Confirmed ResourceSpace write**: review decision written to ResourceSpace and verified by reading the ResourceSpace record back. Until this exists, the portal must describe the decision as queued or pending, not synced.
 - **Needs Review**: default state for imported assets.

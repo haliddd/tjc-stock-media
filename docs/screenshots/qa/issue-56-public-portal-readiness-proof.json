@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-06-25T12:43:36.521Z",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1100
+      },
+      "hasLocalDemoNotice": true,
+      "hasEmptyStateOrAssets": true,
+      "hasDiagnosticsWhenRendered": true,
+      "noDangerLeaks": true,
+      "noHorizontalOverflow": true,
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-56-public-portal-readiness-desktop.png"
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "hasLocalDemoNotice": true,
+      "hasEmptyStateOrAssets": true,
+      "hasDiagnosticsWhenRendered": true,
+      "noDangerLeaks": true,
+      "noHorizontalOverflow": true,
+      "screenshot": "/Users/halim4pro/Desktop/MVP/tjc-stock-media/docs/screenshots/qa/issue-56-public-portal-readiness-mobile.png"
+    }
+  ]
+}

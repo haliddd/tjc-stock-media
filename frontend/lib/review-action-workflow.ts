@@ -16,7 +16,7 @@ import {
 import { recordUsageEvent } from "@/lib/usage-analytics";
 import { isReviewActionBackend, reviewActions, type ReviewActionBackend } from "@/lib/workflow-policy";
 import type { NextRequest } from "next/server";
-import type { ReviewEvidenceChecklist } from "@/lib/types";
+import type { ReviewEvidenceChecklist, ReviewEvidenceDepthChecklist } from "@/lib/types";
 
 export type ReviewActionRequestBody = {
   role?: string;
@@ -25,6 +25,7 @@ export type ReviewActionRequestBody = {
   label?: string;
   notes?: string;
   checklist?: Partial<ReviewEvidenceChecklist>;
+  evidenceDepth?: Partial<ReviewEvidenceDepthChecklist>;
   reviewerName?: string;
   reviewDate?: string;
   approvalScope?: string;
@@ -79,6 +80,7 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
     label: body.label,
     note: body.notes,
     checklist: body.checklist,
+    evidenceDepth: body.evidenceDepth,
     reviewerName: body.reviewerName,
     reviewDate: body.reviewDate,
     approvalScope: body.approvalScope
@@ -134,6 +136,8 @@ export async function runReviewActionWorkflow(request: NextRequest, body: Review
       action: packet.action,
       label: packet.label,
       notes: packet.note,
+      evidenceDepth: packet.evidenceDepth,
+      evidenceDepthSummary: packet.evidenceDepthSummary,
       message: sync.ok
         ? "ResourceSpace review fields were updated through the live API and confirmed by post-write re-read."
         : `Review decision queued for media-team follow-up. ResourceSpace remains authoritative and record status remains unchanged until sync is completed and confirmed. ${sync.message}`,
